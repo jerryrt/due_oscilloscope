@@ -2,6 +2,13 @@
  {
   "broken": "fails",
   "good": true,
+  "id": "G-forced5",
+  "restored": "passes",
+  "what": "the +5 V forced-sense check with a 4.7k bleed (the v1 helper's) and the REF output open must fail; the 1.8k bleed passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
   "id": "G-clip",
   "restored": "passes",
   "what": "the clip check with the slope criterion disabled (threshold 0) must fail"
@@ -39,6 +46,6 @@
   "good": true,
   "id": "G-current",
   "restored": "passes",
-  "what": "ESD current check with the limit lowered to 10 uA must fail"
+  "what": "the ESD-current check with a limit of 100 uA applied to a shunt wired to the Due's 5V / VIN (stress) must fail; the header's own states pass it"
  }
 ]

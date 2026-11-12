@@ -1,0 +1,35 @@
+[
+ {
+  "case": "a wire from the top tap (the reference itself, Due pin A7) to GND, +3.3 V, DAC0 or the AWG node: the REF3030E is short-protected, ISC 35 mA typ (SBVS032K 6.5, 'ISC Short-circuit current', PDF page 6; abs max 'Output short-circuit current(2) 70 mA', 6.1 page 4, note (2) 'Short circuit to ground'); the duration is not stated *(check)*",
+  "id": "WIRE/top",
+  "limit": "survived by the reference's own current limit (35 mA < 70 mA abs max): a SURVIVED FAULT, no series resistor",
+  "margin": "",
+  "note": "dissipation about 3.3 V x 35 mA = 0.12 W in the SOT-23 *(check: no thermal figure in the text)*; the ladder's tap-to-tap and tap-to-GND wires below do not reach it",
+  "ok": true,
+  "req": "PA-2",
+  "sect": "wires",
+  "value": "5 wires reach the limit: p6 - gnd, p6 - v33, p6 - dac_lo, p6 - dac_hi, p6 - awg_lo"
+ },
+ {
+  "case": "every other single wrong wire (taps A2..A6 to GND, +3.3 V, DAC0, the AWG node at -1.923 / +2.18 V, or to each other; the DAC at its window ends and the AWG at its range ends): the largest current in the REF3030E",
+  "id": "WIRE/taps",
+  "limit": "<= 10 mA (6.3 recommended); abs max 70 mA",
+  "margin": "",
+  "note": "tap 5 to the AWG node at -1.923 V sinks the AWG's 49.5 ohm into the ladder: 12.9 mA from the reference, above the 10 mA recommended and far inside the 35 mA limit: survived",
+  "ok": null,
+  "req": "PA-2",
+  "sect": "wires",
+  "value": "12.9 mA (p5 - awg_lo); wires above 10 mA: p5 - awg_lo 12.9 mA"
+ },
+ {
+  "case": "the Due ADC pins A2..A7 under every wrong wire: range of the pin voltages",
+  "id": "WIRE/pins",
+  "limit": "-0.2 .. 3.45 V (PR-2 is stated for A0, A1 and the DAC pin; the SAM3X abs max -0.3 .. 4.0 V *(check)*)",
+  "margin": "",
+  "note": "only a wire to the AWG node at -1.923 V takes a ladder pin below -0.2 V, and the wire itself drives the Due pin there: no resistor in the AFE can prevent it at a Due pin, the AWG's 49.5 ohm limits it to about 38 mA *(check the SAM3X input rating)*. A wire to +3.3 V or DAC0 stays inside 0 .. 3.3 V",
+  "ok": null,
+  "req": "PR-2",
+  "sect": "wires",
+  "value": "-1.63 .. 3.30 V"
+ }
+]

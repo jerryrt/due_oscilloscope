@@ -1,0 +1,16 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-wire-limit",
+  "restored": "passes",
+  "what": "the check 'no wrong wire exceeds the 10 mA recommended load' must fail (the top-tap wires reach 35 mA); the survival criterion (current limit 35 mA < 70 mA abs max) passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-wire-uncapped",
+  "restored": "passes",
+  "what": "without the reference's current limit the top-tap wires would read thousands of mA: the check on the raw ideal-source solution must fail"
+ }
+]

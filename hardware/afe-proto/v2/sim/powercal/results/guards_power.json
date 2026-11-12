@@ -2,6 +2,13 @@
  {
   "broken": "fails",
   "good": true,
+  "id": "G-divscan",
+  "restored": "passes",
+  "what": "the bleed bound of the scan applied to a 10k bleed on the 25k divider must fail; the 2k the scan finds passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
   "id": "G-PR3-sense",
   "restored": "passes",
   "what": "the forced-sense check with the 10k bleed must fail; the 1.8k bleed passes"

@@ -174,5 +174,71 @@
   "req": "PR-3, PR-4, VT-22",
   "sect": "pr3",
   "value": "0.434 V at A = 5 V (241 uA into the rail)"
+ },
+ {
+  "case": "the +5 V forced-sense case (the only one that binds): the largest Basic bleed that keeps the rail under 0.5 V for each divider total, and what the larger divider costs the ratio (S3, Zcm tracking / independent)",
+  "id": "PR-3/div",
+  "limit": "information",
+  "margin": "",
+  "note": "the bleed grows about as fast as the divider does, so a larger divider saves permanent current (1.8 mA -> 0.4 mA at 100k) and costs ratio accuracy when Zcm spreads between inputs (0.22 -> 0.58 %); v2 keeps 25k and 1.8k",
+  "ok": null,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "25k: bleed <= 2k (1.66 mA), ratio 0.057 / 0.225 %; 33k: bleed <= 2.7k (1.23 mA), ratio 0.054 / 0.258 %; 50k: bleed <= 3.9k (0.85 mA), ratio 0.051 / 0.336 %; 75k: bleed <= 5.6k (0.59 mA), ratio 0.053 / 0.456 %; 100k: bleed <= 7.5k (0.44 mA), ratio 0.057 / 0.577 %"
+ },
+ {
+  "case": "+5 V on the AWG node, AFE unpowered, shunt off: v2 as built: 15k / 10k, Rs 3.9k, Rm 10k, bleed 1.8k",
+  "id": "PR-3/cand",
+  "limit": "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+  "margin": "+0.066 V",
+  "note": "the chosen set",
+  "ok": true,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.434 V, 241 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.228 V, 127 uA; permanent 1.84 mA; ratio 0.054 % / 0.226 %"
+ },
+ {
+  "case": "+5 V on the AWG node, AFE unpowered, shunt off: 30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 2.2k",
+  "id": "PR-3/cand",
+  "limit": "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+  "margin": "+0.051 V",
+  "note": "passes (comparison, information)",
+  "ok": null,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.449 V, 204 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.242 V, 110 uA; permanent 1.51 mA; ratio 0.049 % / 0.256 %"
+ },
+ {
+  "case": "+5 V on the AWG node, AFE unpowered, shunt off: 30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 4.7k (kvm_01's bleed)",
+  "id": "PR-3/cand",
+  "limit": "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+  "margin": "-0.356 V",
+  "note": "FAILS in the worst case (comparison, information)",
+  "ok": null,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.856 V, 185 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.433 V, 94 uA; permanent 0.71 mA; ratio 0.049 % / 0.256 %"
+ },
+ {
+  "case": "+5 V on the AWG node, AFE unpowered, shunt off: 25k, Rs 3.9k, Rm 10k, bleed 4.7k (kvm_01's v1 bleed)",
+  "id": "PR-3/cand",
+  "limit": "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+  "margin": "-0.474 V",
+  "note": "FAILS in the worst case (comparison, information)",
+  "ok": null,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.974 V, 210 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.474 V, 102 uA; permanent 0.71 mA; ratio 0.054 % / 0.226 %"
+ },
+ {
+  "case": "+5 V on the AWG node, AFE unpowered, shunt off: 25k, Rs 3.9k, Rm 10k, bleed 10k",
+  "id": "PR-3/cand",
+  "limit": "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+  "margin": "-1.151 V",
+  "note": "FAILS in the worst case (comparison, information)",
+  "ok": null,
+  "req": "PR-3, PR-4",
+  "sect": "pr3",
+  "value": "worst case (diode 0.3 V, REF open/clamp/0 V): rail 1.651 V, 172 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.735 V, 77 uA; permanent 0.33 mA; ratio 0.054 % / 0.226 %"
  }
 ]

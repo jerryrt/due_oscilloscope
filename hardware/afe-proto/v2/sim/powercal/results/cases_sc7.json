@@ -151,7 +151,7 @@
   "ok": true,
   "req": "SC-7",
   "sect": "sum",
-  "value": "0.42 % (RSS 0.26 %), 2.4 mV"
+  "value": "0.42 % (RSS 0.27 %), 2.5 mV"
  },
  {
   "case": "ADS1115 noise averaged over 64 conversions, referred to the AWG node through k = 0.4 (125 uV rms per reading, Table 6-1)",

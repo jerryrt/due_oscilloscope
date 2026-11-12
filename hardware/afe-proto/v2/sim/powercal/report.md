@@ -24,6 +24,12 @@ Status: PASS / FAIL / info against the stated limit; every FAIL is also in desig
 | info | PR-3/Q | PW-1 | quiescent cost of the bleed, rail at its maximum, resistor -1 % | information | 1.903 mA = 1.90 % of 100 mA |  |  |
 | PASS | PR-3/Due | PR-3 | current into the Due's supply pins <= 100 uA | <= 100 uA | 1.8 uA (scope design, through R3 and the sense filter; nothing reaches the 5V pin) |  | the scope design's figure, not re-derived here; the bleed does not change it |
 | PASS | PR-3/sense | PR-3, PR-4, VT-22 | the AWG node forced to +1.8 V (PR-4) and +5 V (up to which PR-4 allows damage on the shield only) with the AFE unpowered, through the S3 network (Rt 15k, Rb 10k, Rd 1k, Rs 3.9k to AIN2, Rm 10k to AIN3): current into the +3.3 V_A rail through the ADS1115's diodes (smallest drop 0.3 V) and the rail it raises, with the 1.8k bleed at +1 %; worst of the REF3030E output open / clamping into the rail / at 0 V | <= 0.5 V (PR-3; the LM27762's body diode to the Due's 5V pin stays off, so the back-feed into the Due is nil) | 0.434 V at A = 5 V (241 uA into the rail) | +0.066 V | with the 10k bleed of the earlier draft the same case reads 1.651 V (+1.8 V: 0.527 V) and FAILS; the current into the ADS1115's diodes is at most 0.24 mA (10 mA rating); negative forcing sinks from ground, not the rail |
+| info | PR-3/div | PR-3, PR-4 | the +5 V forced-sense case (the only one that binds): the largest Basic bleed that keeps the rail under 0.5 V for each divider total, and what the larger divider costs the ratio (S3, Zcm tracking / independent) | information | 25k: bleed <= 2k (1.66 mA), ratio 0.057 / 0.225 %; 33k: bleed <= 2.7k (1.23 mA), ratio 0.054 / 0.258 %; 50k: bleed <= 3.9k (0.85 mA), ratio 0.051 / 0.336 %; 75k: bleed <= 5.6k (0.59 mA), ratio 0.053 / 0.456 %; 100k: bleed <= 7.5k (0.44 mA), ratio 0.057 / 0.577 % |  | the bleed grows about as fast as the divider does, so a larger divider saves permanent current (1.8 mA -> 0.4 mA at 100k) and costs ratio accuracy when Zcm spreads between inputs (0.22 -> 0.58 %); v2 keeps 25k and 1.8k |
+| PASS | PR-3/cand | PR-3, PR-4 | +5 V on the AWG node, AFE unpowered, shunt off: v2 as built: 15k / 10k, Rs 3.9k, Rm 10k, bleed 1.8k | rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail | worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.434 V, 241 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.228 V, 127 uA; permanent 1.84 mA; ratio 0.054 % / 0.226 % | +0.066 V | the chosen set |
+| info | PR-3/cand | PR-3, PR-4 | +5 V on the AWG node, AFE unpowered, shunt off: 30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 2.2k | rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail | worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.449 V, 204 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.242 V, 110 uA; permanent 1.51 mA; ratio 0.049 % / 0.256 % | +0.051 V | passes (comparison, information) |
+| info | PR-3/cand | PR-3, PR-4 | +5 V on the AWG node, AFE unpowered, shunt off: 30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 4.7k (kvm_01's bleed) | rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail | worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.856 V, 185 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.433 V, 94 uA; permanent 0.71 mA; ratio 0.049 % / 0.256 % | -0.356 V | FAILS in the worst case (comparison, information) |
+| info | PR-3/cand | PR-3, PR-4 | +5 V on the AWG node, AFE unpowered, shunt off: 25k, Rs 3.9k, Rm 10k, bleed 4.7k (kvm_01's v1 bleed) | rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail | worst case (diode 0.3 V, REF open/clamp/0 V): rail 0.974 V, 210 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.474 V, 102 uA; permanent 0.71 mA; ratio 0.054 % / 0.226 % | -0.474 V | FAILS in the worst case (comparison, information) |
+| info | PR-3/cand | PR-3, PR-4 | +5 V on the AWG node, AFE unpowered, shunt off: 25k, Rs 3.9k, Rm 10k, bleed 10k | rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail | worst case (diode 0.3 V, REF open/clamp/0 V): rail 1.651 V, 172 uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): 0.735 V, 77 uA; permanent 0.33 mA; ratio 0.054 % / 0.226 % | -1.151 V | FAILS in the worst case (comparison, information) |
 
 ## 1b. SC-9 through the shared rail, PW-2, PW-7 (coupling.py)
 
@@ -58,16 +64,20 @@ Status: PASS / FAIL / info against the stated limit; every FAIL is also in desig
 
 | | ID | req | case | limit | result | margin | note |
 |---|---|---|---|---|---|---|---|
-| PASS | PA-4/range | PA-4 | sweep, wire ON throughout: sense tap pin voltage at every AWG level -1.923..+2.18 V, every resistor at +-1 %, REF +-0.1 % | 0 V .. 3.22 V (ADS supply minimum) | 0.152 .. 1.850 V | +0.152 V / +1.370 V | k = 0.4, bottom node = the 1/3 tap, Rd 1k |
+| PASS | PA-4/range | PA-4 | sweep, wire ON throughout: sense tap pin voltage at every AWG level -1.923..+2.18 V, every resistor at +-1 %, REF +-0.1 % | 0 V .. 3.22 V (ADS supply minimum) | 0.377 .. 2.076 V | +0.377 V / +1.144 V | k = 0.4, TAP_on = the 1/2 tap, Rd 1k |
 | PASS | PA-4/range-off | PA-4 | the same with the wire OFF (default tie to the REF3030E; the normal-use state) | 0 V .. 3.22 V | 0.893 .. 2.656 V | +0.893 V / +0.564 V |  |
-| PASS | PA-4/ratio | PA-4, SC-7 | AWG level through the sweep, structure S3 (AIN3 = B with a 10k matched resistor, AIN2 - AIN3 read DIFFERENTIALLY, the reference's scale rebuilt on AIN3, no other input's gain enters), ADS1115 channel match 0.1 % max (SBAS444E 5.5 'Gain channel match'), offset 3 LSB, Zcm TRACKING between inputs (one input stage behind the mux) *(check)*, 99.9th pct | gain <= 0.05 %, offset <= 3.0 mV | gain 0.050 %, offset 1.73 mV, worst point 2.31 mV (k error 0.101 %) | -0.000 % | this design's allotment (0.05 %; the Monte Carlo reads 0.050 +- 0.002 %, so it is AT the limit, not under it) of the 0.1 % fit share |
-| **FAIL** | PA-4/ratio-ind | PA-4, SC-7 | the same if Zcm spreads +-25 % INDEPENDENTLY between the inputs (the datasheet gives only a typical 6 Mohm) | gain <= 0.05 %, offset <= 3.0 mV | gain 0.221 %, offset 2.40 mV | -0.171 % | fails the sense's 0.05 % share; it fits inside SC-7's whole 0.5 % with the rest of the stack (section 6), and VT-21 measures which case the part is in |
-| info | PA-4/struct | PA-4 | the structures compared (gain %, offset mV, 99.9th pct, channel match 0.1 % max): S1 = tap on AIN2, B on AIN3 in the wire position only, REF on AIN0; S2 = B on AIN3 in both positions; S3 without the matched resistor; S3 with it | information | S1 0.484 %/6.8 mV; S2 0.313/2.2; S3 0.165/2.2; S3+rm 0.221/2.4 (Zcm tracking 0.050/1.7) |  | S2 removes the offsets of the ratio (ΔT on one channel, ΔB on one channel); S3 also removes the channel-gain terms (the differential pair and the REF rebuilt on AIN3); rm matches the source impedances |
-| PASS | PA-4/pairing | PA-4 | the ratio figures for other assignments of the sense tap and B to the AINx columns (the model draws gain, offset, INL and Zcm per input independently, so the assignment is only a relabelling; the matching resistor stays on the pin that carries B) | unchanged within the Monte Carlo noise | AIN2 tap, AIN3 B (the design)&#124;tracking: 0.050 % / 1.73 mV; AIN2 tap, AIN3 B (the design)&#124;independent: 0.221 % / 2.40 mV; swapped: tap on AIN3, B on AIN2&#124;tracking: 0.050 % / 1.75 mV; swapped: tap on AIN3, B on AIN2&#124;independent: 0.223 % / 2.29 mV; tap on AIN0, B on AIN1&#124;tracking: 0.050 % / 1.75 mV; tap on AIN0, B on AIN1&#124;independent: 0.222 % / 2.31 mV |  | the reading sequence in the model: AIN0 = REF3030E and AIN1 = the 2/3 tap are NOT read in the ratio (the reference's scale is rebuilt from AIN3); they are read separately as the anchor and the check; the differential reading AIN2 - AIN3 is one more channel with its own gain and offset |
-| info | PA-4/load | PA-4 | the loaded ladder tap (1/3): its shift from 1.000 V over the sweep with the wire on | information (not a check point while fitted) | 630 mV at most, wire current up to 117 uA |  | B is read, so the loading is not an error; the 2/3 tap (AIN1) and the reference stay readable |
-| PASS | VT-22/I | VT-22, PA-4 | any position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's input diodes, AIN2 through Rt&#124;&#124;Rb + 3.9k, AIN3 (B) through 10k | <= 10 mA (abs max), host takes no action | 848 uA at most | +9152 uA | series resistors are the only protection (no clamp: the ADS1115's own diodes conduct first); whether the other inputs read undisturbed during an overdrive is not in SBAS444E (7.3.1 warns) *(check, VT-22)* |
-| PASS | VT-22/dist | V2-5, VT-22 | every position gives a distinguishable reading: AIN3 reads B itself, which is the node's voltage (0, 0.5, ... 3.3 V): smallest gap between positions | >= 20 x the reading resolution (125 uV + 0.1 % of 3 V) | 300 mV gap on AIN3 vs 3.12 mV |  | the top tap reads as the default (wire missing or on the top tap): the host stops either way |
-| PASS | VT-21/22/det | VT-21, VT-22 | a wire left on after the calibration, or missing at its start: AIN3 (B) differs between the two positions at every AWG level and tolerance draw | >= 50 mV (about 16x the reading resolution) | 1231 mV minimum | +1181 mV | left on in normal use the tap stays inside 0.14 .. 1.89 V (PA-4/range) and the 1/3 ladder tap is loaded by up to 118 uA: nothing is damaged, the host's end-of-session reading catches it |
+| PASS | PA-4/ratio | PA-4, SC-7 | AWG level through the sweep, structure S3 (AIN3 = B with a 10k matched resistor, AIN2 - AIN3 read DIFFERENTIALLY, the reference's scale rebuilt on AIN3, no other input's gain enters), ADS1115 channel match 0.1 % max (SBAS444E 5.5 'Gain channel match'), offset 3 LSB, Zcm TRACKING between inputs (one input stage behind the mux) *(check)*, 99.9th pct | gain <= 0.05 %, offset <= 3.0 mV | gain 0.053 %, offset 1.86 mV, worst point 2.52 mV (k error 0.105 %) | -0.003 % | this design's allotment (0.05 %; the Monte Carlo reads 0.05 +- 0.003 %, so it is AT the limit, not under it) of the 0.1 % fit share |
+| **FAIL** | PA-4/ratio-ind | PA-4, SC-7 | the same if Zcm spreads +-25 % INDEPENDENTLY between the inputs (the datasheet gives only a typical 6 Mohm) | gain <= 0.05 %, offset <= 3.0 mV | gain 0.224 %, offset 2.46 mV | -0.174 % | fails the sense's 0.05 % share; it fits inside SC-7's whole 0.5 % with the rest of the stack (section 6), and VT-21 measures which case the part is in |
+| info | PA-4/struct | PA-4 | the structures compared (gain %, offset mV, 99.9th pct, channel match 0.1 % max): S1 = tap on AIN2, B on AIN3 in the wire position only, REF on AIN0; S2 = B on AIN3 in both positions; S3 without the matched resistor; S3 with it | information | S1 0.621 %/11.5 mV; S2 0.314/2.3; S3 0.167/2.3; S3+rm 0.224/2.5 (Zcm tracking 0.053/1.9) |  | S2 removes the offsets of the ratio (ΔT on one channel, ΔB on one channel); S3 also removes the channel-gain terms (the differential pair and the REF rebuilt on AIN3); rm matches the source impedances |
+| PASS | PA-4/pairing | PA-4 | the ratio figures for other assignments of the sense tap and B to the AINx columns (the model draws gain, offset, INL and Zcm per input independently, so the assignment is only a relabelling; the matching resistor stays on the pin that carries B) | unchanged within the Monte Carlo noise | AIN2 tap, AIN3 B (the design)&#124;tracking: 0.053 % / 1.86 mV; AIN2 tap, AIN3 B (the design)&#124;independent: 0.224 % / 2.46 mV; swapped: tap on AIN3, B on AIN2&#124;tracking: 0.054 % / 1.87 mV; swapped: tap on AIN3, B on AIN2&#124;independent: 0.224 % / 2.41 mV; tap on AIN0, B on AIN1&#124;tracking: 0.054 % / 1.86 mV; tap on AIN0, B on AIN1&#124;independent: 0.224 % / 2.40 mV |  | the reading sequence in the model: AIN0 = REF3030E and AIN1 = the 2/3 tap are NOT read in the ratio (the reference's scale is rebuilt from AIN3); they are read separately as the anchor and the check; the differential reading AIN2 - AIN3 is one more channel with its own gain and offset |
+| PASS | HDR/states | V2-5, VT-22, PA-4 | the 1x3 header J_RAT = TAP_hi (2/3 tap, pin 1) &#124; B (pin 2) &#124; TAP_on (1/2 tap, pin 3), one shunt across pins 2-3: the sense tap AIN2 over the whole sweep (-1.923 .. +2.18 V, which contains the AWG's DC window), 1 % resistors, REF +-0.1 %, in every state: off 0.894 .. 2.655 V; TAP_on 0.379 .. 2.076 V; TAP_hi 0.562 .. 2.258 V | 0 V .. 3.22 V (the ADS1115's supply minimum; the Due's A0 / A1 are not on this node) | worst 0.379 V low, 2.655 V high | +0.379 V / +0.565 V | AIN3 (B) and the loaded tap stay inside 0 .. 3.0 V in every state; AIN1 reads pin 1 (TAP_hi) and AIN0 the reference; the Due's ladder pins see the taps' own voltages (the loaded tap moves by up to 631 mV, inside 0 .. AREF) |
+| PASS | HDR/ratio | PA-4, SC-7 | ratio accuracy in each shunt state that carries a ratio measurement, S3, Zcm tracking / independent: TAP_on 0.053 % / 0.226 %; TAP_hi 0.059 % / 0.228 % | <= 0.05 % (tracking; the Monte Carlo reads 0.05 +- 0.003 %) | TAP_on: 0.053 % / 1.84 mV; TAP_hi (the slipped shunt): 0.059 % / 1.98 mV |  | the TAP_hi position is recoverable (the same readings give k) but it is detected and stopped on, not used |
+| PASS | HDR/detect | VT-21, VT-22 | the shunt in the wrong place or off is detected: AIN3 (B) differs between every pair of states at every AWG level and tolerance draw | >= 50 mV | 300 mV minimum |  | the host reads B at the first and last step and compares with the three expected B(A) lines |
+| PASS | PR-4/+5V | PR-3, PR-4 | the AWG node forced to +5 V, AFE unpowered, SHUNT OFF (the default state), through Rt 15k, Rb 10k, Rd 1k, R_SRS 3.9k, R_SRM 10k with the 1.8k bleed: worst of the REF3030E output open / clamping / at 0 V and the ADS1115 diode drop 0.3 V (ESD onset) / 0.6 V (BAV99) | rail < 0.5 V (PR-3 as PR-4 applies it); the 100 uA of PR-3 is a current into the Due's supply pins (the LM27762's back-path, nil with the rail under its diode threshold) | rail 0.434 V (clamp, 0.3 V diode), 241 uA into the rail | +0.066 V | this is the case that forced the 1.8k bleed: with the 10k of the first draft it reads 1.65 V and fails |
+| info | PA-4/load | PA-4 | the loaded ladder tap (TAP_on, 1/2): its shift from 1.500 V over the sweep with the shunt on | information (not a check point while fitted) | 510 mV at most, wire current up to 137 uA |  | B is read, so the loading is not an error; AIN1 reads the 2/3 tap (TAP_hi, pin 1: loaded when the shunt is slipped) and AIN0 the reference |
+| PASS | VT-22/I | VT-22, PA-4 | any position the header allows (the shunt slipped across pins 1-2, the one wrong placement; the shunt off): current into the ADS1115's input diodes, AIN2 through Rt&#124;&#124;Rb + 3.9k, AIN3 (B) through 10k | <= 10 mA (abs max), host takes no action | 0 uA at most | +10000 uA | series resistors are the only protection (no clamp: the ADS1115's own diodes conduct first); whether the other inputs read undisturbed during an overdrive is not in SBAS444E (7.3.1 warns) *(check, VT-22)* |
+| PASS | VT-22/dist | V2-5, VT-22 | every position gives a distinguishable reading: AIN3 reads B itself, which is the node's voltage (1.0, 1.5 or about 2.95 V): smallest gap between positions | >= 20 x the reading resolution (125 uV + 0.1 % of 3 V) | 500 mV gap on AIN3 vs 3.12 mV |  | the top tap reads as the default (wire missing or on the top tap): the host stops either way |
+| PASS | VT-21/22/det | VT-21, VT-22 | a wire left on after the calibration, or missing at its start: AIN3 (B) differs between the two positions at every AWG level and tolerance draw | >= 50 mV (about 16x the reading resolution) | 857 mV minimum | +807 mV | left on in normal use the tap stays inside 0.14 .. 1.89 V (PA-4/range) and the 1/2 ladder tap is loaded by up to 118 uA: nothing is damaged, the host's end-of-session reading catches it |
 | PASS | D23/time | D21, D23, PA-3 | ADS1115 free-running on the pair, staircase 1.5 to 3 ms a level (D23), 1024 levels: the fit's slope noise from the readings at 860 SPS (1.16 ms) counting only conversions wholly inside a level (0.3 to 1.6 a level); 125 uV rms per conversion x sqrt 2 / k at the AWG node | <= 0.005 % (a tenth of the 0.05 % share) | 0.0021 % at 860 SPS; 0.0026 % at the worst of 128 to 860 SPS |  | no averaging per level is needed: one reading per level or less, the fit averages 300 to 1600 of them; the quantisation of a 125 uV code is spread over levels that each move the pair by 13 codes. At 128 SPS (7.8 ms) one conversion spans 3 to 5 levels: aligned by time stamp it is a boxcar of the staircase and the Due codes are averaged over the same window |
 | info | D23/total | D23, PA-3 | total staircase time: 1024 levels x 1.5 to 3 ms, plus the two end readings of B and the wire-off ratio readings (64 conversions at 860 SPS each, 4 of them) | information | 1.5 to 3.1 s staircase + 0.30 s of readings + channel switches |  | staircase only; warm-up is separate. The ratio readings are static levels and are not bounded by D23's step |
 | PASS | CAL/clip | D23, AW-1 | the sweep drops any level whose reading stops following the DAC code (the AWG clips about 5 to 10 mV above the weak -rail -1.955 V, from -1.923 V down): slope of the pair over the last 3 levels < 0.5 x the sweep's median slope | the clipped levels dropped, the fit unchanged | first dropped level -2.060 V (the sweep's window bottom -2.06 V), 36 of 1025 dropped, bottom of the kept range -1.925 V, fit gain error -0.0001 % |  | cost: the AWG's hard-corner window bottom is -2.06 V (../awg/design.md, information) but the weak -rail clips the output below about -1.923 V, so the kept sweep starts at -1.923 V: 0.14 V of the window (about 36 of 1025 levels) is lost; the coverage of the scope's -1.5 .. +3.5 V does not change, the margin below -1.5 V is 0.42 V |
@@ -89,8 +99,16 @@ Status: PASS / FAIL / info against the stated limit; every FAIL is also in desig
 | PASS | SC-7/ext | SC-7, PA-3, VT-23 | fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 73 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct | <= 3.5 mV (0.1 % of 3.5 V) | A 1.72 mV (0.049 %), B 3.20 mV (0.091 %) | A +1.8 / B +0.3 mV | B passes the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 19.3 mV. One Due LSB is 1.73 mV at the input |
 | PASS | SC-7/ext | SC-7, PA-3, VT-23 | fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 73 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct | <= 3.5 mV (0.1 % of 3.5 V) | A 2.30 mV (0.066 %), B 5.53 mV (0.158 %) | A +1.2 / B -2.0 mV | B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 17.0 mV. One Due LSB is 1.73 mV at the input |
 | info | SC-7/ext-ideal | SC-7 | the same (cubic 1.2 LSB, top 1.785 V) with perfect anchors (no ADS channel mismatch, no offset, no pin offset) | information | A 1.01 mV, B 1.78 mV at +3.5 V |  | what the four-anchor quadratic estimator would give with exact ADS readings: still worse than the tee fit for cubic and random-knot INL (review.md section 2); only a parabolic INL favours it. The estimator, not only the ADS1115, loses |
-| PASS | SC-7/sum | SC-7 | this block's gain terms alone, linear sum (RSS in the note), and its offset, against ±0.5 % of reading ± 5 mV | <= 0.5 % and <= 5 mV for the WHOLE of SC-7 (the scope's own terms come on top) | 0.42 % (RSS 0.26 %), 2.4 mV | +0.08 % | the sense chain still dominates; with Zcm tracking between inputs it is 0.05 % and 1.8 mV and the sum 0.25 %. The ladder's drift is not a term (D-V2-13) |
+| PASS | SC-7/sum | SC-7 | this block's gain terms alone, linear sum (RSS in the note), and its offset, against ±0.5 % of reading ± 5 mV | <= 0.5 % and <= 5 mV for the WHOLE of SC-7 (the scope's own terms come on top) | 0.42 % (RSS 0.27 %), 2.5 mV | +0.08 % | the sense chain still dominates; with Zcm tracking between inputs it is 0.05 % and 1.8 mV and the sum 0.25 %. The ladder's drift is not a term (D-V2-13) |
 | PASS | SC-7/noise | SC-7 | ADS1115 noise averaged over 64 conversions, referred to the AWG node through k = 0.4 (125 uV rms per reading, Table 6-1) | <= 1 mV | 39 uV rms |  | the table's figure equals one LSB: the converter is quantisation-limited, so averaging reduces it only if the input noise dithers it; the worst case without dither is 0.5 LSB = 156 uV at the node |
+
+## Wrong wires among the Due pins the AFE uses (wires.py)
+
+| | ID | req | case | limit | result | margin | note |
+|---|---|---|---|---|---|---|---|
+| PASS | WIRE/top | PA-2 | a wire from the top tap (the reference itself, Due pin A7) to GND, +3.3 V, DAC0 or the AWG node: the REF3030E is short-protected, ISC 35 mA typ (SBVS032K 6.5, 'ISC Short-circuit current', PDF page 6; abs max 'Output short-circuit current(2) 70 mA', 6.1 page 4, note (2) 'Short circuit to ground'); the duration is not stated *(check)* | survived by the reference's own current limit (35 mA < 70 mA abs max): a SURVIVED FAULT, no series resistor | 5 wires reach the limit: p6 - gnd, p6 - v33, p6 - dac_lo, p6 - dac_hi, p6 - awg_lo |  | dissipation about 3.3 V x 35 mA = 0.12 W in the SOT-23 *(check: no thermal figure in the text)*; the ladder's tap-to-tap and tap-to-GND wires below do not reach it |
+| info | WIRE/taps | PA-2 | every other single wrong wire (taps A2..A6 to GND, +3.3 V, DAC0, the AWG node at -1.923 / +2.18 V, or to each other; the DAC at its window ends and the AWG at its range ends): the largest current in the REF3030E | <= 10 mA (6.3 recommended); abs max 70 mA | 12.9 mA (p5 - awg_lo); wires above 10 mA: p5 - awg_lo 12.9 mA |  | tap 5 to the AWG node at -1.923 V sinks the AWG's 49.5 ohm into the ladder: 12.9 mA from the reference, above the 10 mA recommended and far inside the 35 mA limit: survived |
+| info | WIRE/pins | PR-2 | the Due ADC pins A2..A7 under every wrong wire: range of the pin voltages | -0.2 .. 3.45 V (PR-2 is stated for A0, A1 and the DAC pin; the SAM3X abs max -0.3 .. 4.0 V *(check)*) | -1.63 .. 3.30 V |  | only a wire to the AWG node at -1.923 V takes a ladder pin below -0.2 V, and the wire itself drives the Due pin there: no resistor in the AFE can prevent it at a Due pin, the AWG's 49.5 ohm limits it to about 38 mA *(check the SAM3X input rating)*. A wire to +3.3 V or DAC0 stays inside 0 .. 3.3 V |
 
 ## Rails, corners (power.py)
 
@@ -157,36 +175,36 @@ PR-3: bleed options (Basic 0603), the unpowered rail with both inputs at +12 V, 
 
 | case | gain % (99.9) | offset mV | worst point mV | k error % |
 |---|---|---|---|---|
-| wire on throughout, max channel match 0.1 % | 0.221 | 2.40 | 6.26 | 0.199 |
-| typical channel match 0.05 % | 0.221 | 2.40 | 6.26 | 0.158 |
-| no channel mismatch | 0.221 | 2.40 | 6.26 | 0.131 |
-| wire off throughout (information) | 0.445 | 6.59 | 14.15 | 0.368 |
+| wire on throughout, max channel match 0.1 % | 0.224 | 2.46 | 6.35 | 0.199 |
+| typical channel match 0.05 % | 0.224 | 2.46 | 6.35 | 0.160 |
+| no channel mismatch | 0.224 | 2.46 | 6.34 | 0.134 |
+| wire off throughout (information) | 0.553 | 10.36 | 20.11 | 0.518 |
 
 Structures compared (99.9th percentile, ADS1115 channel match 0.1 % max, offset 3 LSB)
 
 | structure | gain % | offset mV |
 |---|---|---|
-| S1: tap on AIN2, B on AIN3 in the wire position only, REF on AIN0 | 0.484 | 6.85 |
-| S2: B on AIN3 in both positions | 0.313 | 2.24 |
-| S3: AIN3 = B, AIN2 - AIN3 differential, REF scale rebuilt on AIN3 | 0.165 | 2.18 |
-| S3 + 10k matched resistor on AIN3 (Zcm independent per input) | 0.221 | 2.40 |
-| S3 + matched resistor, Zcm tracking between inputs | 0.050 | 1.73 |
+| S1: tap on AIN2, B on AIN3 in the wire position only, REF on AIN0 | 0.621 | 11.50 |
+| S2: B on AIN3 in both positions | 0.314 | 2.32 |
+| S3: AIN3 = B, AIN2 - AIN3 differential, REF scale rebuilt on AIN3 | 0.167 | 2.28 |
+| S3 + 10k matched resistor on AIN3 (Zcm independent per input) | 0.224 | 2.46 |
+| S3 + matched resistor, Zcm tracking between inputs | 0.053 | 1.86 |
 
 Ablation of the shipped models (20,000 draws, 99.9th percentile; S3 = the design with 10k on AIN3, Zcm independent per input; S1 = the first structure)
 
 | case | S3 gain % | S3 offset mV | S1 gain % | S1 offset mV |
 |---|---|---|---|---|
-| 1 % resistors only | 0.035 | 0.03 | 0.071 | 1.16 |
-| Zcm spread only | 0.212 | 1.25 | 0.136 | 0.94 |
-| base (as shipped) | 0.221 | 2.40 | 0.484 | 6.85 |
-| channel match only | 0.010 | 0.00 | 0.379 | 5.04 |
-| no ADS offsets | 0.221 | 1.56 | 0.455 | 6.01 |
-| no INL | 0.221 | 2.24 | 0.474 | 6.80 |
-| no Zcm spread | 0.048 | 1.58 | 0.422 | 6.71 |
-| no channel mismatch | 0.221 | 2.40 | 0.236 | 3.74 |
-| no noise | 0.220 | 2.31 | 0.484 | 6.84 |
-| no resistor tolerance | 0.215 | 2.38 | 0.470 | 6.80 |
-| offsets only | 0.022 | 1.27 | 0.092 | 2.63 |
+| 1 % resistors only | 0.035 | 0.03 | 0.101 | 2.05 |
+| Zcm spread only | 0.212 | 1.25 | 0.135 | 0.93 |
+| base (as shipped) | 0.224 | 2.46 | 0.621 | 11.50 |
+| channel match only | 0.010 | 0.00 | 0.488 | 8.92 |
+| no ADS offsets | 0.222 | 1.68 | 0.585 | 10.05 |
+| no INL | 0.223 | 2.27 | 0.609 | 11.45 |
+| no Zcm spread | 0.052 | 1.70 | 0.566 | 11.29 |
+| no channel mismatch | 0.224 | 2.46 | 0.280 | 5.11 |
+| no noise | 0.221 | 2.39 | 0.621 | 11.51 |
+| no resistor tolerance | 0.217 | 2.45 | 0.589 | 11.04 |
+| offsets only | 0.022 | 1.27 | 0.127 | 3.57 |
 
 ADS1115 timing per level (D23: staircase 1.5 to 3 ms a level, free-running on the pair)
 
@@ -205,25 +223,18 @@ Every header position (B tied to node X by the wire; T0 over the AWG sweep -1.95
 
 | node | X V | T0 min | T0 max | current into ADS diodes uA | wire current uA |
 |---|---|---|---|---|---|
-| GND | 0.0 | -0.769 | 0.872 | 47 (AIN3: 0) | 87 |
-| tap1 (1/6) | 0.5 | -0.469 | 1.172 | 17 (AIN3: 0) | 97 |
-| tap2 (1/3, AIN3): the RIGHT position | 1.0 | -0.169 | 1.472 | 0 (AIN3: 0) | 117 |
-| tap3 (1/2) | 1.5 | 0.131 | 1.772 | 0 (AIN3: 0) | 137 |
-| tap4 (2/3, AIN1 (a check only)) | 2.0 | 0.431 | 2.072 | 0 (AIN3: 0) | 157 |
-| tap5 (5/6) | 2.5 | 0.731 | 2.372 | 0 (AIN3: 0) | 177 |
-| tap6 = REF (same as wire off) | 3.0 | 1.031 | 2.672 | 0 (AIN3: 0) | 197 |
-| +3.3 V_A | 3.3 | 1.211 | 2.852 | 0 (AIN3: 0) | 209 |
-| Due 5V pin (stress) | 5.0 | 2.231 | 3.872 | 36 (AIN3: 148) | 277 |
-| Due VIN (stress) | 12.0 | 6.431 | 8.072 | 460 (AIN3: 848) | 557 |
+| pin 1, TAP_hi (2/3 tap): the shunt slipped to pins 1-2, the one wrong placement | 1.0 | -0.169 | 1.472 | 0 (AIN3: 0) | 117 |
+| pin 3, TAP_on (1/2 tap): the calibration position (shunt across pins 2-3) | 1.5 | 0.131 | 1.772 | 0 (AIN3: 0) | 137 |
+| shunt off (default tie to the REF3030E) | 3.0 | 1.031 | 2.672 | 0 (AIN3: 0) | 197 |
 
 ## SC-7 sum of this block (sc7.py)
 
 | term | gain % | offset mV |
 |---|---|---|
 | REF3030E: initial 0.1 %, 15 ppm/K x 10 K, hysteresis 100 ppm, long-term 40 ppm | 0.129 | 0.0 |
-| AWG sense chain, structure S3, Zcm spreading independently (the conservative case), 99.9th pct | 0.221 | 2.4 |
+| AWG sense chain, structure S3, Zcm spreading independently (the conservative case), 99.9th pct | 0.224 | 2.5 |
 | Due-ADC tee fit extrapolated to +3.5 V (random-knot INL 1.2 LSB, the worst model, at the AWG's LOWEST window top end 1.785 V; ladder anchors NOT used, D-V2-13) | 0.067 | 0.0 |
-| **linear sum (RSS)** | **0.42 (0.26)** | **2.4** |
+| **linear sum (RSS)** | **0.42 (0.27)** | **2.5** |
 
 ## LM27762 transient runs (lm_tran.py, TI's model; the model has no LDO loop and converges by lottery)
 
@@ -239,6 +250,7 @@ Every header position (B tied to node X by the wire; T0 over the AWG sweep -1.95
 
 | guard | what | broken | restored | |
 |---|---|---|---|---|
+| G-divscan | the bleed bound of the scan applied to a 10k bleed on the 25k divider must fail; the 2k the scan finds passes | fails | passes | ok |
 | G-PR3-sense | the forced-sense check with the 10k bleed must fail; the 1.8k bleed passes | fails | passes | ok |
 | G-PW-rating | V2-2 supply check: R3 = 82k (nominal -2.26 V) must exceed 5.5 V at the corners | fails | passes | ok |
 | G-PW-1 | PW-1 check with the limit lowered to 40 mA must fail | fails | passes | ok |
@@ -249,12 +261,15 @@ Every header position (B tied to node X by the wire; T0 over the AWG sweep -1.95
 | G-Z | tap impedance check with 1.5 kohm rungs must fail | fails | passes | ok |
 | G-REF-I | REF source check with a limit of 1 mA must fail | fails | passes | ok |
 | G-tapcheck | the measured-tap fault check (window 1.5 % + 10 K drift) must flag a tap 5 % off | fails | passes | ok |
+| G-forced5 | the +5 V forced-sense check with a 4.7k bleed (the v1 helper's) and the REF output open must fail; the 1.8k bleed passes | fails | passes | ok |
 | G-clip | the clip check with the slope criterion disabled (threshold 0) must fail | fails | passes | ok |
 | G-struct | the ratio check applied to the old structure S1 must fail; S3 with the matched resistor passes (Zcm tracking) | fails | passes | ok |
 | G-range | tap range with k = 0.6 (tap goes below ground at the window bottom) must fail | fails | passes | ok |
 | G-ratio | ratio accuracy with a 2 % channel match must fail a 1.5 % gain limit (the designed 0.1 % match passes it) | fails | passes | ok |
 | G-distinct | distinguishability with k = 0.995 (wire barely moves the tap) must fail | fails | passes | ok |
-| G-current | ESD current check with the limit lowered to 10 uA must fail | fails | passes | ok |
+| G-current | the ESD-current check with a limit of 100 uA applied to a shunt wired to the Due's 5V / VIN (stress) must fail; the header's own states pass it | fails | passes | ok |
 | G-ext | the extrapolation check with an INL of 12 LSB must fail the 0.1 % share | fails | passes | ok |
 | G-sum | the SC-7 sum check against a 0.5 % limit with the sense chain's error multiplied by 3 must fail (the real sum passes the same 0.5 %) | fails | passes | ok |
+| G-wire-limit | the check 'no wrong wire exceeds the 10 mA recommended load' must fail (the top-tap wires reach 35 mA); the survival criterion (current limit 35 mA < 70 mA abs max) passes | fails | passes | ok |
+| G-wire-uncapped | without the reference's current limit the top-tap wires would read thousands of mA: the check on the raw ideal-source solution must fail | fails | passes | ok |
 | G-basic | an Extended passive (C861163) in the list must be refused | fails | passes | ok |

@@ -223,8 +223,8 @@
   }
  },
  "sum": {
-  "linear": 0.41619887506492026,
-  "off": 2.3968150306152483,
+  "linear": 0.4193900001313573,
+  "off": 2.46314741783925,
   "rows": [
    [
     "REF3030E: initial 0.1 %, 15 ppm/K x 10 K, hysteresis 100 ppm, long-term 40 ppm",
@@ -233,8 +233,8 @@
    ],
    [
     "AWG sense chain, structure S3, Zcm spreading independently (the conservative case), 99.9th pct",
-    0.2206935168767222,
-    2.3968150306152483
+    0.22388464194315924,
+    2.46314741783925
    ],
    [
     "Due-ADC tee fit extrapolated to +3.5 V (random-knot INL 1.2 LSB, the worst model, at the AWG's LOWEST window top end 1.785 V; ladder anchors NOT used, D-V2-13)",
@@ -242,6 +242,6 @@
     0.0
    ]
   ],
-  "rss": 0.26413934023381785
+  "rss": 0.266811348270191
  }
 }

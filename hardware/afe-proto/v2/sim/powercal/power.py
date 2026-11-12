@@ -167,6 +167,8 @@ def main():
     # ---------- unpowered rail (PR-3)
     run_unpowered()
     run_forced()
+    run_divscan()
+    run_candidates()
 
     # ---------- guards
     run_guards()
@@ -277,8 +279,65 @@ def run_forced():
           "<= 0.5 V (PR-3; the LM27762's body diode to the Due's 5V pin stays off, so the back-feed into the Due is nil)", f"{w['rail']:.3f} V at A = {w['A']:g} V ({w['i_ua']:.0f} uA into the rail)", f"{0.5-w['rail']:+.3f} V", w["rail"] <= 0.5,
           "with the 10k bleed of the earlier draft the same case reads %.3f V (+1.8 V: %.3f V) and FAILS; the current into the ADS1115's diodes is at most 0.24 mA (10 mA rating); negative forcing sinks from ground, not the rail" % (w10["rail"], max(o["rail"] for o in out if o["bleed"] == 10e3 and o["A"] == 1.8)), "pr3")
 
+def run_divscan():
+    """The +5 V forced-sense case against the divider's total resistance: the largest Basic bleed that keeps the rail under 0.5 V, its cost, and the ratio accuracy of the larger divider."""
+    import sense
+    bas = sorted(basic_resistors("0603")); out = []
+    for tot in (25e3, 33e3, 50e3, 75e3, 100e3):
+        sc = tot / 25e3; Rt, Rb = 15e3 * sc, 10e3 * sc; best = None
+        for bl in [b for b in bas if 500 <= b <= 20e3]:
+            worst = 0.0
+            for mode in ("open", "clamp", "gnd"):
+                rs = 1 / (1 / (bl * 1.01) + 1 / (188e3 * 1.01)); lo, hi = 0.0, 6.0
+                for _ in range(50):
+                    m = (lo + hi) / 2
+                    if sense_inj(5.0, m, Rt=Rt * 0.99, Rb=Rb * 0.99, mode=mode) >= m / rs: lo = m
+                    else: hi = m
+                worst = max(worst, lo)
+            if worst <= 0.5: best = (bl, worst)
+        d = dict(sense.DES, Rt=Rt, Rb=Rb); rm = Rt * Rb / (Rt + Rb) + sense.DES["Rs"]
+        a = sense.summ(sense.mc3(n=6000, d=d, rm=rm, zcommon=True)); b = sense.summ(sense.mc3(n=6000, d=d, rm=rm))
+        out.append(dict(total=tot, bleed=best[0], lcsc=basic_resistors("0603")[best[0]], rail=best[1], q_ma=3.318 / best[0] * 1e3, gain_trk=a["gain_pct"], off_trk=a["off_mV"], gain_ind=b["gain_pct"], off_ind=b["off_mV"]))
+    R["divscan"] = out
+    o25 = out[0]
+    C.add("PR-3/div", "PR-3, PR-4", "the +5 V forced-sense case (the only one that binds): the largest Basic bleed that keeps the rail under 0.5 V for each divider total, and what the larger divider costs the ratio (S3, Zcm tracking / independent)", "information",
+          "; ".join(f"{o['total']/1e3:.0f}k: bleed <= {fmt_r(o['bleed'])} ({o['q_ma']:.2f} mA), ratio {o['gain_trk']:.3f} / {o['gain_ind']:.3f} %" for o in out), "", None,
+          "the bleed grows about as fast as the divider does, so a larger divider saves permanent current (1.8 mA -> 0.4 mA at 100k) and costs ratio accuracy when Zcm spreads between inputs (0.22 -> 0.58 %); v2 keeps 25k and 1.8k", "pr3")
+
+def run_candidates():
+    """PR-3 / PR-4 +5 V, shunt off, unpowered: candidate sets of single Basic values (MC-12 as amended: one part per value), the worst of the REF output open / clamping / at 0 V and the diode drop
+    0.3 V (the ADS1115's ESD onset) and 0.6 V (kvm_01's BAV99 value), the rail and the current into the rail."""
+    import sense
+    cands = [("v2 as built: 15k / 10k, Rs 3.9k, Rm 10k, bleed 1.8k", 15e3, 10e3, 3.9e3, 10e3, 1.8e3),
+             ("30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 2.2k", 18e3, 12e3, 3.9e3, 12e3, 2.2e3),
+             ("30k: 18k / 12k, Rs 3.9k, Rm 12k, bleed 4.7k (kvm_01's bleed)", 18e3, 12e3, 3.9e3, 12e3, 4.7e3),
+             ("25k, Rs 3.9k, Rm 10k, bleed 4.7k (kvm_01's v1 bleed)", 15e3, 10e3, 3.9e3, 10e3, 4.7e3),
+             ("25k, Rs 3.9k, Rm 10k, bleed 10k", 15e3, 10e3, 3.9e3, 10e3, 10e3)]
+    rows = []
+    for lab, Rt, Rb, Rs, Rm, bl in cands:
+        row = dict(cand=lab, bleed=bl, q_ma=3.318 / bl * 1e3)
+        for vd in (0.3, 0.6):
+            for mode in ("open", "clamp", "gnd"):
+                rs = 1 / (1 / (bl * 1.01) + 1 / (188e3 * 1.01)); lo, hi = 0.0, 6.0
+                for _ in range(50):
+                    m = (lo + hi) / 2
+                    if sense_inj(5.0, m, Rt=Rt * 0.99, Rb=Rb * 0.99, Rs=Rs, Rm=Rm, mode=mode, vd=vd) >= m / rs: lo = m
+                    else: hi = m
+                row[f"rail_{mode}_{vd}"] = lo; row[f"i_{mode}_{vd}"] = sense_inj(5.0, lo, Rt=Rt * 0.99, Rb=Rb * 0.99, Rs=Rs, Rm=Rm, mode=mode, vd=vd) * 1e6
+        d = dict(sense.DES, Rt=Rt, Rb=Rb, Rs=Rs); rr = sense.summ(sense.mc3(n=5000, d=d, rm=Rm, zcommon=True)); ri = sense.summ(sense.mc3(n=5000, d=d, rm=Rm))
+        row.update(gain_trk=rr["gain_pct"], gain_ind=ri["gain_pct"]); rows.append(row)
+    R["candidates"] = rows
+    for r_ in rows:
+        wr = max(r_[f"rail_{m}_0.3"] for m in ("open", "clamp", "gnd")); wi = max(r_[f"i_{m}_0.3"] for m in ("open", "clamp", "gnd"))
+        g = r_["rail_gnd_0.6"]; ig = r_["i_gnd_0.6"]
+        C.add("PR-3/cand", "PR-3, PR-4", "+5 V on the AWG node, AFE unpowered, shunt off: " + r_["cand"], "rail < 0.5 V (PR-3); 100 uA into the Due's supply pins (PR-3), which is the LM27762's back-path, not the current into the rail",
+              f"worst case (diode 0.3 V, REF open/clamp/0 V): rail {wr:.3f} V, {wi:.0f} uA into the rail; kvm_01's assumptions (REF at 0 V, diode 0.6 V): {g:.3f} V, {ig:.0f} uA; permanent {r_['q_ma']:.2f} mA; ratio {r_['gain_trk']:.3f} % / {r_['gain_ind']:.3f} %", f"{0.5-wr:+.3f} V", (wr <= 0.5 if r_ is rows[0] else None),
+              "the chosen set" if r_ is rows[0] else ("passes" if wr <= 0.5 else "FAILS in the worst case") + " (comparison, information)", "pr3")
+
 def run_guards():
     wb = max(o["rail"] for o in R["forced"] if o["bleed"] == 10e3); wg = max(o["rail"] for o in R["forced"] if o["bleed"] == 1.8e3)
+    ds = R["divscan"]
+    G.add("G-divscan", "the bleed bound of the scan applied to a 10k bleed on the 25k divider must fail; the 2k the scan finds passes", wb <= 0.5, ds[0]["rail"] <= 0.5)
     G.add("G-PR3-sense", "the forced-sense check with the 10k bleed must fail; the 1.8k bleed passes", wb <= 0.5, wg <= 0.5)
     # 1  the V2-2 rating check must fail when the nominal negative rail is raised (R3 = 82k gives 2.26 V)
     ok_b = _sum_ok(rail_corners(r3=82e3))

@@ -29,15 +29,20 @@ ROWS = [  # refs, value, LCSC, role, qty
  ("R_SRB", "10k 1 % 0603", "C25804", "AWG-sense divider bottom (Rb): k = 0.4", 1),
  ("R_SRD", "1k 1 % 0603", "C21190", "sense divider's permanent default tie of the bottom node to the REF3030E (Rd)", 1),
  ("R_SRS", "3.9k 1 % 0603", "C23018", "series resistor from the tap to ADS1115 AIN2: the passive protection (VT-22); with Rt || Rb it is 9.9k, matched by R_SRM", 1),
+ ("J_RAT", "1x3 male header, 2.54 mm, plated holes + pins", "", "calibration jumper header J_RAT, pin 1 = the 2/3 ladder tap | pin 2 = B | pin 3 = the 1/2 ladder tap (v1's form: TAP4 | B | TAP3): HAND-SOLDERED (not part of the assembled board), fitted by the owner; the only wrong placement is the shunt slipped across pins 1-2", 1),
+ ("SH_RAT", "2.54 mm shunt (jumper cap)", "", "the calibration shunt, fitted across pins 2-3 (B and the 1/2 tap) for one calibration (one touch, with the tee cable) and removed with it; a hand tool, not assembled", 1),
  ("R_SRM", "10k 1 % 0603", "C25804", "series resistor from the divider bottom B to ADS1115 AIN3: matches AIN2's source impedance so Zcm loading cancels in the differential reading", 1),
 ]
 
 def build(rows=ROWS):
     out = []
     for refs, value, lcsc, role, qty in rows:
+        hand = refs in ("J_RAT", "SH_RAT")
         is_ic = value.startswith(("LM27762", "REF3030", "ADS1115"))
         row = lookup(lcsc)
-        if is_ic:
+        if hand:
+            basic = "not a JLC part: hand-fitted (LCSC number *(check)*)"
+        elif is_ic:
             basic = "Extended (v2/parts.md, whatif/bom.md)"
         else:
             if row is None or row["basic"] != "yes":

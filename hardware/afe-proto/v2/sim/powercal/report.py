@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import *
 
 ORDER = [("power", "1. Shared rail, PW-1, V2-2 supply rating, PR-3 (power.py)"), ("coupling", "1b. SC-9 through the shared rail, PW-2, PW-7 (coupling.py)"),
-         ("refladder", "3 and 4. REF3030E roles and the ladder (refladder.py)"), ("sense", "5. Sense divider and jumper (sense.py)"), ("sc7", "6. ADS1115 and SC-7, the extrapolation (sc7.py)")]
+         ("refladder", "3 and 4. REF3030E roles and the ladder (refladder.py)"), ("sense", "5. Sense divider and jumper (sense.py)"), ("sc7", "6. ADS1115 and SC-7, the extrapolation (sc7.py)"), ("wires", "Wrong wires among the Due pins the AFE uses (wires.py)")]
 def esc(s): return str(s).replace("|", "&#124;").replace("\n", " ")
 
 def main():
@@ -56,7 +56,7 @@ def main():
             else: L.append(f"| {k} | no: {esc(v.get('why'))} | | | | | | | | | | | |")
     else: L.append("none converged")
     L += ["", "## Guards: each check failed on purpose, then restored", "", "| guard | what | broken | restored | |", "|---|---|---|---|---|"]
-    for n in ("power", "coupling", "refladder", "sense", "sc7", "parts"):
+    for n in ("power", "coupling", "refladder", "sense", "sc7", "wires", "parts"):
         for g in load("guards_" + n): L.append(f"| {g['id']} | {esc(g['what'])} | {g['broken']} | {g['restored']} | {'ok' if g['good'] else '**BAD**'} |")
     open(os.path.join(HERE, "report.md"), "w").write("\n".join(L) + "\n")
     print("report.md", len(L), "lines")
