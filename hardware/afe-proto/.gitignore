@@ -1,0 +1,31 @@
+# Vendor models and datasheets are used locally and never committed
+# (MC-6): their licences do not grant redistribution. They are fetched
+# and hash-checked by tools/fetch_models.py from models/manifest.json.
+# Everything under models/ is ignored except the files that describe
+# what to fetch, which are the project's own. Open models that may be
+# committed live in models-open/, not here.
+/models/*
+!/models/manifest.json
+!/models/SOURCES.md
+!/models/datasheet-facts.md
+
+# Generated simulation artefacts: each sim's run.py regenerates them.
+# Results that reports quote (results*.json) stay tracked.
+netlists*/
+work*/
+logs/
+out/
+net/
+trials/
+__pycache__/
+*.log
+**/raw*/*
+!**/raw*/results*.json
+**/results/raw_*.json
+
+# What-if copies link to the real model folders.
+/whatif/*/models
+/whatif/*/models-open
+
+# Text extracted from a vendor datasheet is vendor content (MC-6).
+/whatif/C2/tmux1119.txt

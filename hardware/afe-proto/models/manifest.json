@@ -1,0 +1,598 @@
+{
+ "comment": [
+  "Vendor files used locally and never committed (MC-6, docs/afe.md).",
+  "Fetched and verified by hardware/afe-proto/tools/fetch_models.py; provenance, terms and smoke tests in SOURCES.md.",
+  "path: under models/. url: the vendor download, null if unknown. member: the file inside the zip at url; archive_sha256 pins that zip.",
+  "sha256 and size pin the file as retrieved 2026-11-10."
+ ],
+ "files": [
+  {
+   "path": "ads1115/ads1115.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+   "sha256": "eefff4d412ce2dcd7e659f47238edc9b2fa02e5971f2625af730502033701834",
+   "size": 2654255,
+   "kind": "download"
+  },
+  {
+   "path": "ads1118/ads1118.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1118.pdf",
+   "sha256": "f898224cab07837edbdc104f87ad894b0dc404cf71889a1c4154408e98e703dd",
+   "size": 1922790,
+   "kind": "download"
+  },
+  {
+   "path": "ads1220/ads1220.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1220.pdf",
+   "sha256": "218e25810febc1d740287cebe0678d844817a5db9191cba59cb471647ace3ac4",
+   "size": 3240502,
+   "kind": "download"
+  },
+  {
+   "path": "ads1256/ads1256.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1256.pdf",
+   "sha256": "9da3323db162b59329ec1a865829441ff1605279cd802fe879649b6f54e100e6",
+   "size": 811009,
+   "kind": "download"
+  },
+  {
+   "path": "ads8688/ads8688.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads8688.pdf",
+   "sha256": "c776e2307a48d547c394e1b778dcec2433b8c485a88cd6796da963bd2514eb6a",
+   "size": 2506949,
+   "kind": "download"
+  },
+  {
+   "path": "dac8551/dac8551.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/dac8551.pdf",
+   "sha256": "56fcdb7afc6c24286050334ff328fd1b8778542770bf9587fbad36b9a9d2115b",
+   "size": 1023971,
+   "kind": "download"
+  },
+  {
+   "path": "dac8571/dac8571.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/dac8571.pdf",
+   "sha256": "56d1011b3f89523009f051ae8d3ab8b49e02c0d5cd687f794ce1abb20e7317db",
+   "size": 861447,
+   "kind": "download"
+  },
+  {
+   "path": "lm27762/LM27762_TRANS.LIB",
+   "url": "https://www.ti.com/lit/zip/SNVMAV1",
+   "sha256": "16c322a7ad5f3ff2b5a7bb1355f4474ec12fe7335487aed5ec1b1dff293af42a",
+   "size": 21634,
+   "member": "LM27762_PSPICE_TRANS/LM27762_TRANS.LIB",
+   "archive_sha256": "13212d183ef89ccca6e18b4854729efb82b4b15faf67a2879525c93d68b43e2b",
+   "kind": "extracted"
+  },
+  {
+   "path": "lm27762/SNVMAV1.zip",
+   "url": "https://www.ti.com/lit/zip/SNVMAV1",
+   "sha256": "13212d183ef89ccca6e18b4854729efb82b4b15faf67a2879525c93d68b43e2b",
+   "size": 125789,
+   "kind": "archive"
+  },
+  {
+   "path": "lm27762/lm27762.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/lm27762.pdf",
+   "sha256": "465db259d11b3b2fe202661b21e1e664065ff8873056a984aa9f967a9fbdc6e0",
+   "size": 1101181,
+   "kind": "download"
+  },
+  {
+   "path": "mcp3564/MCP3561-2-4-Family-Data-Sheet-DS20006181C.pdf",
+   "url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP3561-2-4-Family-Data-Sheet-DS20006181C.pdf",
+   "sha256": "d75d7f6029e566aaf79c7b8c3a2741e2954392e8845e0d0e5ab73012681ed0df",
+   "size": 2085052,
+   "kind": "download"
+  },
+  {
+   "path": "opa354/OPA2354_PSPICE.LIB",
+   "url": "https://www.ti.com/lit/zip/SBOM512",
+   "sha256": "1122abe383af1ec2f1b08c1b01bcd855cdb6b3baad2776422fdf57f78da97982",
+   "size": 6172,
+   "member": "OPA2354_PSPICE_AIO/OPA2354.LIB",
+   "archive_sha256": "1c456742010580676052b67511a3fd359d316b9315b03152b175216478a2514d",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa354/OPA2354_TINA.LIB",
+   "url": "https://www.ti.com/lit/zip/SBOM510",
+   "sha256": "10a63473e2f2e60de8960cdcccaa1fa1cc8eea22e3c44dc04a451bd8d7487514",
+   "size": 6174,
+   "member": "OPA2354_TINA_AIO/OPA2354.LIB",
+   "archive_sha256": "392046ac05081b5c2c444fce5eac066db55de314af8c48ac060d124a8842ebad",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa354/OPA354_PSPICE.lib",
+   "url": "https://www.ti.com/lit/zip/SBOC018",
+   "sha256": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+   "size": 6855,
+   "member": "OPA354-PSpiceFiles/SCHEMATIC1/TransientSimulation/OPA354.lib",
+   "archive_sha256": "89076b133003969023c968d7b6cb3ef315583ad675abd4ce0835f70f84329de2",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa354/OPA354_TINA.LIB",
+   "url": "https://www.ti.com/lit/zip/SBOM282",
+   "sha256": "f237a8c69a7899894a207f431c7bda2dfa06d1c3faa76e6b08ab268a65a341ed",
+   "size": 6224,
+   "member": "OPA354_TINA_AIO/OPA354.LIB",
+   "archive_sha256": "bfd2dce2fe1b1b592363c6c23c54b6a98d3a58476bb642629d98e50f254b2dae",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa354/SBOC018.zip",
+   "url": "https://www.ti.com/lit/zip/SBOC018",
+   "sha256": "89076b133003969023c968d7b6cb3ef315583ad675abd4ce0835f70f84329de2",
+   "size": 340916,
+   "kind": "archive"
+  },
+  {
+   "path": "opa354/SBOM282.zip",
+   "url": "https://www.ti.com/lit/zip/SBOM282",
+   "sha256": "bfd2dce2fe1b1b592363c6c23c54b6a98d3a58476bb642629d98e50f254b2dae",
+   "size": 6588,
+   "kind": "archive"
+  },
+  {
+   "path": "opa354/SBOM510.zip",
+   "url": "https://www.ti.com/lit/zip/SBOM510",
+   "sha256": "392046ac05081b5c2c444fce5eac066db55de314af8c48ac060d124a8842ebad",
+   "size": 6635,
+   "kind": "archive"
+  },
+  {
+   "path": "opa354/SBOM512.zip",
+   "url": "https://www.ti.com/lit/zip/SBOM512",
+   "sha256": "1c456742010580676052b67511a3fd359d316b9315b03152b175216478a2514d",
+   "size": 55381,
+   "kind": "archive"
+  },
+  {
+   "path": "opa354/opa354.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/opa354.pdf",
+   "sha256": "21c2d9f67869aa7723163e7bf08cf6c9c4563e4cc0379ca41146225d2a41859a",
+   "size": 3070208,
+   "kind": "download"
+  },
+  {
+   "path": "opa356/OPA356_PSPICE.LIB",
+   "url": "https://www.ti.com/lit/zip/SBOM848",
+   "sha256": "bd3c06429aa1453df8878f21916cb67d269e5b38dbdf92d9397665dff1cf009c",
+   "size": 4918,
+   "member": "OPA356_PSPICE_AIO/OPA356.LIB",
+   "archive_sha256": "1163c4a64caf70b0fcc10b2b3c5a96625af96ff0462f685b37e702e84860c539",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa356/OPA356_TINA.LIB",
+   "url": "https://www.ti.com/lit/zip/SBOM849",
+   "sha256": "dd739c99ec0ba5f3da97d39a7e6ceb1ac18596280da252f4e132cd1be94e5144",
+   "size": 4924,
+   "member": "OPA356_TINA_AIO/OPA356.LIB",
+   "archive_sha256": "570063350b363456fc9c17d3e75f7ccf13988411831b3a60b3f524f6492cdab4",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa356/SBOM848.zip",
+   "url": "https://www.ti.com/lit/zip/SBOM848",
+   "sha256": "1163c4a64caf70b0fcc10b2b3c5a96625af96ff0462f685b37e702e84860c539",
+   "size": 28205,
+   "kind": "archive"
+  },
+  {
+   "path": "opa356/SBOM849.zip",
+   "url": "https://www.ti.com/lit/zip/SBOM849",
+   "sha256": "570063350b363456fc9c17d3e75f7ccf13988411831b3a60b3f524f6492cdab4",
+   "size": 5391,
+   "kind": "archive"
+  },
+  {
+   "path": "opa356/opa356.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/opa356.pdf",
+   "sha256": "6d474fd4f44aabc1aa87aa3bf77ff53d9140fcd21132cf50ba46944f42fb6b4e",
+   "size": 433238,
+   "kind": "download"
+  },
+  {
+   "path": "opa365/OPA365_PSPICE.lib",
+   "url": "https://www.ti.com/lit/zip/SBOC133",
+   "sha256": "cc95b072dc92d3730f2d8c292a6657273d5007ceaaa62f7f504d2256ac722fc8",
+   "size": 4207,
+   "member": "OPA365-PSpiceFiles/SCHEMATIC1/TransientAnalysis/OPA365.lib",
+   "archive_sha256": "657264dc909924bd6fc31224e3f5ed9b8445e05781033f22731cdefab40c5565",
+   "kind": "extracted"
+  },
+  {
+   "path": "opa365/SBOC133.zip",
+   "url": "https://www.ti.com/lit/zip/SBOC133",
+   "sha256": "657264dc909924bd6fc31224e3f5ed9b8445e05781033f22731cdefab40c5565",
+   "size": 205182,
+   "kind": "archive"
+  },
+  {
+   "path": "opa365/opa365.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/opa365.pdf",
+   "sha256": "9a87d0790f4b118c78f8c2d81c1cd12298d5872fea272db93a419cd7b0084efa",
+   "size": 1484209,
+   "kind": "download"
+  },
+  {
+   "path": "ref3030/REF3030.lib",
+   "url": "https://www.ti.com/lit/zip/SBVM732",
+   "sha256": "731ff7f0b42a515551be2888cccfb3fbc03eeae2fe174d78e76b97465124a6a3",
+   "size": 6020,
+   "member": "REF3030.lib",
+   "archive_sha256": "21f07124527d73451b22ecb3c3aa8492cab173bdb61c5a30003a02c8799ab263",
+   "kind": "extracted"
+  },
+  {
+   "path": "ref3030/SBVM732.zip",
+   "url": "https://www.ti.com/lit/zip/SBVM732",
+   "sha256": "21f07124527d73451b22ecb3c3aa8492cab173bdb61c5a30003a02c8799ab263",
+   "size": 12256,
+   "kind": "archive"
+  },
+  {
+   "path": "ref3030/ref30.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ref30.pdf",
+   "sha256": "71c2732f824439ab82a323975a167d637ff1f03c3eaf0b9b974c0d5829ac4d0a",
+   "size": 1631546,
+   "kind": "download"
+  },
+  {
+   "path": "tmux1119/SCDM207.zip",
+   "url": "https://www.ti.com/lit/zip/SCDM207",
+   "sha256": "5c6dd87bacae48c71bc609643d8b53e46d55bd49e86fa880106dbe628dd44f67",
+   "size": 35311,
+   "kind": "archive"
+  },
+  {
+   "path": "tmux1119/SCDM211.zip",
+   "url": "https://www.ti.com/lit/zip/SCDM211",
+   "sha256": "df78a18a5c0c75d59a41d40d63599863e8fdb18b9c717d6183b3aff78158ca8c",
+   "size": 72863,
+   "kind": "archive"
+  },
+  {
+   "path": "tmux1119/SCDM212.zip",
+   "url": "https://www.ti.com/lit/zip/SCDM212",
+   "sha256": "28eb4f6e36351c07431b901345c9be62cb33824bc5c03d62396c52ce5eae1cb7",
+   "size": 8055,
+   "kind": "archive"
+  },
+  {
+   "path": "tmux1119/TMUX1119_TINA.lib",
+   "url": "https://www.ti.com/lit/zip/SCDM212",
+   "sha256": "c54288ad26ef506034dc34bd734f931f2be21561cc3b273a8688937d4aab032f",
+   "size": 12084,
+   "member": "TMUX1119.lib",
+   "archive_sha256": "28eb4f6e36351c07431b901345c9be62cb33824bc5c03d62396c52ce5eae1cb7",
+   "kind": "extracted"
+  },
+  {
+   "path": "tmux1119/tmux1119.ibs",
+   "url": "https://www.ti.com/lit/zip/SCDM207",
+   "sha256": "4ff0aed3bc2ee1d9e324593e19a75c1082333f1ff4fd2a6b36ad80ad06501052",
+   "size": 211216,
+   "member": "tmux1119.ibs",
+   "archive_sha256": "5c6dd87bacae48c71bc609643d8b53e46d55bd49e86fa880106dbe628dd44f67",
+   "kind": "extracted"
+  },
+  {
+   "path": "tmux1119/tmux1119.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/tmux1119.pdf",
+   "sha256": "266a589bf12a8ae3730722ed5133ef06192d5616ce6a254c7d4e2819a3df9796",
+   "size": 1504962,
+   "kind": "download"
+  },
+  {
+   "path": "ts5a3159/SCDM113.zip",
+   "url": "https://www.ti.com/lit/zip/SCDM113",
+   "sha256": "ce9cdecacf236aa033db6d00e4b7b5d28fdc2f6528d5f8a5ca52081519491ffa",
+   "size": 91692,
+   "kind": "archive"
+  },
+  {
+   "path": "ts5a3159/SCDM114.zip",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "size": 106834,
+   "kind": "archive"
+  },
+  {
+   "path": "ts5a3159/hspice_help.pdf",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "45ab251c76a2af380685a0acefaaf3b1efcef63d78a25b012239e32a1bfa102e",
+   "size": 88375,
+   "member": "hspice_help.pdf",
+   "archive_sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "kind": "extracted"
+  },
+  {
+   "path": "ts5a3159/sot6.pkg",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "364e451bd46ee692924c1644283e6489a323abe12f41cf4929e5bfb8211586be",
+   "size": 2775,
+   "member": "sot6.pkg",
+   "archive_sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "kind": "extracted"
+  },
+  {
+   "path": "ts5a3159/ts5a3159.inc",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "3a2183b80d97f738c8b1017f32ec7d5fb336d50c85298deccac2289846580f6e",
+   "size": 15984,
+   "member": "ts5a3159.inc",
+   "archive_sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "kind": "extracted"
+  },
+  {
+   "path": "ts5a3159/ts5a3159.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ts5a3159.pdf",
+   "sha256": "384d4decc591a99e1fc75146e9bea26029a31a77e8bc0abbf4e5e51c8e871597",
+   "size": 834457,
+   "kind": "download"
+  },
+  {
+   "path": "ts5a3159/ts5a3159_process.lib",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "e9c6f3afd8ee37215f80884ae65405fe8dacbc01675d18f5c497e55c6eb44e3f",
+   "size": 39947,
+   "member": "ts5a3159_process.lib",
+   "archive_sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "kind": "extracted"
+  },
+  {
+   "path": "ts5a3159/ts5a3159_test.sp",
+   "url": "https://www.ti.com/lit/zip/SCDM114",
+   "sha256": "055a01a3e472ccc3ad3c02effb7c909563b87071c8e2aca70b6b309acb04011b",
+   "size": 3400,
+   "member": "ts5a3159_test.sp",
+   "archive_sha256": "d2e816252b9784216fe3a224985ee341703761fe3464b8cc7726bd9fbdfe2f04",
+   "kind": "extracted"
+  },
+  {
+   "path": "bat54s-c7420333/bat54s-c7420333.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/34ea9f8d4a2e2e40eea56b51198e5fd8.pdf?productCode=C7420333",
+   "sha256": "8c5fbf8f378ffcf628e234e1ba617c1708a65c5b1e8e796cb26e071058b9d143",
+   "size": 226254,
+   "kind": "download"
+  },
+  {
+   "path": "cl21a106kaynnne/CL21A106KAYNNN_product_page.html",
+   "url": "https://product.samsungsem.com/mlcc/CL21A106KAYNNN.do",
+   "sha256": "4b7cf7d8e24b0af8cb7f0d2118a8077c6b512ade8c0662c6b0ab1a4bb4f27c24",
+   "size": 169898,
+   "kind": "download",
+   "note": "Samsung product page for C15850 (CL21A106KAYNNNE); its embedded datasheetData JSON carries |Z| and R against frequency (0 V, 25 C, \"Precise\" model) and DC-bias derating (25 C, 1 kHz). Retrieved 2026-11-11; read as data only (json.loads of that array), never executed."
+  },
+  {
+   "path": "sgm3157/sgm3157.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/0bf546408c454f74bb7fec7f6d306346.pdf?productCode=C46744",
+   "sha256": "da0e41efe044bdc7c4da8a64c2f3c3dcc43da84063177cfa2d3fd7b063cc7e2e",
+   "size": 321355,
+   "kind": "download",
+   "note": "SGMICRO SGM3157 (C46744) datasheet, Rev. C.1, via LCSC. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "bl1551b/bl1551b.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/595dea6c30cda5f900ee61236a420ca2.pdf?productCode=C2944066",
+   "sha256": "e066dbc07f7b36a0ad4027e1cc7f9413b005146566d0daf0da362d77d8afb603",
+   "size": 609968,
+   "kind": "download",
+   "note": "Belling BL1551B (C2944066) datasheet via LCSC. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "bl1551/bl1551.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/106d010ca529424ca326775602861e15.pdf?productCode=C82528",
+   "sha256": "35d055609cdf6809d1f4701a91e321ea9b15b059815577ca9ff45bd25544a765",
+   "size": 204933,
+   "kind": "download",
+   "note": "Belling BL1551 (C82528) datasheet via LCSC. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "rs2105/rs2105.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/b3529df9ba749d79a5263224657a4ad1.pdf?productCode=C237025",
+   "sha256": "8920e2360069364714f8e730b242790240805744a6af6ff957a1a051a33afaa9",
+   "size": 1167465,
+   "kind": "download",
+   "note": "Runic RS2105 (C237025, dual SPDT) datasheet via LCSC. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "ts5a3157/ts5a3157.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ts5a3157.pdf",
+   "sha256": "ace8b689e89f63b55aca48397921d97efe5dc51da2c20322ef2579c65d096d2e",
+   "size": 1322834,
+   "kind": "download",
+   "note": "TI TS5A3157, SCDS219D (July 2025). Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "sn74lvc1g3157/sn74lvc1g3157.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/sn74lvc1g3157.pdf",
+   "sha256": "054575a791ba8da81e6d1c7b6c685203adade306cb8d27679cd7aba8f6fce3be",
+   "size": 3411544,
+   "kind": "download",
+   "note": "TI SN74LVC1G3157, SCES424O (June 2025). Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "74lvc1g3157/74lvc1g3157.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/65b9a47338a567bf846a11f2580279d3.pdf?productCode=C265126",
+   "sha256": "09eb80009f0ee4f83bb5df89314b5d8ee216bf93711ee89c36106c655964cc9a",
+   "size": 337569,
+   "kind": "download",
+   "note": "Nexperia 74LVC1G3157 Rev. 11 (23 Aug 2023), via LCSC for C265126 (assets.nexperia.com refused the download, 2026-11-11). Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "was3157b/was3157b.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/45adc319524ff7e6013aa13a4ff1477f.pdf?productCode=C213161",
+   "sha256": "56e6f7d833c78371ef47cbdf1e3fe1635a80f3f51e8508b6ca235ffb94bbbefb",
+   "size": 428208,
+   "kind": "download",
+   "note": "Will Semi WAS3157B (C213161) datasheet via LCSC. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "umw3157/umw3157.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/2d528c09b2a4eaca1a80454bd141dae0.pdf?productCode=C394901",
+   "sha256": "bd8ed4cd0a78b39aa3b1c9d46d6bcb67ff3eb70f1bc313d63a739b63ebda49ac",
+   "size": 805545,
+   "kind": "download",
+   "note": "UMW UMW3157 (C394901) datasheet via LCSC; Chinese; an LVC1G3157-type part although LCSC files it as SGM3157. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "et3157/et3157.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/1de64e6b0fe396bd130b005e0e443dee.pdf?productCode=C2904735",
+   "sha256": "3aefe2b48b982b83b4b0ed4f94d6c7e79a7740bf0740364a0ba9c726e146fc1a",
+   "size": 712917,
+   "kind": "download",
+   "note": "UMW ET3157 (C2904735) datasheet via LCSC, Aug 2025. Retrieved 2026-11-11 for the 3157-class range-switch evaluation (whatif/sw3157)."
+  },
+  {
+   "path": "ads1261/ads1261.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1261.pdf",
+   "sha256": "75f1377a2e50d5995a86e1ede8fdf665b5ab8f851219e509ddd59243c1dfbd3e",
+   "size": 1802563,
+   "kind": "download",
+   "note": "TI ADS1260/ADS1261 datasheet. Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "ads124s08/ads124s08.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads124s08.pdf",
+   "sha256": "38ac6914895f2c5b956fdb874d33b761ba4d2047be789e12c4a2d30c44c7de24",
+   "size": 3197980,
+   "kind": "download",
+   "note": "TI ADS124S06/ADS124S08 datasheet, SBAS660C. Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "ads1248/ads1248.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/ads1248.pdf",
+   "sha256": "08b29c91036dd059affa7268776a188fc50572886312d029bde67b8c18508796",
+   "size": 2140384,
+   "kind": "download",
+   "note": "TI ADS1246/7/8 datasheet, SBAS426H. Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "ad7124-4/ad7124-4.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/73ba32cce36059b26fc8c6e4822b5261.pdf?productCode=C462194",
+   "sha256": "9f9df9294d9f4ad32c8ab384a1bf85e7c05391b36a2f66e62402af403bb4000f",
+   "size": 1782259,
+   "kind": "download",
+   "note": "ADI AD7124-4 datasheet Rev. D via LCSC (C462194); analog.com unreachable from this host. Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "ad7124-8/ad7124-8.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/bb8da60b31509f517a73c9cb10187d45.pdf?productCode=C97314",
+   "sha256": "750fadb6dc6b4c993a343891aa519d1214d36c17cbf6b9bc430ac2800c323c87",
+   "size": 2020537,
+   "kind": "download",
+   "note": "ADI AD7124-8 datasheet, Chinese edition, via LCSC (C97314). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "cs1238/cs1238.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/51bb63a9d9a04485a41c6b93b439f89c.pdf?productCode=C81829",
+   "sha256": "db86629558b825158b0bcc19ea1783ebb87e5ddc7fe94c978c396c0dade40a45",
+   "size": 716800,
+   "kind": "download",
+   "note": "Chipsea CS1238 user manual Rev 1.1 (Chinese) via LCSC (C81829). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "cs1259b/cs1259b.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/84846132b3e27e35f77f58e15a228c97.pdf?productCode=C2833379",
+   "sha256": "a9156f9ac81c75f425c59ca3e02bbcb881d709f323b19a91eba5e0e4580000dd",
+   "size": 2160336,
+   "kind": "download",
+   "note": "Chipsea CS1259B user manual Rev 1.2 (Chinese) via LCSC (C2833379). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "hx711/hx711.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/19a1151aaf9f4738f2b7e47b47658d99.pdf?productCode=C43656",
+   "sha256": "84834c42ac6b384490dd615dff7a2df240476bd1c9dcebf4fa72741fa7d2d00c",
+   "size": 268996,
+   "kind": "download",
+   "note": "Avia HX711 datasheet via LCSC (C43656). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "hct6751/hct6751.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/1be9c39129bbd725bd83aac5842100b8.pdf?productCode=C46469552",
+   "sha256": "1dead7ae68d374f29e95efb82f80374a8d90840d30330e500b4cf61eb6d539f5",
+   "size": 5944773,
+   "kind": "download",
+   "note": "HCTmicro HCT6751/6701/6711 datasheet v1.2 (Chinese) via LCSC (C46469552). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "hct6931/hct6931.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/4f0adaf7b26b3b00221953fadd64bab6.pdf?productCode=C46469662",
+   "sha256": "7c45de4f0b7381864f2567a35b2010575713a10a2563d640435b2b631598e299",
+   "size": 5939610,
+   "kind": "download",
+   "note": "HCTmicro HCT693x datasheet v1.6 (Chinese) via LCSC (C46469662). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "sig7193/sig7193.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/fb7d68cba09556b8eca134167cf3bfe3.pdf?productCode=C41367350",
+   "sha256": "f2d91c6c501f1f0c4da841e468c04c8f1e6b518cef83059224a77329962f0667",
+   "size": 614118,
+   "kind": "download",
+   "note": "Signal Micro SIG7193 datasheet via LCSC (C41367350). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "sgm58031/sgm58031.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/f9ce63c27b77b60a043525f7a35c4b18.pdf?productCode=C700177",
+   "sha256": "295f1806da6fe469b67d941888e43bc89266dfe5888f61b17b9f791a2cdc989a",
+   "size": 1003603,
+   "kind": "download",
+   "note": "SGMICRO SGM58031 datasheet via LCSC (C700177). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "tpc6160/tpc6160.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/f83c06ca90c69028d1154fb335e0d37a.pdf?productCode=C51933525",
+   "sha256": "a6fc51650bd2fca36027426e9c8ad442a8855d0d964b0c56c686341bd9050fde",
+   "size": 1523404,
+   "kind": "download",
+   "note": "3PEAK TPC6160 datasheet via LCSC (C51933525). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "mcp3564r/mcp3564r.pdf",
+   "url": "https://datasheet.lcsc.com/datasheet/pdf/18895df97939145909fa04378d3f2efe.pdf?productCode=C5227404",
+   "sha256": "a8989732e1be11cc9864a309fb569c1494dda80dfd753f8e473a6af42916c36b",
+   "size": 2262586,
+   "kind": "download",
+   "note": "Microchip MCP3561R/2R/4R datasheet DS20006391C via LCSC (C5227404). Retrieved 2026-11-11 for the precision-ADC survey (PA-3)."
+  },
+  {
+   "path": "mcp6002/mcp6002.pdf",
+   "url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP6001-1R-1U-2-4-1-MHz-Low-Power-Op-Amp-DS20001733L.pdf",
+   "sha256": "4f879ab31115ecfa149dfea62073c9efdbc4beccbdfc3a8d7e10281f3877f8fb",
+   "size": 931340,
+   "kind": "download",
+   "note": "Microchip MCP6001/1R/1U/2/4 datasheet DS20001733L. Retrieved 2026-11-11 for the low-cost scope what-if (whatif/lowcost-scope): MCP6002 C7377 as the scope Vmid buffers. No vendor SPICE model was retrievable by URL (Microchip's download paths tried returned 403); the open model is models-open/mcp6002/."
+  },
+  {
+   "path": "tlv9062/tlv9062.pdf",
+   "url": "https://www.ti.com/lit/ds/symlink/tlv9062.pdf",
+   "sha256": "a77c6dbdedda34c1ecf26e4a5abd38a98903054b49fff9cd24d005897eabedaa",
+   "size": 8130782,
+   "kind": "download",
+   "note": "TI TLV906x datasheet. Retrieved 2026-11-11 for the low-cost scope what-if (whatif/lowcost-scope): TLV9062 as an alternative Vmid buffer pair."
+  },
+  {
+   "path": "tlv9062/SBOMAG1.zip",
+   "url": "https://www.ti.com/lit/zip/SBOMAG1",
+   "sha256": "d4b6f13433b2cd8e7fdfd945c32afb14e943266d7589d23dc6659a44f05afc95",
+   "size": 22728,
+   "kind": "download",
+   "note": "TI TLV9062 PSpice model archive (Rev. E per the product page). Retrieved 2026-11-11 for the low-cost scope what-if (whatif/lowcost-scope): TLV9062 as an alternative Vmid buffer pair."
+  },
+  {
+   "path": "tlv9062/tlv9062.lib",
+   "url": "https://www.ti.com/lit/zip/SBOMAG1",
+   "sha256": "94f6ec5479e928f03403c107df2b67c46a780cc541a2eac5c5e5e923230e2b90",
+   "size": 12442,
+   "member": "tlv9062.lib",
+   "archive_sha256": "d4b6f13433b2cd8e7fdfd945c32afb14e943266d7589d23dc6659a44f05afc95",
+   "kind": "extracted",
+   "note": "TI TLV9062 PSpice model. Retrieved 2026-11-11 for the low-cost scope what-if (whatif/lowcost-scope): TLV9062 as an alternative Vmid buffer pair."
+  }
+ ]
+}

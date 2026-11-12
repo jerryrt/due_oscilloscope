@@ -20,3 +20,22 @@ Rules:
   continuity on the owner's boards before a round is ordered (MC-4).
 - The shield does not modify the Due: the reference reaches the Due's AREF pin
   through an unfitted series element, and JR1 and BR1 stay untouched (PA-7).
+
+## Vendor models
+
+Vendor SPICE models and datasheets are used locally and never committed
+(MC-6), so a fresh clone has none. `models/manifest.json` lists each file
+with its vendor URL, the zip member it comes from, and its sha256;
+`models/SOURCES.md` carries the provenance, terms and smoke tests. Git ignores
+everything else under `models/`. Models that may be committed are in
+`models-open/`.
+
+```sh
+python3 -I hardware/afe-proto/tools/fetch_models.py           # fetch what is missing
+python3 -I hardware/afe-proto/tools/fetch_models.py --check   # verify, download nothing
+```
+
+A file is installed only after its hash matches, and a present file that
+fails its hash is left alone unless `--replace` is given. Any mismatch exits
+non-zero. If a vendor changes a file, the fetch fails: check the new file and
+update the manifest and `SOURCES.md` together.
