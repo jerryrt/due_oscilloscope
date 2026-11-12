@@ -1,4 +1,3 @@
-import importlib.util
 import pathlib
 import time
 
@@ -49,9 +48,10 @@ def test_dump_numbers():
 
 
 def _old():
-    spec = importlib.util.spec_from_file_location('old_sexpr', FIX / 'sexpr.py')
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
+    """the frozen old reader, executed from source in a fresh namespace: no import, so no bytecode is written into the fixture"""
+    import types
+    m = types.ModuleType('old_sexpr')
+    exec(compile((FIX / 'sexpr.py').read_text(), str(FIX / 'sexpr.py'), 'exec'), m.__dict__)
     return m
 
 

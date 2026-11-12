@@ -76,9 +76,15 @@ def test_a_cell_lays_pins_out_around_the_origin(tmp_path):
 
 # ------------------------------------------------------------------------------------------------ equivalence with the old builder
 def _load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
+    """import a module from a COPY of the fixture in a temp dir, without writing bytecode anywhere"""
+    old = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+    finally:
+        sys.dont_write_bytecode = old
     return m
 
 
