@@ -16,6 +16,7 @@ Placement is a first, unrouted arrangement for the 3D check and the mechanical f
 Own work, CC BY-SA 4.0.
 """
 import hashlib
+import math
 import os
 import re
 import shutil
@@ -47,20 +48,52 @@ HEADERS = {'J4': (27.94, 2.54, '+x'), 'J5': (50.80, 2.54, '+x'), 'J6': (73.66, 2
            'J7': (63.50, 50.80, '-x'), 'J8': (68.58, 50.80, '+x'), 'J9': (41.656, 50.80, '-x')}
 XIO = (93.98, 50.80)        # pin 1; odd pins at x 93.98, even at 96.52, rows step down 2.54
 ROT = {'+x': 90.0, '-x': -90.0}
-BNCS = {'J1': 44.0, 'J2': 27.0, 'J3': 10.0}   # Yup of each BNC centre pin: CH1, CH2, AWG top to bottom
-BNC_X = 102.5               # centre pin x: the rear (2.75 mm back) clears XIO0 (x 98.3) and MH1 (x 99.6)
+# Yup of each BNC centre pin, CH1, CH2, AWG: midway between two XIO0 rows of unused pins (AWG: under the last row),
+# so each input enters straight through the header; 17.78 mm apart, clear of each other's courtyards
+BNCS = {'J1': 41.91, 'J2': 24.13, 'J3': 7.4}    # J3: its legs (5.05 below, 2.6 mm pads) and body clear the bottom edge
+BNC_X = 102.0               # centre pin x: the rear courtyard (2.25 mm back) clears XIO0 (x 98.3) and MH1 (x 99.6)
 MH = (96.52, 2.54)
 
 # zones per block (x0, x1, yup0, yup1), inside the headers' bodies; the SMT field is x 18..92, Yup 4.6..48.4
-ZONES = {
-    'power': (18.0, 28.0, 4.8, 48.2),
-    'cal': (28.0, 47.0, 4.8, 48.2),
-    'vmid': (47.0, 61.0, 4.8, 48.2),
-    'ch1': (61.0, 92.2, 34.8, 48.2),
-    'ch2': (61.0, 92.2, 21.2, 34.6),
-    'awg': (61.0, 92.2, 4.8, 21.0),
-}
-GAP = 0.35
+# Placement by signal flow (FR-02).  Each group fills its box in rows, in the order given (the signal's order), starting
+# from the named corner: rows grow away from that edge and each row runs away from the named side.  Boxes are in Due
+# coordinates (x0, x1, yup0, yup1).
+def _r(a, b, pre='R'):
+    return [f'{pre}{k}' for k in range(a, b + 1)]
+
+
+PLAN = [
+    # 5 V feed and the LM27762 by the 5V pin (x 38.1), bottom up
+    ('power', (18.0, 31.4, 4.6, 48.6), 'bl', ['R70', 'C36', 'C37', 'C23', 'U7', 'C31', 'C38', 'C39', 'C40', 'C41',
+                                              'C42', 'C43', 'R29', 'R5', 'R6', 'R25', 'R26', 'R27', 'R28', 'R65',
+                                              'TP1', 'TP2', 'TP3', 'TP4', 'TP5']),
+    # ladder and reference right above A2..A7 (x 50.8..63.5), bottom up
+    ('ladder', (40.0, 64.2, 4.6, 13.8), 'bl', ['R43', 'R44', 'R45', 'R46', 'R47', 'R48', 'R49', 'R50', 'U8', 'C24',
+                                               'C32', 'C26', 'C27', 'R81']),
+    # precision ADC and the AWG-sense divider with its ratio switch
+    ('ads', (32.0, 64.2, 14.4, 26.4), 'br', ['U9', 'C25', 'C33', 'R69', 'R7', 'R8', 'U12', 'C30', 'R68', 'R9', 'D7',
+                                             'D8', 'TP6']),
+    # scope Vmid: CH1's loop on top (next to CH1), the TLV9062 and divider, CH2's loop at the bottom (next to CH2)
+    ('vmid', (32.0, 64.2, 27.2, 48.6), 'tr', _r(48, 53, 'C') + ['R73', 'R74', 'R75', 'R76', 'R63', 'C34', 'C16',
+                                              'U6', 'C18', 'R20', 'R21', 'C47', 'R38', 'C46', 'C15',
+                                              'R77', 'R78', 'R79', 'R80', 'R64', 'C35', 'C17'] + _r(54, 59, 'C')),
+    # CH1: input at the top right (BNC at Yup 44.45), output at the bottom left (to A1 down the x 64.4..70 strip)
+    ('ch1', (64.6, 91.8, 37.0, 48.8), 'tr', ['R10', 'R11', 'R1', 'C1', 'R14', 'R15', 'R3', 'R18', 'C9', 'C3', 'C4',
+                                             'C10', 'R52', 'U10', 'R30', 'U1', 'R36', 'R71', 'C44', 'C13', 'C28',
+                                             'R66', 'R55', 'D5']),
+    # CH2: input at the bottom right (BNC at Yup 26.67), same order upward
+    ('ch2', (64.6, 91.8, 24.8, 36.4), 'br', ['R12', 'R13', 'R2', 'C2', 'R16', 'R17', 'R4', 'R19', 'C11', 'C5', 'C6',
+                                             'C12', 'R53', 'U11', 'R31', 'U2', 'R37', 'R72', 'C45', 'C14', 'C29',
+                                             'R67', 'R56', 'D6']),
+
+    # AWG: DAC0 (x 83.8) at the bottom, output to J3 (Yup 8.89) on the right
+    ('awg', (64.6, 91.8, 4.6, 24.0), 'bl', ['R54', 'R22', 'U4', 'D3', 'C19', 'R32', 'R34', 'R39', 'R40', 'R57',
+                                            'R33', 'C7', 'R35', 'R41', 'R42', 'R58', 'U3', 'D9', 'D10', 'D11', 'R51',
+                                            'R59', 'R60', 'C21', 'D1', 'R61', 'R62', 'C22', 'D2',
+                                            'R23', 'R24', 'C8', 'U5', 'D4', 'C20']),
+]
+GAP = 1.0
+GROUP_GAP = {'ch1': 0.75, 'ch2': 0.75, 'awg': 0.7}     # boxes fixed by the BNCs and the DAC0 pin
 # footprint -> (project model, sha256): models the KiCad library lacks (3d/SOURCES.md)
 MODEL_OVERRIDE = {
     'Package_QFP:TQFP-32_5x5mm_P0.5mm': ('LQFP-32_5x5mm_P0.5mm.step',
@@ -123,6 +156,60 @@ def schematic_nets():
             res[(first(x, 'ref')[1], first(x, 'pin')[1])] = first(e, 'name')[1]
     shutil.rmtree(tmp, ignore_errors=True)
     return res
+
+
+def legalise(fps, fixed, order, clear=0.0, rounds=200):
+    """Push overlapping courtyards apart, keeping the hand placement's arrangement: connectors, the hole and ICs stay;
+    a passive in an overlap moves the shortest way out (plus clear), the later one in the placement order first.
+    Everything also stays inside the SMT field."""
+    import layout
+    anchors = set(fixed) | {r for r in fps if r.startswith('U')}
+    rank = {r: k for k, r in enumerate(order)}
+
+    def box(f):
+        b = courtyard(f)
+        (ax, ay), (bx, by) = due(pcb.VECTOR2I(b.GetLeft(), b.GetBottom())), due(pcb.VECTOR2I(b.GetRight(), b.GetTop()))
+        return ax, ay, bx, by
+
+    def move(f, dx, dy):
+        x, y = due(f.GetPosition())
+        f.SetPosition(at(round((x + dx) / 0.05) * 0.05, round((y + dy) / 0.05) * 0.05))
+    refs = [r for r in fps if r in layout.PLACE or r in anchors]
+    for _ in range(rounds):
+        moved = False
+        boxes = {r: box(fps[r]) for r in refs}
+        for i, a in enumerate(refs):
+            for c in refs[i + 1:]:
+                A, B = boxes[a], boxes[c]
+                if not (A[0] < B[2] + clear and B[0] < A[2] + clear and A[1] < B[3] + clear and B[1] < A[3] + clear):
+                    continue
+                if a in anchors and c in anchors:
+                    continue
+                m = c if (a in anchors or (c not in anchors and rank.get(c, 0) >= rank.get(a, 0))) else a
+                o = a if m == c else c
+                M, O = boxes[m], boxes[o]
+                # push m away from o along the axis of least penetration, in the direction of their centres
+                px = min(M[2], O[2]) - max(M[0], O[0]) + clear
+                py = min(M[3], O[3]) - max(M[1], O[1]) + clear
+                cmx, cox = (M[0] + M[2]) / 2, (O[0] + O[2]) / 2
+                cmy, coy = (M[1] + M[3]) / 2, (O[1] + O[3]) / 2
+                if px <= py:
+                    dx, dy = (px if cmx >= cox else -px), 0.0
+                else:
+                    dx, dy = 0.0, (py if cmy >= coy else -py)
+                move(fps[m], dx + math.copysign(0.05, dx) if dx else 0, dy + math.copysign(0.05, dy) if dy else 0)
+                boxes[m] = box(fps[m]); moved = True
+        if not moved:
+            return
+    left = []
+    boxes = {r: box(fps[r]) for r in refs}
+    for i, a in enumerate(refs):
+        for c in refs[i + 1:]:
+            A, B = boxes[a], boxes[c]
+            if A[0] < B[2] and B[0] < A[2] and A[1] < B[3] and B[1] < A[3] and not (a in anchors and c in anchors):
+                left.append((a, c))
+    if left:
+        raise SystemExit(f'placement does not settle: {left[:10]}')
 
 
 def build():
@@ -203,6 +290,7 @@ def build():
         fps[p['ref']] = f
 
     # fixed parts
+    fixed = set(HEADERS) | set(BNCS) | {'J10', 'MH1'}
     for ref, (x, y, d) in HEADERS.items():
         f = fps[ref]; f.SetOrientationDegrees(ROT[d]); f.SetPosition(at(x, y)); f.SetLocked(True)
     f = fps['J10']; f.SetOrientationDegrees(0); f.SetPosition(at(XIO[0] + 2.54, XIO[1])); f.SetLocked(True)
@@ -210,35 +298,50 @@ def build():
         f = fps[ref]; f.SetOrientationDegrees(-90); f.SetPosition(at(BNC_X, y))
     f = fps['MH1']; f.SetPosition(at(*MH)); f.SetLocked(True)
 
-    # SMT packing, by block; test points in their own column
+    # placement by PLAN: each part, in order, takes the first free spot scanning rows from the named corner (0.2 mm
+    # steps), its courtyard GAP clear of every courtyard already in the box
     placed = []
-    fixed = set(HEADERS) | set(BNCS) | {'J10', 'MH1'}
-    for blk in ('power', 'cal', 'vmid', 'ch1', 'ch2', 'awg'):
-        x0, x1, y0, y1 = ZONES[blk]
-        items = [p for p in design.PARTS if p['block'] == blk and p['ref'] not in fixed]
-        sized = []
-        for p in items:
-            f = fps[p['ref']]
+    import layout
+    for ref, (x, y, rot) in layout.PLACE.items():
+        f = fps[ref]
+        f.SetOrientationDegrees(rot); f.SetPosition(at(x, y))
+        placed.append(ref)
+    for name, (x0, x1, y0, y1), corner, refs in PLAN:
+        refs = [r for r in refs if r not in layout.PLACE]
+        vert, horiz = corner[0], corner[1]
+        gap = GROUP_GAP.get(name, GAP)
+        rects = []
+        for ref in refs:
+            f = fps[ref]
             f.SetOrientationDegrees(0); f.SetPosition(at(0, 0))
             b = courtyard(f)
-            sized.append((-round(pcb.ToMM(b.GetHeight()), 2), -round(pcb.ToMM(b.GetWidth()), 2), p['ref'], p))
-        sized.sort()       # shelf packing, tallest first; ties keep a stable, readable order
-        x, ytop, rowh = x0, y1, 0.0
-        for _, _, _, p in sized:
-            f = fps[p['ref']]
-            f.SetOrientationDegrees(0)
-            f.SetPosition(at(0, 0))
-            b = courtyard(f)
             w, h = pcb.ToMM(b.GetWidth()), pcb.ToMM(b.GetHeight())
-            if x + w > x1 + 1e-6:
-                x, ytop, rowh = x0, ytop - rowh - GAP, 0.0
-            if ytop - h < y0 - 1e-6:
-                raise SystemExit(f'zone {blk} full at {p["ref"]}: widen it')
-            # move so the courtyard's top-left lands on (x, ytop)
+            ys = [round(y0 + 0.2 * k, 3) for k in range(int((y1 - y0 - h) / 0.2) + 1)]
+            xs = [round(x0 + 0.2 * k, 3) for k in range(int((x1 - x0 - w) / 0.2) + 1)]
+            if vert == 't':
+                ys.reverse()
+            if horiz == 'r':
+                xs.reverse()
+            spot = None
+            for yb in ys:
+                for xl in xs:
+                    if all(xl + w + gap <= a or xl >= c + gap or yb + h + gap <= bb or yb >= d + gap
+                           for (a, bb, c, d) in rects):
+                        spot = (xl, yb); break
+                if spot:
+                    break
+            if spot is None:
+                raise SystemExit(f'group {name} full at {ref}: enlarge its box')
+            xl, yb = spot
+            rects.append((xl, yb, xl + w, yb + h))
             cx, cy = due(pcb.VECTOR2I(b.GetLeft(), b.GetTop()))
-            f.SetPosition(at(x - cx, ytop - cy))
-            placed.append(p['ref'])
-            x += w + GAP; rowh = max(rowh, h)
+            # on the router's 0.05 mm grid, so fine-pitch pad centre lines fall on grid lines (route.py)
+            f.SetPosition(at(round((xl - cx) / 0.05) * 0.05, round((yb + h - cy) / 0.05) * 0.05))
+            placed.append(ref)
+    legalise(fps, fixed, list(layout.PLACE))
+    missing = [p['ref'] for p in design.PARTS if p['ref'] not in placed and p['ref'] not in fixed]
+    if missing:
+        raise SystemExit(f'not in PLAN: {missing}')
     for ref, f in fps.items():
         f.SetUuidDirect(pcb.KIID(build_sch.uid('fp', ref)))
     out = os.path.join(HERE, 'afe-proto.kicad_pcb')

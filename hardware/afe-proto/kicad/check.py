@@ -309,7 +309,7 @@ def regenerate(mutate=None):
     """Build the schematic and board from this tree's sources in a scratch copy; return their sha256."""
     import hashlib
     tmp = tempfile.mkdtemp(prefix='afe-regen-')
-    for f in ('sexpr.py', 'design.py', 'build_sch.py', 'build_pcb.py'):
+    for f in ('sexpr.py', 'design.py', 'build_sch.py', 'build_pcb.py', 'layout.py'):
         shutil.copy(os.path.join(HERE, f), tmp)
     shutil.copytree(os.path.join(HERE, '3d'), os.path.join(tmp, '3d'))
     shutil.copytree(os.path.join(HERE, 'lib'), os.path.join(tmp, 'lib'))
