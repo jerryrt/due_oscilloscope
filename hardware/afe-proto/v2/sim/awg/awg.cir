@@ -39,8 +39,8 @@ Vs oi o2 0
 Bd o2 out V = max(0, v(oi) - (v(vp) - {rsat}*max(i(Vs), 0))) - max(0, (v(vn) + {rsat}*max(-i(Vs), 0)) - v(oi))
 .ends TPH2502_SAT
 
-Vvp vpx 0 DC 3.3
-Vvn vnx 0 DC -2.073
+Vvp vpx 0 DC 3.318
+Vvn vnx 0 DC -2.003
 Rvp vpx vcc 0.2
 Rvn vnx vee 0.2
 Cdp vcc 0 1e-07

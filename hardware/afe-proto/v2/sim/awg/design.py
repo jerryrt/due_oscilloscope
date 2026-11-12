@@ -25,8 +25,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CSV = os.path.join(HERE, '../../jlc-basic.csv')
 
 # LM27762 datasheet rails at the limits (sim/awg/run.py ds_rails): weak and strong corners
-RAIL_P = (3.235, 3.342)
-RAIL_N = (-2.106, -2.041)
+RAIL_P = (3.2205, 3.4172)      # 1 % Basic LM27762 feedback (../powercal/design.md section 1), not version 1's 0.1 % figures
+RAIL_N = (-2.0525, -1.9549)
 VREF3030 = (3.000 * 0.998, 3.000 * 1.002)       # REF3030E initial accuracy +-0.2 % (datasheet, v2/parts.md) *(drift not added)*
 AREF = (3.20, 3.30)
 # DAC window: scenario A = theory 1/6..5/6 of AREF with +-30 mV centring uncertainty (sim/awg/run.py dc_mc, kept);
@@ -34,7 +34,7 @@ AREF = (3.20, 3.30)
 # Section limits: AW-1 <= 92 %, AW-2 <= 1.5 mV per code.
 OUT_LO, OUT_HI = -1.5, 1.71        # AW-1 after D-V2-12: -1.5 V to the guaranteed top, 1.71 V = the worst-corner commandable top with 4 % of the window kept free (hard corners 1.7104 V)
 TOP_END_LIM = (0.060 - 0.015) * 49.5  # PW-3: window top end <= (60 mA supply pin - 15 mA IQ max of the dual) x 49.5 ohm = 2.2275 V
-RAIL_REACH_LO = -1.953                  # ngspice: the stage's low-side reach into high impedance at the weak negative rail (run.py)
+RAIL_REACH_LO = -1.9226                 # ngspice (run.py): where the stage clips into high impedance at the weak negative rail -1.9549 V (the macro stops 32 mV short of it)
 USE_LIM, LSB_LIM = 0.92, 1.5e-3
 VOS_MAX = 0.5e-3          # TPH2502 VOS max (datasheet p3)
 
