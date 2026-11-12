@@ -49,6 +49,12 @@ ARG KICAD_VERSION=10.0.8~ubuntu26.04.1
 ARG KICAD_SHA256=eb8e81d7e9fc468ba26264debb5ce089fc078d5f91025790ecc92f51b91e536c
 ARG KICAD_SYMBOLS_SHA256=9dce5b0530a1913ed1a62772370f0c63a45f210f6382e36bf7330525b3eccfee
 ARG KICAD_FOOTPRINTS_SHA256=135a10dbb5d3aa1da66ccefeba44a389365d6c026877305e91eb4c575c1cf514
+# The 3D package is 279 MB to fetch and 3.3 GB to install, and the repository's
+# boards use sixteen of its models. Only those are taken (docker/pcb/3dmodels.txt,
+# one path per line under the package's 3dmodels directory); the rest never
+# reaches a layer. A gate test requires every model a repository board names to
+# resolve, so a board that starts using a new model fails until its path is added.
+ARG KICAD_PACKAGES3D_SHA256=435ac54a87f6188a8e8817f335c0b79ba29f25f59c16665fdc0c24ee9b2f74d2
 
 # Set to 0 to build the image WITHOUT ngspice. This exists for exactly one
 # purpose: the gate's own control, which must FAIL on that image because a
@@ -100,12 +106,30 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/*.deb; \
     kicad-cli version
 
+# The 3D bodies the boards use, extracted from the pinned package without
+# installing it. KICAD10_3DMODEL_DIR is KiCad's own default for this directory,
+# so board files that say ${KICAD10_3DMODEL_DIR}/... resolve with no setting.
+COPY 3dmodels.txt /tmp/3dmodels.txt
+RUN set -eux; \
+    cd /tmp; \
+    f="kicad-packages3d_${KICAD_VERSION}_all.deb"; \
+    curl -fsSL --retry 5 "${KICAD_PPA}/k/kicad-library-packages3d/$f" -o "$f"; \
+    echo "${KICAD_PACKAGES3D_SHA256}  $f" | sha256sum -c -; \
+    sed 's|^|./usr/share/kicad/3dmodels/|' 3dmodels.txt > members.txt; \
+    dpkg-deb --fsys-tarfile "$f" | tar -x -C / --no-same-owner -T members.txt; \
+    while read -r m; do test -f "/usr/share/kicad/3dmodels/$m"; done < 3dmodels.txt; \
+    rm -f "$f" members.txt 3dmodels.txt
+
 # The numpy tier's interpreter: a venv on the system 3.14, with system site
 # packages so `import pcbnew` (installed under /usr/lib/python3/dist-packages
 # by the KiCad package) resolves, and numpy, scipy and pytest from the lock
 # file, with hashes. On PATH, so `python3` here is this one.
 COPY requirements-lock.txt /tmp/requirements-lock.txt
 ENV VIRTUAL_ENV=/opt/venv
+# Nothing a run does may write bytecode into the mounted repository: a
+# __pycache__ beside a fixture changed it, and the second gate run failed on
+# the first one's leavings. test_image_gate runs the gate twice.
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PATH=/opt/venv/bin:$PATH
 RUN set -eux; \
     /usr/bin/python3.14 -m venv --system-site-packages "$VIRTUAL_ENV"; \

@@ -36,3 +36,4 @@ docker build \
 docker image inspect "$tag" --format '{{index .RepoTags 0}}  {{.Id}}  {{.Size}} bytes'
 echo "recipe  $recipe"
 echo "content $("$here/image-id.sh" content "$tag")"
+echo "installed $("$here/image-id.sh" installed "$tag")"

@@ -533,6 +533,26 @@ else
 	norun_step "host tier" "no pytest in this interpreter"
 fi
 
+# --- the AFE tools' numpy tier ----------------------------------------
+# hardware/afe-proto/tests, selected to what needs neither KiCad, ngspice nor
+# a per-job cap: -m "not pcbnew and not ngspice and not hostcap and not
+# docker". The tier that runs the tools themselves is docker/pcb/run-gate.sh,
+# in its own image, with --require-tool so nothing can skip.
+#
+# It needs scipy for the sparse solver in pcbtools/cap.py, and this image does
+# not carry it. That is a precondition this environment does not meet, said as
+# NOT SELECTED, which is never counted towards a pass; it is not hidden as a
+# pass and it is not made a failure of the firmware gate.
+if ! have_pytest; then
+	norun_step "afe numpy tier" "no pytest in this interpreter"
+elif ! python3 -c 'import numpy, scipy' 2>/dev/null; then
+	skip_step "afe numpy tier" "scipy is not in this image (pcbtools/cap.py needs it); run docker/pcb/run-gate.sh"
+else
+	run_step "afe numpy tier" class_pytest \
+	         python3 -m pytest -p no:cacheprovider -c hardware/afe-proto/tests/pytest.ini hardware/afe-proto/tests \
+	         -m "not pcbnew and not ngspice and not hostcap and not docker" -q
+fi
+
 # --- the board tier's positive control -------------------------------
 # Discovery only. ports.find_all_ports identifies by USB VID/PID and
 # opens nothing, which is what makes it safe to ask here; wait=0 is one

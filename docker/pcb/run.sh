@@ -49,6 +49,7 @@ if [ "$have" != "$want" ]; then
     exit 2
 fi
 content=$("$here/image-id.sh" content "$image")
+installed=$("$here/image-id.sh" installed "$image")
 
 cidfile="${TMPDIR:-/tmp}/due-pcb-$$-${RANDOM}.cid"
 errlog=$(mktemp)
@@ -58,6 +59,7 @@ flags=(
     --memory "$M" --memory-swap "$M" --cpus "$C"
     --volume "$repo:/work" --workdir /work
     --env "DUE_PCB_IMAGE=$image" --env "DUE_PCB_IMAGE_CONTENT=$content"
+    --env "DUE_PCB_IMAGE_INSTALLED=$installed"
     --env "DUE_PCB_CAP=$M"
     --cidfile "$cidfile"
 )
@@ -81,6 +83,6 @@ if ! grep -q '^capped: ' "$errlog"; then
     # job (cap), or the container never started. Say what is known.
     oom=$(docker inspect "$(cat "$cidfile")" --format '{{.State.OOMKilled}}' 2>/dev/null || echo false)
     [ "$oom" = true ] && status=137
-    echo "capped: peak_rss_kb=? wall_s=? exit=$status cap=$M limit_s=$T image=$content" >&2
+    echo "capped: peak_rss_kb=? wall_s=? exit=$status cap=$M limit_s=$T image=$content installed=$installed" >&2
 fi
 exit $status

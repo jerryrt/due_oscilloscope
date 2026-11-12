@@ -2,7 +2,7 @@
 
 Tiers (see docs/testing.md for the convention they follow):
 
-    numpy tier   -m "not pcbnew and not ngspice"   needs numpy only; the gate
+    numpy tier   -m "not pcbnew and not ngspice and not docker"   needs numpy only; the gate
     ngspice      -m ngspice                        needs ngspice on PATH
     pcbnew       -m pcbnew                         needs KiCad 10.x pcbnew
 
@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 from functools import lru_cache
+from pathlib import Path
 
 import pytest
 
@@ -24,9 +25,9 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 
 
 def pytest_addoption(parser):
-    parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",
+    parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",   # bare flag: the two in-image tools; add docker for the host gate
                      metavar="TOOLS",
-                     help="comma list of tools (pcbnew,ngspice) whose marked tests FAIL, not skip, "
+                     help="comma list of tools (pcbnew,ngspice,docker) whose marked tests FAIL, not skip, "
                           "when the tool is missing; bare flag means both. Write it "
                           "--require-tool=pcbnew or --require-tool pcbnew")
 
@@ -60,9 +61,22 @@ def tool_versions():
             "python": ".".join(map(str, sys.version_info[:3]))}
 
 
+@lru_cache(maxsize=None)
+def pcb_image_tag():
+    """The image-revisions.json tag if docker can see it, else None. The `docker` marker's tool."""
+    import json
+    if shutil.which("docker") is None:
+        return None
+    cfg = json.loads((Path(__file__).resolve().parents[3] / "docker" / "pcb" / "image-revisions.json").read_text())
+    tag = f"pcb-tools:{cfg['kicad']}-r{cfg['current']}"
+    r = subprocess.run(["docker", "image", "inspect", tag], capture_output=True)
+    return tag if r.returncode == 0 else None
+
+
 _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".")[0]) == 10,
                       "KiCad 10.x pcbnew importable in this interpreter"),
-           "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH")}
+           "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH"),
+           "docker": (pcb_image_tag, lambda v: v is not None, "docker and the built docker/pcb image (docker/pcb/build-image.sh)")}
 
 
 # pcbtools additions: run the guard test after every other test, count pcbnew-marked passes for it, and a fixture that fails

@@ -16,9 +16,9 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 RUN = REPO / "docker" / "pcb" / "run.sh"
 KICAD = "10.0.8"
-MAIN = f"pcb-tools:{KICAD}-r2"
+MAIN = f"pcb-tools:{KICAD}-r3"
 CONTROL = MAIN + "-no-ngspice"
-SUMMARY = re.compile(r"^capped: peak_rss_kb=(\S+) wall_s=(\S+) exit=(\d+) cap=(\S+) limit_s=(\d+)(?: image=(\S+))?$", re.M)
+SUMMARY = re.compile(r"^capped: peak_rss_kb=(\S+) wall_s=(\S+) exit=(\d+) cap=(\S+) limit_s=(\d+)(?: image=(\S+))?(?: installed=(\S+))?$", re.M)
 
 pytestmark = [pytest.mark.docker, pytest.mark.slow]
 
@@ -38,8 +38,8 @@ def run_in(image, *cmd, m="1G", t=120):
 
 @pytest.fixture(scope="module")
 def main_image():
-    if not have_image(MAIN):
-        pytest.fail(f"{MAIN} is not built: docker/pcb/build-image.sh")      # a gate that skips is no gate
+    # absence is handled by the `docker` probe in conftest: a skip by default, a failure under
+    # --require-tool=docker, so a missing image is an error only where the image is required
     return MAIN
 
 
@@ -102,3 +102,26 @@ print(hs[0] == hs[1], hs[0])
 """
     r = run_in(main_image, "python3", "-I", "-c", code)
     assert r.returncode == 0 and r.stdout.startswith("True"), r.stdout + r.stderr[-500:]
+
+
+def test_the_gate_run_twice_passes_twice(main_image):
+    """The gate must leave the tree as it found it. The first version wrote __pycache__ into a
+    fixture directory and the second run failed on the first one's leavings."""
+    before = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
+                            capture_output=True, text=True).stdout
+    sel = ["docker/pcb/run-gate.sh", "-m", "not docker and not jobcap and not slow"]
+    first = run_in(main_image, *sel, m="3G", t=500)
+    second = run_in(main_image, *sel, m="3G", t=500)
+    after = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
+                           capture_output=True, text=True).stdout
+    assert first.returncode == 0, first.stdout[-600:]
+    assert second.returncode == 0, second.stdout[-600:]
+    new = set(after.splitlines()) - set(before.splitlines())
+    assert not [l for l in new if "__pycache__" in l or ".pyc" in l], new
+
+
+def test_the_installed_set_hash_is_stable_across_two_asks(main_image):
+    ids = REPO / "docker" / "pcb" / "image-id.sh"
+    a = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
+    b = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
+    assert re.fullmatch(r"[0-9a-f]{64}", a) and a == b
