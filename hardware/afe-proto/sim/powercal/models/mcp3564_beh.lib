@@ -1,0 +1,10 @@
+* MCP3564 input/supply behavioural - OURS, open. Datasheet DS20006181C p6-8:
+*  single-ended CHn vs AGND: input impedance ZIN = 260 kohm (gain 1x), 510 kohm (0.33x) at AMCLK 4.9152 MHz,
+*  proportional to 1/AMCLK (Note 5); AIDD 0.93 mA typ / 1.3 mA max (BOOST 1x), DIDD 0.25/0.37 mA;
+*  analog input range AGND-0.1..AVDD+0.1 ; abs max AVDD/DVDD 4.0 V ; leakage in shutdown +-10 nA;
+*  INL +-7 ppm FSR (1x), offset +-0.9 mV (AZ_MUX=0) or <1 uV typ spec (AZ_MUX=1), gain error +-3 %.
+* Input capacitance is NOT given: 'cin' 4 pF is a placeholder (model gap).
+.subckt MCP3564IN ch params: zin=260k cin=4p
+Rz ch 0 {zin}
+Cz ch 0 {cin}
+.ends

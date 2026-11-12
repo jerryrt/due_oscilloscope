@@ -1,0 +1,189 @@
+[
+ {
+  "guard": "DC transfer (SC-2, SC-4, SC-11)",
+  "mutation": "R2 330k -> 450k",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6003 V (centre 1.6000 +/-10 mV), gain 0.2360 (window 0.229-0.2453), margin 182 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.6003 V (centre 1.6000 +/-10 mV), gain 0.2566 (window 0.229-0.2453), margin 14 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6003 V (centre 1.6000 +/-10 mV), gain 0.2360 (window 0.229-0.2453), margin 182 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "DC centring (SC-2)",
+  "mutation": "R3 removed (R2 to Vmid only, the first specification)",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6003 V (centre 1.6000 +/-10 mV), gain 0.2360 (window 0.229-0.2453), margin 182 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.1089 V (centre 1.6000 +/-10 mV), gain 0.2373 (window 0.229-0.2453), margin 107 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6003 V (centre 1.6000 +/-10 mV), gain 0.2360 (window 0.229-0.2453), margin 182 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Bandwidth >= 8 MHz (SM-3)",
+  "mutation": "OPA354 -> OPA365",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 16.08 MHz (>=8)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst-corner BW 7.52 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 16.08 MHz (>=8)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Phase margin >= 45 deg (AN-1)",
+  "mutation": "range switch in the RG leg, RF 3.83k / RG 1k",
+  "good": {
+   "ok": true,
+   "detail": "worst PM 56.3 deg (>=45)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst PM 12.3 deg (>=45)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst PM 56.3 deg (>=45)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Edge clamp current <= 10 mA (PR-1)",
+  "mutation": "Rnp removed",
+  "good": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 6.1 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "peak op-amp input clamp current 71.4 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 6.1 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Noise <= 0.2 mV (SC-6)",
+  "mutation": "RG 249 -> 60.4 ohm",
+  "good": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (25 MHz) 158 uV (<=200)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "noise to 1.5 x BW (9 MHz) 355 uV (<=200)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (25 MHz) 158 uV (<=200)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "ADC settling <= 0.5 LSB (SC-10)",
+  "mutation": "Riso 22 -> 20 kohm",
+  "good": {
+   "ok": true,
+   "detail": "S/H error at the end of the 15-clock track 0.000 LSB (<=0.5)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "S/H error at the end of the 15-clock track 238.811 LSB (<=0.5)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "S/H error at the end of the 15-clock track 0.000 LSB (<=0.5)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Scope-to-scope crosstalk <= 2 LSB (SC-9)",
+  "mutation": "one shared Vmid at 1 ohm instead of a buffer per channel",
+  "good": {
+   "ok": true,
+   "detail": "B's reading moves 0.276 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "B's reading moves 7.835 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "B's reading moves 0.276 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Gain matching <= 3 % (SC-8)",
+  "mutation": "RF/RG 383/100 (same ratio, Ron/RG x 2.5)",
+  "good": {
+   "ok": true,
+   "detail": "+/-5 V gain spread between channels: Ron term 1.991 % + 0.4 % resistors = 2.39 % (<=3)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "+/-5 V gain spread between channels: Ron term 4.754 % + 0.4 % resistors = 5.15 % (<=3)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "+/-5 V gain spread between channels: Ron term 1.991 % + 0.4 % resistors = 2.39 % (<=3)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Unpowered ADC pin >= -0.2 V at -12 V (PR-2)",
+  "mutation": "BAT54S at the ADC pin removed",
+  "good": {
+   "ok": true,
+   "detail": "ADC pin -0.130 V with both inputs at -12 V, unpowered (>= -0.2)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "ADC pin -0.477 V with both inputs at -12 V, unpowered (>= -0.2)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "ADC pin -0.130 V with both inputs at -12 V, unpowered (>= -0.2)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Unpowered +/-12 V on both inputs (PR-3)",
+  "mutation": "bleed 4.7 kohm -> 47 kohm",
+  "good": {
+   "ok": true,
+   "detail": "both inputs at +/-12 V, unpowered: into the Due 1.9 uA (<=100, ADC pins included), AFE rail 0.130 V (<0.5)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "both inputs at +/-12 V, unpowered: into the Due 9.3 uA (<=100, ADC pins included), AFE rail 0.864 V (<0.5)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "both inputs at +/-12 V, unpowered: into the Due 1.9 uA (<=100, ADC pins included), AFE rail 0.130 V (<0.5)"
+  },
+  "effective": true
+ }
+]

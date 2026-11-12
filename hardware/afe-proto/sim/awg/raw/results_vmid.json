@@ -1,0 +1,1262 @@
+{
+ "vmid_options": {
+  "4.7k / 4.7k, tap 12 pF, output 10 uF + 100 nF": {
+   "grid_max": 2.597574609383338,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.597596979299712,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.597596979299712,
+     "t_over_ms": 0.17521804424739576
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.535338114009328,
+     "t_over_ms": 0.1567785296383712
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723038447953167,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525257598163082,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.512653569719797,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.433745963944876,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.72069089725936,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521119269081368,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 84.98140214317615,
+    "circuit_uV": 83.57283120396363,
+    "supply_uV": 14.69171004852062,
+    "ripple_uV": 4.644808997604514,
+    "divider_uV": 5.803651181844121,
+    "tf_vcc_2MHz": 0.000675656255942284
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 2.82e-05
+  },
+  "4.7k / 4.7k, tap 12 pF, output bare (no capacitor)": {
+   "grid_max": 1.724410419130243,
+   "grid_worst": "- rail first/DAC floating/3.37",
+   "powerup_max": 1.720714383730934,
+   "powerup_worst": "0.002/0 V held/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 1.512704037046747,
+     "t_over_ms": 0.0
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 1.43424335487024,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.720689093381801,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.521122263541457,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.514191833932687,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.435211948340461,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720714383730934,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521516035223789,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 193.19129580061397,
+    "circuit_uV": 87.0385389830887,
+    "supply_uV": 12.53920812707469,
+    "ripple_uV": 172.01726007687594,
+    "divider_uV": 15.0497733210842,
+    "tf_vcc_2MHz": 0.0351810632244096
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 2.82e-05
+  },
+  "4.7k / 4.7k, tap 1.5 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.59757460970696,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.597596981037443,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.597596981037443,
+     "t_over_ms": 0.17521805078151606
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.535338116505096,
+     "t_over_ms": 0.15677979636981446
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723038686959756,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525256912980246,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.512766225312197,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.433860838964638,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720696819738613,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521122378473743,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 84.85736662757705,
+    "circuit_uV": 83.8228573547058,
+    "supply_uV": 12.64695539319377,
+    "ripple_uV": 3.815203158711164,
+    "divider_uV": 4.621158173611602,
+    "tf_vcc_2MHz": 0.0004078766445853056
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 0.003525
+  },
+  "4.7k / 4.7k, tap 1.5 nF, output bare (no capacitor)": {
+   "grid_max": 1.749350932925009,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 1.721032852227127,
+   "powerup_worst": "2e-05/0 V held/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 1.643819104523871,
+     "t_over_ms": 0.0
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 1.541890693031736,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.721032852227127,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.521461124239765,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.513919963796019,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.43487823126622,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720713220779758,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521596745428889,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 86.22496497036023,
+    "circuit_uV": 85.68776973527022,
+    "supply_uV": 7.7948194041810535,
+    "ripple_uV": 5.620630960253685,
+    "divider_uV": 1.9100006738682043,
+    "tf_vcc_2MHz": 0.0009945769718519674
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 0.003525
+  },
+  "4.7k / 4.7k, tap 100 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.600674391356948,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.600734209987306,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.600734209987306,
+     "t_over_ms": 0.2671818258684312
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.538686659349333,
+     "t_over_ms": 0.23158529454578958
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723252436564361,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525408473066153,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.736420645223858,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.648526666256697,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723179940033714,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.524167946717508,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 83.52398435858998,
+    "circuit_uV": 83.42714739236095,
+    "supply_uV": 1.311620657871785,
+    "ripple_uV": 3.8008804713000552,
+    "divider_uV": 0.2372651446629297,
+    "tf_vcc_2MHz": 0.0004020996469922679
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 0.235
+  },
+  "4.7k / 4.7k, tap 100 nF, output bare (no capacitor)": {
+   "grid_max": 2.60514267946378,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605103409856552,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605103409856552,
+     "t_over_ms": 0.2720889263082363
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543859898418846,
+     "t_over_ms": 0.22854244910743451
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723240972027724,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525489756834798,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.737124329733029,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.649028301688422,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723236477963174,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.524575238428008,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 85.71773934200813,
+    "circuit_uV": 85.66585823974222,
+    "supply_uV": 1.30549303678899,
+    "ripple_uV": 2.6809061683945283,
+    "divider_uV": 0.2337721932145398,
+    "tf_vcc_2MHz": 0.00021631768789464676
+   },
+   "edge": 0.8629727048682941,
+   "off_mV": 99.1265738244167,
+   "vmid_span": [
+    1.6015133359151288,
+    1.6857103597669623
+   ],
+   "i_div_uA": 355.4854130726471,
+   "tau_tap_ms": 0.235
+  },
+  "100k / 100k, tap 12 pF, output 10 uF + 100 nF": {
+   "grid_max": 2.597610565970923,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.597632761067353,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.597632761067353,
+     "t_over_ms": 0.17522133159325445
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.535376851890286,
+     "t_over_ms": 0.15673355699796335
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723038141255497,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525283407763235,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.512792724459964,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.433905356790807,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720689430320496,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521119648552724,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 96.15763694372667,
+    "circuit_uV": 93.64467467018594,
+    "supply_uV": 21.49693594690958,
+    "ripple_uV": 3.8532834584352105,
+    "divider_uV": 42.10806209054928,
+    "tf_vcc_2MHz": 0.00042478599888353644
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 0.0006000000000000001
+  },
+  "100k / 100k, tap 12 pF, output bare (no capacitor)": {
+   "grid_max": 1.724359435343152,
+   "grid_worst": "- rail first/DAC 0 V/3.37",
+   "powerup_max": 1.720713404207831,
+   "powerup_worst": "0.002/0 V held/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 1.513048049763332,
+     "t_over_ms": 0.0
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 1.434171809632279,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.720690853450627,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.521652556927346,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.512684306826592,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.43374220408283,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720713404207831,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521637364907353,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 89.50091096794054,
+    "circuit_uV": 87.48617154453707,
+    "supply_uV": 10.075850769158802,
+    "ripple_uV": 15.970600610142842,
+    "divider_uV": 17.366203160088777,
+    "tf_vcc_2MHz": 0.0035804416612048684
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 0.0006000000000000001
+  },
+  "100k / 100k, tap 1.5 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.597610127696934,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.597632371392707,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.597632371392707,
+     "t_over_ms": 0.17522130818975892
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.535376374637689,
+     "t_over_ms": 0.1567342168605511
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723038234780452,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.52525912928965,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.581623023917939,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.499356505749911,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.721588731376325,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.522005046793033,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 83.57237451950789,
+    "circuit_uV": 83.45476993179554,
+    "supply_uV": 2.2891475776562524,
+    "ripple_uV": 3.795123427199577,
+    "divider_uV": 2.0008986124112025,
+    "tf_vcc_2MHz": 0.00040133766428737623
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 0.075
+  },
+  "100k / 100k, tap 1.5 nF, output bare (no capacitor)": {
+   "grid_max": 2.605188779680704,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605051325083521,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605051325083521,
+     "t_over_ms": 0.0804563134599676
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543727956662024,
+     "t_over_ms": 0.06555599717152202
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723309843877141,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525447651897804,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.582368243667122,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.501029262114762,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.721599495042112,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.522367575037146,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 85.76147255027252,
+    "circuit_uV": 85.68770693196065,
+    "supply_uV": 2.2707951203349768,
+    "ripple_uV": 2.7368858681055994,
+    "divider_uV": 1.9110237132587986,
+    "tf_vcc_2MHz": 0.00022965315933370288
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 0.075
+  },
+  "100k / 100k, tap 100 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.605094858779029,
+   "grid_worst": "+3.3 first/DAC 3.3 V/3.37",
+   "powerup_max": 2.605093858956423,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605093858956423,
+     "t_over_ms": 5.965177814253865
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543654982037419,
+     "t_over_ms": 5.1228509781584695
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723181124396914,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525409993439441,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 2.605059726641453,
+     "t_over_ms": 5.489999999999796
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 2.543654572705439,
+     "t_over_ms": 4.579999999999829
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723181348239832,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.525408930191438,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 83.51213970003428,
+    "circuit_uV": 83.425280196417,
+    "supply_uV": 0.3195874947427983,
+    "ripple_uV": 3.7944650822688093,
+    "divider_uV": 0.21110222481233204,
+    "tf_vcc_2MHz": 0.0004010723153244455
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 5.0
+  },
+  "100k / 100k, tap 100 nF, output bare (no capacitor)": {
+   "grid_max": 2.605212014964562,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605490321632857,
+   "powerup_worst": "0.002/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605185227338112,
+     "t_over_ms": 5.96899330074054
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543831549148733,
+     "t_over_ms": 5.120006928346813
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723181469739762,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525410648027218,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 2.605490321632857,
+     "t_over_ms": 5.494999999999795
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 2.543788179760351,
+     "t_over_ms": 4.5799999999998295
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723181193423825,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.52540899574091,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 85.70729516688624,
+    "circuit_uV": 85.66570973550844,
+    "supply_uV": 0.300556455052673,
+    "ripple_uV": 2.6525998855276467,
+    "divider_uV": 0.21092119906466872,
+    "tf_vcc_2MHz": 0.00021052973754077502
+   },
+   "edge": 0.8508642157355666,
+   "off_mV": 83.85244053384721,
+   "vmid_span": [
+    1.6157237281037118,
+    1.6721169572571195
+   ],
+   "i_div_uA": 16.70781441441441,
+   "tau_tap_ms": 5.0
+  },
+  "330k / 330k, tap 12 pF, output 10 uF + 100 nF": {
+   "grid_max": 2.597611801937474,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.597633991033619,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.597633991033619,
+     "t_over_ms": 0.17522144483355392
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.535378183455379,
+     "t_over_ms": 0.1567320152189599
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.72303812659759,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525259216842098,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.512717034011168,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.43380943590294,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720692940158022,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521121166261205,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 103.53611073179113,
+    "circuit_uV": 101.98581385289968,
+    "supply_uV": 17.438304211292287,
+    "ripple_uV": 3.8112392291531227,
+    "divider_uV": 57.775557469594276,
+    "tf_vcc_2MHz": 0.00040789354783203537
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 0.00198
+  },
+  "330k / 330k, tap 12 pF, output bare (no capacitor)": {
+   "grid_max": 1.724281635031646,
+   "grid_worst": "- rail first/DAC 0 V/3.37",
+   "powerup_max": 1.720712158066588,
+   "powerup_worst": "0.002/0 V held/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 1.608044910692438,
+     "t_over_ms": 0.0
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 1.529609491812232,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.720710228175243,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.521151376960655,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.513215232174289,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.434700074837365,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.720712158066588,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.521239217023762,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 88.10761994217556,
+    "circuit_uV": 87.50660890278286,
+    "supply_uV": 8.148392219407187,
+    "ripple_uV": 6.256979658666126,
+    "divider_uV": 17.46413336353937,
+    "tf_vcc_2MHz": 0.0011588510304611672
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 0.00198
+  },
+  "330k / 330k, tap 1.5 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.600967846367125,
+   "grid_worst": "- rail first/DAC 3.3 V/3.37",
+   "powerup_max": 2.600992424283402,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.600992424283402,
+     "t_over_ms": 0.28276133593433234
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.53901826838569,
+     "t_over_ms": 0.2433564428073972
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723288439938788,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525409455807189,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.749550635278857,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.661054536558783,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.72319202167838,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.524366350161643,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 83.54502207431608,
+    "circuit_uV": 83.44905115775467,
+    "supply_uV": 1.2762453214779044,
+    "ripple_uV": 3.79443963554723,
+    "divider_uV": 1.931415854864463,
+    "tf_vcc_2MHz": 0.0004011166986213336
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 0.2475
+  },
+  "330k / 330k, tap 1.5 nF, output bare (no capacitor)": {
+   "grid_max": 2.60520610689314,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605172933359243,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605172933359243,
+     "t_over_ms": 0.2874971632005297
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543862753825589,
+     "t_over_ms": 0.24337643730895236
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723256887570124,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.5254859066988,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 1.750943549431548,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 1.662084854827511,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723207001452081,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.524342272953763,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 85.73873183551487,
+    "circuit_uV": 85.68756156574854,
+    "supply_uV": 1.2702466664973435,
+    "ripple_uV": 2.675519217766531,
+    "divider_uV": 1.9045055609789698,
+    "tf_vcc_2MHz": 0.0002154310928995539
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 0.2475
+  },
+  "330k / 330k, tap 100 nF, output 10 uF + 100 nF": {
+   "grid_max": 2.603198572809294,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605188473938228,
+   "powerup_worst": "2e-05/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605188473938228,
+     "t_over_ms": 19.717115913261786
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543788927725125,
+     "t_over_ms": 16.93599919679859
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723182072028522,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.52540902990113,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 2.605176426449004,
+     "t_over_ms": 19.220000000001015
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 2.543788906007316,
+     "t_over_ms": 16.37000000000016
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723181054894557,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.525408734230927,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 83.5116474635348,
+    "circuit_uV": 83.42511522184768,
+    "supply_uV": 0.2217043004121107,
+    "ripple_uV": 3.794240305823828,
+    "divider_uV": 0.16429613670657015,
+    "tf_vcc_2MHz": 0.00040103635992172335
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 16.5
+  },
+  "330k / 330k, tap 100 nF, output bare (no capacitor)": {
+   "grid_max": 2.603199714130486,
+   "grid_worst": "simultaneous 10 us/DAC 3.3 V/3.37",
+   "powerup_max": 2.605302935504759,
+   "powerup_worst": "0.002/reset trace/3.37",
+   "powerup": {
+    "2e-05/reset trace/3.37": {
+     "peak": 2.605183456767257,
+     "t_over_ms": 19.721515650794537
+    },
+    "2e-05/reset trace/3.23": {
+     "peak": 2.543966985411863,
+     "t_over_ms": 16.92947537238257
+    },
+    "2e-05/0 V held/3.37": {
+     "peak": 1.723181090122082,
+     "t_over_ms": 0.0
+    },
+    "2e-05/0 V held/3.23": {
+     "peak": 1.525408799709322,
+     "t_over_ms": 0.0
+    },
+    "0.002/reset trace/3.37": {
+     "peak": 2.605302935504759,
+     "t_over_ms": 19.220000000001015
+    },
+    "0.002/reset trace/3.23": {
+     "peak": 2.543916641550509,
+     "t_over_ms": 16.37000000000016
+    },
+    "0.002/0 V held/3.37": {
+     "peak": 1.723181124276337,
+     "t_over_ms": 0.0
+    },
+    "0.002/0 V held/3.23": {
+     "peak": 1.525409000799827,
+     "t_over_ms": 0.0
+    }
+   },
+   "aw6": {
+    "total_uV": 85.70685138922886,
+    "circuit_uV": 85.6656050466213,
+    "supply_uV": 0.192949159502406,
+    "ripple_uV": 2.651651876378693,
+    "divider_uV": 0.16422307760930946,
+    "tf_vcc_2MHz": 0.00021034240173380703
+   },
+   "edge": 0.850864215735567,
+   "off_mV": 83.85244053384744,
+   "vmid_span": [
+    1.615723728103712,
+    1.6721169572571195
+   ],
+   "i_div_uA": 5.062974064974064,
+   "tau_tap_ms": 16.5
+  }
+ },
+ "vmid_buffer_pm": {
+  "10 uF + 100 nF": 9.798531921426559,
+  "bare (no capacitor)": 77.5686972846679
+ },
+ "rows": [
+  {
+   "req": "AN-1 info",
+   "case": "the Vmid buffer (OPA365 follower, 953 ohm load) driving its output network: 10 uF + 100 nF / bare (no capacitor)",
+   "limit": "info (>= 45 deg)",
+   "worst": "9.8 / 77.6 deg",
+   "margin": "",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 12 pF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.598 / 2.598 V; 85.0 (4.6) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 2.82e-05 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 12 pF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "1.724 / 1.721 V; 193.2 (172.0) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 2.82e-05 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 1.5 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.598 / 2.598 V; 84.9 (3.8) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 0.00352 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 1.5 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "1.749 / 1.721 V; 86.2 (5.6) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 0.00352 ms",
+   "margin": "all four hold",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 100 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.601 / 2.601 V; 83.5 (3.8) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 0.235 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [4.7k / 4.7k, tap 100 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.605 / 2.605 V; 85.7 (2.7) uV; 86.3 %; 99.1 mV; 1.6015-1.6857 V; 355.5 uA; 0.235 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 12 pF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.598 / 2.598 V; 96.2 (3.9) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 0.0006 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 12 pF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "1.724 / 1.721 V; 89.5 (16.0) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 0.0006 ms",
+   "margin": "all four hold",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 1.5 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.598 / 2.598 V; 83.6 (3.8) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 0.075 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 1.5 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.605 / 2.605 V; 85.8 (2.7) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 0.075 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 100 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.605 / 2.605 V; 83.5 (3.8) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 5 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [100k / 100k, tap 100 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.605 / 2.605 V; 85.7 (2.7) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 16.7 uA; 5 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 12 pF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.598 / 2.598 V; 103.5 (3.8) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 0.00198 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 12 pF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "1.724 / 1.721 V; 88.1 (6.3) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 0.00198 ms",
+   "margin": "all four hold",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 1.5 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.601 / 2.601 V; 83.5 (3.8) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 0.247 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 1.5 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.605 / 2.605 V; 85.7 (2.7) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 0.247 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 100 nF, output 10 uF + 100 nF]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.603 / 2.605 V; 83.5 (3.8) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 16.5 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-8/AW-6 info",
+   "case": "AWG own Vmid [330k / 330k, tap 100 nF, output bare (no capacitor)]: AW-8 grid / power-up worst; AW-6 total (ripple); AW-1 edge; offset; Vmid span; divider current; tap tau",
+   "limit": "info: AW-8 <= 2.1 V, AW-6 <= 100 uV, AW-1 <= 92 %",
+   "worst": "2.603 / 2.605 V; 85.7 (2.7) uV; 85.1 %; 83.9 mV; 1.6157-1.6721 V; 5.1 uA; 16.5 ms",
+   "margin": "fails",
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "design": {
+  "opamp": "OPA365",
+  "Ra": 953.0,
+  "Rb": 1099.5,
+  "Rx": 0.0,
+  "Rf": 1099.5,
+  "Rg": 953.0,
+  "Rs": 49.9,
+  "Ca": 0.0,
+  "Cb": 0.0,
+  "Cpar_p": 1.5e-12,
+  "Cpar_n": 2e-12,
+  "Cf": 1.2e-11,
+  "rout": 0.0,
+  "vdac": 1.65,
+  "vmid": 1.65,
+  "vp": 3.3,
+  "vn": -2.070642201834863,
+  "rp": 0.2,
+  "rn": 0.2,
+  "rsink": 1000000000.0,
+  "rbl": 4700.0,
+  "rflt": 11.0,
+  "cbulk": 1e-05,
+  "cpin": 1e-07,
+  "ripple": 0.0,
+  "load": "hiz",
+  "vos": 0.0,
+  "rvm": 1.0,
+  "cvm": 0.0,
+  "loop": false,
+  "Cin_n": 5.4e-12,
+  "sw": false,
+  "swv": 3.3,
+  "sw_pwl": "",
+  "esd_only": false,
+  "R2": 0.0,
+  "clamp": "gnd3",
+  "iso": true,
+  "dsch": "DBAT54S_TYP",
+  "dleak": true,
+  "buf": true,
+  "Rbin": 680.0,
+  "Rbpl": 330000.0,
+  "Cbo": 1e-11,
+  "cbuf": 1e-07,
+  "biso": true,
+  "bq": 0.0,
+  "bmode": "closed",
+  "Crep": 0.0,
+  "bsup": "sp",
+  "Rsh": 0.0,
+  "bpl_to": "0",
+  "vm_div": [
+   330000.0,
+   330000.0,
+   1.2e-11
+  ],
+  "cvm2": false,
+  "Rinj": 249.0,
+  "cat": "out",
+  "inj": 0
+ },
+ "ngspice": [
+  "** ngspice-47 : Circuit level simulation program",
+  "** Compiled with KLU Direct Linear Solver"
+ ],
+ "models_sha256": {
+  "OPA365": "cc95b072dc92d3730f2d8c292a6657273d5007ceaaa62f7f504d2256ac722fc8",
+  "OPA354": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+  "OPA356": "bd3c06429aa1453df8878f21916cb67d269e5b38dbdf92d9397665dff1cf009c",
+  "models/awg_behavioural.lib": "1beaf38ee34b834eabaa591b9b7e3010865564f1d5e89f2317b95c5edeb5f9d2"
+ }
+}

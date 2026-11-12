@@ -1,0 +1,208 @@
+{
+ "noise": {
+  "OPA365": {
+   "f_lo": 10.0,
+   "f_hi": 100000000.0,
+   "total_uV": 87.50660890278286,
+   "density_nV_1MHz": 15.620826289576886,
+   "density_nV_10MHz": 12.806484347356342,
+   "by_part_uV": {
+    "Ra": 21.29118520646717,
+    "Rb": 20.082718837649473,
+    "Rx": 0.0,
+    "Rf": 15.544410433200426,
+    "Rg": 17.43532701513187,
+    "Rs": 8.170289902587909,
+    "Rout(DAC)": 0.020198469162159765,
+    "Rl": 0.11755038022713386,
+    "supply/Vmid network R": 0.15401837163307983,
+    "AWG Vmid divider": 17.46413336353937,
+    "Rbin 680 + Rbpl 330k": 16.673236399566967,
+    "op-amp (model)": 74.86903741480545
+   }
+  },
+  "OPA354": {
+   "f_lo": 10.0,
+   "f_hi": 100000000.0,
+   "total_uV": 129.7227246758952,
+   "density_nV_1MHz": 19.022308834581917,
+   "density_nV_10MHz": 15.15478597272729,
+   "by_part_uV": {
+    "Ra": 28.372836939124678,
+    "Rb": 27.286797691897362,
+    "Rx": 0.0,
+    "Rf": 17.59949211683927,
+    "Rg": 19.48551222069858,
+    "Rs": 9.453430569658142,
+    "Rout(DAC)": 0.02212926690299973,
+    "Rl": 0.10700196562289978,
+    "supply/Vmid network R": 0.1769993590178771,
+    "AWG Vmid divider": 17.46714070826826,
+    "Rbin 680 + Rbpl 330k": 18.267052590008014,
+    "op-amp (model)": 117.73178819473367
+   }
+  },
+  "OPA356": {
+   "f_lo": 10.0,
+   "f_hi": 100000000.0,
+   "total_uV": 100.61908982781766,
+   "density_nV_1MHz": 17.40727629588448,
+   "density_nV_10MHz": 13.495370398318496,
+   "by_part_uV": {
+    "Ra": 27.376376125164885,
+    "Rb": 26.25502701531904,
+    "Rx": 0.0,
+    "Rf": 17.49405536950907,
+    "Rg": 18.746326924976835,
+    "Rs": 8.879225932720189,
+    "Rout(DAC)": 0.02204674397306422,
+    "Rl": 0.06755192945672472,
+    "supply/Vmid network R": 0.08793799904108228,
+    "AWG Vmid divider": 17.467709063987463,
+    "Rbin 680 + Rbpl 330k": 18.19893236227426,
+    "op-amp (model)": 85.51471594619517
+   }
+  },
+  "extra": {
+   "supply_uV": 8.148392219407187,
+   "vmid_uV": 14.669549013671627,
+   "vmid_allow_nV_for_10uV": 6.816842147417257,
+   "ripple_uV": 29.053328987238025,
+   "ripple_flat_harmonics_uV": 38.73212362459773,
+   "ripple_worst_fs": 1700000.0,
+   "rail_ripple_2MHz_mV": [
+    1.7923988983347765,
+    1.799952926916578
+   ],
+   "tf_supply_dB_at_2MHz": -58.71944777437544,
+   "tf_vmid_int": 1466.9549013671626
+  },
+  "AW6_total_uV": 93.71816521321301,
+  "dac_total": {
+   "gain": 1.151275411358389,
+   "enbw_MHz": 18.57018759441544,
+   "scope_20mV_x_gain_mV": 23.02550822716778,
+   "adc_bound_0p5code_mV": 0.4595545160085366
+  }
+ },
+ "rows": [
+  {
+   "req": "AW-6",
+   "case": "added noise, quiet DC source, OPA365: circuit .noise 10 Hz-100 MHz",
+   "limit": "<= 100 uV rms",
+   "worst": "87.5 uV",
+   "margin": "+12.5 uV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-6/PW-2",
+   "case": "sum with supply noise, 2 MHz ripple and harmonics, Vmid buffer (10 nV/rtHz assumed)",
+   "limit": "<= 100 uV rms",
+   "worst": "93.7 uV",
+   "margin": "+6.3 uV",
+   "ok": true,
+   "note": "supply 8.15, ripple 29.05, Vmid 14.67 uV"
+  },
+  {
+   "req": "AW-6/PW-2",
+   "case": "LM27762 ripple at the AWG output alone (5 mV / n on the LDO 2.2 uF, behind 0.8 uH; 1.7-2.3 MHz worst; both rails in phase; sim/powercal P4-b method)",
+   "limit": "<= 20 uV rms (powercal P4-b allocation, 20 % of AW-6)",
+   "worst": "29.05 uV at 1.7 MHz (rails 1.79 / 1.80 mV at 2 MHz); flat 5 mV harmonics 38.73 uV",
+   "margin": "-9.05 uV",
+   "ok": false,
+   "note": ""
+  },
+  {
+   "req": "AW-6",
+   "case": "same circuit with OPA354 at its own bandwidth (circuit .noise only)",
+   "limit": "<= 100 uV rms",
+   "worst": "129.7 uV",
+   "margin": "-29.7 uV",
+   "ok": false,
+   "note": "alternative part, not recommended"
+  },
+  {
+   "req": "AW-6",
+   "case": "same circuit with OPA356 at its own bandwidth (circuit .noise only)",
+   "limit": "<= 100 uV rms",
+   "worst": "100.6 uV",
+   "margin": "-0.6 uV",
+   "ok": false,
+   "note": "alternative part, not recommended"
+  }
+ ],
+ "design": {
+  "opamp": "OPA365",
+  "Ra": 953.0,
+  "Rb": 1099.5,
+  "Rx": 0.0,
+  "Rf": 1099.5,
+  "Rg": 953.0,
+  "Rs": 49.9,
+  "Ca": 0.0,
+  "Cb": 0.0,
+  "Cpar_p": 1.5e-12,
+  "Cpar_n": 2e-12,
+  "Cf": 1.2e-11,
+  "rout": 0.0,
+  "vdac": 1.65,
+  "vmid": 1.65,
+  "vp": 3.3,
+  "vn": -2.070642201834863,
+  "rp": 0.2,
+  "rn": 0.2,
+  "rsink": 1000000000.0,
+  "rbl": 4700.0,
+  "rflt": 11.0,
+  "cbulk": 1e-05,
+  "cpin": 1e-07,
+  "ripple": 0.0,
+  "load": "hiz",
+  "vos": 0.0,
+  "rvm": 1.0,
+  "cvm": 0.0,
+  "loop": false,
+  "Cin_n": 5.4e-12,
+  "sw": false,
+  "swv": 3.3,
+  "sw_pwl": "",
+  "esd_only": false,
+  "R2": 0.0,
+  "clamp": "gnd3",
+  "iso": true,
+  "dsch": "DBAT54S_TYP",
+  "dleak": true,
+  "buf": true,
+  "Rbin": 680.0,
+  "Rbpl": 330000.0,
+  "Cbo": 1e-11,
+  "cbuf": 1e-07,
+  "biso": true,
+  "bq": 0.0,
+  "bmode": "closed",
+  "Crep": 0.0,
+  "bsup": "sp",
+  "Rsh": 0.0,
+  "bpl_to": "0",
+  "vm_div": [
+   330000.0,
+   330000.0,
+   1.2e-11
+  ],
+  "cvm2": false,
+  "Rinj": 249.0,
+  "cat": "out",
+  "inj": 0
+ },
+ "ngspice": [
+  "** ngspice-47 : Circuit level simulation program",
+  "** Compiled with KLU Direct Linear Solver"
+ ],
+ "models_sha256": {
+  "OPA365": "cc95b072dc92d3730f2d8c292a6657273d5007ceaaa62f7f504d2256ac722fc8",
+  "OPA354": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+  "OPA356": "bd3c06429aa1453df8878f21916cb67d269e5b38dbdf92d9397665dff1cf009c",
+  "models/awg_behavioural.lib": "1beaf38ee34b834eabaa591b9b7e3010865564f1d5e89f2317b95c5edeb5f9d2"
+ }
+}

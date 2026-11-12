@@ -1,0 +1,10 @@
+The behavioural SPICE subcircuits in this folder (lm27762_beh.lib, ref3030_beh.lib, tmux_beh.lib,
+dac8551_beh.lib, mcp3564_beh.lib) are original works of this project, fitted to datasheet figures that
+are quoted, with their datasheet section, in the comment block of each file. They contain no vendor
+model text.
+
+Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA 4.0),
+https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+Vendor SPICE models (TI OPA354/OPA365 etc.) are NOT in this folder and are never copied: netlists
+reference them by relative path from hardware/afe-proto/models/ , where they stay local.

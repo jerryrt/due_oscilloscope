@@ -1,0 +1,34 @@
+[
+ {
+  "guard": "DF-3 after calibration >= 44 dB, +/-5 V, nominal pair",
+  "mutation": "calibration residual 55/62 ppm -> 5000 ppm per channel",
+  "good": 79.17026021684934,
+  "broken": 39.998113920016095,
+  "restored": 79.17026021684934,
+  "effective": true
+ },
+ {
+  "guard": "DF-3 after calibration >= 44 dB, +/-1.25 V, nominal pair",
+  "mutation": "calibration residual 55/62 ppm -> 5000 ppm per channel",
+  "good": 78.13247889846126,
+  "broken": 40.00091260163046,
+  "restored": 78.13247889846126,
+  "effective": true
+ },
+ {
+  "guard": "DF-3 after calibration >= 44 dB, nominal pair, +/-1.25 V",
+  "mutation": "R1 +1 % on channel A (a divider fault)",
+  "good": 227.3919033588556,
+  "broken": 42.35111939748019,
+  "restored": 227.3919033588556,
+  "effective": true
+ },
+ {
+  "guard": "R3-injection calibration, nominal pair, +/-1.25 V (control: the R3 injection reads the divider through R3)",
+  "mutation": "R3 +1 % on channel A: the R3 injection now mis-reads A's divider by the R3 error",
+  "good": 72.63691010346358,
+  "broken": 39.89663701245094,
+  "restored": 72.63691010346358,
+  "effective": true
+ }
+]

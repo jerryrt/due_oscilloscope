@@ -1,0 +1,138 @@
+[
+ {
+  "guard": "DC transfer (SC-2, SC-4, SC-11)",
+  "mutation": "R2 leg 335k -> 450k (wrong divider ratio)",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000), gain 0.2366 (window 0.229-0.2453), margin 179 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.6004 V (centre 1.6000), gain 0.2566 (window 0.229-0.2453), margin 14 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000), gain 0.2366 (window 0.229-0.2453), margin 179 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "DC centring (SC-2)",
+  "mutation": "design as first specified: R2 returned to Vmid only, no R3",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000), gain 0.2366 (window 0.229-0.2453), margin 179 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.2231 V (centre 1.6000), gain 0.2186 (window 0.229-0.2453), margin 17 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000), gain 0.2366 (window 0.229-0.2453), margin 179 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Flatness / compensation (SC-5)",
+  "mutation": "C1 removed (uncompensated divider)",
+  "good": {
+   "ok": true,
+   "detail": "gain flatness 1-8 MHz 0.048 dB (<=0.3), BW 128.8 MHz"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "gain flatness 1-8 MHz 37.784 dB (<=0.3), BW 0.0 MHz"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "gain flatness 1-8 MHz 0.048 dB (<=0.3), BW 128.8 MHz"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Bandwidth >= 8 MHz at worst corner (SM-3)",
+  "mutation": "OPA354 swapped for the slower OPA365",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 16.1 MHz (>=8)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst-corner BW 7.6 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 16.1 MHz (>=8)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Phase margin >= 45 deg, peaking (AN-1)",
+  "mutation": "range switch back in the RG leg (6 pF Coff on the inverting node path), RF 3.83k/RG 1k, no Rnp",
+  "good": {
+   "ok": true,
+   "detail": "worst PM 55.1 deg (>=45), peaking 5.9 dB (reported, no limit)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst PM 17.6 deg (>=45), peaking 25.6 dB (reported, no limit)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst PM 55.1 deg (>=45), peaking 5.9 dB (reported, no limit)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Edge current into op-amp clamp (PR-1)",
+  "mutation": "series resistor ahead of the + input removed",
+  "good": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 6.4 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "peak op-amp input clamp current 72.3 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 6.4 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Noise <= 0.2 mV (SC-6)",
+  "mutation": "RG 249 -> 60.4 ohm (gain 16.8 instead of 4.83)",
+  "good": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (25 MHz) 156 uV (<=200, op-amp+resistors only)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "noise to 1.5 x BW (9 MHz) 353 uV (<=200, op-amp+resistors only)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (25 MHz) 156 uV (<=200, op-amp+resistors only)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "ADC settling <= 0.5 LSB (SC-10, AN-2)",
+  "mutation": "series isolation 22 ohm -> 20 kohm",
+  "good": {
+   "ok": true,
+   "detail": "S/H error at end of 15-clock track 0.000 LSB (<=0.5), settles in 204 ns"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "S/H error at end of 15-clock track 67.750 LSB (<=0.5), settles in 667 ns"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "S/H error at end of 15-clock track 0.000 LSB (<=0.5), settles in 204 ns"
+  },
+  "effective": true
+ }
+]

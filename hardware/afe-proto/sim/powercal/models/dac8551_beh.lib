@@ -1,0 +1,13 @@
+* DAC8551 behavioural output stage - OURS, open. Datasheet SLAS429E Sec 6.5:
+*  DC output impedance 1 ohm (mid-code); settling 8-10 us to 0.003 % FSR; slew 1.8 V/us; gain error
+*  +-0.02 % typ / +-0.15 % max FSR; zero-code +-2 mV typ / +-12 mV max; INL +-12 LSB max (of 16 bit);
+*  glitch 0.1 nV-s; REF input 125 kohm; IDD 140/240 uA; noise density Fig 26 *(check, graph only)*.
+* HF output impedance is not in the datasheet: 'lo' = 0.5 uH placeholder (model gap).
+.subckt DAC8551B out vref params: code=0.5 gerr=0 zerr=0 tau=1.8u lo=0.5u
+Rref vref 0 125k
+Bv vi 0 V = {code}*V(vref)*(1+{gerr}) + {zerr}
+Rt vi vf 1k
+Cf vf 0 {tau/1k}
+Ro vf o1 1
+Lo o1 out {lo}
+.ends

@@ -1,0 +1,57 @@
+{
+ "0.1 %, 25 ppm/K (design)|5": {
+  "margin_mV": 113.96650000000008,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 8.8
+  },
+  "tied_set_mV": 130.74980000000025
+ },
+ "0.1 %, 25 ppm/K (design)|1.25": {
+  "margin_mV": 117.85887000000005,
+  "at": {
+   "R1": 1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 3.7
+  },
+  "tied_set_mV": 179.369388
+ },
+ "1 %, 100 ppm/K (guard)|5": {
+  "margin_mV": 98.88960000000013,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 8.8
+  },
+  "tied_set_mV": 106.516178
+ },
+ "1 %, 100 ppm/K (guard)|1.25": {
+  "margin_mV": 63.789127799999996,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": 1,
+   "cent": -1,
+   "vos": 1,
+   "Ron": 3.7
+  },
+  "tied_set_mV": 122.24740800000001
+ },
+ "guard": {
+  "check": "the search finds SC-11's margin corner",
+  "mutation": "restrict to the DF-3 corner set (Vos tied to centring)",
+  "good": 63.789127799999996,
+  "broken": 122.24740800000001,
+  "fired": true
+ }
+}

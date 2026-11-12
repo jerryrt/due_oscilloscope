@@ -1,0 +1,43 @@
+* Open behavioural models for the AWG-to-scope loop simulation (sim/loop).
+* COPIED (2026-11-11) from sim/awg/models/awg_behavioural.lib, which other work is editing;
+* only the parts this loop needs.  Licensed CC BY-SA 4.0 (models/LICENSE), (c) the project authors.
+* Every default keeps the source note it had there.  The DAC0 source is NOT here: run.py builds it
+* (slew-limited PWL -> one pole -> output resistance), with its basis stated in report.md.
+* Diode figures are recalled, not read from a datasheet *(check)*, as in sim/awg.
+
+* ---- Vmid: (Due 3.3 V pin)/2, buffered ---------------------------------------
+* v     : AREF/2 = 1.60-1.65 V (AREF 3.20-3.30 V is the requirement; 1.55 V = AREF 3.10 V is margin
+*         evidence only).  Source: docs/afe.md SC-2, PW-6, hardware/afe-proto/docs/architecture.md
+* rout  : closed-loop output resistance of a buffer, 1 ohm assumed (check; the buffer
+*         is not chosen yet, VT-8/VT-3 close it)
+.subckt VMID_BUF out gnd params: v=1.65 rout=1 acmag=0
+Vs a gnd DC {v} AC {acmag}
+Ro a out r={rout}
+.ends VMID_BUF
+
+* ---- LM27762, behavioural (TI's PSpice model does not parse in ngspice 47) ----
+* vp, vn   : +3.3 V (3.23-3.37 V) and -1.8 V (nominal; -1.5..-5 V adjust range), afe.md
+* rp, rn   : output resistance; 0.2 ohm assumed (check; the datasheet's 2.5 ohm at 100 mA is
+*            the charge pump, the LDOs sit behind it - lm27762.pdf Sec 5.5)
+* rsink    : resistance of the path that lets the rail be pulled the wrong way.  1e9 = a
+*            linear regulator that cannot sink (check, datasheet silent); set to rp for a
+*            rail that can sink current
+* rbl      : feedback-divider/bleed load on each rail, 100 k assumed (check)
+* acp/acn  : AC stimulus injected in series with each rail (PSRR/ripple transfer)
+* ripple   : 2 MHz switching ripple, peak volts (datasheet Fig 5-1, about 1-5 mV, graph *(check)*)
+.subckt LM27762_BEH pos neg gnd params: vp=3.3 vn=-1.8 rp=0.2 rn=0.2 rsink=1e9 rbl=100k acp=0 acn=0 ripple=0 fsw=2Meg
+Vsp ap gnd DC {vp} AC {acp} SIN({vp} {ripple} {fsw})
+Vsn an gnd DC {vn} AC {acn} SIN({vn} {ripple} {fsw})
+Rpo ap bp {rp}
+Rno an bn {rn}
+Dp bp pos DSNK
+Rsp bp pos {rsink}
+Dn neg bn DSNK
+Rsn neg bn {rsink}
+Rbp pos gnd {rbl}
+Rbn neg gnd {rbl}
+.model DSNK D(IS=1e-14 N=0.02 RS=0.05)
+.ends LM27762_BEH
+
+.model DBAT54 D(IS=1e-7 N=1.34 RS=2.5 CJO=10p M=0.4 VJ=0.4 BV=30 IBV=1u)
+.model DBAV99 D(IS=7.8e-9 N=2.35 RS=1.5 CJO=1.5p M=0.4 VJ=0.7 BV=70 IBV=2.5u)

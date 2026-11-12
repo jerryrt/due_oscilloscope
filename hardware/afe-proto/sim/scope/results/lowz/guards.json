@@ -1,0 +1,189 @@
+[
+ {
+  "guard": "DC transfer (SC-2, SC-4, SC-11)",
+  "mutation": "R2 x 1.35 (a wrong divider ratio)",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000 +/-10 mV), gain 0.2379 (window 0.229-0.2453), margin 171 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.6004 V (centre 1.6000 +/-10 mV), gain 0.2566 (window 0.229-0.2453), margin 14 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6004 V (centre 1.6000 +/-10 mV), gain 0.2379 (window 0.229-0.2453), margin 171 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "DC centring (SC-11)",
+  "mutation": "the 249 in series with R1 left out (R1 no longer matches the R3 leg)",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.6018 V (centre 1.6000 +/-10 mV), gain 1.1314 (window 1.1-1.16), margin 183 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.5749 V (centre 1.6000 +/-10 mV), gain 1.1443 (window 1.1-1.16), margin 146 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.6018 V (centre 1.6000 +/-10 mV), gain 1.1314 (window 1.1-1.16), margin 183 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Bandwidth >= 8 MHz at the worst corner (SM-3)",
+  "mutation": "injection switch moved back onto N (CSOFF 6 pF + feedthrough)",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 8.21 MHz (>=8)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst-corner BW 3.33 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 8.21 MHz (>=8)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Phase margin >= 45 deg (AN-1)",
+  "mutation": "range switch back in the RG leg, RF 3.83k / RG 1k",
+  "good": {
+   "ok": true,
+   "detail": "worst PM 69.2 deg (>=45)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst PM 14.1 deg (>=45)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst PM 69.2 deg (>=45)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Clamp current <= 10 mA (PR-1)",
+  "mutation": "divider scaled to a 1.3 kohm input (protection resistance gone)",
+  "good": {
+   "ok": true,
+   "detail": "op-amp input clamp current at +/-30 V DC 1.19 mA (<=10)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "op-amp input clamp current at +/-30 V DC 19.91 mA (<=10)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "op-amp input clamp current at +/-30 V DC 1.19 mA (<=10)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Noise <= 0.2 mV (SC-6)",
+  "mutation": "RG 249 -> 60.4 ohm (gain 16.8)",
+  "good": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (16 MHz) 169 uV (<=200)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "noise to 1.5 x BW (8 MHz) 420 uV (<=200)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (16 MHz) 169 uV (<=200)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "ADC settling <= 0.5 LSB (SC-10)",
+  "mutation": "Riso 22 ohm -> 20 kohm",
+  "good": {
+   "ok": true,
+   "detail": "S/H error at the end of the 15-clock track 0.000 LSB (<=0.5)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "S/H error at the end of the 15-clock track 68.110 LSB (<=0.5)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "S/H error at the end of the 15-clock track 0.000 LSB (<=0.5)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Scope-to-scope crosstalk <= 2 LSB (SC-9)",
+  "mutation": "one shared 249R + 10 uF sense filter for both channels (the approved BOM's)",
+  "good": {
+   "ok": true,
+   "detail": "B's reading moves 0.397 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "B's reading moves 12.981 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "B's reading moves 0.397 LSB with A at +6 / -6 V DC (<=2)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "AWG coupling <= 2 LSB (SC-9)",
+  "mutation": "injection switch back on N (feedthrough 1.8 pF into a 4 kohm node)",
+  "good": {
+   "ok": true,
+   "detail": "AWG (DAC0 full swing, 10 Hz-20 MHz) into the pin: 0.494 LSB peak (<=2)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "AWG (DAC0 full swing, 10 Hz-20 MHz) into the pin: 914.791 LSB peak (<=2)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "AWG (DAC0 full swing, 10 Hz-20 MHz) into the pin: 0.494 LSB peak (<=2)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Unpowered +/-30 V (PR-3)",
+  "mutation": "AFE rail bleed 249 ohm -> the 4.7 kohm of the approved BOM",
+  "good": {
+   "ok": true,
+   "detail": "one input at +/-30 V, unpowered: into the Due's supply pins 66.6 uA (<=100), AFE rail 0.393 V (<0.5); into the ADC pins' clamps 56.1 uA (not in this check)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "one input at +/-30 V, unpowered: into the Due's supply pins 265.0 uA (<=100), AFE rail 3.771 V (<0.5); into the ADC pins' clamps 436.7 uA (not in this check)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "one input at +/-30 V, unpowered: into the Due's supply pins 66.6 uA (<=100), AFE rail 0.393 V (<0.5); into the ADC pins' clamps 56.1 uA (not in this check)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Unpowered, total into the Due incl. ADC pins (PR-3, strict reading)",
+  "mutation": "BAT54S at each ADC pin removed",
+  "good": {
+   "ok": true,
+   "detail": "one input at +/-30 V, unpowered, 249 ohm bleed: everything into the Due incl. the ADC pins 85.8 uA (<=100)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "one input at +/-30 V, unpowered, 249 ohm bleed: everything into the Due incl. the ADC pins 122.8 uA (<=100)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "one input at +/-30 V, unpowered, 249 ohm bleed: everything into the Due incl. the ADC pins 85.8 uA (<=100)"
+  },
+  "effective": true
+ }
+]

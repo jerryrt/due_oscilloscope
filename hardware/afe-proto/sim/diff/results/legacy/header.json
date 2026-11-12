@@ -1,0 +1,7 @@
+{
+ "ngspice": "** ngspice-47 : Circuit level simulation program",
+ "opa354_lib_sha256": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+ "rangesw_sha256": "cb4fa94899cc39014c87d4b2ba83f22ba7970c206d10fb0e090855bac2e85505",
+ "nmc": 200,
+ "seed": 20261111
+}

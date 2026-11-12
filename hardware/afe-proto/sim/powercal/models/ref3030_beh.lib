@@ -1,0 +1,12 @@
+* REF3030E behavioural - OURS, open. Datasheet SBVS032K Sec 6.5 (REF3030E):
+*  VOUT 3.000 V +-0.1 % (2.997..3.003) ; 5 ppm/C typ 15 max (0-70 C); load reg 15 ppm/mA max source;
+*  noise 24 uVpp (0.1-10 Hz), 51 uVrms (10 Hz-10 kHz); IQ 27 uA; stable 0.1-22 uF; ISC 35 mA.
+* Output impedance: load regulation 15 ppm/mA *3.0 V = 0.045 ohm at DC (max). HF output impedance is
+* NOT in the datasheet: model gap, 'lout' is a placeholder (VT: AC load-step on the board).
+.subckt REF3030B out params: v=3.0 rout=0.045 lout=2u en=51u
+Vr n1 0 {v}
+* noise as an AC-only source (rms 51 uV, 10 Hz-10 kHz flat assumed) used by ac analyses
+Vn nz n1 DC 0 AC {en}
+Rr nz n2 {rout}
+Lo n2 out {lout}
+.ends
