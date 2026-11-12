@@ -1,0 +1,14 @@
+stream,lcsc,block,why
+*,C118223,opamps,the one dual op-amp type (V2-2)
+*,C54120492,adc_ref,REF3030E
+*,C37593,adc_ref,ADS1115
+*,C473398,rails,LM27762
+scope,C23192,precres,input network R1/R2 (510k)
+scope,C22984,precres,input network R1 (30k)
+scope,C22935,precres,input network R2 (1M)
+scope,C23178,precres,R3 to the REF3030E (470k)
+scope,C25811,precres,R3 to the REF3030E (200k)
+awg,C17901,precres,AW-4 50 ohm back-termination
+awg,C23204,precres,AWG Rf
+awg,C21190,precres,AWG Rg1
+awg,C23193,precres,AWG Rg2

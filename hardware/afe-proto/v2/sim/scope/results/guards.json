@@ -1,0 +1,100 @@
+{
+ "margin_check_with_R3_open": {
+  "lo_mV": -1312.4915839860055,
+  "hi_mV": 235.592345218675,
+  "fails": true
+ },
+ "shelf_check_with_C1_12pF": {
+  "p95_abs_pct": 35.65582131203445,
+  "fails": true
+ },
+ "shelf_check_Cn22_with_Cpx": {
+  "p95_abs_pct": 21.635196152220512,
+  "mean_pct": -17.66446407257303,
+  "fails": true
+ },
+ "pm_check_noRiso_1nF_BEH60": {
+  "fc_MHz": 16.0986735,
+  "pm_deg": 35.114586,
+  "gm_dB": 0.394603469,
+  "fails": true
+ },
+ "pm_check_noCpx_BEH60": {
+  "fc_MHz": 74.90909540000001,
+  "pm_deg": 37.12205,
+  "gm_dB": 5.03895947,
+  "fails": true
+ },
+ "thd_check_40MHz": {
+  "thd_5MHz_pct": 0.06048755660686211,
+  "thd_40MHz_pct": 1.0131001275226525,
+  "fails": true
+ },
+ "settling_check_20k": {
+  "err_lsb": 98.48073400469792,
+  "fails": true
+ },
+ "xtalk_check_Cx_0p2pF": {
+  "lsb": 7.177006870307536,
+  "fails": true
+ },
+ "xtalk_check_pad_0p2pF": {
+  "lsb": 10.445792959025603,
+  "fails": true
+ },
+ "xtalk_check_combined_0p03": {
+  "lsb": 2.578462116217802,
+  "fails": true
+ },
+ "rail_check_no_bleed": {
+  "rail_V": 5.125625,
+  "fails": true
+ },
+ "edge_check_no_Rnp": {
+  "peak_mA": 63.8661993,
+  "fails": true
+ },
+ "bw_check_Rnp4k7": {
+  "f3dB_MHz": 4.14245654,
+  "fails": true
+ },
+ "d17_check_network_detached": {
+  "with_network_uV": 46.05809893220864,
+  "detached_uV": 761.6753729711508,
+  "fails": true
+ },
+ "d17_check_ktc": {
+  "kTC_uV": 26.27402709901929,
+  "added_uV": 26.142379934801205,
+  "rel_err": 0.005010543824208735,
+  "passes_as_positive_control": true
+ },
+ "d17_pipeline_vs_vendor_10MHz": {
+  "vendor_uV": 33.129030010921056,
+  "beh21_9p3_uV": 31.946766236454774,
+  "rel_err": 0.03568664020880019,
+  "passes_as_positive_control": true
+ },
+ "d17_check_injection_disconnected": {
+  "amp_uV_connected": 20.81451059278105,
+  "amp_uV_disconnected": 0.0,
+  "fails": true
+ },
+ "d17_integrator_fine": {
+  "rel_err": 0.002231693055287143,
+  "passes_as_positive_control": true
+ },
+ "d17_integrator_mutant": {
+  "rel_err": 0.1081195632683365,
+  "fails": true
+ },
+ "d17_check_noisy_amp_100nV": {
+  "total_uV": 320.99935217868943,
+  "fails": true
+ },
+ "static_check_voltage_dependent_caps": {
+  "spread_pp": 9.625526105731442,
+  "fails": true
+ },
+ "all_fail_as_intended": true
+}

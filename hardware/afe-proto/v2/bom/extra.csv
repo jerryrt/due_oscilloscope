@@ -1,0 +1,32 @@
+ref,value,lcsc,role,qty,block,placeholder_for,include,replaces,fixed_usd,note
+U-LM,LM27762DSSR +3.3 V_A / negative rail,C473398,rails IC (one negative rail shared by scope and AWG; V2-1),1,rails,powercal,yes,,,v1 part kept
+Cin,10 uF X5R 25 V 0805,C15850,LM27762 CIN (5 V bulk) 2 + CPOUT 2 + OUT+ 2 + OUT- 2,8,other,powercal,yes,,,v1 set (SNVSAF7C 7.2.2.4); the value of the negative rail is the design's
+C-fly,1 uF X5R 0603,C15849,LM27762 flying capacitor C1,1,other,powercal,yes,,,v1
+C-vin,100 nF X7R 0603,C14663,LM27762 VIN decoupler,1,other,powercal,yes,,,v1 (assumed there)
+R-fbp-a,150k 1 % 0603,C22807,+3.3 V_A feedback top = 150k + 24k = 174k (jlc-basic.md section 2),1,precres,powercal,yes,,,replaces v1's 174k 0.1 % Extended
+R-fbp-b,24k 1 % 0603,C23352,"+3.3 V_A feedback top, second part",1,precres,powercal,yes,,,
+R-fbp-c,100k 1 % 0603,C25803,+3.3 V_A feedback bottom (LM27762 R2),1,precres,powercal,yes,,,v1 R5; 100k is Basic
+R-fbn-a,100k 1 % 0603,C25803,negative feedback R3 = 330k || 100k (the 100k part),1,precres,powercal,yes,,,v1 R6; the network is v1's: its value for V2's rail is the design's
+R-fbn-b,330k 1 % 0603,C23137,negative feedback R3 (330k part) 1 + R4 = 3 x 330k || 3,4,precres,powercal,yes,,,v1 R25-R28
+R-5v,1R 1 % 0603,C22936,5 V feed sense,1,other,powercal,yes,,,v1 R70
+R-bleed,4.7k 1 % 0603,C23162,+3.3 V_A bleed,1,other,powercal,yes,,,v1 R65
+U-REF,REF3030EAIDBZR 3.0 V E grade,C54120492,calibration reference; also the scope centre (D-V2-10) and the ADC's anchor,1,adc_ref,powercal,yes,,,v1 part kept
+C-ref-in,100 nF X7R 0603,C14663,REF3030 VIN,1,other,powercal,yes,,,v1 C24
+C-ref-bulk,1 uF X5R 0603,C15849,REF3030 VIN bulk (SBVS032K 8.3),1,other,powercal,yes,,,v1 C32
+C-ref-out,100 nF X7R 0603,C14663,"REF3030 output capacitor, 2 x 100 nF (0.1-22 uF stable range)",2,other,powercal,yes,,,v1 had the pair as the REFP0 network; the ADS1115 has none: assumed kept as the output capacitor
+U-ADC,ADS1115IDGSR,C37593,precision ADC (V2-8),1,adc_ref,powercal,yes,,,parts.md section 2
+C-adc,100 nF X7R 0603,C14663,ADS1115 VDD decoupler,1,other,powercal,yes,,,"assumed (one per supply pin, as v1)"
+R-i2c,4.7k 1 % 0603,C23162,I2C pull-ups SDA and SCL (software bus on edge-header pins),2,other,powercal,yes,,,assumed: no pull-up exists on the Due for those pins
+R-lad,270R 1 % 0603,C22966,calibration ladder: 3 parallel + 5 series as v1 (6 taps); 8 equal Basic parts,8,ladder,powercal,yes,,,jlc-basic.md section 2 (220R or 270R); the value is the design's
+R-sd,100k 1 % 0603,C25803,AWG-sense divider: BNC node to tap and tap to bottom end (k = 1/2),2,precres,powercal,yes,,,v1 R7 R8; 100k is Basic
+R-sb,100k 1 % 0603,C25803,sense divider default bottom end tied to the REF3030E,1,precres,powercal,yes,,,value assumed 100k; the design's (afe-v2 3.3)
+R-ss,10k 1 % 0603,C25804,series resistor at the sense input,1,other,powercal,yes,,,assumed 10k (parts.md section 2); the design's
+D-ss,BAV99 clamp,C2500,clamp at the sense input (Basic),1,other,powercal,yes,,,assumed; TI names Schottky clamps: see D-ss-alt
+D-ss-alt,BAT54S Schottky pair,C7420333,alternative to D-ss: Schottky clamp as TI SBAS444E 7.3.1 asks,1,other,powercal,no,D-ss,,Extended on JLC China: one more loading fee
+D-awg,BAT54S Schottky pair,C7420333,v1 AWG supply-pin clamps D1-D4: not in the V2 AWG parts.csv,4,other,,no,,,undecided in V2
+R-awg-f,22R 1 % 0603,C23345,v1 AWG supply filter 22 || 22 per pin (R59-R62): not in the V2 AWG parts.csv,8,other,,no,,,undecided in V2
+J-bnc,BNC 50 ohm right-angle THT KH-BNC50-3511,C2837587,"CH1, CH2 and AWG BNCs (owner-fitted)",3,owner,,yes,,,v1; domestic ladder from whatif/bom.md
+J-hdr,generic Mega stacking header set,,5 x 1x8 + 1x10 + 2x18 stacking headers (owner-fitted),1,owner,,yes,,2.50,v1 placeholder US$2.50 *(check)*: lowest price read there; no 20- or 100-set price
+MH-so,M3 x 8 hex standoff F-F,C66568,standoff on the Due hole (owner-fitted),1,owner,,yes,,,v1
+MH-sc,M3 x 5 pan-head screw,C357542,standoff screws (owner-fitted),2,owner,,yes,,,v1
+J-cal,calibration jumper header pins,,labelled pads or pins beside the Due pins for V2-5 (owner-fitted),0,owner,,yes,,,UNPRICED: count and part are the design's; not in the totals
