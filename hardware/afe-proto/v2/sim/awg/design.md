@@ -5,7 +5,7 @@ straight from the REF3030E, a 50 ohm back-termination and a 330 pF output pole. 
 `table.py`) and `design.py` (the DC arithmetic, hard corners and the Basic-value search). Figures marked *(check)* are open. The vendor op-amp model is
 read from `../../whatif/tph2502/models` and the stability models from `$TPH2502_DIR/beh/` (both local, never copied here).
 
-**Status after D-V2-12 and the 1 % LM27762 corners:** 88 rows, **2 FAIL** (both are the window-bottom reach against the weak negative rail, below). The window top end stays at or below 2.2275 V in every corner as a hardware guarantee (no firmware clamp).
+**Status after D-V2-12 and the 1 % LM27762 corners:** 89 rows, **0 FAIL**. AW-1's guarantee is the commanded range, -1.5 V to +1.71 V; the last 5 to 10 mV of unused window codes (below about -1.923 V) clip on the weak negative rail, and the calibration sweep must drop any level whose sense reading stops following the DAC code (spec lead's decision on the 1 % rail corners; the retune below was declined). The window top end stays at or below 2.2275 V in every corner as a hardware guarantee (no firmware clamp).
 AW-1's top is the worst-corner top the design guarantees, **+1.71 V** (hard corners 1.7104 V with 4 % of the window kept free; the lowest window top end with no
 band kept is 1.862 V). The position-aware row passes by 0.0002 (92.0 % against 92 %) and is the thinnest margin in the design: **fragile**. The 1 % rail corners did not move it (the offset is the reference, so the rails never enter that row): re-run first, still 0.9198. Any part or value change in this stage re-runs that row first (`python3 -I run.py`, the AW-1 position-aware rows), and the spec lead has accepted +1.71 V as AW-1's figure without widening the 4 % band or the 92 % use.
 
@@ -108,8 +108,8 @@ is a fraction of a second, not milliseconds; the 60 mA rating states no duration
 | width use of -1.5 .. +1.71 V | 86.2 % hard corners (A 86.2, B 85.7 %) | <= 92 %: **pass** |
 | position-aware use of the same range | 92.0 % (0.9198) hard corners (A 91.7, B 90.7 %) | <= 92 %: **pass, +0.0002** |
 | commanded -1.5 V inside the window, 4 % kept | -1.518 V hard corners | <= -1.5 V: pass |
-| negative-rail reach into 50 ohm at the weak rail | -1.810 V at the stage output (derived 11.5 ohm per rail) | the commanded -1.5 V needs 1.5 V: +0.31 V |
-| window bottom end against the rail reach (-1.9226 V into high impedance at the weak rail) | -1.933 V (**-0.010 V**; Monte Carlo A -1.928 V, -0.005 V; B passes) | **FAIL**: codes below -1.923 V clip; the commanded -1.5 V is untouched (+0.31 V to spare into 50 ohm) |
+| **commanded -1.5 V into 50 ohm at the weak rail (the pass/fail row)** | the stage output clips at -1.810 V (derived 11.5 ohm per rail *(check)*) | <= -1.5 V: **pass, +0.31 V** |
+| window bottom end against the rail reach (-1.9226 V into high impedance at the weak rail) | -1.933 V (-0.010 V; Monte Carlo A -1.928 V, -0.005 V) | **information only**: codes below about -1.923 V clip; they are outside the commanded range |
 | one DAC code | 0.964 mV | <= 1.5 mV |
 | nominal board | -1.59 .. +1.97 V commandable | each board's actual top is measured at calibration |
 
@@ -136,17 +136,17 @@ the documentation states them. *AW-5:* judged at the DAC's own codes; its highes
 - **Negative rail (about -2.0 V):** IQ up to 15 mA, the sink up to 19.8 mA into 50 ohm at the commanded bottom, 39 mA in a short. At the weak corner (-1.9549 V) the stage reaches -1.923 V into high impedance and -1.810 V into 50 ohm; see the next section.
 - **Short:** nothing limits it beyond the choice of top end; no limiter, no firmware clamp. VT-6 logs the package temperature.
 
-## The negative rail: what the 1 % corners cost and the retune that restores it
+## The negative rail: what the 1 % corners cost, and the retune that was declined
 
-The commanded range is untouched. What fails is the window's last codes: the hard-corner window bottom is -1.933 V and the weak rail lets the stage reach -1.9226 V, **0.010 V short** (Monte Carlo A 0.005 V). The power stream's figure for the -1.68 V window bottom into 50 ohm (-1.69 V reach, about 10 mV to spare) is more pessimistic than this model (-1.810 V into 50 ohm); it used 22 mA and no macro offset, and the -1.5 V the design commands has 0.31 V to spare either way. The +rail corners touch only the output swing (0.99 V under the +rail at the window top into 50 ohm), the short currents (the window sets the output, not the rail), AW-8 (-2.021..3.406 V, within the rails) and the PR-4 levels (41 mA and 35 mA at the restated levels); none moved.
+The commanded range is untouched. What differs is the window's last codes (information, not a failure): the hard-corner window bottom is -1.933 V and the weak rail lets the stage reach -1.9226 V, **0.010 V short** (Monte Carlo A 0.005 V). The power stream's figure for the -1.68 V window bottom into 50 ohm (-1.69 V reach, about 10 mV to spare) is more pessimistic than this model (-1.810 V into 50 ohm); it used 22 mA and no macro offset, and the -1.5 V the design commands has 0.31 V to spare either way. The +rail corners touch only the output swing (0.99 V under the +rail at the window top into 50 ohm), the short currents (the window sets the output, not the rail), AW-8 (-2.021..3.406 V, within the rails) and the PR-4 levels (41 mA and 35 mA at the restated levels); none moved.
 
-**What would restore it (a PROPOSAL, the power stream's lever; AW-1 is not changed).** The AWG needs the weak negative rail at 1.9653 V or more (window bottom 1.933 V + 0.0323 V macro offset), i.e. a nominal -rail of at least 2.014 V at the power stream's -2.4 % weak corner. The 5.5 V sum is the other end: with the +rail as it is (strong 3.4172 V) the strong negative corner may reach -2.0828 V, a nominal -2.033 V. So the nominal -rail window is **-2.014 to -2.033 V** (it is -2.003 V now). Basic parts: R3 = 56k + 10k = 66k (R4 100k): V- = -1.22 (R3 + R4)/R4 = **-2.0252 V nominal, weak -1.9764 V, strong -2.0750 V**; the strong sum is 5.4922 V (7.6 mV under 5.5 V, down from 30 mV), the reach into high impedance -1.9440 V (window bottom +0.011 V), into 50 ohm -1.830 V. R3 = 56k + 9.1k = 65.1k gives weak -1.9657 V, 0.4 mV of margin: too thin. The +rail nominal (3.318 V) stays: its weak corner 3.2205 V is the REF3030E's VIN >= 3.2 V limit and its strong corner 3.4172 V sets the sum. This costs the power stream 22 mV of its 30 mV sum margin. The guard "bottom reach" fails on the present rail and passes on the proposed one.
+**The retune, a PROPOSAL that the spec lead declined (R3 stays 56k + 8.2k; AW-1 is not changed).** It would have restored those last codes: The AWG needs the weak negative rail at 1.9653 V or more (window bottom 1.933 V + 0.0323 V macro offset), i.e. a nominal -rail of at least 2.014 V at the power stream's -2.4 % weak corner. The 5.5 V sum is the other end: with the +rail as it is (strong 3.4172 V) the strong negative corner may reach -2.0828 V, a nominal -2.033 V. So the nominal -rail window is **-2.014 to -2.033 V** (it is -2.003 V now). Basic parts: R3 = 56k + 10k = 66k (R4 100k): V- = -1.22 (R3 + R4)/R4 = **-2.0252 V nominal, weak -1.9764 V, strong -2.0750 V**; the strong sum is 5.4922 V (7.6 mV under 5.5 V, down from 30 mV), the reach into high impedance -1.9440 V (window bottom +0.011 V), into 50 ohm -1.830 V. R3 = 56k + 9.1k = 65.1k gives weak -1.9657 V, 0.4 mV of margin: too thin. The +rail nominal (3.318 V) stays: its weak corner 3.2205 V is the REF3030E's VIN >= 3.2 V limit and its strong corner 3.4172 V sets the sum. This costs the power stream 22 mV of its 30 mV sum margin. The AWG's guarantee is the commanded range: the last 5 to 10 mV of unused window codes (below about -1.923 V) clip on the weak rail, and **the calibration sweep must drop any level whose sense reading stops following the DAC code**.
 
 ## Open items
 
 | Item | State |
 |---|---|
-| window bottom against the negative-rail reach | **FAIL by 0.010 V (hard corners), 0.005 V (Monte Carlo A)**: only unused window codes clip; the proposal above restores it |
+| window bottom against the negative-rail reach | information: 0.010 V (hard corners), 0.005 V (Monte Carlo A) of unused codes clip on the weak rail; the retune was declined |
 | position-aware use, hard corners | passes by 0.0002 (92.0 % against 92 %): any change that raises the window top spread fails it; `design.corner_stats` reproduces it |
 | *(check)* | the output saturation of 11.5 ohm per rail (no swing-versus-current curve); the +-60 mA supply-pin rating has no stated duration, IQ max 15 mA is the dual's datasheet maximum; REF3030E noise above 10 kHz and its output impedance above DC (graphs, not text); the 0.2-0.3 s above-window duration of the reset; DAC edge 5.85 V/us (docs/hardware.md); the scope gain and ADC scale in the PAM code counts; macromodel PSRR |
 | reference timing | the reference turns on in 2 ms to 0.1 % at 1 uF (datasheet); AW-8 passes with it following the +rail or arriving 2 ms late (-2.021..3.406 V against the 3.4172 V strong rail; 2 mV beyond the +rail, 0 mV beyond the -rail) |
@@ -172,7 +172,7 @@ runs the reference following or 2 ms late (48 cases per rail corner); PW-3 58.7 
 | supply-pin current, old top | version 1's values (about 78 mA) |
 | supply-pin current, simulated | stage commanded to +3.0 V in ngspice |
 | **reference load (new)** | Rg2 300 ohm: 11.9 mA against the 10 mA rating |
-| **bottom reach (new)** | the 1 % corner -1.9549 V weak rail (the row reads FAIL); the proposed -1.9764 V passes |
+| **bottom reach (new)** | a negative rail of -1.6 V, which clips at -1.455 V into 50 ohm and misses the commanded -1.5 V; the 1 % weak rail -1.9549 V passes |
 | **guaranteed range (new)** | commanding +1.86 V: position-aware 99.9 % |
 
 ## Reproducing
