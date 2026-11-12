@@ -30,7 +30,7 @@ NS = uuid.UUID('6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001')
 ROOT_UUID = str(uuid.uuid5(NS, 'root'))
 G = 2.54
 PIN_AT = {}
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC']
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', 'P33_R']
 
 
 def uid(*k):

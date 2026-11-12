@@ -204,19 +204,24 @@ two('R502', '15k', 'SNS_TAP', 'SNS_B', B, 'sense divider, tap to the bottom end 
 two('R512', '1k', 'SNS_B', VREF, B, 'Rd: the default tie of B to VREF (wire off)')
 two('R513', '3.9k', 'SNS_TAP', 'SNS_TI', B, 'Rs: T0 to AIN2')
 two('R514', '13k', 'SNS_B', 'SNS_BI', B, 'Rm: B to AIN3 (source impedance matched to AIN2)')
-part('D502', 'BAV99', {'1': G, '3': 'SNS_TI', '2': P33A}, B, 'clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others)')
-part('D501', 'BAV99', {'1': G, '3': 'SNS_BI', '2': P33A}, B, 'clamp on AIN3')
+part('D502', 'BAV99', {'1': G, '3': 'SNS_TI', '2': 'P33_R'}, B, 'clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others)')
+part('D501', 'BAV99', {'1': G, '3': 'SNS_BI', '2': 'P33_R'}, B, 'clamp on AIN3')
 other('J501', 'Connector_Generic:Conn_01x03', 'CAL', 'Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical',
       {'1': 'TAP4', '2': 'SNS_B', '3': 'TAP3'}, B, 'ratio jumper: a shunt across B and TAP3 (pins 2-3); TAP4 next to it is a wrong '
       'position that stays in range', fitted_by='owner')
 # precision ADC (D15: v2's ADS1115, afe-v2 V2-8 / section 3.4)
 part('U502', 'ADS1115', {'1': G, '3': G, '4': VREF, '5': 'TAP3', '6': 'SNS_TI', '7': 'SNS_BI',
-                       '8': P33A, '9': 'SDA1', '10': 'SCL1'}, B,
+                       '8': 'P33_R', '9': 'SDA1_A', '10': 'SCL1_A'}, B,
      'ADDR to GND (0x48); AIN0 VREF (a check), AIN1 TAP3, AIN2 / AIN3 the sense tap T0 and the bottom end B read as a '
      'differential pair; RDY unused')
-two('C502', '100n', P33A, G, B, 'ADS1115 VDD')
-two('R509', '4.7k', 'SDA1', P33A, B, 'I2C pull-up, SDA1 (the Due has none on TWI0)')
-two('R511', '4.7k', 'SCL1', P33A, B, 'I2C pull-up, SCL1')
+two('C502', '100n', 'P33_R', G, B, 'ADS1115 VDD')
+two('R509', '4.7k', 'SDA1_A', 'P33_R', B, 'I2C pull-up, SDA1 (the Due has none on TWI0)')
+two('R511', '4.7k', 'SCL1_A', 'P33_R', B, 'I2C pull-up, SCL1')
+# REFCAL's planar cut (the block agent's finding): the VREF tree (legs A south, D1 north, D2 east) splits the fence, and the ADS
+# straddles it. Three 0603 0 ohm bridges carry the nets that must cross: the ADS's +3V3A, SDA and SCL.
+two('R517', '0Rb', P33A, 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A (VDD, its 100 nF, the pull-ups, the clamps)')
+two('R518', '0Rb', 'SDA1', 'SDA1_A', B, 'bridge over a VREF leg: SDA to the ADS')
+two('R519', '0Rb', 'SCL1', 'SCL1_A', B, 'bridge over a VREF leg: SCL to the ADS')
 
 # ------------------------------------------------------------------ Due headers (docs/due-header-table.md, V03)
 B = 'due'

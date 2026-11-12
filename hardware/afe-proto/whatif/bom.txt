@@ -1,4 +1,4 @@
-AFE shield BOM, version 1 as built in kicad/design.py (D13, D15, D18, D19; D24-D27: AWG redone the v2 way, jumper ratio, BAV99 clamps; designators renumbered by block, 6 wall bridges), ordered domestically, 2026-11-12
+AFE shield BOM, version 1 as built in kicad/design.py (D13, D15, D18, D19; D24-D27: AWG redone the v2 way, jumper ratio, BAV99 clamps; designators renumbered by block, 6 wall bridges and 3 REFCAL bridges; totals and cost lines below predate the 3 REFCAL bridges: +3 placements, +6 joints *(check)*), ordered domestically, 2026-11-12
 Plain-text companion of whatif/bom.md; that file carries the sources, the cost breakdown, the cost by block and the flags. Generated from
 kicad/design.py (the source of truth); kicad/check.py S4 holds this list equal to it, designator by designator.
 Prices: JLC domestic (China) CNY ladders read from jlc-smt.com on 2026-11-12 for every Basic type that is new in version 1 over the
@@ -75,13 +75,16 @@ measured with a hand-fitted shunt on J501 (whatif/v1-jumper/, S3); every clamp i
 21  UNI-ROYAL 0603WAF100KT5E   C22936    Basic     1R 1 % 400 ppm/K, 0603                   2  0.0186  0.0186 
       R108       x1    scope dual supply branch
       R408       x1    5 V feed sense
-22  UNI-ROYAL 0603WAF0000T5E   C21189    Basic     0R 1 %, 0603                             6  0.0186  0.0186 
+22  UNI-ROYAL 0603WAF0000T5E   C21189    Basic     0R 1 %, 0603                             9  0.0186  0.0186 
       R109       x1    wall bridge: the scope own +3V3A branch, over the VREF trunk (part 1 of 2)
       R110       x1    wall bridge: the scope own +3V3A branch, over the A1 column (part 2 of 2)
       R309       x1    wall bridge over A1: AWG_BNC sense tap (part 1 of 2)
       R310       x1    wall bridge over A0: AWG_BNC sense tap (part 2 of 2)
       R515       x1    wall bridge over A1: the CH2 leg of VREF (part 1 of 2)
       R516       x1    wall bridge over A0: the CH2 leg of VREF (part 2 of 2)
+      R517       x1    bridge over a VREF leg inside REFCAL: the ADS side of +3V3A
+      R518       x1    bridge over a VREF leg inside REFCAL: SDA to the ADS
+      R519       x1    bridge over a VREF leg inside REFCAL: SCL to the ADS
 23  Samsung CL10C100JB8NNNC    C1634     Basic     10 pF C0G 5 % 50 V, 0603                 4  0.0600  0.0600 
       C105       x1    scope Cnp, (+) node to GND, CH1
       C203       x1    scope Cnp, (+) node to GND, CH2

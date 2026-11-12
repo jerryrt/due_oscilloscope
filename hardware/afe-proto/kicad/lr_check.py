@@ -78,7 +78,7 @@ BLOCK_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL
 # nets a bottom hop must never cross under, and that LR-5 keeps from the generator; prefix match on the net name
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AWG_S', '/AWG_I', '/AWG_INV', '/AWG_BIN', '/AREF',
          '/CH1_', '/CH2_')
-SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/CH1_N', '/CH2_N')
+SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AREF', '/CH1_N', '/CH2_N')   # /AREF: a stub on the Due's ADC reference even with the 0 ohm unfitted
 INV_NODES = ('/AWG_INV',)    # LR-4 (spec lead): op-amp inverting inputs only; v1's follower -IN is its output net (pins 1-2, 6-7 of U101, adjacent), and CH1_N/CH2_N are divider nodes governed by LR-3
 HIZ = ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A')   # LR-3 divider chain nets
 DIGITAL = ('/SDA1', '/SCL1')
@@ -279,6 +279,8 @@ def bottom_crossings(m):
                 bad.append(f'{s[0]}: bottom segment inside the fence {tuple(round(v, 1) for v in rc)}')
                 break
         for t in top:
+            if s[0] in ('/SDA1', '/SCL1') and t[0] == '/AREF':
+                continue                # spec lead: SCL/SDA cross AREF by their own <= 3 mm bottom hop (the hop length is LR-1's)
             if seg_seg_dist(s, t) < (s[4] + t[4]) / 2:
                 bad.append(f'{s[0]}: bottom segment crosses {t[0]} on top (bridge it on top)')
                 break
@@ -717,6 +719,11 @@ def mut1_cross(m):                  # a short bottom hop that crosses an A0 top 
     m.segs.append(seg_at('/SCL1', 'B', (OPEN[0] - 1, OPEN[1]), (OPEN[0] + 1, OPEN[1])))
 
 
+def mut1_cross_aref(m):             # a supply hop under AREF: a bridge over AREF is the only crossing (spec lead)
+    m.segs.append(seg_at('/AREF', 'F', (OPEN[0], OPEN[1] - 3), (OPEN[0], OPEN[1] + 3)))
+    m.segs.append(seg_at('/+3V3A', 'B', (OPEN[0] - 1, OPEN[1]), (OPEN[0] + 1, OPEN[1])))
+
+
 def mut1_fence(m):
     r = floorplan.FENCES['AWG'][0]
     m.segs.append(seg_at('/SCL1', 'B', (r[0] + 3, r[1] + 1), (r[0] + 4, r[1] + 1)))
@@ -908,6 +915,7 @@ ARMS = [
     ('LR-1 4 mm hop', lr1, None, mut1_hop, 'bottom run'),
     ('LR-1 three vias on a hop', lr1, None, mut1_vias, '3 vias'),
     ('LR-1 hop crossing a sensitive top net', lr1, None, mut1_cross, 'crosses /A0'),
+    ('LR-1 a supply hop under AREF', lr1, None, mut1_cross_aref, 'crosses /AREF'),
     ('LR-1 inside the AWG fence', lr1, None, mut1_fence, 'inside the fence'),
     ('LR-1 inside the REFCAL fence', lr1, None, mut1_refcal_fence, 'inside the fence'),
     ('LR-1 under an AWG_INV pad', lr1, None, mut1_pad, 'under pad R303'),

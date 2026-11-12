@@ -187,3 +187,8 @@ put('R110', 66.04, 35.7, 0)
 put('TP101', 66.04, 40.8)
 put('TP201', 69.9, 26.2)
 put('TP301', 86.2, 12.6)
+
+# REFCAL's three bridges over a VREF leg (the block agent places them where its legs run)
+put('R517', 56.0, 29.0, 0)
+put('R518', 58.4, 29.0, 0)
+put('R519', 60.8, 29.0, 0)
