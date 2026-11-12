@@ -23,6 +23,8 @@ Checks (each reads the file through kicad-cli, never through the generator's ide
       source impedances matched, the pair AIN2 - AIN3 a valid ADS1115 differential pair
   C4  the CAL header: 1x3, TAP4 (2/3 tap) | B | TAP3 (1/2 tap), the states, B touches only the sense divider, the shunt is listed
   C5  rules: no scope part touches the negative rail; no scope or AWG net but the pins' own reaches the ladder
+  D1  every designator's hundreds digit is its block (1 CH1, 2 CH2, 3 AWG, 4 POWER, 5 REFCAL, 6 EDGE)
+  D2  each block holds exactly its key part list (KEY_PARTS); block_of_parts() gives ref -> block for the layout
   H1  the Due headers carry exactly the pins of the header-pin table below, on the V03 header names
 
 Each check is broken on purpose before it is believed (mutation arms at the end): a mutated design, or a
@@ -315,7 +317,48 @@ def schematic_checks(sch, parts, spice, tag='', quick=False):
             d, ns, nc_ = [f'{type(e).__name__}: {e}'], 0, 0
         ok &= row(cid + tag, not d and ns >= 10, f'{block}: {ns} SPICE elements after reduction, {nc_} schematic elements'
                   + (': ' + ' | '.join(d[:3]) if d else ''))
+    ok &= block_checks(comps, tag)
     ok &= computed_checks(comps, nets, parts, tag)
+    return ok
+
+
+# ----------------------------------------------------------------------------- blocks (LR-11)
+BLOCKDIGIT = {'CH1': 1, 'CH2': 2, 'AWG': 3, 'POWER': 4, 'REFCAL': 5, 'EDGE': 6}
+
+
+def _rng(prefix, a, b):
+    return {f'{prefix}{k}' for k in range(a, b + 1)}
+
+
+# The key part list of each block, written out here and not derived from design.py: a block outline on the board
+# contains exactly these parts.  U101 is the dual both channels share and sits in CH1.
+KEY_PARTS = {
+    'CH1': {'J101', 'U101', 'D101', 'TP101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
+    'CH2': {'J201', 'D201', 'TP201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
+    'AWG': {'U301', 'J301', 'C301', 'TP301'} | _rng('R', 301, 309) | _rng('C', 303, 306),
+    'POWER': {'U401'} | _rng('R', 401, 407) | _rng('C', 401, 409) | _rng('TP', 401, 404),
+    'REFCAL': {'U501', 'U502', 'J501', 'TP501'} | _rng('R', 501, 511) | _rng('C', 501, 503),
+    'EDGE': _rng('J', 601, 607) | _rng('R', 601, 603) | _rng('BR', 601, 602) | {'MH601', 'MH602'},
+}
+
+
+def block_of_parts(parts=None):
+    """ref -> block (CH1, CH2, AWG, POWER, REFCAL, EDGE) for every part of design.py, for the layout's lr_check:
+    a block's outline must contain exactly the parts this returns for it."""
+    return {p['ref']: p['block'] for p in (design.PARTS if parts is None else parts)}
+
+
+def block_checks(comps, tag):
+    got = {r: c['fields'].get('Block', '') for r, c in comps.items() if not r.startswith('#')}
+    bad = [f'{r} ({b or "no block"})' for r, b in sorted(got.items())
+           if b not in BLOCKDIGIT or int(re.sub(r'\D', '', r)) // 100 != BLOCKDIGIT[b]]
+    ok = row('D1' + tag, not bad and len(got) >= 90,
+             f'{len(got)} designators: hundreds digit = block' + (': ' + ', '.join(bad[:4]) if bad else ''))
+    have = {b: {r for r, bb in got.items() if bb == b} for b in BLOCKDIGIT}
+    d = [f'{b}: missing {sorted(KEY_PARTS[b] - have[b])[:3]} extra {sorted(have[b] - KEY_PARTS[b])[:3]}'
+         for b in BLOCKDIGIT if have[b] != KEY_PARTS[b]]
+    ok &= row('D2' + tag, not d, 'each block holds exactly its key part list: '
+              + ', '.join(f'{b} {len(KEY_PARTS[b])}' for b in BLOCKDIGIT) + (' | ' + ' | '.join(d) if d else ''))
     return ok
 
 
@@ -383,7 +426,7 @@ def computed_checks(comps, nets, parts, tag):
             taps.append(cur)
         top_ok = (not left and taps and taps[-1] == 'VREF' and len(set(vals)) == 1)
         tapnames = dict(zip(range(1, 7), taps))
-        due = {pin: pn.get(('J5', pin)) for pin in '12345678'}
+        due = {pin: pn.get(('J602', pin)) for pin in '12345678'}
         want_due = {str(7 - k): tapnames[k] for k in range(1, 7)}       # tap k on A(k+1) = ADCL0 pin 7-k; top = pin 1
         ads = [r for r, c in comps.items() if c['part'] == 'ADS1115'][0]
         two_thirds_ok = pf[(ads, 'AIN1')] == tapnames[4]
@@ -397,7 +440,7 @@ def computed_checks(comps, nets, parts, tag):
         g = lambda s: R[by_sim(comps, s)[0]]
         rt, rb, rd, rs, rm = (g('pc.R_SRT'), g('pc.R_SRB'), g('pc.R_SRD'), g('pc.R_SRS'), g('pc.R_SRM'))
         ads = [r for r, c in comps.items() if c['part'] == 'ADS1115'][0]
-        awg = pn[('J3', '1')]
+        awg = pn[('J301', '1')]
         t0 = (set(rt[1:]) - {awg}).pop() if awg in rt[1:] else None
         b = (set(rd[1:]) - {'VREF'}).pop() if 'VREF' in rd[1:] else None
         ain_of = lambda rr: next((int(fn[3]) for (r_, fn), net in pf.items() if r_ == ads and fn.startswith('AIN') and net in rr[1:]
@@ -414,7 +457,7 @@ def computed_checks(comps, nets, parts, tag):
             'Rm matches Rs + Rt||Rb within 2 %': abs(rm[0] - (rs[0] + parallel)) / rm[0] < 0.02,
             'AIN0 = reference': pf[(ads, 'AIN0')] == 'VREF',
             'the pair (T0 input, B input) is a valid mux setting': (ain_of(rs), ain_of(rm)) in ADS_DIFF,
-            'J11 pin 2 = B': pn[('J11', '2')] == b,
+            'J501 pin 2 = B': pn[('J501', '2')] == b,
             'no clamp diode on the sense inputs': not [r for r, c in comps.items() if c['part'] == 'BAT54S'
                                                        and any(pn.get((r, p)) in (t0, b) for p in '123')],
         }
@@ -424,26 +467,26 @@ def computed_checks(comps, nets, parts, tag):
     except Exception as e:
         ok &= row('C3' + tag, False, f'{type(e).__name__}: {e}')
     # C4: the calibration header: 1x3 "CAL", pin 1 TAP4 (2/3 tap, 2.0 V) | pin 2 B | pin 3 TAP3 (1/2 tap, 1.5 V)
-    hdr = {p: pn.get(('J11', p)) for p in '123'}
+    hdr = {p: pn.get(('J501', p)) for p in '123'}
     b = hdr['2']
-    on_b = {r for (r, p), net in pn.items() if net == b and r != 'J11'}
-    nj = [r for r, c in comps.items() if r == 'J11' and c['part'] == 'Conn_01x03']
+    on_b = {r for (r, p), net in pn.items() if net == b and r != 'J501'}
+    nj = [r for r, c in comps.items() if r == 'J501' and c['part'] == 'Conn_01x03']
     states = {'no shunt (default tie)': b, 'shunt 2-3 (calibrate)': f'B = {hdr["3"]}', 'shunt 1-2 (slip)': f'B = {hdr["1"]}'}
     ok &= row('C4' + tag, len(nj) == 1 and hdr['1'] == 'TAP4' and hdr['3'] == 'TAP3' and
               all(comps[r]['fields'].get('Sim', '').startswith('pc.R_SR') for r in on_b) and
               any('shunt' in h for h in design.HAND_FITTED),
-              f'J11 is 1x3: pin 1 {hdr["1"]} (2/3 tap) | pin 2 B | pin 3 {hdr["3"]} (1/2 tap); B touches {sorted(on_b)} only; '
+              f'J501 is 1x3: pin 1 {hdr["1"]} (2/3 tap) | pin 2 B | pin 3 {hdr["3"]} (1/2 tap); B touches {sorted(on_b)} only; '
               f'states {states}; the shunt is on the hand-fitted list')
     # C5: rules
-    scope = {r for r, c in comps.items() if c['fields'].get('Block') == 'scope'}
+    scope = {r for r, c in comps.items() if c['fields'].get('Block') in ('CH1', 'CH2')}
     on_neg = sorted(r for (r, p), net in pn.items() if net == 'VNEG' and r in scope)
-    ref_users = sorted(r for (r, p), net in pn.items() if net == 'VREF' and comps[r]['fields'].get('Block') in ('scope', 'awg')
+    ref_users = sorted(r for (r, p), net in pn.items() if net == 'VREF' and comps[r]['fields'].get('Block') in ('CH1', 'CH2', 'AWG')
                        and comps[r]['part'] == 'R')
     ok &= row('C5' + tag, not on_neg and len(ref_users) == 3,
               f'scope parts on the negative rail: {on_neg or "none"}; reference loaded by {ref_users} (R3b of both channels, Rg2)')
     # H1: Due headers
     d = []
-    byname = {c['value']: r for r, c in comps.items() if c['fields'].get('Block') == 'due' and c['part'].startswith('Conn_0')}
+    byname = {c['value']: r for r, c in comps.items() if c['fields'].get('Block') == 'EDGE' and c['part'].startswith('Conn_0')}
     for hname, tbl in DUE_TABLE.items():
         ref = byname.get(hname)
         if ref is None:
@@ -500,11 +543,11 @@ def arm_value_awg(parts):
 
 
 def arm_swap_scope(parts):
-    p = P(parts, 'U1'); p['pins']['2'], p['pins']['3'] = p['pins']['3'], p['pins']['2']   # -INA and +INA exchanged
+    p = P(parts, 'U101'); p['pins']['2'], p['pins']['3'] = p['pins']['3'], p['pins']['2']   # -INA and +INA exchanged
 
 
 def arm_swap_awg(parts):
-    p = P(parts, 'U2'); p['pins']['5'] = 'AWG_FB'; p['pins']['6'] = 'AWG_BIN'            # half B's inputs exchanged
+    p = P(parts, 'U301'); p['pins']['5'] = 'AWG_FB'; p['pins']['6'] = 'AWG_BIN'            # half B's inputs exchanged
 
 
 def arm_delete_conn_awg(parts):
@@ -524,7 +567,7 @@ def arm_rail(parts):
 
 
 def arm_ads_pair(parts):
-    p = P(parts, 'U5'); p['pins']['6'], p['pins']['7'] = p['pins']['7'], p['pins']['6']  # AIN2 <-> AIN3: the pair (3, 2) is no mux setting
+    p = P(parts, 'U502'); p['pins']['6'], p['pins']['7'] = p['pins']['7'], p['pins']['6']  # AIN2 <-> AIN3: the pair (3, 2) is no mux setting
 
 
 def arm_lcsc(parts):
@@ -532,11 +575,27 @@ def arm_lcsc(parts):
 
 
 def arm_due(parts):
-    p = P(parts, 'J9'); p['pins']['9'], p['pins']['10'] = p['pins']['10'], p['pins']['9']
+    p = P(parts, 'J604'); p['pins']['9'], p['pins']['10'] = p['pins']['10'], p['pins']['9']
 
 
 def arm_cal_header(parts):
-    P(parts, 'J11')['pins']['3'] = 'TAP2'                         # the calibration pin moved to the 1/3 tap
+    P(parts, 'J501')['pins']['3'] = 'TAP2'                         # the calibration pin moved to the 1/3 tap
+
+
+def arm_block_field(parts):
+    P(parts, 'R306')['block'] = 'POWER'                           # an AWG part claimed by another block
+
+
+def arm_designator(parts):
+    P(parts, 'R405')['ref'] = 'R505'                              # renumbered into the wrong hundred (nets follow by ref)
+
+
+def arm_bridge_value(parts):
+    P(parts, 'BR601')['value'] = '1k 1%'                          # a bridge that is not 0 ohm
+
+
+def arm_bridge_open(parts):
+    P(parts, 'BR602')['pins']['2'] = 'ORPHAN'                     # a bridge that no longer reaches the pin
 
 
 def arm_ladder(parts):
@@ -544,7 +603,7 @@ def arm_ladder(parts):
 
 
 def arm_scope_neg(parts):
-    P(parts, 'U1')['pins']['4'] = 'VNEG'                          # the scope dual's V- on the negative rail
+    P(parts, 'U101')['pins']['4'] = 'VNEG'                          # the scope dual's V- on the negative rail
 
 
 def spice_scope_conn(t):
@@ -578,6 +637,10 @@ def mutation_arms():
         (arm_lcsc, None, ('B1',), 'LCSC changed'),
         (arm_due, None, ('H1',), 'Due SDA/SCL swapped'),
         (arm_ladder, None, ('C2',), 'ladder rung'),
+        (arm_bridge_value, None, ('N1',), 'bridge not 0 ohm'),
+        (arm_bridge_open, None, ('N1', 'E2'), 'bridge open'),
+        (arm_block_field, None, ('D1', 'D2'), 'block field'),
+        (arm_designator, None, ('D1', 'D2'), 'designator out of its block'),
         (arm_cal_header, None, ('C4',), 'CAL header TAP_on'),
         (arm_scope_neg, None, ('C5', 'N1'), 'scope V- on the negative rail'),
     ]
@@ -586,7 +649,7 @@ def mutation_arms():
     for ms, exp, why in ((spice_scope_conn, ('N1',), 'SPICE scope connection'), (spice_awg_value, ('N2',), 'SPICE awg value'),
                          (spice_scope_value, ('N1',), 'SPICE scope value'), (spice_unknown_element, ('N2',), 'SPICE new element')):
         bad += variant(None, ms, expect=exp, why=why)
-    bad += variant(None, None, flag_nets=['+5V_DUE', '+5V_F'], expect=('S1',), why='GND flag removed')
+    bad += variant(None, None, flag_nets=['+5V_DUE', '+5V_F', '+3V3A_U'], expect=('S1',), why='GND flag removed')
     return bad, len(arms) + 4 + 1
 
 

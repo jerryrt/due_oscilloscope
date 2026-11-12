@@ -13,7 +13,7 @@ Pattern and code are version 1's (`../../kicad`), copied, not imported.
 
 ```sh
 python3 -I hardware/afe-proto/v2/kicad/build_sch.py     # writes afe-v2.kicad_sch (then kicad-cli sch upgrade)
-python3 -I hardware/afe-proto/v2/kicad/check.py         # all checks, then 19 mutation arms (about 70 s)
+python3 -I hardware/afe-proto/v2/kicad/check.py         # all checks, then 23 mutation arms (about 70 s)
 python3 -I hardware/afe-proto/v2/kicad/check.py --fast  # checks only
 ```
 
@@ -24,15 +24,41 @@ MSOP-10, WSON-12) plus `afe.pretty`.
 
 ## What it holds
 
-97 parts (77 fitted by the board house, 35 LCSC types, 48 nets). Designators: `U1 C1 C2` and `1xx`/`2xx` the scope
-(channel 1, 2), `3xx U2` the AWG, `4xx U3 U4 U5` the rails, reference and ADS1115, `5xx` the ladder and sense
-divider, `J1 J2 J3` the BNCs, `J4..J10` the Due headers, `J11` the CAL jumper header, `MH1 MH2` standoffs. Each part's `Sim`
-field gives its name in the studies (`scope.R1a`, `awg.R3`, `pc.R_FB1`).
+101 parts (79 fitted by the board house), 50 nets. **Designators follow LR-11: the hundreds digit is the block**, and
+each part's `block` field in `design.py` says the same (`D1` and `D2` check it):
+
+| block field | range | holds |
+|---|---|---|
+| CH1 | 1xx | CH1 chain R101-R108, C101-C103, D101, BNC J101, test point TP101 (A1), and **U101, the TPH2502 dual both channels share, with its two supply capacitors C104, C105**: the shared dual takes the 1xx number |
+| CH2 | 2xx | CH2 chain R201-R208, C201-C203, D201, BNC J201, TP201 (A0) |
+| AWG | 3xx | U301, R301-R309, C301, C303-C306, BNC J301, TP301 (AWG_OUT) |
+| POWER | 4xx | LM27762 U401, R401-R405 feedback, R406 5 V sense, R407 bleed, C401-C409, TP401-TP404 (+3V3A, VNEG, +5V_F, GND) |
+| REFCAL | 5xx | REF3030E U501 with C501 C502, ADS1115 U502 with C503, ladder R501-R506, sense divider R507-R511, CAL header J501, TP501 (VREF); the loose shunt is SH501 (hand-fitted, no symbol) |
+| EDGE | 6xx | Due pass-through headers J601-J607 (POWER0, ADCL0, ADCH0, PWMH0, XIO0, PWML0, COMMUNICATION0), the I2C pull-ups R601 R602, the AREF link R603 (unfitted), the two 0R bridges BR601 BR602, standoffs MH601 MH602 |
+
+Each part's `Sim` field is its name in the studies (`scope.R1a`, `awg.R3`, `pc.R_FB1`). Old-to-new designators of the
+first revision: U1 C1 C2 became U101 C104 C105; J1 J2 J3 became J101 J201 J301; U2 U301; U3 U401; U4 U501; U5 U502;
+C410 C501; C411 C502; C412 C503; R408 R409 R410 became R601 R602 R603; the Due headers
+J4 J601, J5 J602, J6 J603, J7 J606, J8 J607, J9 J604, J10 J605; J11 J501; MH1 MH2 MH601 MH602; TP1..TP6 were replaced
+by the eight test points below. Everything else kept its number.
+
+**Test points** (`TestPoint_Pad_D1.5mm`, a plain 1.5 mm top pad, unfitted; print the label at 0.8 mm): TP101 `A1`, TP201
+`A0`, TP301 `AWG_OUT` (the stage output net `AWG_VO`, before the back-termination), TP401 `+3V3A`, TP402 `VNEG`, TP403
+`+5V_F` (the LM27762's filtered 5 V feed, after the sense resistor R406), TP404 `GND`, TP501 `VREF`.
+
+**Bridges (placeholders until the layout names the nets).** BR601 joins `+3V3A` and `+3V3A_U` (the scope dual's V+ pad and
+C104, C105 sit on `+3V3A_U`); BR602 joins `CH2_RISO` (Riso R208's output) and `A0` (the Due pin, TP201, the clamp D201).
+Both are Basic 0R 0603 (C21189), in block 6xx because they serve no single block. The netlist comparison treats a
+`BR` part as a short (merging the two segment names) and fails if a bridge is not 0 ohm; the layout agent should tell
+me which nets the bridges really split and only `design.py` changes.
 
 Due header allocation (V03, `docs/due-header-table.md`): POWER0 5 V and ground; ADCL0 A0 (CH2), A1 (CH1), the ladder
 taps on A2..A7 with the reference on A7's pin; ADCH0 DAC0; PWMH0 ground, AREF (through an unfitted 0R, PA-7),
-**SDA1 and SCL1 (pins 9, 10: the SAM3X's TWI0; TWI1 is D20/D21, which have the Due's 1.5k pull-ups) for the ADS1115's I2C**; XIO0 ground. Every other pin is declared NC and passes through.
-No Due 3.3 V pin is used (the scope centre is the REF3030E now). D5..D9, D16, D39 are free.
+**SDA1 and SCL1 (pins 9, 10: the SAM3X's TWI0; TWI1 is D20/D21, which have the Due's 1.5k pull-ups) for the ADS1115's I2C**;
+XIO0 ground. Every other pin is declared NC and passes through. No Due 3.3 V pin is used. D5..D9, D16, D39 are free.
+
+`block_of_parts()` in `check.py` returns ref -> block for the layout's containment check; `KEY_PARTS` there is the
+independent list each block must hold exactly.
 
 ## Checks
 
@@ -42,7 +68,7 @@ library), LCSC on every fitted part. `E4` TPH2502, ADS1115, LM27762 pin names ag
 LCSC and quantity against the three `parts.csv`, and every row placed. `N1`, `N2` the scope and AWG blocks against
 `sim/scope/scope_v2.cir` and `sim/awg/awg.cir`. `C1` rails computed from the netlist (+3.318 V, -2.003 V). `C2`
 ladder. `C3` sense divider and ADS1115 pair. `C4` the CAL header and the shunt on the hand-fitted list. `C5` no scope part on the negative rail.
-`H1` Due headers equal the header-pin table.
+`D1` hundreds digit equals the block, `D2` each block holds exactly its key part list. `H1` Due headers equal the header-pin table.
 
 ### The netlist comparison (`spicecmp.py`)
 
@@ -71,11 +97,11 @@ powercal parts put 1 uF there and the 100 nF at the input (both treated as the r
    now derives the pair from the netlist and checks it against the multiplexer table.
 2. **I2C** is the SAM3X's TWI0 on PWMH0.9/.10 (labelled SDA1/SCL1 on the Due header; no pull-ups there), with two
    4.7k Basic pull-ups (C23162) to +3.3 V_A on the shield.
-3. **Calibration jumper `J11`** (powercal's J_RAT, shunt SH_RAT): a 1x3 male header, hand-soldered, silkscreen "CAL" with
+3. **Calibration jumper `J501`** (powercal's J_RAT, shunt SH_RAT): a 1x3 male header, hand-soldered, silkscreen "CAL" with
    the on position (pins 2-3) marked (layout). Pin 1 = TAP4 (the 2/3 tap, 2.0 V), pin 2 = B, pin 3 = TAP3 (the 1/2 tap,
    1.5 V, the calibration node). A 2.54 mm shunt across 2-3 calibrates; across 1-2 is the one wrong placement; no shunt
    is the default tie. The shunt is a loose hand-fitted part (`design.HAND_FITTED`, `NOT_A_SYMBOL`, checked by `B1`
-   and `C4`); the other hand-fitted parts are the BNCs, the stacking headers, J11 and the two standoffs with screws.
+   and `C4`); the other hand-fitted parts are the BNCs, the stacking headers, J501 and the two M2.5 standoffs (nylon or brass, header-stack height) with DIN 912 M2.5 screws (head 4.5 mm).
    Every Due pin stays reachable from the top.
 4. **Part numbers I added** (not in any study): 2 x 4.7k pull-up C23162, 0R C21189 for PA-7 (unfitted), six test
    points, two mounting holes; all Basic per `../jlc-basic.csv`. The BAV99 is drawn with KiCad's
@@ -88,9 +114,7 @@ powercal parts put 1 uF there and the 100 nF at the input (both treated as the r
    powercal bleed (1.8k, C4177). `check.py` fails the moment a `parts.csv` or `.cir` moves again, which is its job.
    The AWG's `design.md` still describes the earlier circuit.
 7. The BNC footprint's 3D model is a stand-in (as in version 1).
-8. **Second standoff `MH2` at Due hole (90.17, 50.8)**, added. It is inside the 100 x 53.34 outline (2.54 mm from the
-   top edge, 0.94 mm of copper-free edge beyond the 3.2 mm hole) and clear of every header except XIO0 pin 1
-   (93.98, 50.8): 3.81 mm away, so a 5.6 mm screw head leaves about 0.2 mm to the pad and the ISO7380 courtyard
-   (r 3.1) overlaps the socket's. Fits if the layout shifts the courtyard rule; flagged for the PCB round.
-   MH1 (96.52, 2.54) is unchanged.
+8. **Standoffs `MH601`, `MH602` are M2.5** (not M3), at Due holes (96.52, 2.54) and (90.17, 50.8), footprint
+   `MountingHole_2.7mm_M2.5` (KiCad has no DIN 912 footprint: the layout adds a 4.5 mm head keepout). MH602 is inside the
+   outline (2.54 mm from the top edge) and 3.81 mm from XIO0 pin 1, which leaves about 0.7 mm to that pad with the 4.5 mm head.
 9. The bleed follows `powercal/parts.csv` as it stands (1.8k, C4177); `B1` fails when it moves.

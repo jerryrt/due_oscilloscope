@@ -48,6 +48,8 @@ def sig(v):
 
 
 # ----------------------------------------------------------------------------- the reductions, with reasons
+BLOCKS = {'scope': {'CH1', 'CH2'}, 'awg': {'AWG'}}      # the Block fields each study's circuit spans
+
 RULES = {
     'scope': dict(
         anchors={'0': 'GND', 'vccl': '+3V3A', 'ref': 'VREF'},
@@ -189,13 +191,29 @@ PIN_ROLES_OA = {'+INA': 'inp', '-INA': 'inn', 'OUTA': 'out', '+INB': 'inp', '-IN
 
 def schematic_elements(comps, nets, block):
     """Elements of the parts whose Block field is `block`, from KiCad's own netlist (comps, nets as check.netlist)."""
+    # the 0 ohm bridges (BR parts) join two segment names of one electrical net: merge them, shortest name wins
+    # (so +3V3A, not +3V3A_U, is the net the anchor names)
+    alias = {}
+
+    def root(n):
+        while n in alias:
+            n = alias[n]
+        return n
+    for ref, c in comps.items():
+        if ref.startswith('BR'):
+            if c['part'] != 'R' or parse_value(c['value']) != 0:
+                raise ValueError(f'{ref}: a bridge must be a 0 ohm resistor, it is {c["value"]!r}')
+            ends = [net.lstrip('/') for net, nodes in nets.items() for (r, p, f) in nodes if r == ref]
+            a, b = sorted((root(ends[0]), root(ends[1])), key=lambda x: (len(x), x))
+            if a != b:
+                alias[b] = a
     pinnet = {}
     for net, nodes in nets.items():
         for ref, pin, fn in nodes:
-            pinnet[(ref, pin)] = (net.lstrip('/'), fn)
+            pinnet[(ref, pin)] = (root(net.lstrip('/')), fn)
     out = []
     for ref, c in sorted(comps.items()):
-        if c['fields'].get('Block') != block or ref.startswith('#'):
+        if c['fields'].get('Block') not in BLOCKS[block] or ref.startswith('#'):
             continue
         pins = {pin: v for (r, pin), v in pinnet.items() if r == ref}
         lib = c['part']
@@ -214,7 +232,7 @@ def schematic_elements(comps, nets, block):
                 out.append(dict(name=ref + half, kind='OA', value='OA', pins=[
                     ('inp', by[f'+IN{half}']), ('inn', by[f'-IN{half}']), ('vp', by['V+']), ('vn', by['V-']),
                     ('out', by[f'OUT{half}'])]))
-        elif c['value'] == 'KH-BNC50-3511' or lib in ('Conn_Coaxial',):
+        elif c['value'] == 'KH-BNC50-3511' or lib in ('Conn_Coaxial', 'TestPoint'):
             continue          # a connector: its nets exist, the simulation's source and load stand in for it
         else:
             raise ValueError(f'{ref}: part {lib!r} in block {block!r} has no SPICE counterpart rule')

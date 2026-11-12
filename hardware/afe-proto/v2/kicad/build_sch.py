@@ -31,7 +31,7 @@ NS = uuid.UUID('6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001')
 ROOT_UUID = str(uuid.uuid5(NS, 'root'))
 G = 2.54
 PIN_AT = {}
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F']
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', '+3V3A_U']   # +3V3A_U: driven through the 0R bridge BR601, which is not a source
 
 
 def uid(*k):
@@ -244,13 +244,14 @@ def snap(v):
 
 # ----------------------------------------------------------------------------- the sheet
 BLOCK_TITLE = {
-    'power': 'POWER: 5 V feed (take only), LM27762 +3.3 V_A and -2.0 V, bleed, REF3030E, ADS1115 on I2C',
-    'scope': 'SCOPE: CH1 (A1) and CH2 (A0), one TPH2502 dual, 1 Mohm compensated divider centred on the REF3030E',
-    'awg': 'AWG: DAC0 divider, one TPH2502 dual both halves paralleled, offset from the REF3030E, 50 ohm out',
-    'cal': 'CALIBRATION: six-rung 330R ladder (taps to A2..A7), AWG-sense divider with its jumper node B',
-    'due': 'DUE HEADERS (V03 positions), calibration jumper header, mounting, test points',
+    'POWER': 'POWER (4xx): 5 V feed (take only), LM27762 +3.3 V_A and -2.0 V, bleed',
+    'CH1': 'CH1 (1xx): scope channel 1 (A1) and the shared TPH2502 dual U101, 1 Mohm compensated divider',
+    'CH2': 'CH2 (2xx): scope channel 2 (A0), the other half of U101',
+    'AWG': 'AWG (3xx): DAC0 divider, one TPH2502 dual both halves paralleled, offset filter, 50 ohm out',
+    'REFCAL': 'REF / CAL (5xx): REF3030E, six-rung 330R ladder, ADS1115 on I2C, AWG-sense divider, CAL header',
+    'EDGE': 'EDGE (6xx): Due header pass-throughs, I2C pull-ups, AREF link, mounting',
 }
-ORDER = ['power', 'scope', 'awg', 'cal', 'due']
+ORDER = ['POWER', 'CH1', 'CH2', 'AWG', 'REFCAL', 'EDGE']
 
 
 def check_nc(parts):
@@ -278,9 +279,9 @@ def build(parts=None, outdir=HERE, flag_nets=None):
     check_nc(parts)
     cells = {b: [Cell(p) for p in parts if p['block'] == b] for b in ORDER}
     flags = [dict(ref=f'#FLG{i + 1:02d}', sym='power:PWR_FLAG', value='PWR_FLAG', fp='', lcsc='', sim='',
-                  pins={'1': n}, block='power', dnp=False, fitted_by='none', nc=(), note='ERC: net driven from '
+                  pins={'1': n}, block='POWER', dnp=False, fitted_by='none', nc=(), note='ERC: net driven from '
                   'outside / through a part') for i, n in enumerate(PWR_FLAG_NETS if flag_nets is None else flag_nets)]
-    cells['power'] += [Cell(f) for f in flags]
+    cells['POWER'] += [Cell(f) for f in flags]
 
     body = []
     placed = []   # (cell, x, y)
@@ -367,8 +368,8 @@ def build(parts=None, outdir=HERE, flag_nets=None):
     # unused (SNVSAF7C table 4-1); GND carries a PWR_FLAG (a power output), and an open collector on a power output is
     # an ERC error by pin type, not by circuit.  Keyed by the two pins' UUIDs and the first pin's position (100 nm units), then
     # the sheet path of the marker and of each item (the format read out of eeschema: key|x|y|id|id|path|path|path).
-    pg = PIN_AT[('U3', '1')]
-    excl = [[f"pin_to_pin|{round(pg[0] * 1e4)}|{round(pg[1] * 1e4)}|{uid('pin', 'U3', 1, '1')}|{uid('pin', '#FLG01', 1, '1')}"
+    pg = PIN_AT[('U401', '1')]
+    excl = [[f"pin_to_pin|{round(pg[0] * 1e4)}|{round(pg[1] * 1e4)}|{uid('pin', 'U401', 1, '1')}|{uid('pin', '#FLG01', 1, '1')}"
              f"|/{ROOT_UUID}|/{ROOT_UUID}|/{ROOT_UUID}",
              'PGOOD unused, tied to GND per SNVSAF7C; GND carries the PWR_FLAG']]
     with open(os.path.join(outdir, 'fp-lib-table'), 'w') as f:
