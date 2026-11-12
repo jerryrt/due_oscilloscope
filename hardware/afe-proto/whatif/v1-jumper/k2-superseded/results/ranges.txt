@@ -1,0 +1,12 @@
+wire OFF (default tie, normal use)                         T0 +0.792..2.168 in-range=True  pin +0.792..2.180 Iclamp   -0.0 uA  Iref 2.12 mA
+wire B-TAP5 (the right position)                           T0 +0.572..1.942 in-range=True  pin +0.571..1.952 Iclamp   -0.0 uA  Iref 2.20 mA
+wire B-TAP4 (header neighbour)                             T0 +0.385..1.753 in-range=True  pin +0.382..1.762 Iclamp   -0.0 uA  Iref 2.43 mA
+wire TAP4-TAP5 (across one rung, B left on its default)    T0 +0.792..2.168 in-range=True  pin +0.792..2.180 Iclamp   -0.0 uA  Iref 2.61 mA
+wire B-TAP2 (0.75 V, via the Due's ADC pin)                T0 -0.072..1.290 in-range=False pin -0.077..1.295 Iclamp    0.0 uA  Iref 3.45 mA
+wire B-VREF (3.0 V, via the Due's ADC pin)                 T0 +0.803..2.171 in-range=True  pin +0.804..2.183 Iclamp   -0.0 uA  Iref 2.10 mA
+wire B-GND                                                 T0 -0.670..0.682 in-range=False pin -0.400..0.682 Iclamp    5.6 uA  Iref 5.13 mA
+wire B-+3V3A (3.3 V)                                       T0 +0.950..2.321 in-range=True  pin +0.952..2.335 Iclamp   -0.0 uA  Iref 1.80 mA
+wire B-Due 5V (5.25 V max, stress)                         T0 +1.908..3.298 in-range=False pin +1.918..3.317 Iclamp    0.0 uA  Iref 0.20 mA
+wire B-Due VIN (12 V, stress)                              T0 +5.222..6.678 in-range=False pin +3.714..3.753 Iclamp   59.5 uA  Iref 7.02 mA
+wire TAP5-GND (ladder shorted at the top)                  T0 +0.792..2.168 in-range=True  pin +0.792..2.168 Iclamp    0.0 uA  Iref 11.25 mA
+wire TAP5-VREF (one rung shorted)                          T0 +0.792..2.168 in-range=True  pin +0.792..2.168 Iclamp    0.0 uA  Iref 0.03 mA

@@ -1,0 +1,15 @@
+GUARD G-zero fails passes OK | all errors off: zero error; host model with Rd twice the truth must exceed 0.05 %
+GUARD G-Z fails passes OK | all errors off, host assumes Zcm = 3 Mohm against the true 6 Mohm: must exceed 0.05 % (the loading model is exercised)
+GUARD G-eps fails passes OK | ADS1115 channel match 2 % instead of 0.1 %: gain must exceed 2 x the 0.1 % figure (the detector sees the dominant source)
+GUARD G-range fails passes OK | tap range, wire at TAP2 (0.75 V) and window +-1.35 V, must FAIL (T0 down to -0.07 V); wire at TAP5 passes
+GUARD G-range2 fails passes OK | tap range with the window widened to +-3.0 V and the wire at TAP5 (T0 down to -0.3 V) must FAIL; +-1.35 V passes
+GUARD G-clamp fails passes OK | clamp solver at T0 = -0.675 V, Thevenin 50k: pin must differ from the open-circuit -0.675 V by > 0.2 V; a no-op solver (pin = open circuit) must fail that test
+max match 99.9th: gain 1.116 %, offset 20.41 mV, worst point 34.68 mV, k error 0.845 %
+typ match 99.9th: gain 0.858 %, offset 12.96 mV, worst point 24.01 mV
+  one: resistors_1pct 0.053 % 1.51 mV k 0.058 %
+  one: channel_match_0p1pct 0.725 % 16.87 mV k 0.639 %
+  one: offsets_3lsb_of_125uV 0.181 % 5.03 mV k 0.168 %
+  one: zcm_spread_25pct 0.561 % 4.15 mV k 0.289 %
+  one: noise_64_readings 0.028 % 0.61 mV k 0.026 %
+  one: inl_off_control_all_zero 0.000 % 0.01 mV k 0.000 %
+prior only: 1.1287706329178275 30.942933741050304

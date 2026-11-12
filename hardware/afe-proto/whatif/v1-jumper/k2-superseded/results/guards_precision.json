@@ -1,0 +1,44 @@
+[
+ {
+  "id": "G-zero",
+  "what": "all errors off: zero error; host model with Rd twice the truth must exceed 0.05 %",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-Z",
+  "what": "all errors off, host assumes Zcm = 3 Mohm against the true 6 Mohm: must exceed 0.05 % (the loading model is exercised)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-eps",
+  "what": "ADS1115 channel match 2 % instead of 0.1 %: gain must exceed 2 x the 0.1 % figure (the detector sees the dominant source)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-range",
+  "what": "tap range, wire at TAP2 (0.75 V) and window +-1.35 V, must FAIL (T0 down to -0.07 V); wire at TAP5 passes",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-range2",
+  "what": "tap range with the window widened to +-3.0 V and the wire at TAP5 (T0 down to -0.3 V) must FAIL; +-1.35 V passes",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-clamp",
+  "what": "clamp solver at T0 = -0.675 V, Thevenin 50k: pin must differ from the open-circuit -0.675 V by > 0.2 V; a no-op solver (pin = open circuit) must fail that test",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ }
+]

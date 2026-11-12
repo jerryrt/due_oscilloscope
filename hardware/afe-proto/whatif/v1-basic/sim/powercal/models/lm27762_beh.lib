@@ -1,0 +1,32 @@
+* LM27762 behavioural model - OURS, open (MIT-style: use freely). Not TI's model.
+* Fitted to datasheet numbers (models/datasheet-facts.md; SNVSAF7C):
+*   EN thresholds 1.2 V high (Sec 5.5)          -> 'thr' below
+*   UVLO 2.4 off / 2.6 on (Sec 6.3.1)           -> 2.5 V centre
+*   input current limit 500 mA typ (Sec 6.3.2)  -> ilim
+*   dropout 45 mV @100 mA pos (Sec 5.5)         -> rdop = 0.45 ohm
+*   RNEG 2.5 ohm @100 mA (charge pump)          -> rcp (used by the DC budget in run.py)
+*   Iq 390 uA typ (Sec 5.5)                     -> iq
+*   shutdown: 50 k pull-down on each output (Sec 6.4.1)
+* NOT in the datasheet (model gaps, bench test VT-8 start-up capture):
+*   soft-start time and any overshoot: 'tss' and 'ov' are ASSUMED sweep parameters; 'ov' is a pulse of height
+*   ov above the final value, centred where the soft-start ramp reaches 99 %.
+* Positive LDO only sources; negative LDO only sinks current into its output node
+* (current flows load -> OUT- -> charge pump -> VIN). Input current = I(+) + I(-) + Iq.
+.func sinkn(vo,t,g,il) {max(0,min(il,g*(vo-t)))}
+.func srcp(vo,t,g,il) {max(0,min(il,g*(t-vo)))}
+.subckt LM27762B vin outp outn enp enn params: vp=3.3 vn=1.8 tss=100u ov=0 ilim=0.5 iq=390u g=50
+Bsp sp 0 V = 0.5*(1+tanh((V(enp)-1.2)*20))*0.5*(1+tanh((V(vin)-2.5)*20))
+Bsn sn 0 V = 0.5*(1+tanh((V(enn)-1.2)*20))*0.5*(1+tanh((V(vin)-2.5)*20))
+Rsp sp ssp 1
+Csp ssp 0 {tss}
+Rsn sn ssn 1
+Csn ssn 0 {tss}
+Bp vin outp I = srcp(V(outp), min(vp*V(ssp)+(ov+0.01*vp)*exp(-((V(ssp)-0.99)/0.02)**2), V(vin)-0.1), g, ilim)
+Bn outn 0 I = sinkn(V(outn), max(-vn*V(ssn)-(ov+0.01*vn)*exp(-((V(ssn)-0.99)/0.02)**2), -(V(vin)-0.2)), g, ilim)
+Bcp vin 0 I = sinkn(V(outn), max(-vn*V(ssn)-(ov+0.01*vn)*exp(-((V(ssn)-0.99)/0.02)**2), -(V(vin)-0.2)), g, ilim) + iq*V(sp)
+Bpdp outp 0 I = V(outp)/50k*(1-V(sp))
+Bpdn outn 0 I = V(outn)/50k*(1-V(sn))
+Dbp outp vin DBODY
+Dbn outn 0 DBODY
+.model DBODY D(IS=1e-12 N=1.0 RS=0.5)
+.ends

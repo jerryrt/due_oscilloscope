@@ -1,0 +1,15 @@
+* TMUX1119-class SPDT switch, one path used. OURS, open. Datasheet SCDS401C Sec 5.6 (VDD=3.3 V):
+*  RON 3.7 ohm typ / 8.8 max (25 C); CSOFF 6 pF; CDON/CSON 20 pF; IS(OFF) 0.05 nA max 25 C, 0.1 nA 85 C;
+*  charge injection -6 pC (CL=1 nF); BW 250 MHz; tON 14 ns typ; off isolation -65 dB @1 MHz.
+* Pins: d (to scope node N), s (to DAC), ctl (1 = on)
+* Off-state leakage is a current source of 'ileak' from d to ground (worst-case sign chosen by caller).
+* Charge injection: a decaying current pulse Q*exp(-t/tq) when ctl falls (Qinj, ctl falling edge).
+.subckt TMUXB d s ctl params: ron=3.7 csoff=6p cdoff=6p cdon=20p ileak=0.1n qinj=6p
+Bsw sw 0 V = 0.5*(1+tanh((V(ctl)-0.7)*20))
+Gs s d value = {(V(s,d))/(ron + 1e9*(1-V(sw)) + 1e-3)}
+Cs s 0 {csoff}
+Cd d 0 {cdoff}
+Ilk d 0 DC {ileak}
+* charge injection pulse at turn-off: derivative of switch state, one-sided
+Bq d 0 I = {qinj}*max(0,-ddt(V(sw)))
+.ends

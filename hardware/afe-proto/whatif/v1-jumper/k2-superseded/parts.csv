@@ -1,0 +1,12 @@
+action,refs,value,lcsc,class,qty,cny_at_20_each,source,note
+remove,U12,TMUX1119DCKR SC-70-6,C2673327,Extended,1,12.9600,whatif/bom.txt,ratio switch (D25)
+remove,C30,100 nF X7R 0603,C14663,Basic,1,0.1000,whatif/bom.txt,TMUX1119 supply decoupling
+remove,R68,4.7k 1 % 0603,C23162,Basic,1,0.0169,whatif/bom.txt,ratio-switch pull-down on D9_SEL
+remove,D7,BAT54S SOT-23,C7420333,Extended,1,0.0786,whatif/bom.txt,clamp on the switch D node
+change,D8,"BAT54S -> BAV99 (Nexperia BAV99,215) SOT-23",C7420333 -> C2500,Extended -> Basic,1,0.0786 -> 0.0743,whatif/bom.txt; docs/jlcpcb-parts.md,"BAV99 USD 0.0111 at qty 20 x 6.6912 = CNY 0.0743 (check); clamp at the ADS1115 AIN0 pin, no series part"
+add,R_D,1k 1 % 0603,C21190,Basic,1,0.0100,whatif/bom.txt,default tie of the divider bottom end B to VREF; type already in the BOM
+add,J_RAT,"3 plated holes 2.54 mm in a row, no part",-,none,0,0,design.md section 1,pads TAP4 | B | TAP5; hand-fitted wire; not a BOM line
+keep,R7,100k 1 % 0603,C25803,Basic,1,0.0176,kicad/design.py,AWG BNC node to tap
+keep,R8,100k 1 % 0603,C25803,Basic,1,0.0176,kicad/design.py,tap to B (the far end was the switch D node)
+keep,U9,ADS1115IDGSR,C37593,Extended,1,,kicad/design.py,AIN0 tap (direct) AIN1 VREF AIN2 TAP5 AIN3 TAP2
+total,,placements -4 +1 = -3; Extended types -1 (TMUX1119); Basic types +1 (BAV99),,,,-13.15,computed,about -USD 1.97 at 6.6912 (check); -20 CNY more per order if the domestic Extended-type fee applies (check)

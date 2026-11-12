@@ -1,0 +1,6496 @@
+{
+ "rails": {
+  "vp_nom": 3.2880000000000003,
+  "vn_nom": 2.071162790697674,
+  "vp_max": 3.341562882882882,
+  "vn_max": 2.1034501012640545,
+  "vp_min": 3.234570749250749,
+  "vn_min": 2.0389291173942334,
+  "sum_max": 5.445012984146937
+ },
+ "hashes": {
+  "OPA365_PSPICE.lib": {
+   "sha256": "cc95b072dc92d3730f2d8c292a6657273d5007ceaaa62f7f504d2256ac722fc8",
+   "matches_SOURCES_md": true
+  },
+  "OPA354_PSPICE.lib": {
+   "sha256": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+   "matches_SOURCES_md": true
+  },
+  "lm27762.pdf": {
+   "sha256": "465db259d11b3b2fe202661b21e1e664065ff8873056a984aa9f967a9fbdc6e0",
+   "matches_SOURCES_md": true
+  },
+  "ref30.pdf": {
+   "sha256": "71c2732f824439ab82a323975a167d637ff1f03c3eaf0b9b974c0d5829ac4d0a",
+   "matches_SOURCES_md": true
+  },
+  "tmux1119.pdf": {
+   "sha256": "266a589bf12a8ae3730722ed5133ef06192d5616ce6a254c7d4e2819a3df9796",
+   "matches_SOURCES_md": true
+  },
+  "dac8551.pdf": {
+   "sha256": "56fcdb7afc6c24286050334ff328fd1b8778542770bf9587fbad36b9a9d2115b",
+   "matches_SOURCES_md": true
+  },
+  "MCP3561-2-4-Family-Data-Sheet-DS20006181C.pdf": {
+   "sha256": "d75d7f6029e566aaf79c7b8c3a2741e2954392e8845e0d0e5ab73012681ed0df",
+   "matches_SOURCES_md": true
+  },
+  "opa365.pdf": {
+   "sha256": "9a87d0790f4b118c78f8c2d81c1cd12298d5872fea272db93a419cd7b0084efa",
+   "matches_SOURCES_md": true
+  },
+  "opa354.pdf": {
+   "sha256": "21c2d9f67869aa7723163e7bf08cf6c9c4563e4cc0379ca41146225d2a41859a",
+   "matches_SOURCES_md": true
+  }
+ },
+ "tools": {
+  "ngspice": "ngspice-47",
+  "numpy": "2.4.3",
+  "python": "3.14.3"
+ },
+ "p1_rows": [
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 20.8785,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11974,
+   "ipk": 4.35385,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79598,
+   "sum_main": 5.48659,
+   "vpmax": 3.3669,
+   "vnmin": -2.11969,
+   "ipk": 20.8785,
+   "vpend": 3.3669,
+   "vnend": -2.11969
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48659,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 4.35385,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 3.03575,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36699,
+   "vnmin": -2.11973,
+   "ipk": 3.03575,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11974,
+   "ipk": 2.02979,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48658,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 2.53129,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37897,
+   "sum_main": 5.48656,
+   "vpmax": 3.36689,
+   "vnmin": -2.11967,
+   "ipk": 2.53132,
+   "vpend": 3.36689,
+   "vnend": -2.11967
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48658,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 2.02979,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.475456,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.381962,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79549,
+   "sum_main": 5.48609,
+   "vpmax": 3.36659,
+   "vnmin": -2.11949,
+   "ipk": 0.149997,
+   "vpend": 3.36659,
+   "vnend": -2.11949
+  },
+  {
+   "order": "both",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79547,
+   "sum_main": 5.48606,
+   "vpmax": 3.36658,
+   "vnmin": -2.11948,
+   "ipk": 0.14669,
+   "vpend": 3.36658,
+   "vnend": -2.11948
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 24.9118,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11974,
+   "ipk": 5.19493,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79598,
+   "sum_main": 5.48659,
+   "vpmax": 3.3669,
+   "vnmin": -2.11969,
+   "ipk": 24.9118,
+   "vpend": 3.3669,
+   "vnend": -2.11969
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48659,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 5.19493,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 3.73004,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36699,
+   "vnmin": -2.11974,
+   "ipk": 3.73004,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11974,
+   "ipk": 2.42239,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48658,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 3.02384,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37897,
+   "sum_main": 5.48656,
+   "vpmax": 3.36689,
+   "vnmin": -2.11967,
+   "ipk": 3.0239,
+   "vpend": 3.36689,
+   "vnend": -2.11967
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79597,
+   "sum_main": 5.48658,
+   "vpmax": 3.3669,
+   "vnmin": -2.11968,
+   "ipk": 2.42191,
+   "vpend": 3.3669,
+   "vnend": -2.11968
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.526563,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.422366,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79562,
+   "sum_main": 5.48622,
+   "vpmax": 3.36668,
+   "vnmin": -2.11954,
+   "ipk": 0.160566,
+   "vpend": 3.36668,
+   "vnend": -2.11954
+  },
+  {
+   "order": "both",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79561,
+   "sum_main": 5.4862,
+   "vpmax": 3.36667,
+   "vnmin": -2.11954,
+   "ipk": 0.157094,
+   "vpend": 3.36667,
+   "vnend": -2.11954
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48675,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 20.8785,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 4.35385,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11969,
+   "ipk": 20.8785,
+   "vpend": 3.36658,
+   "vnend": -2.11969
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 4.35385,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48675,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 2.80587,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36699,
+   "vnmin": -2.11979,
+   "ipk": 2.80594,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 2.02979,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 2.48526,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37866,
+   "sum_main": 5.48624,
+   "vpmax": 3.36657,
+   "vnmin": -2.11967,
+   "ipk": 2.48527,
+   "vpend": 3.36657,
+   "vnend": -2.11967
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 2.02979,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.478987,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.383226,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79548,
+   "sum_main": 5.48607,
+   "vpmax": 3.36658,
+   "vnmin": -2.1195,
+   "ipk": 0.150905,
+   "vpend": 3.36658,
+   "vnend": -2.1195
+  },
+  {
+   "order": "neg_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79546,
+   "sum_main": 5.48605,
+   "vpmax": 3.36657,
+   "vnmin": -2.11949,
+   "ipk": 0.146936,
+   "vpend": 3.36657,
+   "vnend": -2.11949
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48675,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 24.9118,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 5.19493,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48627,
+   "vpmax": 3.36658,
+   "vnmin": -2.11969,
+   "ipk": 24.9118,
+   "vpend": 3.36658,
+   "vnend": -2.11969
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 5.19493,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48675,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 3.35267,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36699,
+   "vnmin": -2.11979,
+   "ipk": 3.35281,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48675,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 2.42213,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 2.96653,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37866,
+   "sum_main": 5.48624,
+   "vpmax": 3.36657,
+   "vnmin": -2.11967,
+   "ipk": 2.96655,
+   "vpend": 3.36657,
+   "vnend": -2.11967
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79566,
+   "sum_main": 5.48626,
+   "vpmax": 3.36658,
+   "vnmin": -2.11968,
+   "ipk": 2.42191,
+   "vpend": 3.36658,
+   "vnend": -2.11968
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.1198,
+   "ipk": 0.565206,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.46134,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79553,
+   "sum_main": 5.48613,
+   "vpmax": 3.36658,
+   "vnmin": -2.11955,
+   "ipk": 0.156533,
+   "vpend": 3.36658,
+   "vnend": -2.11955
+  },
+  {
+   "order": "neg_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79553,
+   "sum_main": 5.48612,
+   "vpmax": 3.36658,
+   "vnmin": -2.11954,
+   "ipk": 0.152802,
+   "vpend": 3.36658,
+   "vnend": -2.11954
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36704,
+   "vnmin": -2.11974,
+   "ipk": 20.8785,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36703,
+   "vnmin": -2.11974,
+   "ipk": 4.35385,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 20.8785,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 4.35385,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36704,
+   "vnmin": -2.11974,
+   "ipk": 2.80955,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36702,
+   "vnmin": -2.11973,
+   "ipk": 2.80961,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36703,
+   "vnmin": -2.11974,
+   "ipk": 2.02979,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 2.5059,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37878,
+   "sum_main": 5.48636,
+   "vpmax": 3.36689,
+   "vnmin": -2.11947,
+   "ipk": 2.50591,
+   "vpend": 3.36689,
+   "vnend": -2.11947
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 2.02979,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.477684,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.382756,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79548,
+   "sum_main": 5.48608,
+   "vpmax": 3.3666,
+   "vnmin": -2.11948,
+   "ipk": 0.150995,
+   "vpend": 3.3666,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 4.4,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79546,
+   "sum_main": 5.48606,
+   "vpmax": 3.36658,
+   "vnmin": -2.11948,
+   "ipk": 0.14712,
+   "vpend": 3.36658,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36704,
+   "vnmin": -2.11974,
+   "ipk": 24.9118,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36704,
+   "vnmin": -2.11974,
+   "ipk": 5.19493,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 24.9118,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 1e-06,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 5.19493,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36703,
+   "vnmin": -2.11974,
+   "ipk": 3.35452,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37913,
+   "sum_main": 5.48672,
+   "vpmax": 3.36703,
+   "vnmin": -2.11973,
+   "ipk": 3.35464,
+   "vpend": 3.36699,
+   "vnend": -2.11973
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.36703,
+   "vnmin": -2.11974,
+   "ipk": 2.42225,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 2.99229,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": false,
+   "sum_awg": 5.37878,
+   "sum_main": 5.48636,
+   "vpmax": 3.36689,
+   "vnmin": -2.11947,
+   "ipk": 2.99232,
+   "vpend": 3.36689,
+   "vnend": -2.11947
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.0001,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79578,
+   "sum_main": 5.48638,
+   "vpmax": 3.3669,
+   "vnmin": -2.11948,
+   "ipk": 2.42191,
+   "vpend": 3.3669,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.559119,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 2e-05,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79612,
+   "sum_main": 5.48674,
+   "vpmax": 3.367,
+   "vnmin": -2.11975,
+   "ipk": 0.427972,
+   "vpend": 3.367,
+   "vnend": -2.11974
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 0.2,
+   "sch": true,
+   "sum_awg": 4.79557,
+   "sum_main": 5.48616,
+   "vpmax": 3.36668,
+   "vnmin": -2.11948,
+   "ipk": 0.155965,
+   "vpend": 3.36668,
+   "vnend": -2.11948
+  },
+  {
+   "order": "pos_first",
+   "vin": 5.25,
+   "ramp": 0.005,
+   "tss": 0.002,
+   "rsrc": 1.0,
+   "sch": true,
+   "sum_awg": 4.79556,
+   "sum_main": 5.48615,
+   "vpmax": 3.36667,
+   "vnmin": -2.11948,
+   "ipk": 0.15326,
+   "vpend": 3.36667,
+   "vnend": -2.11948
+  }
+ ],
+ "p1_worst_pins_sch": 4.79612,
+ "p1_worst_pins_nosch": 5.48672,
+ "p1_overshoot": {
+  "sch_0.0": 4.79597,
+  "sch_0.1": 4.9596,
+  "sch_0.2": 5.14737,
+  "sch_0.3": 5.33845,
+  "sch_0.4": 5.53055,
+  "nosch_0.0": 5.48656,
+  "nosch_0.1": 5.65624,
+  "nosch_0.2": 5.85085,
+  "nosch_0.3": 6.0488,
+  "nosch_0.4": 6.24771
+ },
+ "p1_allowed_overshoot": {
+  "sch": 0.3,
+  "nosch": 0.0
+ },
+ "p1_inrush_A": 24.9118,
+ "p2": {
+  "4.4_0.2": {
+   "dvp": 0.0032000000000000917,
+   "dvn": 0.003390000000000004,
+   "dap": 0.0024199999999998667,
+   "dan": 0.0025999999999999357,
+   "shift_p": 0.34809,
+   "shift_n": 0.34807999999999995
+  },
+  "4.4_1.0": {
+   "dvp": 0.0032000000000000917,
+   "dvn": 0.003390000000000004,
+   "dap": 0.0024199999999998667,
+   "dan": 0.0025999999999999357,
+   "shift_p": 0.34809,
+   "shift_n": 0.34807999999999995
+  },
+  "5.25_0.2": {
+   "dvp": 0.0032000000000000917,
+   "dvn": 0.003390000000000004,
+   "dap": 0.0024199999999998667,
+   "dan": 0.0025999999999999357,
+   "shift_p": 0.34809,
+   "shift_n": 0.34807999999999995
+  },
+  "5.25_1.0": {
+   "dvp": 0.0032000000000000917,
+   "dvn": 0.003390000000000004,
+   "dap": 0.0024199999999998667,
+   "dan": 0.0025999999999999357,
+   "shift_p": 0.34809,
+   "shift_n": 0.34807999999999995
+  },
+  "shutdown": {
+   "sumpk": 4.71486,
+   "vp_after2ms": 0.390088,
+   "vn_after2ms": -1.98499
+  }
+ },
+ "p3": {
+  "OPA365 scope": {
+   "max": {
+    "normal (AWG +-1 V into 50 ohm, 10 mA peak)": 45.67779634595328,
+    "AWG shorted (23 mA)": 58.67779634595328,
+    "external +-5 V on AWG output (65 mA op-amp limit)": 100.67779634595328
+   },
+   "typ": {
+    "normal (AWG +-1 V into 50 ohm, 10 mA peak)": 43.00799934595328,
+    "AWG shorted (23 mA)": 56.00799934595328,
+    "external +-5 V on AWG output (65 mA op-amp limit)": 98.00799934595328
+   }
+  },
+  "OPA354 scope": {
+   "max": {
+    "normal (AWG +-1 V into 50 ohm, 10 mA peak)": 48.27779634595328,
+    "AWG shorted (23 mA)": 61.27779634595328,
+    "external +-5 V on AWG output (65 mA op-amp limit)": 103.27779634595328
+   },
+   "typ": {
+    "normal (AWG +-1 V into 50 ohm, 10 mA peak)": 43.00799934595328,
+    "AWG shorted (23 mA)": 56.00799934595328,
+    "external +-5 V on AWG output (65 mA op-amp limit)": 98.00799934595328
+   }
+  }
+ },
+ "p3_items": {
+  "2 scope op-amps (quiescent, both rails)": 10.0,
+  "Vmid buffers: TLV9062 (both scope channels, 2 x 0.8 mA max, 0.538 typ) + the AWG's own OPA365 (sim/awg buf)": 6.6,
+  "AWG Vmid divider 330k/330k on +3.3 V_A": 0.005060606060606061,
+  "DAC0 buffer (OPA365 follower, AWG)": 5.0,
+  "AWG op-amp quiescent (+ rail)": 5.0,
+  "AWG op-amp quiescent again via the charge pump (- rail)": 5.0,
+  "ADS124S08 IAVDD + IDVDD (conversion, PGA bypassed; AVDD max taken from the PGA-enabled gain-1 row)": 0.435,
+  "ADS124S08 REFP0 input current from the REF3030 (about 250 kohm unbuffered, 6 uA/V max)": 0.018000000000000002,
+  "REF3030E": 0.037,
+  "TMUX1119 ratio switch x1 (IDD 0.8 uA max; the four injection T-switches are retired)": 0.0008,
+  "AWG-sense divider 300k from the 3.0 V ladder top (ratio switch on S2, calibration only)": 0.01,
+  "ladder 3.0 V / R (every element at -tol)": 2.2612974420203336,
+  "bleed on +3.3 V": 0.7106382978723403,
+  "LM27762 Iq": 0.6
+ },
+ "p6_rows": [
+  {
+   "v5": 3.4,
+   "vin": 3.3413222036540464,
+   "margin_pos": -0.016083684242242935,
+   "margin_neg": 1.1721529704825242,
+   "v33_h1.0": 2.4,
+   "v33_h1.2": 2.2
+  },
+  {
+   "v5": 3.45,
+   "vin": 3.3913222036540467,
+   "margin_pos": 0.03391631575775733,
+   "margin_neg": 1.2221529704825245,
+   "v33_h1.0": 2.45,
+   "v33_h1.2": 2.25
+  },
+  {
+   "v5": 3.5,
+   "vin": 3.4413222036540465,
+   "margin_pos": 0.08391631575775715,
+   "margin_neg": 1.2721529704825243,
+   "v33_h1.0": 2.5,
+   "v33_h1.2": 2.3
+  },
+  {
+   "v5": 3.55,
+   "vin": 3.4913222036540463,
+   "margin_pos": 0.13391631575775698,
+   "margin_neg": 1.3221529704825241,
+   "v33_h1.0": 2.55,
+   "v33_h1.2": 2.3499999999999996
+  },
+  {
+   "v5": 3.6,
+   "vin": 3.5413222036540466,
+   "margin_pos": 0.18391631575775724,
+   "margin_neg": 1.3721529704825244,
+   "v33_h1.0": 2.6,
+   "v33_h1.2": 2.4000000000000004
+  },
+  {
+   "v5": 3.65,
+   "vin": 3.5913222036540464,
+   "margin_pos": 0.23391631575775707,
+   "margin_neg": 1.4221529704825242,
+   "v33_h1.0": 2.65,
+   "v33_h1.2": 2.45
+  },
+  {
+   "v5": 3.7,
+   "vin": 3.6413222036540467,
+   "margin_pos": 0.28391631575775733,
+   "margin_neg": 1.4721529704825245,
+   "v33_h1.0": 2.7,
+   "v33_h1.2": 2.5
+  },
+  {
+   "v5": 3.75,
+   "vin": 3.6913222036540465,
+   "margin_pos": 0.33391631575775715,
+   "margin_neg": 1.5221529704825243,
+   "v33_h1.0": 2.75,
+   "v33_h1.2": 2.55
+  },
+  {
+   "v5": 3.8,
+   "vin": 3.7413222036540463,
+   "margin_pos": 0.383916315757757,
+   "margin_neg": 1.5721529704825241,
+   "v33_h1.0": 2.8,
+   "v33_h1.2": 2.5999999999999996
+  },
+  {
+   "v5": 3.85,
+   "vin": 3.7913222036540466,
+   "margin_pos": 0.43391631575775724,
+   "margin_neg": 1.6221529704825244,
+   "v33_h1.0": 2.85,
+   "v33_h1.2": 2.6500000000000004
+  },
+  {
+   "v5": 3.9,
+   "vin": 3.8413222036540464,
+   "margin_pos": 0.48391631575775707,
+   "margin_neg": 1.6721529704825242,
+   "v33_h1.0": 2.9,
+   "v33_h1.2": 2.7
+  },
+  {
+   "v5": 3.95,
+   "vin": 3.8913222036540467,
+   "margin_pos": 0.5339163157577573,
+   "margin_neg": 1.7221529704825245,
+   "v33_h1.0": 2.95,
+   "v33_h1.2": 2.75
+  },
+  {
+   "v5": 4.0,
+   "vin": 3.9413222036540465,
+   "margin_pos": 0.5839163157577572,
+   "margin_neg": 1.7721529704825243,
+   "v33_h1.0": 3.0,
+   "v33_h1.2": 2.8
+  },
+  {
+   "v5": 4.05,
+   "vin": 3.9913222036540463,
+   "margin_pos": 0.633916315757757,
+   "margin_neg": 1.8221529704825241,
+   "v33_h1.0": 3.05,
+   "v33_h1.2": 2.8499999999999996
+  },
+  {
+   "v5": 4.1,
+   "vin": 4.041322203654047,
+   "margin_pos": 0.6839163157577572,
+   "margin_neg": 1.8721529704825244,
+   "v33_h1.0": 3.0999999999999996,
+   "v33_h1.2": 2.8999999999999995
+  },
+  {
+   "v5": 4.15,
+   "vin": 4.091322203654047,
+   "margin_pos": 0.733916315757758,
+   "margin_neg": 1.922152970482525,
+   "v33_h1.0": 3.1500000000000004,
+   "v33_h1.2": 2.95
+  },
+  {
+   "v5": 4.2,
+   "vin": 4.141322203654047,
+   "margin_pos": 0.7839163157577578,
+   "margin_neg": 1.972152970482525,
+   "v33_h1.0": 3.2,
+   "v33_h1.2": 3.0
+  },
+  {
+   "v5": 4.25,
+   "vin": 4.191322203654047,
+   "margin_pos": 0.8339163157577576,
+   "margin_neg": 2.0221529704825247,
+   "v33_h1.0": 3.25,
+   "v33_h1.2": 3.05
+  },
+  {
+   "v5": 4.3,
+   "vin": 4.241322203654047,
+   "margin_pos": 0.8839163157577574,
+   "margin_neg": 2.0721529704825246,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.0999999999999996
+  },
+  {
+   "v5": 4.35,
+   "vin": 4.291322203654047,
+   "margin_pos": 0.9339163157577572,
+   "margin_neg": 2.1221529704825244,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.1499999999999995
+  },
+  {
+   "v5": 4.4,
+   "vin": 4.341322203654047,
+   "margin_pos": 0.983916315757758,
+   "margin_neg": 2.172152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.2
+  },
+  {
+   "v5": 4.45,
+   "vin": 4.391322203654047,
+   "margin_pos": 1.0339163157577578,
+   "margin_neg": 2.222152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.25
+  },
+  {
+   "v5": 4.5,
+   "vin": 4.441322203654047,
+   "margin_pos": 1.0839163157577576,
+   "margin_neg": 2.2721529704825247,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.55,
+   "vin": 4.491322203654047,
+   "margin_pos": 1.1339163157577574,
+   "margin_neg": 2.3221529704825246,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.6,
+   "vin": 4.541322203654047,
+   "margin_pos": 1.1839163157577572,
+   "margin_neg": 2.3721529704825244,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.65,
+   "vin": 4.591322203654047,
+   "margin_pos": 1.233916315757758,
+   "margin_neg": 2.422152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.7,
+   "vin": 4.641322203654047,
+   "margin_pos": 1.2839163157577578,
+   "margin_neg": 2.472152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.75,
+   "vin": 4.691322203654047,
+   "margin_pos": 1.3339163157577576,
+   "margin_neg": 2.5221529704825247,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.8,
+   "vin": 4.741322203654047,
+   "margin_pos": 1.3839163157577574,
+   "margin_neg": 2.5721529704825246,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.85,
+   "vin": 4.791322203654047,
+   "margin_pos": 1.4339163157577572,
+   "margin_neg": 2.6221529704825244,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.9,
+   "vin": 4.841322203654047,
+   "margin_pos": 1.483916315757758,
+   "margin_neg": 2.672152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 4.95,
+   "vin": 4.891322203654047,
+   "margin_pos": 1.5339163157577578,
+   "margin_neg": 2.722152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.0,
+   "vin": 4.941322203654047,
+   "margin_pos": 1.5839163157577576,
+   "margin_neg": 2.7721529704825247,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.05,
+   "vin": 4.991322203654047,
+   "margin_pos": 1.6339163157577574,
+   "margin_neg": 2.8221529704825246,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.1,
+   "vin": 5.041322203654047,
+   "margin_pos": 1.6839163157577572,
+   "margin_neg": 2.8721529704825244,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.15,
+   "vin": 5.091322203654047,
+   "margin_pos": 1.733916315757758,
+   "margin_neg": 2.922152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.2,
+   "vin": 5.141322203654047,
+   "margin_pos": 1.7839163157577578,
+   "margin_neg": 2.972152970482525,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  },
+  {
+   "v5": 5.25,
+   "vin": 5.191322203654047,
+   "margin_pos": 1.8339163157577576,
+   "margin_neg": 3.0221529704825247,
+   "v33_h1.0": 3.3,
+   "v33_h1.2": 3.3
+  }
+ ],
+ "p6_min_v5_rails": 3.45,
+ "p6_aref_below_3p20": {
+  "h1.0": 4.2,
+  "h1.2": 4.4
+ },
+ "p6_usb": {
+  "drop": 0.26,
+  "v5_from_4v75": 4.49,
+  "v5_from_4v40": 4.140000000000001
+ },
+ "p4": {
+  "residue_rms": {
+   "s354_g1": {
+    "buck": 2.1095447776066556e-12,
+    "ldo": 4.892091168825956e-07,
+    "total": 4.892091168871439e-07
+   },
+   "s354_g4": {
+    "buck": 9.755233455597926e-12,
+    "ldo": 2.2544120453514657e-06,
+    "total": 2.254412045372572e-06
+   },
+   "s365_g1": {
+    "buck": 5.06481617335071e-12,
+    "ldo": 1.173485375921472e-06,
+    "total": 1.1734853759324019e-06
+   },
+   "s365_g4": {
+    "buck": 2.0211897031222714e-11,
+    "ldo": 4.6064165657299615e-06,
+    "total": 4.606416565774304e-06
+   },
+   "awg": {
+    "buck": 9.789166191141503e-11,
+    "ldo": 1.0926292687112126e-05,
+    "total": 1.0926292687550645e-05
+   }
+  },
+  "spurs": {
+   "awg": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 9.062118950537024e-06,
+     "pk_worst_fs": 1.1661884520335337e-05
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 7.162585923817082e-06,
+     "pk_worst_fs": 7.253466699859513e-06
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.095969885077147e-06,
+     "pk_worst_fs": 5.295420986833552e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 4.1562467415580085e-06,
+     "pk_worst_fs": 4.348993724138205e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 3.5759305714739374e-06,
+     "pk_worst_fs": 3.7432892664230583e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.268881691508004e-10,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 4.753451623654733e-11,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.837987384173597e-11,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 3.4902827177248096e-08,
+     "pk_worst_fs": 4.3420252331462245e-08
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.4620342184350018e-07,
+     "pk_worst_fs": 1.9204780578021624e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 2.3079092280008244e-07,
+     "pk_worst_fs": 3.248004918343582e-07
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 3.567415149047477e-07,
+     "pk_worst_fs": 5.201849549124314e-07
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 5.249081002184448e-07,
+     "pk_worst_fs": 7.844602085697601e-07
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 4.844430034867368e-13,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 1.3169164807338126e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.632756026790072e-12,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 1.6574256176257558e-07,
+     "pk_worst_fs": 2.0628212099420662e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 6.909027206756508e-07,
+     "pk_worst_fs": 9.056519700600731e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 1.081866779236875e-06,
+     "pk_worst_fs": 1.5154836948792654e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 1.653686654531411e-06,
+     "pk_worst_fs": 2.3917024960406297e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 2.398919526545912e-06,
+     "pk_worst_fs": 3.540255284939508e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 2.2957954027577044e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 6.1732414224436105e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 1.2122275914832867e-11,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 8.420865335770361e-08,
+     "pk_worst_fs": 1.0472634147731627e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 3.527314487273726e-07,
+     "pk_worst_fs": 4.6317400247091013e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.55933173098673e-07,
+     "pk_worst_fs": 7.815589206993264e-07
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 8.57078445381565e-07,
+     "pk_worst_fs": 1.2472041354471423e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 1.2565747603275535e-06,
+     "pk_worst_fs": 1.8716125953535628e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.1691125285316477e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 3.1722183790331665e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 6.314660100989156e-12,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 3.9575590989230996e-07,
+     "pk_worst_fs": 4.938186454052607e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.6011367272361781e-06,
+     "pk_worst_fs": 2.0726312583547005e-06
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 2.392574887092803e-06,
+     "pk_worst_fs": 3.2689072273662852e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 3.4519398676618858e-06,
+     "pk_worst_fs": 4.807298662801522e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 4.698678766870838e-06,
+     "pk_worst_fs": 6.600888916891716e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 5.414013740907505e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 1.3652304825024393e-11,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.4522328424914702e-11,
+     "pk_worst_fs": null
+    }
+   ]
+  },
+  "pin_ripple_pk": {
+   "v(pvs354_g1)": {
+    "ldo": 4.6523739558364034e-05,
+    "buck": 1.653591334337512e-10,
+    "total": 4.652390491749747e-05
+   },
+   "v(awp)": {
+    "ldo": 9.802334743558851e-05,
+    "buck": 6.253250633016674e-10,
+    "total": 9.802397276065181e-05
+   },
+   "v(awn)": {
+    "ldo": 9.170006449615857e-05,
+    "buck": 5.087927918722812e-10,
+    "total": 9.170057328895044e-05
+   }
+  },
+  "z5_2MHz": 1.6917514635510125e-05,
+  "z5_band_max": 0.23793654852535182,
+  "z5_band_max_f": 10000.0,
+  "rails_dc_check": null,
+  "pw4": {
+   "i_cp_fund_pk": 0.03565070725258456,
+   "v5_rms_2MHz": 4.2647120474493933e-07,
+   "req_rej_db": 26.01786109808044,
+   "req_rej_f": 10000.0
+  }
+ },
+ "p4_cmp": {
+  "ESR 10 mohm, no ESL, nominal C (previous assumption)": {
+   "awg": 1.0821138345065086e-05,
+   "scope": 1.215306026354264e-06
+  },
+  "ESR 20 mohm, no ESL, nominal C": {
+   "awg": 1.6747794963013567e-05,
+   "scope": 3.753459514465972e-06
+  },
+  "Samsung data, one 10 uF per rail (previous count)": {
+   "awg": 1.884861105632186e-05,
+   "scope": 6.887885354114843e-06
+  }
+ },
+ "c15850": {
+  "esr_mohm": {
+   "0.01 MHz": 37.83156889823942,
+   "0.02 MHz": 20.718548593320012,
+   "0.1 MHz": 6.409148413585789,
+   "1 MHz": 2.9672187736267954,
+   "2 MHz": 4.039570565015381,
+   "4 MHz": 12.305917045896683,
+   "6 MHz": 13.886030806267545,
+   "8 MHz": 13.558364656280308,
+   "10 MHz": 14.913929673552236
+  },
+  "z_mohm": {
+   "1 MHz": 16.876189210921577,
+   "2 MHz": 4.399268223941625,
+   "4 MHz": 14.30777733468236,
+   "10 MHz": 22.062197927388684
+  },
+  "esl_nH": 0.37280219196030323,
+  "srf_MHz": 2.0811563457237443,
+  "dc_bias_pct": {
+   "1.65 V": -8.801265403413804,
+   "2.07 V": -13.589853908132287,
+   "3.3 V": -30.453953229396568,
+   "5.0 V": -50.31482225958126
+  },
+  "tol": 0.9,
+  "k": {
+   "5 V": 0.44716659966376865,
+   "3.3 V": 0.6259144209354309,
+   "2.07 V": 0.7776913148268094,
+   "1.65 V": 0.8207886113692757
+  }
+ },
+ "p4_cal": {
+  "residue_rms": {
+   "s354_g1": {
+    "buck": 2.1095447776066556e-12,
+    "ldo": 4.892090179901056e-07,
+    "total": 4.89209017994654e-07
+   },
+   "s354_g4": {
+    "buck": 9.7552334556067e-12,
+    "ldo": 2.2544115901267312e-06,
+    "total": 2.2544115901478376e-06
+   },
+   "s365_g1": {
+    "buck": 5.06481617335071e-12,
+    "ldo": 1.1734851358903579e-06,
+    "total": 1.1734851359012878e-06
+   },
+   "s365_g4": {
+    "buck": 2.0211897031222714e-11,
+    "ldo": 4.6064156353585056e-06,
+    "total": 4.606415635402848e-06
+   },
+   "awg": {
+    "buck": 9.789166191141503e-11,
+    "ldo": 1.0926290504607993e-05,
+    "total": 1.0926290505046512e-05
+   }
+  },
+  "spurs": {
+   "awg": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 9.062117088013717e-06,
+     "pk_worst_fs": 1.1661882191408316e-05
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 7.162584493336465e-06,
+     "pk_worst_fs": 7.253465235618681e-06
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.095968869693605e-06,
+     "pk_worst_fs": 5.295419925094697e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 4.156245906557822e-06,
+     "pk_worst_fs": 4.348992859024195e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 3.575929845759739e-06,
+     "pk_worst_fs": 3.743288516557173e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.268881691508004e-10,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 4.753451623654733e-11,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.837987384173597e-11,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 3.490282008595357e-08,
+     "pk_worst_fs": 4.342024355252494e-08
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.462033926707641e-07,
+     "pk_worst_fs": 1.9204776747038416e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 2.3079087675059612e-07,
+     "pk_worst_fs": 3.2480042677982904e-07
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 3.5674144382272675e-07,
+     "pk_worst_fs": 5.201848505921491e-07
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 5.249079930380754e-07,
+     "pk_worst_fs": 7.844600504426231e-07
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 4.844430034867368e-13,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 1.3169164807338126e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.632756026790072e-12,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 1.6574252805617518e-07,
+     "pk_worst_fs": 2.0628207915018822e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 6.909025822387824e-07,
+     "pk_worst_fs": 9.05651789419508e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 1.0818665629238053e-06,
+     "pk_worst_fs": 1.5154833901207086e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 1.6536863207431408e-06,
+     "pk_worst_fs": 2.3917020180641647e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 2.39891904078884e-06,
+     "pk_worst_fs": 3.5402545813686293e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 2.2957954027577044e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 6.17324142242635e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 1.212227591485578e-11,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 8.420863611485768e-08,
+     "pk_worst_fs": 1.0472632045089144e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 3.527313788022799e-07,
+     "pk_worst_fs": 4.6317391074292924e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.559330616495147e-07,
+     "pk_worst_fs": 7.815587636964189e-07
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 8.57078273485344e-07,
+     "pk_worst_fs": 1.2472038859285771e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 1.2565744993463462e-06,
+     "pk_worst_fs": 1.8716122239245773e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.1691125285316477e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 3.1722183790331665e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 6.314660100989156e-12,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 3.957558292417859e-07,
+     "pk_worst_fs": 4.93818545763024e-07
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.6011364074171259e-06,
+     "pk_worst_fs": 2.072630844154245e-06
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 2.392574413106857e-06,
+     "pk_worst_fs": 3.2689065818158827e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 3.4519391726900923e-06,
+     "pk_worst_fs": 4.807297703768115e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 4.698677810364225e-06,
+     "pk_worst_fs": 6.6008875908815824e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 5.414013740907505e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 1.3652304825024393e-11,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 2.4522328424914702e-11,
+     "pk_worst_fs": null
+    }
+   ]
+  },
+  "pin_ripple_pk": {
+   "v(pvs354_g1)": {
+    "ldo": 4.6523730168321715e-05,
+    "buck": 1.653591334337512e-10,
+    "total": 4.652389552745515e-05
+   },
+   "v(awp)": {
+    "ldo": 9.802332774353336e-05,
+    "buck": 6.253250633016674e-10,
+    "total": 9.802395306859665e-05
+   },
+   "v(awn)": {
+    "ldo": 9.170004606884829e-05,
+    "buck": 5.087927918722812e-10,
+    "total": 9.170055486164016e-05
+   }
+  },
+  "z5_2MHz": 1.6917514635510125e-05,
+  "z5_band_max": 0.23793654852535182,
+  "z5_band_max_f": 10000.0,
+  "rails_dc_check": null
+ },
+ "p4_bead": {
+  "residue_rms": {
+   "s354_g1": {
+    "buck": 5.292187468303337e-15,
+    "ldo": 2.0914420878382172e-08,
+    "total": 2.091442087838284e-08
+   },
+   "s354_g4": {
+    "buck": 2.486524019901153e-14,
+    "ldo": 9.70769129263471e-08,
+    "total": 9.707691292635029e-08
+   },
+   "s365_g1": {
+    "buck": 1.2749519433691349e-14,
+    "ldo": 5.025101337957157e-08,
+    "total": 5.0251013379573184e-08
+   },
+   "s365_g4": {
+    "buck": 5.615605569921056e-14,
+    "ldo": 2.0607700436683736e-07,
+    "total": 2.06077004366845e-07
+   },
+   "awg": {
+    "buck": 9.743128193855245e-12,
+    "ldo": 1.1081799288827708e-05,
+    "total": 1.108179928883199e-05
+   }
+  },
+  "spurs": {
+   "awg": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 9.14000151437562e-06,
+     "pk_worst_fs": 1.1780065325705387e-05
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 7.299580109375931e-06,
+     "pk_worst_fs": 7.3913701014792935e-06
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.194682114306185e-06,
+     "pk_worst_fs": 5.40075087091229e-06
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 4.242323086882133e-06,
+     "pk_worst_fs": 4.443574989629924e-06
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 3.656332438693518e-06,
+     "pk_worst_fs": 3.832772564891962e-06
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.3502879741287701e-11,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 2.5464867300897418e-12,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 1.0221242730671234e-12,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 5.634165946488757e-09,
+     "pk_worst_fs": 8.263441132351379e-09
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.2108861184309522e-08,
+     "pk_worst_fs": 1.3840794242772444e-08
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 1.2783327258446836e-08,
+     "pk_worst_fs": 1.5675836620020406e-08
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 1.4893128361982312e-08,
+     "pk_worst_fs": 1.8952666372005062e-08
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 1.7641964971616203e-08,
+     "pk_worst_fs": 2.3056156499785486e-08
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 5.4964067747695535e-15,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 3.774519319556046e-15,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 3.3995606880741624e-15,
+     "pk_worst_fs": null
+    }
+   ],
+   "s354_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 2.67548819743249e-08,
+     "pk_worst_fs": 3.925817948664177e-08
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 5.722193264186616e-08,
+     "pk_worst_fs": 6.526987957499128e-08
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 5.992370479205009e-08,
+     "pk_worst_fs": 7.314167688920742e-08
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 6.903748663185344e-08,
+     "pk_worst_fs": 8.714029218591715e-08
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 8.062664451309332e-08,
+     "pk_worst_fs": 1.0405180186976635e-07
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 2.604769381261597e-14,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 1.769360657556218e-14,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 1.5652931792559136e-14,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g1": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 1.3593328801483175e-08,
+     "pk_worst_fs": 1.99307943038222e-08
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 2.9213927747200207e-08,
+     "pk_worst_fs": 3.338072962659277e-08
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 3.0792696021762545e-08,
+     "pk_worst_fs": 3.772034711249399e-08
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 3.5781019708427094e-08,
+     "pk_worst_fs": 4.544120887402595e-08
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 4.223298508701908e-08,
+     "pk_worst_fs": 5.5008734000206525e-08
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 1.326455060334276e-14,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 9.092147132282904e-15,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 8.153836483301939e-15,
+     "pk_worst_fs": null
+    }
+   ],
+   "s365_g4": [
+    {
+     "src": "LDO",
+     "f": 2000000.0,
+     "pk": 6.388464108130737e-08,
+     "pk_worst_fs": 9.39801475043351e-08
+    },
+    {
+     "src": "LDO",
+     "f": 4000000.0,
+     "pk": 1.3260931088876076e-07,
+     "pk_worst_fs": 1.4937347496053274e-07
+    },
+    {
+     "src": "LDO",
+     "f": 6000000.0,
+     "pk": 1.3252273001176643e-07,
+     "pk_worst_fs": 1.5776702152434027e-07
+    },
+    {
+     "src": "LDO",
+     "f": 8000000.0,
+     "pk": 1.4411030020963003e-07,
+     "pk_worst_fs": 1.751512055459616e-07
+    },
+    {
+     "src": "LDO",
+     "f": 10000000.0,
+     "pk": 1.5792065780276597e-07,
+     "pk_worst_fs": 1.9400727640444782e-07
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 3000000.0,
+     "pk": 6.142645800013734e-14,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 6000000.0,
+     "pk": 3.9129929188634975e-14,
+     "pk_worst_fs": null
+    },
+    {
+     "src": "buck (assumed)",
+     "f": 9000000.0,
+     "pk": 3.166455562036919e-14,
+     "pk_worst_fs": null
+    }
+   ]
+  },
+  "pin_ripple_pk": {
+   "v(pvs354_g1)": {
+    "ldo": 3.2706537408200835e-06,
+    "buck": 6.981582423855814e-13,
+    "total": 3.270654438978326e-06
+   },
+   "v(awp)": {
+    "ldo": 9.993629469697774e-05,
+    "buck": 5.6226851599595225e-11,
+    "total": 9.993635092382934e-05
+   },
+   "v(awn)": {
+    "ldo": 9.171489217519978e-05,
+    "buck": 4.340849102370532e-11,
+    "total": 9.17149355836908e-05
+   }
+  },
+  "z5_2MHz": 2.6587052419111477e-06,
+  "z5_band_max": 0.23076259789696743,
+  "z5_band_max_f": 10000.0,
+  "rails_dc_check": null,
+  "pw4": {
+   "i_cp_fund_pk": 0.03565070725258456,
+   "v5_rms_2MHz": 6.70229198560609e-08,
+   "req_rej_db": 25.751946339438504,
+   "req_rej_f": 10000.0
+  }
+ },
+ "p7": [
+  {
+   "feed": "none",
+   "stim": "scope +12 V",
+   "iso": true,
+   "vp": 0.106358,
+   "vn": 1.08886e-15,
+   "vafe": 6.0178e-14,
+   "i_due": -6.0178e-11,
+   "i_d33": -1.80607e-06,
+   "adc_min": 1.16846e-05,
+   "adc_max": 0.156001,
+   "awp": 0.106358,
+   "awn": 6.67442e-15
+  },
+  {
+   "feed": "none",
+   "stim": "scope -12 V",
+   "iso": true,
+   "vp": -9.26769e-09,
+   "vn": -1.15482e-22,
+   "vafe": -3.67576e-22,
+   "i_due": 3.67576e-19,
+   "i_d33": 1.52876e-06,
+   "adc_min": -0.148837,
+   "adc_max": -1.16846e-05,
+   "awp": -9.26768e-09,
+   "awn": -1.13003e-18
+  },
+  {
+   "feed": "none",
+   "stim": "awg +5 V",
+   "iso": true,
+   "vp": 0.00376698,
+   "vn": 4.84798e-08,
+   "vafe": 1.60546e-16,
+   "i_due": -1.60546e-13,
+   "i_d33": -1.39262e-14,
+   "adc_min": 3.06708e-15,
+   "adc_max": 4.66523e-06,
+   "awp": 4.49995,
+   "awn": 2.23936e-07
+  },
+  {
+   "feed": "none",
+   "stim": "awg -5 V",
+   "iso": true,
+   "vp": -1.90627e-08,
+   "vn": -0.00958039,
+   "vafe": -7.56067e-22,
+   "i_due": 7.56067e-19,
+   "i_d33": 7.17472e-20,
+   "adc_min": -2.40339e-11,
+   "adc_max": -1.64724e-22,
+   "awp": -1.94519e-07,
+   "awn": -4.49995
+  },
+  {
+   "feed": "schottky",
+   "stim": "scope +12 V",
+   "iso": true,
+   "vp": 0.106358,
+   "vn": 1.08886e-15,
+   "vafe": 7.95254e-07,
+   "i_due": -2.27144e-11,
+   "i_d33": -1.80607e-06,
+   "adc_min": 1.16846e-05,
+   "adc_max": 0.156001,
+   "awp": 0.106358,
+   "awn": 6.67748e-15
+  },
+  {
+   "feed": "schottky",
+   "stim": "scope -12 V",
+   "iso": true,
+   "vp": -9.26769e-09,
+   "vn": -1.15482e-22,
+   "vafe": -7.07064e-15,
+   "i_due": 2.01732e-19,
+   "i_d33": 1.52876e-06,
+   "adc_min": -0.148837,
+   "adc_max": -1.16846e-05,
+   "awp": -9.26768e-09,
+   "awn": -1.13003e-18
+  },
+  {
+   "feed": "schottky",
+   "stim": "awg +5 V",
+   "iso": true,
+   "vp": 0.00376698,
+   "vn": 4.84798e-08,
+   "vafe": 3.05435e-09,
+   "i_due": -8.72409e-14,
+   "i_d33": -1.39262e-14,
+   "adc_min": 3.06708e-15,
+   "adc_max": 4.66523e-06,
+   "awp": 4.49995,
+   "awn": 2.23936e-07
+  },
+  {
+   "feed": "schottky",
+   "stim": "awg -5 V",
+   "iso": true,
+   "vp": -1.90627e-08,
+   "vn": -0.00958039,
+   "vafe": -1.45491e-14,
+   "i_due": 4.15868e-19,
+   "i_d33": 7.17472e-20,
+   "adc_min": -2.40339e-11,
+   "adc_max": -1.64724e-22,
+   "awp": -1.94519e-07,
+   "awn": -4.49995
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "scope +12 V",
+   "iso": true,
+   "vp": 0.106358,
+   "vn": 1.08886e-15,
+   "vafe": 1.09827e-06,
+   "i_due": -4.2472e-15,
+   "i_d33": -1.80607e-06,
+   "adc_min": 1.16846e-05,
+   "adc_max": 0.156001,
+   "awp": 0.106358,
+   "awn": 6.67499e-15
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "scope -12 V",
+   "iso": true,
+   "vp": -9.26769e-09,
+   "vn": -1.15482e-22,
+   "vafe": -1.10034e-14,
+   "i_due": 4.25547e-23,
+   "i_d33": 1.52876e-06,
+   "adc_min": -0.148837,
+   "adc_max": -1.16846e-05,
+   "awp": -9.26768e-09,
+   "awn": -1.13004e-18
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "awg +5 V",
+   "iso": true,
+   "vp": 0.00376698,
+   "vn": 4.84798e-08,
+   "vafe": 4.73573e-09,
+   "i_due": -1.83142e-17,
+   "i_d33": -1.39262e-14,
+   "adc_min": 3.06708e-15,
+   "adc_max": 4.66523e-06,
+   "awp": 4.49995,
+   "awn": 2.23936e-07
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "awg -5 V",
+   "iso": true,
+   "vp": -1.90627e-08,
+   "vn": -0.00958039,
+   "vafe": -2.26464e-14,
+   "i_due": 8.75748e-23,
+   "i_d33": 7.17472e-20,
+   "adc_min": -2.40339e-11,
+   "adc_max": -1.64724e-22,
+   "awp": -1.94519e-07,
+   "awn": -4.49995
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "scope +12 V",
+   "iso": true,
+   "vp": 0.106358,
+   "vn": 1.08886e-15,
+   "vafe": 1.08481e-06,
+   "i_due": -1.08481e-12,
+   "i_d33": -1.80607e-06,
+   "adc_min": 1.16846e-05,
+   "adc_max": 0.156001,
+   "awp": 0.106358,
+   "awn": 6.6377e-15
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "scope -12 V",
+   "iso": true,
+   "vp": -9.26769e-09,
+   "vn": -1.15482e-22,
+   "vafe": -1.08175e-14,
+   "i_due": 1.08175e-20,
+   "i_d33": 1.52876e-06,
+   "adc_min": -0.148837,
+   "adc_max": -1.16846e-05,
+   "awp": -9.26768e-09,
+   "awn": -1.13004e-18
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "awg +5 V",
+   "iso": true,
+   "vp": 0.00376698,
+   "vn": 4.84798e-08,
+   "vafe": 4.65638e-09,
+   "i_due": -4.65638e-15,
+   "i_d33": -1.39262e-14,
+   "adc_min": 3.06708e-15,
+   "adc_max": 4.66523e-06,
+   "awp": 4.49995,
+   "awn": 2.23936e-07
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "awg -5 V",
+   "iso": true,
+   "vp": -1.90627e-08,
+   "vn": -0.00958039,
+   "vafe": -2.22635e-14,
+   "i_due": 2.22635e-20,
+   "i_d33": 7.17472e-20,
+   "adc_min": -2.40339e-11,
+   "adc_max": -1.64724e-22,
+   "awp": -1.94519e-07,
+   "awn": -4.49995
+  },
+  {
+   "feed": "none",
+   "stim": "awg +5 V",
+   "iso": false,
+   "vp": 0.71778,
+   "vn": 2.29304e-08,
+   "vafe": 5.27372e-05,
+   "i_due": -0.0527372,
+   "i_d33": -2.00899e-12,
+   "adc_min": 2.43839e-12,
+   "adc_max": 0.000673909,
+   "awp": 1.29979,
+   "awn": 2.29564e-08
+  },
+  {
+   "feed": "none",
+   "stim": "awg -5 V",
+   "iso": false,
+   "vp": -1.90251e-08,
+   "vn": -4.37254,
+   "vafe": -7.54576e-22,
+   "i_due": 7.54576e-19,
+   "i_d33": 7.16032e-20,
+   "adc_min": -2.39854e-11,
+   "adc_max": -4.31672e-23,
+   "awp": -1.90801e-08,
+   "awn": -4.3735
+  },
+  {
+   "feed": "schottky",
+   "stim": "awg +5 V",
+   "iso": false,
+   "vp": 4.21974,
+   "vn": -2.11938,
+   "vafe": 3.70783,
+   "i_due": -9.90003e-07,
+   "i_d33": -1.16751e-11,
+   "adc_min": 2.43839e-12,
+   "adc_max": 0.0039157,
+   "awp": 4.23399,
+   "awn": -2.11938
+  },
+  {
+   "feed": "schottky",
+   "stim": "awg -5 V",
+   "iso": false,
+   "vp": -1.90251e-08,
+   "vn": -4.37254,
+   "vafe": -1.44749e-14,
+   "i_due": 4.13505e-19,
+   "i_d33": 7.16032e-20,
+   "adc_min": -2.39854e-11,
+   "adc_max": -4.31672e-23,
+   "awp": -1.90801e-08,
+   "awn": -4.3735
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "awg +5 V",
+   "iso": false,
+   "vp": 1.94508,
+   "vn": 6.58093e-14,
+   "vafe": 1.26683,
+   "i_due": -0.0340032,
+   "i_d33": -5.39682e-12,
+   "adc_min": 2.43839e-12,
+   "adc_max": 0.00181029,
+   "awp": 2.32416,
+   "awn": 3.62642e-11
+  },
+  {
+   "feed": "pfet_gate_gnd",
+   "stim": "awg -5 V",
+   "iso": false,
+   "vp": -1.90251e-08,
+   "vn": -4.37254,
+   "vafe": -2.24908e-14,
+   "i_due": 8.69752e-23,
+   "i_d33": 7.16032e-20,
+   "adc_min": -2.39854e-11,
+   "adc_max": -4.31672e-23,
+   "awp": -1.90801e-08,
+   "awn": -4.3735
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "awg +5 V",
+   "iso": false,
+   "vp": 4.21951,
+   "vn": -2.11938,
+   "vafe": 3.70742,
+   "i_due": -3.70742e-06,
+   "i_d33": -1.16744e-11,
+   "adc_min": 2.43839e-12,
+   "adc_max": 0.00391549,
+   "awp": 4.23379,
+   "awn": -2.11938
+  },
+  {
+   "feed": "ideal_diode",
+   "stim": "awg -5 V",
+   "iso": false,
+   "vp": -1.90251e-08,
+   "vn": -4.37254,
+   "vafe": -2.21122e-14,
+   "i_due": 2.21122e-20,
+   "i_d33": 7.16032e-20,
+   "adc_min": -2.39854e-11,
+   "adc_max": -4.31672e-23,
+   "awp": -1.90801e-08,
+   "awn": -4.3735
+  }
+ ],
+ "p7_powered": [
+  {
+   "stim": "+5 V",
+   "i_due": 0.201628,
+   "vp": 3.36356,
+   "vn": -2.1178,
+   "awp": 3.02166,
+   "awn": -0.743011
+  },
+  {
+   "stim": "-5 V",
+   "i_due": 0.202258,
+   "vp": 3.36206,
+   "vn": -2.11929,
+   "awp": 1.97895,
+   "awn": -1.77742
+  },
+  {
+   "stim": "+0 V",
+   "i_due": 0.128744,
+   "vp": 3.36355,
+   "vn": -2.11927,
+   "awp": 3.01334,
+   "awn": -1.75344
+  }
+ ],
+ "p7_no_iso_none_idue": 0.0527372,
+ "p7_no_iso_blocking_vp": 4.37254,
+ "p7_ext_delta_mA": 73.514,
+ "p8_z": {
+  "f": [
+   1000.0,
+   1584.89319,
+   2511.88643,
+   3981.07171,
+   6309.57344,
+   10000.0,
+   15848.9319,
+   25118.8643,
+   39810.7171,
+   63095.7344,
+   100000.0,
+   158489.319,
+   251188.643,
+   398107.171,
+   630957.344,
+   1000000.0,
+   1584893.19,
+   2511886.43,
+   3981071.71,
+   6309573.44,
+   10000000.0
+  ],
+  "z": [
+   0.010736997179016976,
+   0.01684209835234141,
+   0.026634583387037516,
+   0.042388609820611864,
+   0.06815770095201866,
+   0.11228218616467069,
+   0.19741589486432817,
+   0.4242811898564331,
+   1.1703477475546855,
+   0.3836774997289615,
+   0.1849116641281115,
+   0.10634443907842026,
+   0.06488093299029794,
+   0.04054202279285175,
+   0.02570507112464751,
+   0.01660973163276244,
+   0.011138185824198213,
+   0.007999220323452164,
+   0.0063358972579262455,
+   0.0055329520028275,
+   0.005165901035066272
+  ]
+ },
+ "p8_loops": {
+  "design: Rfb 1 k, Cfb 1.6 nF": {
+   "z1k": 0.010736997179016976,
+   "zmax": 1.1703477475546855,
+   "fzmax": 39810.7171,
+   "z10M": 0.005165901035066272,
+   "xt_vmid": 0.00400030804704269,
+   "f_xt": 39810.7171,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.004427390836589459,
+   "step_pk_mV": 1.5028900000000345,
+   "step_final_mV": 0.009319999999979345,
+   "step_opp_mV": 0.8261700000000705,
+   "step_opp_pct": 54.97208711216732,
+   "settle_us": 33.745830999999995,
+   "zmax_allowed": 0.2776383496853254
+  },
+  "M-4: Rfb 953 ohm (0.1 %), Cfb 1.6 nF": {
+   "z1k": 0.010301258179414767,
+   "zmax": 1.1905477009124628,
+   "fzmax": 39810.7171,
+   "z10M": 0.005165901055723354,
+   "xt_vmid": 0.0040693525136431844,
+   "f_xt": 39810.7171,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.004496435303189953,
+   "step_pk_mV": 1.4806499999999723,
+   "step_final_mV": 0.009319999999979345,
+   "step_opp_mV": 0.8268099999999556,
+   "step_opp_pct": 55.84101577009902,
+   "settle_us": 33.1117,
+   "zmax_allowed": 0.2776383496853254
+  },
+  "M-5: Rfb 10 + 10 ohm, Cfb 100 nF": {
+   "z1k": 0.013844644483068618,
+   "zmax": 1.0820200613593691,
+   "fzmax": 33496.5439,
+   "z10M": 0.005165913156274358,
+   "xt_vmid": 0.0036432904862671125,
+   "f_xt": 33496.5439,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.004070373275813882,
+   "step_pk_mV": 1.6235300000000397,
+   "step_final_mV": 0.009319999999979345,
+   "step_opp_mV": 0.777350000000121,
+   "step_opp_pct": 47.880236275282996,
+   "settle_us": 26.40643399999998,
+   "zmax_allowed": 0.2776383496853254
+  },
+  "sensitivity: design with the 10 uF at 25 % (DC bias, *(check)*)": {
+   "z1k": 0.01073167831147555,
+   "zmax": 1.2311918958339816,
+   "fzmax": 79432.8235,
+   "z10M": 0.007752775829430749,
+   "xt_vmid": 0.0043437266401405595,
+   "f_xt": 79432.8235,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.004770809429687328,
+   "step_pk_mV": 2.478789999999842,
+   "step_final_mV": 0.009319999999979345,
+   "step_opp_mV": 0.7545600000000707,
+   "step_opp_pct": 30.440658547118502,
+   "settle_us": 11.711699999999992,
+   "zmax_allowed": 0.2776383496853254
+  }
+ },
+ "p8_awg_xt": {
+  "I_mA": 0.48721071863581,
+  "xt_mV": 0.41733534406263195,
+  "f": 39810.7171,
+  "lsb": 0.5180016876607699
+ },
+ "p8_noise": {
+  "1 uF at the tap (design)": {
+   "op_rms": 3.1622776601683795e-05,
+   "divider_rms": 6.435795988065502e-08,
+   "total_rms": 3.162284209154832e-05,
+   "at_pin": 3.9328662767513594e-05
+  },
+  "10 uF at the tap (M-10)": {
+   "op_rms": 3.1622776601683795e-05,
+   "divider_rms": 2.0351773878460814e-08,
+   "total_rms": 3.162278315067635e-05,
+   "at_pin": 3.932858946399236e-05
+  }
+ },
+ "p8_startup": {
+  "2 x 100k, 1 uF (design)": {
+   "tau_s": 0.049999999999999996,
+   "t_half_lsb_s": 0.4158883083359671,
+   "i_div_uA": 16.499999999999996,
+   "ib_err_uV": 0.5
+  },
+  "2 x 100k, 10 uF (M-10)": {
+   "tau_s": 0.5,
+   "t_half_lsb_s": 4.1588830833596715,
+   "i_div_uA": 16.499999999999996,
+   "ib_err_uV": 0.5
+  },
+  "2 x 330k, 1 uF (M-7)": {
+   "tau_s": 0.16499999999999998,
+   "t_half_lsb_s": 1.3724314175086914,
+   "i_div_uA": 5.0,
+   "ib_err_uV": 1.65
+  },
+  "2 x 330k, 10 uF (M-7 + M-10)": {
+   "tau_s": 1.6500000000000001,
+   "t_half_lsb_s": 13.724314175086917,
+   "i_div_uA": 5.0,
+   "ib_err_uV": 1.65
+  }
+ },
+ "vmid2": {
+  "Vmid x2": {
+   "z21max": 2.4033007163280867e-08,
+   "z11max": 0.25129221045873523,
+   "f11": 2371.37371,
+   "own_opp_pct": 85.8444341095644,
+   "own_settle_us": 8.9717,
+   "xt_vmid": 1.1871571565958776e-10,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.0004270829082624847,
+   "self_lsb": 1.8077056476438744,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 1.2041200000001417,
+   "awg_shared_lsb": 0.18859089612877375,
+   "awg_own_lsb": 1.5372593477051064e-08
+  },
+  "Vmid x2, Cfb X7R low (1 uF -10 % -15 %)": {
+   "z21max": 2.4048016194100012e-08,
+   "z11max": 0.2516201829897788,
+   "f11": 2511.88643,
+   "own_opp_pct": 82.72993925897167,
+   "own_settle_us": 8.33169999999998,
+   "xt_vmid": 1.188172077012766e-10,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.00042708290836397677,
+   "self_lsb": 1.8095006392992175,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 1.2034700000000953,
+   "awg_shared_lsb": 0.18877816062355804,
+   "awg_own_lsb": 1.5385735763136522e-08
+  },
+  "Vmid x2, Cfb X7R high (1 uF +10 % +15 %)": {
+   "z21max": 2.4022800518097207e-08,
+   "z11max": 0.2510666667329556,
+   "f11": 2371.37371,
+   "own_opp_pct": 88.03058352773773,
+   "own_settle_us": 9.451699999999997,
+   "xt_vmid": 1.1864670057006502e-10,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.00042708290819346966,
+   "self_lsb": 1.806371522856382,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 1.2045700000000714,
+   "awg_shared_lsb": 0.18845171208100087,
+   "awg_own_lsb": 1.5363656657615483e-08
+  },
+  "Vmid x2, the 6 x 10 uF at 1.65 V bias (Samsung data, -10 %)": {
+   "z21max": 3.1354782778009756e-08,
+   "z11max": 0.26006624319144156,
+   "f11": 8912.50938,
+   "own_opp_pct": 82.54720752123094,
+   "own_settle_us": 7.2316999999999805,
+   "xt_vmid": 1.4746569531048052e-10,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.0004270829370124644,
+   "self_lsb": 1.8081070242881132,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 1.2508600000000758,
+   "awg_shared_lsb": 0.18863277019224234,
+   "awg_own_lsb": 1.9095450428058934e-08
+  },
+  "Vmid x2, stiffened OPA365 loop (previous design)": {
+   "z21max": 1.3154030245461018e-09,
+   "z11max": 0.2279420449695279,
+   "f11": 22387.2114,
+   "own_opp_pct": 1.2093438554542861,
+   "own_settle_us": 17.947375,
+   "xt_vmid": 4.419913057706443e-12,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.00042708279396668213,
+   "self_lsb": 1.1454286533361075,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 0.7615699999998782,
+   "awg_shared_lsb": 0.11949806484341396,
+   "awg_own_lsb": 5.723370215547123e-10
+  },
+  "Vmid x2, previous loop (1R, 1k, 1.5 nF, 1 x 10 uF)": {
+   "z21max": 1.384106972499999e-08,
+   "z11max": 1.1703477475546855,
+   "f11": 39810.7171,
+   "own_opp_pct": 54.97172133875075,
+   "own_settle_us": 33.74919999999998,
+   "xt_vmid": 4.709232586705682e-11,
+   "xt_sense": 0.00042708278954676907,
+   "xt": 0.00042708283663909493,
+   "self_lsb": 4.965230836571775,
+   "step_victim_uV": 0.0,
+   "step_own_mV": 1.5028999999999737,
+   "awg_shared_lsb": 0.5180016876607699,
+   "awg_own_lsb": 6.098008404038935e-09
+  },
+  "flat_shared_lsb": {
+   "0.5": 4.128935620614201,
+   "0.28": 2.545448095008428,
+   "0.1": 1.2498673922400685
+  }
+ },
+ "vmid_loop": {
+  "rows": [
+   {
+    "cfb": 7.65e-07,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.2603639018733555,
+    "fz": 8920.28973,
+    "pm": 64.29739769548948,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 7.65e-07,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.005,
+    "zmax": 0.26031321148120384,
+    "fz": 8920.28973,
+    "pm": 64.30688220978914,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 7.65e-07,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.25921125195480715,
+    "fz": 8920.28973,
+    "pm": 64.5128626566727,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 7.65e-07,
+    "cd1": 6e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.2516261873455292,
+    "fz": 2513.46056,
+    "pm": 68.4422352707293,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 7.65e-07,
+    "cd1": 6e-05,
+    "esr_each": 0.005,
+    "zmax": 0.2516201699219207,
+    "fz": 2513.46056,
+    "pm": 68.45053260339672,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 7.65e-07,
+    "cd1": 6e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.25152253146055586,
+    "fz": 1884.72409,
+    "pm": 68.63063399820244,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.2601171690117358,
+    "fz": 8920.28973,
+    "pm": 64.27917339606415,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.005,
+    "zmax": 0.2600665849739671,
+    "fz": 8920.28973,
+    "pm": 64.28866265326756,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.2589669475914994,
+    "fz": 8920.28973,
+    "pm": 64.49474800501702,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.2512976647463979,
+    "fz": 2513.46056,
+    "pm": 68.42281180945525,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.005,
+    "zmax": 0.2512922147500794,
+    "fz": 2372.83323,
+    "pm": 68.43111511797852,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.2512042043440623,
+    "fz": 1779.27437,
+    "pm": 68.61134721060017,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.25994901783963853,
+    "fz": 8920.28973,
+    "pm": 64.26674472167824,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.005,
+    "zmax": 0.2598985065558469,
+    "fz": 8920.28973,
+    "pm": 64.2762372848774,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 4.9248e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.2588004486574191,
+    "fz": 8920.28973,
+    "pm": 64.48239404886277,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.00436,
+    "zmax": 0.2510720063411641,
+    "fz": 2372.83323,
+    "pm": 68.40956564281889,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.005,
+    "zmax": 0.25106666615485873,
+    "fz": 2372.83323,
+    "pm": 68.41787304335361,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   },
+   {
+    "cfb": 1.2649999999999997e-06,
+    "cd1": 6e-05,
+    "esr_each": 0.01901,
+    "zmax": 0.25098518651110513,
+    "fz": 1585.74447,
+    "pm": 68.59819422023787,
+    "fc": [
+     26631.5514
+    ],
+    "nx": 1
+   }
+  ],
+  "nominal": {
+   "cfb": 1e-06,
+   "cd1": 6e-05,
+   "esr_each": 0.005,
+   "zmax": 0.2512922147500794,
+   "fz": 2372.83323,
+   "pm": 68.43111511797852,
+   "fc": [
+    26631.5514
+   ],
+   "nx": 1
+  },
+  "worst_z": {
+   "cfb": 7.65e-07,
+   "cd1": 4.9248e-05,
+   "esr_each": 0.00436,
+   "zmax": 0.2603639018733555,
+   "fz": 8920.28973,
+   "pm": 64.29739769548948,
+   "fc": [
+    26631.5514
+   ],
+   "nx": 1
+  },
+  "worst_pm": {
+   "cfb": 1.2649999999999997e-06,
+   "cd1": 4.9248e-05,
+   "esr_each": 0.00436,
+   "zmax": 0.25994901783963853,
+   "fz": 8920.28973,
+   "pm": 64.26674472167824,
+   "fc": [
+    26631.5514
+   ],
+   "nx": 1
+  },
+  "extra": {
+   "prev": {
+    "zmax": 1.169229904895515,
+    "fz": 39857.0619,
+    "pm": 95.92815884198193,
+    "fc": [
+     892577.204
+    ]
+   },
+   "opa_stiff": {
+    "zmax": 0.22794655374513983,
+    "fz": 22410.7658,
+    "pm": 82.23461774462025,
+    "fc": [
+     188597.284
+    ]
+   },
+   "g_noiso": {
+    "zmax": 3.108929060620643,
+    "fz": 15864.5422,
+    "pm": 0.7007580711143646,
+    "fc": [
+     15862.0634
+    ]
+   },
+   "g_cfb12p": {
+    "zmax": 4.04669245278815,
+    "fz": 15864.5422,
+    "pm": 0.13080721574377208,
+    "fc": [
+     15862.0634
+    ]
+   },
+   "awg_follower": {
+    "zmax": 1.0103476569440981,
+    "fz": 945741.609,
+    "pm": 77.35963416010514,
+    "fc": [
+     44763468.1
+    ]
+   },
+   "direct_10u": {
+    "zmax": 1.886063393955973,
+    "fz": 119013.874,
+    "pm": 3.164066301130674,
+    "fc": [
+     118987.883
+    ]
+   }
+  },
+  "z_curve": {
+   "f": [
+    100.0,
+    125.898175,
+    158.503504,
+    199.553019,
+    251.233608,
+    316.298527,
+    398.214072,
+    501.344249,
+    631.183258,
+    794.648202,
+    1000.44758,
+    1259.54524,
+    1585.74447,
+    1996.42335,
+    2513.46056,
+    3164.40096,
+    3983.92306,
+    5015.68641,
+    6314.65764,
+    7950.03872,
+    10008.9536,
+    12601.0899,
+    15864.5422,
+    19973.1691,
+    25145.8554,
+    31658.1729,
+    39857.0619,
+    50179.3134,
+    63174.8397,
+    79535.9701,
+    100134.335,
+    126067.3,
+    158716.429,
+    199821.087,
+    251571.102,
+    316723.425,
+    398749.012,
+    502017.728,
+    632031.156,
+    795715.69,
+    1001791.53,
+    1261237.25,
+    1587874.68,
+    1999105.24,
+    2516837.0,
+    3168651.85,
+    3989274.85,
+    5022424.22,
+    6323140.42,
+    7960718.37,
+    10022399.1,
+    12618017.6,
+    15885853.8,
+    20000000.0
+   ],
+   "z": [
+    0.23792844636667462,
+    0.24260567250446535,
+    0.24570250799853943,
+    0.2477185545149425,
+    0.2490165290629803,
+    0.24984635328471358,
+    0.2503747390690206,
+    0.25071070201133266,
+    0.25092469948918306,
+    0.2510620018258456,
+    0.25115162469437224,
+    0.25121202894843786,
+    0.2512542955148119,
+    0.2512827589219359,
+    0.25129166601939323,
+    0.25125347198041365,
+    0.25108765113971193,
+    0.25058439740769617,
+    0.2492313594711538,
+    0.24586918455052073,
+    0.2382033893224188,
+    0.22278980831860243,
+    0.19710169076134784,
+    0.16341661729944507,
+    0.12861784094508127,
+    0.09856148589012395,
+    0.07510172453403512,
+    0.05752533423733277,
+    0.04443968253655438,
+    0.03460947106176423,
+    0.027126998524005914,
+    0.021361737556750585,
+    0.01687717438827948,
+    0.013365261679674322,
+    0.010602866582612452,
+    0.008424311707094227,
+    0.006704100342595731,
+    0.005345783284662723,
+    0.00427451069460548,
+    0.0034318381150029234,
+    0.002771951474033743,
+    0.00225880857050066,
+    0.0018638806979691218,
+    0.0015642995287238725,
+    0.0013413237288386105,
+    0.0011791533458664276,
+    0.0010641858770176669,
+    0.0009847381478851008,
+    0.0009310747259002753,
+    0.0008954690575650768,
+    0.0008721045445381424,
+    0.0008567988881297028,
+    0.0008466441204505246,
+    0.0008396606656653203
+   ]
+  }
+ },
+ "vmid_standin": {
+  "A0": 1000000.0,
+  "A0_dB": 120.0,
+  "GBW_Hz": 15000000.0,
+  "Rout_ohm": 150,
+  "fp2_Hz": 40000000.0,
+  "err_1k_1M": 3.2114232967339618e-06,
+  "err_100_10M": 3.2114232967339618e-06,
+  "err_other_corners": {
+   "nominal": 3.2114232967339618e-06,
+   "Cfb low": 4.188018083772782e-06,
+   "C at 1.65 V bias": 3.786852105003291e-06
+  }
+ },
+ "an4": {
+  "design (2 x 330k 0.1 %, sense 249 ohm), ADVREF drop 0.5 mV": 0.008708677887475202,
+  "design, ADVREF drop 5 mV": 0.00941257056081124,
+  "previous (2 x 100k 0.05 %, sense 100 ohm), 5 mV drop": 0.008942424649429626,
+  "reworked AREF = 3.0 V reference (PA-7 / D6, not done)": 0.15702654570981078
+ },
+ "c1": [
+  {
+   "tap": 1,
+   "v": 0.1875,
+   "zi": 77.8125,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 1,
+   "v": 0.1875,
+   "zi": 77.8125,
+   "ctap": "100n",
+   "err_mV": 0.010000000000010001,
+   "err_lsb": 0.012412121212133627,
+   "vpin_dev_mV": 0.010000000000010001
+  },
+  {
+   "tap": 2,
+   "v": 0.75,
+   "zi": 249.0,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 2,
+   "v": 0.75,
+   "zi": 249.0,
+   "ctap": "100n",
+   "err_mV": 0.044000000000044004,
+   "err_lsb": 0.054613333333387956,
+   "vpin_dev_mV": 0.044000000000044004
+  },
+  {
+   "tap": 3,
+   "v": 1.3125,
+   "zi": 326.8125,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 3,
+   "v": 1.3125,
+   "zi": 326.8125,
+   "ctap": "100n",
+   "err_mV": 0.08000000000008001,
+   "err_lsb": 0.09929696969706901,
+   "vpin_dev_mV": 0.08000000000008001
+  },
+  {
+   "tap": 4,
+   "v": 1.875,
+   "zi": 311.25,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 4,
+   "v": 1.875,
+   "zi": 311.25,
+   "ctap": "100n",
+   "err_mV": 0.1100000000000545,
+   "err_lsb": 0.13653333333340098,
+   "vpin_dev_mV": 0.1100000000000545
+  },
+  {
+   "tap": 5,
+   "v": 2.4375,
+   "zi": 202.3125,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 5,
+   "v": 2.4375,
+   "zi": 202.3125,
+   "ctap": "100n",
+   "err_mV": 0.140000000000029,
+   "err_lsb": 0.17376969696973296,
+   "vpin_dev_mV": 0.140000000000029
+  },
+  {
+   "tap": 6,
+   "v": 3.0,
+   "zi": 0.0,
+   "ctap": "0",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  },
+  {
+   "tap": 6,
+   "v": 3.0,
+   "zi": 0.0,
+   "ctap": "100n",
+   "err_mV": 0.0,
+   "err_lsb": 0.0,
+   "vpin_dev_mV": 0.0
+  }
+ ],
+ "c1_zmax": {
+  "nominal": 326.8125,
+  "all_elements_5pct_high": 327.13931249999996,
+  "tap": 3
+ },
+ "c1_decision": "no capacitor at the taps (a 100 nF tap capacitor is worse: it shares charge with the sample capacitor instead of the 327 ohm ladder re-settling it)",
+ "c1_buffer": {
+  "r_min": 1326.672,
+  "i_nom_mA": 2.2590361445783134,
+  "i_max_mA": 2.2792974420203334,
+  "headroom_V": 0.23457074925074917,
+  "loadreg_uV": 102.568384890915,
+  "self_heat_K": 0.17010736404582358,
+  "self_heat_ppm": 2.5516104606873538,
+  "p_series_elem_mW": 1.2719798111364378,
+  "p_par_elem_mW": 0.14133109012627085,
+  "p_array_max_mW": 5.087919244545751,
+  "p_elem_rating_mW": null,
+  "dT_for_0p2pct_K": 200.0,
+  "theta_for_0p2pct_KperW": 39308.799999999996,
+  "i_lim_mA": 10.0
+ },
+ "c1_kick": {
+  "q_pC": 18.000000000000004,
+  "dv_mV": 0.10000000000000002,
+  "lsb": 0.12412121212121215
+ },
+ "c2_design_sweep": {
+  "249 ohm 0.1 % (design), gain 1x, prescaler 8, 6 taps": {
+   "p50": 0.21666431846870182,
+   "p99": 0.3271279203981249,
+   "p999": 0.34724867062314624,
+   "max": 0.36971334066629424
+  },
+  "249 ohm 0.1 % (design), gain 1x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.22246361772067758,
+   "p99": 0.36515676722230184,
+   "p999": 0.4024611792459341,
+   "max": 0.4617514522910824
+  },
+  "249 ohm 0.1 % (design), gain 1x, prescaler 8, 5 taps": {
+   "p50": 0.18569063184759216,
+   "p99": 0.30761186641931093,
+   "p999": 0.3343804755525034,
+   "max": 0.351818815842762
+  },
+  "249 ohm 0.1 % (design), gain 1x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.19345997876553156,
+   "p99": 0.3402740553556532,
+   "p999": 0.3817979220820486,
+   "max": 0.4179072619863291
+  },
+  "249 ohm 0.1 % (design), gain 0.33x, prescaler 8, 6 taps": {
+   "p50": 0.14760072064328256,
+   "p99": 0.3269653578152065,
+   "p999": 0.36908495744099473,
+   "max": 0.39810182058590726
+  },
+  "249 ohm 0.1 % (design), gain 0.33x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.15376229031373612,
+   "p99": 0.35401572344670595,
+   "p999": 0.41139249879166423,
+   "max": 0.4343354554803227
+  },
+  "249 ohm 0.1 % (design), gain 0.33x, prescaler 8, 5 taps": {
+   "p50": 0.13924378005447124,
+   "p99": 0.3124701867891605,
+   "p999": 0.3533764699619964,
+   "max": 0.3843376159093168
+  },
+  "249 ohm 0.1 % (design), gain 0.33x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.1447179693761882,
+   "p99": 0.33773095880985865,
+   "p999": 0.3938959116837043,
+   "max": 0.47018046244133416
+  },
+  "330 ohm arrays 5 % (previous), gain 1x, prescaler 8, 6 taps": {
+   "p50": 0.28523284859102205,
+   "p99": 0.4236260105085876,
+   "p999": 0.44882330146796207,
+   "max": 0.47669762566329155
+  },
+  "330 ohm arrays 5 % (previous), gain 1x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.29204341747890794,
+   "p99": 0.47782623006746694,
+   "p999": 0.5266457284109626,
+   "max": 0.5716264092011443
+  },
+  "330 ohm arrays 5 % (previous), gain 1x, prescaler 8, 5 taps": {
+   "p50": 0.24502108252909238,
+   "p99": 0.4003113686957432,
+   "p999": 0.42665963212569674,
+   "max": 0.45436543008599983
+  },
+  "330 ohm arrays 5 % (previous), gain 1x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.256279060292087,
+   "p99": 0.44871528722383586,
+   "p999": 0.4971089001860659,
+   "max": 0.5485327678575231
+  },
+  "1 kohm arrays 5 % (previous), gain 1x, prescaler 8, 6 taps": {
+   "p50": 0.8568618235085523,
+   "p99": 1.2248271645685873,
+   "p999": 1.2615106086623635,
+   "max": 1.3070715729259064
+  },
+  "1 kohm arrays 5 % (previous), gain 1x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.8798306864268852,
+   "p99": 1.4165732503662047,
+   "p999": 1.540114500496908,
+   "max": 1.6499047517768304
+  },
+  "1 kohm arrays 5 % (previous), gain 1x, prescaler 8, 5 taps": {
+   "p50": 0.7379561395430301,
+   "p99": 1.175538405899988,
+   "p999": 1.2229705653434566,
+   "max": 1.2550161322833446
+  },
+  "1 kohm arrays 5 % (previous), gain 1x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.769073646821198,
+   "p99": 1.3288903224157913,
+   "p999": 1.45565502074943,
+   "max": 1.5336356908383095
+  },
+  "604 ohm 0.1 % ladder (previous), gain 1x, prescaler 8, 6 taps": {
+   "p50": 0.5157092771378302,
+   "p99": 0.7421116155443542,
+   "p999": 0.7675055997781826,
+   "max": 0.7903757231574673
+  },
+  "604 ohm 0.1 % ladder (previous), gain 1x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.5276009827782673,
+   "p99": 0.8571876661504713,
+   "p999": 0.938758707012382,
+   "max": 0.9911856629296381
+  },
+  "604 ohm 0.1 % ladder (previous), gain 1x, prescaler 8, 5 taps": {
+   "p50": 0.442658098296306,
+   "p99": 0.707215489551818,
+   "p999": 0.7394362476877582,
+   "max": 0.7589578782026365
+  },
+  "604 ohm 0.1 % ladder (previous), gain 1x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.457524026126066,
+   "p99": 0.8046007397626453,
+   "p999": 0.8844621920068912,
+   "max": 0.9612141691050056
+  },
+  "604 ohm 0.1 % ladder (previous), gain 0.33x, prescaler 8, 6 taps": {
+   "p50": 0.2808774759946573,
+   "p99": 0.509471953276061,
+   "p999": 0.573044703650698,
+   "max": 0.6298865682833821
+  },
+  "604 ohm 0.1 % ladder (previous), gain 0.33x, prescaler 8, 6 taps, +leakage": {
+   "p50": 0.2981005122583156,
+   "p99": 0.5979598308328332,
+   "p999": 0.6814700002180291,
+   "max": 0.7944216144169332
+  },
+  "604 ohm 0.1 % ladder (previous), gain 0.33x, prescaler 8, 5 taps": {
+   "p50": 0.24967084756076474,
+   "p99": 0.47548117749587626,
+   "p999": 0.5365576399675247,
+   "max": 0.5863103738047357
+  },
+  "604 ohm 0.1 % ladder (previous), gain 0.33x, prescaler 8, 5 taps, +leakage": {
+   "p50": 0.27083269172680957,
+   "p99": 0.5663751091122914,
+   "p999": 0.6596339748332124,
+   "max": 0.7320940808117484
+  }
+ },
+ "c2": {
+  "ladder+MCP only: nominal ratios, 6 taps": {
+   "p50": 0.2591550321809848,
+   "p99": 0.6297253707272408,
+   "p999": 0.7412664133899549,
+   "max": 0.8331210256933446
+  },
+  "ladder+MCP only: MCP-calibrated, 6 taps (design)": {
+   "p50": 0.035494978350840256,
+   "p99": 0.08440660400550314,
+   "p999": 0.09722631653375091,
+   "max": 0.12262447198691007
+  },
+  "ladder+MCP only: MCP-calibrated, 5 taps (one of 6 dropped)": {
+   "p50": 0.035335820045290234,
+   "p99": 0.08550208677638753,
+   "p999": 0.10152890434309278,
+   "max": 0.11678833179519188
+  },
+  "ladder+MCP only: MCP-calibrated, 4 taps (D11 minimum)": {
+   "p50": 0.05814616782487292,
+   "p99": 0.1844341058675491,
+   "p999": 0.2418458667924875,
+   "max": 0.27238789383045514
+  },
+  "ladder+MCP+leakage 0.5 uA: MCP-calibrated, 6 taps": {
+   "p50": 0.059317556591167886,
+   "p99": 0.1466552127090472,
+   "p999": 0.17008227233684875,
+   "max": 0.1929478625171157
+  },
+  "ladder+MCP+leakage+ADC INL 1.2 LSB: MCP-calibrated, 6 taps": {
+   "p50": 0.5528651416277341,
+   "p99": 1.2912822941309017,
+   "p999": 1.4884095345154038,
+   "max": 1.661304496307821
+  },
+  "ladder+MCP+leakage+ADC INL 1.2 LSB: nominal ratios, 6 taps": {
+   "p50": 0.618551418584147,
+   "p99": 1.4724646226534053,
+   "p999": 1.780332982389871,
+   "max": 1.9975740691154158
+  },
+  "absolute (Vref +-0.1 % included), ladder+MCP only, 6 taps": {
+   "p50": 0.03558096839446989,
+   "p99": 0.08462804861517213,
+   "p999": 0.09863625622531623,
+   "max": 0.11369691803798787
+  },
+  "sensitivity: ADC input resistance 1 Mohm (1000 x the typical input current), uncorrected, ladder+ADC only, 6 taps": {
+   "p50": 0.44868165208822575,
+   "p99": 0.6567790702118419,
+   "p999": 0.6891930138211133,
+   "max": 0.7244836857253176
+  },
+  "sensitivity: ladder 0.1 % resistors, nominal ratios, ladder only": {
+   "p50": 0.2617909990657097,
+   "p99": 0.6319763136395227,
+   "p999": 0.7479599440509354,
+   "max": 0.8404835439522458
+  },
+  "sensitivity: ADC INL at its typical 1 ppm FSR, ladder+ADC only, 6 taps": {
+   "p50": 0.010152843638877584,
+   "p99": 0.027704785124557537,
+   "p999": 0.034151642305211345,
+   "max": 0.0386684046920891
+  },
+  "comparison: top tap through REFIN+ (previous), ladder+MCP only, 6 taps": {
+   "p50": 0.029990234927907977,
+   "p99": 0.07340020061740632,
+   "p999": 0.08336761924836568,
+   "max": 0.0955103305681746
+  },
+  "comparison: buffer offset 0, ladder+MCP only, 6 taps": {
+   "p50": 0.03579543045361788,
+   "p99": 0.08474103218075868,
+   "p999": 0.09696786927291945,
+   "max": 0.10663318748947859
+  },
+  "stale calibration: elements drift +-0.01 % (10 ppm/K x 10 K, uncorrelated) after the MCP read, ladder+MCP only, 6 taps": {
+   "p50": 0.0442305891748731,
+   "p99": 0.11043926433304709,
+   "p999": 0.13256307411568705,
+   "max": 0.155422904884972
+  },
+  "re-read calibration: the same +-0.01 % drift, taps re-read by the MCP in this calibration (PA-9), ladder+MCP only, 6 taps": {
+   "p50": 0.035754731443290666,
+   "p99": 0.08294422402586861,
+   "p999": 0.09694400596300477,
+   "max": 0.10980032344366464
+  }
+ },
+ "c2_inl_floor_lsb": 1.4884095345154038,
+ "ladder_variants": {
+  "330R 5 % arrays (previous)": {
+   "total": 1760.0,
+   "zmax": 433.125,
+   "zmax_tol": 454.78125,
+   "settle_lsb": 0.0,
+   "buffer": {
+    "r_min": 1672.0,
+    "i_nom_mA": 1.7045454545454544,
+    "i_max_mA": 1.8122583732057416,
+    "headroom_V": 0.23457074925074917,
+    "loadreg_uV": 81.55162679425837,
+    "self_heat_K": 0.13525154249405372,
+    "self_heat_ppm": 2.0287731374108056,
+    "p_series_elem_mW": 1.0092703349282297,
+    "p_par_elem_mW": 0.11214114832535885,
+    "p_array_max_mW": 4.037081339712919,
+    "p_elem_rating_mW": 62.5,
+    "dT_for_0p2pct_K": 10.0,
+    "theta_for_0p2pct_KperW": 2477.037037037037,
+    "i_lim_mA": 10.0
+   },
+   "c2a": 0.09922233379729999,
+   "c2a_nominal": 36.04685230998639,
+   "c2b": 0.10173387592662898,
+   "c2c": 0.20585590128854142,
+   "c2d_reread": 0.09805793202811602,
+   "c2d_stale": 1.6262976279006274,
+   "p3_shorted": {
+    "OPA365": 58.21075727713869,
+    "OPA354": 60.81075727713869
+   }
+  },
+  "680R 1 %": {
+   "total": 3626.6666666666665,
+   "zmax": 892.4999999999999,
+   "zmax_tol": 901.4249999999998,
+   "settle_lsb": 0.0,
+   "buffer": {
+    "r_min": 3590.3999999999996,
+    "i_nom_mA": 0.8272058823529411,
+    "i_max_mA": 0.8535614973262033,
+    "headroom_V": 0.23457074925074917,
+    "loadreg_uV": 38.41026737967915,
+    "self_heat_K": 0.06370256627518797,
+    "self_heat_ppm": 0.9555384941278195,
+    "p_series_elem_mW": 0.4700033422459894,
+    "p_par_elem_mW": 0.05222259358288771,
+    "p_array_max_mW": 1.8800133689839575,
+    "p_elem_rating_mW": null,
+    "dT_for_0p2pct_K": 20.0,
+    "theta_for_0p2pct_KperW": 10638.22222222222,
+    "i_lim_mA": 10.0
+   },
+   "c2a": 0.09730892177136365,
+   "c2a_nominal": 7.2391741067802835,
+   "c2b": 0.101015726435799,
+   "c2c": 0.3774596945064179,
+   "c2d_reread": 0.09574772817651836,
+   "c2d_stale": 0.807158106991105,
+   "p3_shorted": {
+    "OPA365": 57.25206040125915,
+    "OPA354": 59.85206040125915
+   }
+  }
+ },
+ "tee": {
+  "k = 1/2 (2 x 100k)|+-1.25 V, 256 points": {
+   "nominal": 0.051,
+   "bound": 0.051,
+   "fit": 0.015642114848083057,
+   "key": "1.25|1.15|pt1.2|256",
+   "linear": 0.051
+  },
+  "k = 1/2 (2 x 100k)|+-5 V, 1024 points": {
+   "nominal": 0.074,
+   "bound": 0.091,
+   "fit": 0.036365700637101483,
+   "key": "5|1.15|pt1.2|1024",
+   "linear": 0.091
+  },
+  "k = 1/3 (100k + 100k over 100k)|+-1.25 V, 256 points": {
+   "nominal": 0.069,
+   "bound": 0.086,
+   "fit": 0.015642114848083057,
+   "key": "1.25|1.15|pt1.2|256",
+   "linear": 0.086
+  },
+  "k = 1/3 (100k + 100k over 100k)|+-5 V, 1024 points": {
+   "nominal": 0.092,
+   "bound": 0.109,
+   "fit": 0.036365700637101483,
+   "key": "5|1.15|pt1.2|1024",
+   "linear": 0.109
+  },
+  "ratio_switch": {
+   "dk_design_pct": 0.0,
+   "dk_ron_variant_pct": 0.00065,
+   "dk_leak_variant_pct": 2.540740740740741e-07,
+   "ads_rth_gain_pct": 0.004999999999999999
+  },
+  "retired": "C3-a/b/c/d/e/f and the SC-9 injection rows retired 2026-11-11 with the T-switches and the 249 ohm injection branch"
+ },
+ "clamp_rs_kohm": 100.0,
+ "clamp": {
+  "1.8|+|held|open|DBAT54S_MAX": {
+   "tap": 0.5892665,
+   "d": 0.1613751,
+   "s1": 0.1994889,
+   "s2": 2.143058e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1994889,
+   "i_s1_mA": 0.015930111
+  },
+  "1.8|+|held|open|DBAT54S_TYP": {
+   "tap": 0.5884788,
+   "d": 0.1363537,
+   "s1": 0.1699125,
+   "s2": 1.810775e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1699125,
+   "i_s1_mA": 0.016225874999999997
+  },
+  "1.8|+|held|open|none": {
+   "tap": 0.5987722,
+   "d": 0.5272901,
+   "s1": 0.600171,
+   "s2": 7.002403e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.600171,
+   "i_s1_mA": 0.011923289999999998
+  },
+  "1.8|+|held|on|DBAT54S_MAX": {
+   "tap": 0.5900236,
+   "d": 0.1861015,
+   "s1": 0.1861615,
+   "s2": 2.471425e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1861615,
+   "i_s1_mA": 0.016063385
+  },
+  "1.8|+|held|on|DBAT54S_TYP": {
+   "tap": 0.5891623,
+   "d": 0.1580161,
+   "s1": 0.1580761,
+   "s2": 2.09845e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1580761,
+   "i_s1_mA": 0.016344239
+  },
+  "1.8|+|held|on|none": {
+   "tap": 0.5999662,
+   "d": 0.5829157,
+   "s1": 0.5829752,
+   "s2": 7.74111e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.5829752,
+   "i_s1_mA": 0.012095247999999998
+  },
+  "1.8|+|float|open|DBAT54S_MAX": {
+   "tap": 0.7058141,
+   "d": 0.2816935,
+   "s1": 0.3178267,
+   "s2": 3.7425e-07,
+   "vdd": 0.1205774,
+   "worst_beyond_rail": 0.19724930000000002,
+   "i_s1_mA": 0.014746732999999996
+  },
+  "1.8|+|float|open|DBAT54S_TYP": {
+   "tap": 0.7060838,
+   "d": 0.2579239,
+   "s1": 0.2897021,
+   "s2": 3.426856e-07,
+   "vdd": 0.1218042,
+   "worst_beyond_rail": 0.16789790000000002,
+   "i_s1_mA": 0.015027978999999999
+  },
+  "1.8|+|float|on|DBAT54S_MAX": {
+   "tap": 0.707135,
+   "d": 0.3053935,
+   "s1": 0.3054477,
+   "s2": 4.057242e-07,
+   "vdd": 0.1210969,
+   "worst_beyond_rail": 0.18435079999999998,
+   "i_s1_mA": 0.014870522999999997
+  },
+  "1.8|+|float|on|DBAT54S_TYP": {
+   "tap": 0.7072704,
+   "d": 0.278669,
+   "s1": 0.2787231,
+   "s2": 3.702356e-07,
+   "vdd": 0.1222642,
+   "worst_beyond_rail": 0.1564589,
+   "i_s1_mA": 0.015137768999999999
+  },
+  "1.8|-|held|open|DBAT54S_MAX": {
+   "tap": -0.589267,
+   "d": -0.161375,
+   "s1": -0.166304,
+   "s2": -2.14306e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.166304,
+   "i_s1_mA": 0.0050719599999999995
+  },
+  "1.8|-|held|open|DBAT54S_TYP": {
+   "tap": -0.588479,
+   "d": -0.136354,
+   "s1": -0.140668,
+   "s2": -1.81077e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.140668,
+   "i_s1_mA": 0.00532832
+  },
+  "1.8|-|held|open|none": {
+   "tap": -0.598772,
+   "d": -0.527289,
+   "s1": -0.542914,
+   "s2": -7.00238e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.542914,
+   "i_s1_mA": 0.0013058599999999998
+  },
+  "1.8|-|held|on|DBAT54S_MAX": {
+   "tap": -0.589348,
+   "d": -0.163938,
+   "s1": -0.163943,
+   "s2": -2.1771e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.163943,
+   "i_s1_mA": 0.005095570000000001
+  },
+  "1.8|-|held|on|DBAT54S_TYP": {
+   "tap": -0.588554,
+   "d": -0.138594,
+   "s1": -0.138599,
+   "s2": -1.84053e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.138599,
+   "i_s1_mA": 0.0053490099999999995
+  },
+  "1.8|-|held|on|none": {
+   "tap": -0.598964,
+   "d": -0.536043,
+   "s1": -0.536047,
+   "s2": -7.11864e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.536047,
+   "i_s1_mA": 0.0013745299999999992
+  },
+  "1.8|-|float|open|DBAT54S_MAX": {
+   "tap": -0.589267,
+   "d": -0.161375,
+   "s1": -0.166305,
+   "s2": -2.14306e-07,
+   "vdd": -0.000152083,
+   "worst_beyond_rail": 0.166305,
+   "i_s1_mA": 0.0050719499999999995
+  },
+  "1.8|-|float|open|DBAT54S_TYP": {
+   "tap": -0.588479,
+   "d": -0.136354,
+   "s1": -0.140668,
+   "s2": -1.81078e-07,
+   "vdd": -0.000233772,
+   "worst_beyond_rail": 0.140668,
+   "i_s1_mA": 0.00532832
+  },
+  "1.8|-|float|on|DBAT54S_MAX": {
+   "tap": -0.589346,
+   "d": -0.163938,
+   "s1": -0.163943,
+   "s2": -2.1771e-07,
+   "vdd": -0.000152086,
+   "worst_beyond_rail": 0.163943,
+   "i_s1_mA": 0.005095570000000001
+  },
+  "1.8|-|float|on|DBAT54S_TYP": {
+   "tap": -0.58855,
+   "d": -0.138594,
+   "s1": -0.138598,
+   "s2": -1.84053e-07,
+   "vdd": -0.000233779,
+   "worst_beyond_rail": 0.138598,
+   "i_s1_mA": 0.0053490199999999995
+  },
+  "5|+|held|open|DBAT54S_MAX": {
+   "tap": 0.6309739,
+   "d": 0.1639136,
+   "s1": 0.2158112,
+   "s2": 2.17677e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.2158112,
+   "i_s1_mA": 0.027951888
+  },
+  "5|+|held|open|DBAT54S_TYP": {
+   "tap": 0.6308036,
+   "d": 0.1385847,
+   "s1": 0.1844958,
+   "s2": 1.840402e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1844958,
+   "i_s1_mA": 0.028265042
+  },
+  "5|+|held|open|none": {
+   "tap": 0.6333134,
+   "d": 0.5354308,
+   "s1": 0.618247,
+   "s2": 7.110511e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.618247,
+   "i_s1_mA": 0.02392753
+  },
+  "5|+|held|on|DBAT54S_MAX": {
+   "tap": 0.6312074,
+   "d": 0.1999365,
+   "s1": 0.2000551,
+   "s2": 2.655153e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.2000551,
+   "i_s1_mA": 0.028109448999999998
+  },
+  "5|+|held|on|DBAT54S_TYP": {
+   "tap": 0.6310135,
+   "d": 0.1703032,
+   "s1": 0.1704219,
+   "s2": 2.261624e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.1704219,
+   "i_s1_mA": 0.028405780999999998
+  },
+  "5|+|held|on|none": {
+   "tap": 0.6337047,
+   "d": 0.6007385,
+   "s1": 0.6008571,
+   "s2": 7.977796e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.6008571,
+   "i_s1_mA": 0.024101429
+  },
+  "5|+|float|open|DBAT54S_MAX": {
+   "tap": 0.9367321,
+   "d": 0.4716584,
+   "s1": 0.5203339,
+   "s2": 6.267717e-07,
+   "vdd": 0.3078729,
+   "worst_beyond_rail": 0.212461,
+   "i_s1_mA": 0.024906661000000004
+  },
+  "5|+|float|open|DBAT54S_TYP": {
+   "tap": 0.9378054,
+   "d": 0.4476102,
+   "s1": 0.4906196,
+   "s2": 5.948374e-07,
+   "vdd": 0.3091365,
+   "worst_beyond_rail": 0.1814831,
+   "i_s1_mA": 0.025203804000000003
+  },
+  "5|+|float|on|DBAT54S_MAX": {
+   "tap": 0.9376101,
+   "d": 0.5056,
+   "s1": 0.5057034,
+   "s2": 6.718469e-07,
+   "vdd": 0.3085189,
+   "worst_beyond_rail": 0.19718450000000004,
+   "i_s1_mA": 0.025052966000000003
+  },
+  "5|+|float|on|DBAT54S_TYP": {
+   "tap": 0.9385874,
+   "d": 0.4774616,
+   "s1": 0.4775649,
+   "s2": 6.344808e-07,
+   "vdd": 0.309713,
+   "worst_beyond_rail": 0.1678519,
+   "i_s1_mA": 0.025334351
+  },
+  "5|-|held|open|DBAT54S_MAX": {
+   "tap": -0.630974,
+   "d": -0.163913,
+   "s1": -0.167523,
+   "s2": -2.17677e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.167523,
+   "i_s1_mA": 0.005289769999999996
+  },
+  "5|-|held|open|DBAT54S_TYP": {
+   "tap": -0.630804,
+   "d": -0.138584,
+   "s1": -0.141727,
+   "s2": -1.8404e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.141727,
+   "i_s1_mA": 0.0055477299999999955
+  },
+  "5|-|held|open|none": {
+   "tap": -0.633313,
+   "d": -0.535429,
+   "s1": -0.5465,
+   "s2": -7.11049e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.5465,
+   "i_s1_mA": 0.0014999999999999957
+  },
+  "5|-|held|on|DBAT54S_MAX": {
+   "tap": -0.630983,
+   "d": -0.16577,
+   "s1": -0.165773,
+   "s2": -2.20142e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.165773,
+   "i_s1_mA": 0.005307269999999995
+  },
+  "5|-|held|on|DBAT54S_TYP": {
+   "tap": -0.630815,
+   "d": -0.140199,
+   "s1": -0.140202,
+   "s2": -1.86184e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.140202,
+   "i_s1_mA": 0.005562979999999995
+  },
+  "5|-|held|on|none": {
+   "tap": -0.63335,
+   "d": -0.541452,
+   "s1": -0.541455,
+   "s2": -7.19047e-07,
+   "vdd": 0.0,
+   "worst_beyond_rail": 0.541455,
+   "i_s1_mA": 0.0015504499999999955
+  },
+  "5|-|float|open|DBAT54S_MAX": {
+   "tap": -0.630971,
+   "d": -0.163913,
+   "s1": -0.167523,
+   "s2": -2.17677e-07,
+   "vdd": -0.000152122,
+   "worst_beyond_rail": 0.167523,
+   "i_s1_mA": 0.005289769999999996
+  },
+  "5|-|float|open|DBAT54S_TYP": {
+   "tap": -0.630804,
+   "d": -0.138584,
+   "s1": -0.141727,
+   "s2": -1.8404e-07,
+   "vdd": -0.000233849,
+   "worst_beyond_rail": 0.141727,
+   "i_s1_mA": 0.0055477299999999955
+  },
+  "5|-|float|on|DBAT54S_MAX": {
+   "tap": -0.630983,
+   "d": -0.16577,
+   "s1": -0.165773,
+   "s2": -2.20142e-07,
+   "vdd": -0.000152124,
+   "worst_beyond_rail": 0.165773,
+   "i_s1_mA": 0.005307269999999995
+  },
+  "5|-|float|on|DBAT54S_TYP": {
+   "tap": -0.630814,
+   "d": -0.140199,
+   "s1": -0.140202,
+   "s2": -1.86185e-07,
+   "vdd": -0.000233853,
+   "worst_beyond_rail": 0.140202,
+   "i_s1_mA": 0.005562979999999995
+  }
+ },
+ "backfeed": {
+  "4700|1.8|open": {
+   "vdd": 0.7919705,
+   "s1": 1.022731,
+   "d": 0.9249224
+  },
+  "4700|1.8|on": {
+   "vdd": 0.8000276,
+   "s1": 1.013727,
+   "d": 1.012928
+  },
+  "4700|5|open": {
+   "vdd": 1.451747,
+   "s1": 1.696674,
+   "d": 1.589704
+  },
+  "4700|5|on": {
+   "vdd": 1.46009,
+   "s1": 1.687899,
+   "d": 1.686548
+  },
+  "14100|1.8|open": {
+   "vdd": 0.4232472,
+   "s1": 0.6357728,
+   "d": 0.5585619
+  },
+  "14100|1.8|on": {
+   "vdd": 0.4271412,
+   "s1": 0.623081,
+   "d": 0.6226885
+  },
+  "14100|5|open": {
+   "vdd": 0.8212237,
+   "s1": 1.047698,
+   "d": 0.9594922
+  },
+  "14100|5|on": {
+   "vdd": 0.8253063,
+   "s1": 1.034795,
+   "d": 1.034124
+  },
+  "100000|1.8|open": {
+   "vdd": 0.1218042,
+   "s1": 0.2897021,
+   "d": 0.2579239
+  },
+  "100000|1.8|on": {
+   "vdd": 0.1222642,
+   "s1": 0.2787231,
+   "d": 0.278669
+  },
+  "100000|5|open": {
+   "vdd": 0.3091365,
+   "s1": 0.4906196,
+   "d": 0.4476102
+  },
+  "100000|5|on": {
+   "vdd": 0.309713,
+   "s1": 0.4775649,
+   "d": 0.4774616
+  }
+ },
+ "inprot": {
+  "AW-8 reset/boot excursion, powered (sim/awg -1.720 .. +1.513 V)": {
+   "tap_V": {
+    "Vmid": [
+     -0.04799999999999993,
+     1.5945
+    ],
+    "3.0 V top": [
+     0.6370000000000001,
+     2.2595
+    ]
+   },
+   "i_clamp_max_uA": 0.9599999999999989,
+   "ok_tap": true,
+   "ok_voltage": true,
+   "must": true,
+   "limit_V": [
+    -0.3,
+    3.55
+   ]
+  },
+  "AW-8 requirement bound +-2.1 V, powered": {
+   "tap_V": {
+    "Vmid": [
+     -0.238,
+     1.888
+    ],
+    "3.0 V top": [
+     0.44700000000000006,
+     2.553
+    ]
+   },
+   "i_clamp_max_uA": 4.76,
+   "ok_tap": true,
+   "ok_voltage": true,
+   "must": true,
+   "limit_V": [
+    -0.3,
+    3.55
+   ]
+  },
+  "PR-4 +-1.8 V forced, powered": {
+   "tap_V": {
+    "Vmid": [
+     -0.08799999999999997,
+     1.738
+    ],
+    "3.0 V top": [
+     0.5970000000000001,
+     2.403
+    ]
+   },
+   "i_clamp_max_uA": 1.7599999999999996,
+   "ok_tap": true,
+   "ok_voltage": true,
+   "must": true,
+   "limit_V": [
+    -0.3,
+    3.55
+   ]
+  },
+  "PR-4 +-1.8 V forced, unpowered": {
+   "tap_V": {
+    "Vmid (dead)": [
+     -1.23675,
+     1.79625
+    ],
+    "3.0 V top (0 V)": [
+     -0.9,
+     0.9
+    ]
+   },
+   "i_clamp_max_uA": 35.925000000000004,
+   "ok_tap": true,
+   "ok_voltage": false,
+   "must": true,
+   "limit_V": [
+    -0.3,
+    0.3
+   ]
+  },
+  "PR-4 +-5 V forced, powered": {
+   "tap_V": {
+    "Vmid": [
+     -1.688,
+     3.338
+    ],
+    "3.0 V top": [
+     -1.003,
+     4.003
+    ]
+   },
+   "i_clamp_max_uA": 33.760000000000005,
+   "ok_tap": false,
+   "ok_voltage": false,
+   "must": false,
+   "limit_V": [
+    -0.3,
+    3.55
+   ]
+  },
+  "PR-4 +-5 V forced, unpowered": {
+   "tap_V": {
+    "Vmid (dead)": [
+     -2.8482499999999997,
+     4.0055
+    ],
+    "3.0 V top (0 V)": [
+     -2.5,
+     2.5
+    ]
+   },
+   "i_clamp_max_uA": 80.11,
+   "ok_tap": true,
+   "ok_voltage": false,
+   "must": false,
+   "limit_V": [
+    -0.3,
+    0.3
+   ]
+  },
+  "clamp_leak_nA": {
+   "3.235|1.65|typ": 0.0,
+   "3.235|1.65|leak": -5.199999999999994,
+   "3.235|3.006|typ": -0.004069075438233342,
+   "3.235|3.006|leak": -222.16598878621397,
+   "3.342|1.65|typ": 0.0,
+   "3.342|1.65|leak": 3.3600000000000247,
+   "3.342|3.006|typ": -6.895078549531817e-05,
+   "3.342|3.006|leak": -213.60014873372697
+  },
+  "clamp_leak_state_diff_nA": 216.96598878621398,
+  "clamp_leak_D_shift_uV_datasheet": 39.2
+ },
+ "c4_noise": {
+  "n_mcp_uV": 1.2,
+  "n_ref_uV": 3.978284064703195,
+  "n_buf_uV": 0.7575757575757577,
+  "ext_uV": 4.22382115245637,
+  "bits_taps": 18.516531070045332,
+  "bits_ext": 16.7155162970348,
+  "bw_hz": 10.0
+ },
+ "c4_pa6": {
+  "terms_mV": {
+   "REF3030E initial accuracy 0.1 %": 3.0,
+   "tempco 15 ppm/C x +-10 C (15-35 C about the 25 C calibration)": 0.45000000000000007,
+   "long-term drift 40 ppm first 1000 h": 0.12000000000000002,
+   "REF3030E load regulation 15 ppm/mA x the ladder + REFP0 (B: no buffer)": 0.10256838489091501,
+   "REF3030E self-heating at that load": 0.007594379875235035,
+   "ADS124S08 INL 10 ppm FSR x 6 V": 0.060000000000000005,
+   "ADS124S08 input current 1 nA/V x 3 V x the worst tap": 0.0009804375
+  },
+  "total_mV": 3.74114320226615,
+  "total_pct": 0.12470477340887168,
+  "with_meter_mV": 0.7285748173752351,
+  "with_meter_pct": 0.024285827245841173
+ },
+ "c4_time": {
+  "due_ladder_s": 0.02348376986364201,
+  "mcp_channel_s": 0.056558687499999996,
+  "mcp_all8_s": 0.5655868749999999,
+  "n_read": 10
+ },
+ "c4_ref_load": {
+  "100 nF alone at REFP0 (ADS124S08 Sec 9.3.3.2)": {
+   "C_uF": 0.09,
+   "ESR_mohm": 30.0,
+   "inside": false
+  },
+  "2 x 100 nF at REFP0": {
+   "C_uF": 0.18,
+   "ESR_mohm": 15.0,
+   "inside": true
+  },
+  "100 nF + 10 uF direct (BOM review)": {
+   "C_uF": 6.72572924581132,
+   "ESR_mohm": 6.409148413585789,
+   "inside": false
+  },
+  "100 nF + 1R + 10 uF (montreal5)": {
+   "C_uF": 6.72572924581132,
+   "ESR_mohm": 1006.4091484135857,
+   "inside": false
+  },
+  "100 nF + (1R || 1R || 1R) + 10 uF": {
+   "C_uF": 6.72572924581132,
+   "ESR_mohm": 339.7424817469191,
+   "inside": true
+  },
+  "100 nF + (1R || 1R) + 10 uF": {
+   "C_uF": 6.72572924581132,
+   "ESR_mohm": 506.40914841358574,
+   "inside": false
+  },
+  "1 uF alone at REFP0 (fallback)": {
+   "C_uF": 1.0,
+   "ESR_mohm": 20.0,
+   "inside": true
+  }
+ },
+ "p4_stripped": {
+  "pin_pk": 0.02271323228996692,
+  "residue": {
+   "s354_g1": 0.00013136108318164447,
+   "s354_g4": 0.0006150074475741411,
+   "s365_g1": 0.00031615226201309936,
+   "s365_g4": 0.0013630515587403481,
+   "awg": 0.0012431312233833812
+  }
+ },
+ "guards": [
+  {
+   "name": "P1-a supply < 5.5 V",
+   "mutation": "series Schottkys removed and +0.5 V overshoot on each rail",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 6.447 V, restored 4.796 V"
+  },
+  {
+   "name": "P7-b/e current into the Due <= 100 uA",
+   "mutation": "AWG pin isolation Schottkys replaced by 1 mohm",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 52.7 mA, restored 0.00 uA"
+  },
+  {
+   "name": "P8-a SC-9 crosstalk through Vmid (positive control)",
+   "mutation": "Vmid node replaced by a flat 10 mohm",
+   "broken_result": "PASS",
+   "restored_result": "FAIL",
+   "detected": true,
+   "detail": "stiff 0.60 LSB vs design 5.50 LSB"
+  },
+  {
+   "name": "P8-a [Vmid x2] separate buffers",
+   "mutation": "victim reads the aggressor's Vmid node (the buffers joined), previous loop",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "joined 5.50 LSB, separate 0.530 LSB"
+  },
+  {
+   "name": "P8-f AWG -> scope through Vmid <= 2 LSB",
+   "mutation": "AWG's Rg on the one shared buffer with its impedance x5",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 2.59 LSB, restored (own buffer) 0.0000 LSB"
+  },
+  {
+   "name": "P8-i per-channel Vmid peak <= 0.3 ohm",
+   "mutation": "previous loop (1R, 1k, 1.5 nF, 1 x 10 uF)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "previous 1.17 ohm, design worst 0.260 ohm"
+  },
+  {
+   "name": "P8-j per-channel Vmid phase margin >= 45 deg",
+   "mutation": "isolation 1 mohm, or HF feedback 12 pF",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "no isolation 0.7007580711143646, 12 pF 0.13080721574377208 deg; design worst 64 deg"
+  },
+  {
+   "name": "P8-k stand-in within 3 %",
+   "mutation": "stand-in Rout doubled",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 37.6 %, fitted 0.00 %"
+  },
+  {
+   "name": "P8-c SC-2 centring <= 30 mV",
+   "mutation": "Vmid divider 2 % instead of 0.05 %",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 45.2 mV, restored 9.41 mV"
+  },
+  {
+   "name": "C1-c REF3030E load current",
+   "mutation": "ladder of 33 ohm elements",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 17.9 mA"
+  },
+  {
+   "name": "P7-b current into the Due's 3.3 V pin <= 100 uA",
+   "mutation": "R1 76.8 kohm and R3 768 ohm instead of 760 kohm each",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 307 uA, restored 1.81 uA"
+  },
+  {
+   "name": "P8-a sense-node path <= 2 LSB on its own",
+   "mutation": "sense filter 10 kohm instead of 100 ohm",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 21.29 LSB, restored 0.53 LSB"
+  },
+  {
+   "name": "C3-t tee fit + sense <= 0.1 % (sees the sense term)",
+   "mutation": "divider ratio trusted at 0.1 % instead of measured by the ratio switch (+-1.25 V, k = 1/2; whatif/tee's fit and ads.json's trusted-ratio term)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 0.1223 %, restored 0.0510 %"
+  },
+  {
+   "name": "C3-u ratio switch <= 0.010 %",
+   "mutation": "sources read instead of the bottom node, 200 ohm Ron difference between the throws",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 0.1000 %, restored 0 (bottom node read)"
+  },
+  {
+   "name": "C1-p sense input inside abs max (AW-8 bound, powered)",
+   "mutation": "no divider (k = 1): the AWG node on the ADC pin",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken -2.100 V against -0.3 V; restored -0.238 V"
+  },
+  {
+   "name": "C1-q ratio-switch pins inside -0.5 .. VDD + 0.5 V (unpowered +-1.8 V)",
+   "mutation": "BAT54S clamps removed (the pins' own ESD only)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 0.600 V beyond a rail, restored 0.199 V"
+  },
+  {
+   "name": "C1-a SC-10 tap impedance <= 5 kohm",
+   "mutation": "ladder resistors x20",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 6536 ohm, restored 327 ohm"
+  },
+  {
+   "name": "C2-a ladder fit <= 0.5 LSB",
+   "mutation": "the 0.1 % 249 ohm ladder used with nominal ratios (no MCP readback)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 0.72 LSB, restored 0.10 LSB (MCP-read 5 % arrays)"
+  },
+  {
+   "name": "C2-c pin leakage x tap impedance <= 0.5 LSB",
+   "mutation": "ladder back to 4 x 1 kohm arrays (C20197, worst tap 1312 ohm)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 0.523 LSB, restored 0.170 LSB (249 ohm arrays, worst tap 327 ohm)"
+  },
+  {
+   "name": "C2-d taps re-read at every calibration",
+   "mutation": "earlier MCP reading reused after a +-0.2 % drift (200 ppm/K parts, no re-read)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 1.612 LSB, restored 0.097 LSB"
+  },
+  {
+   "name": "C2-a ladder fit <= 0.5 LSB (sees the tap loading)",
+   "mutation": "ADC input resistance 100 kohm uncorrected (10^4 x the ADS124S08's typical input current) on the 327 ohm taps",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 6.37 LSB, restored 0.10 LSB"
+  },
+  {
+   "name": "P4-b AWG supply residue <= 20 uV",
+   "mutation": "filters stripped and the LDO ripple doubled (as for P4-c)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 1243.1 uV, restored 10.93 uV"
+  },
+  {
+   "name": "P4-c ripple at the amplifier pins (check responds to the filter)",
+   "mutation": "bulk 5 uF -> 1 nF, branch 10 uF -> 1 nF, local 100 nF -> 1 nF, and the LDO ripple doubled to 10 mV pk",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "stripped 22.71 mV vs 0.098 mV (x232)"
+  },
+  {
+   "name": "P3-c Due+AFE <= 450 mA with +-5 V on the AWG",
+   "mutation": "PR-4 increment doubled (the 50 ohm halved to 25 ohm)",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "broken 482.7 mA, restored 409.2 mA (OPA365 scope)"
+  },
+  {
+   "name": "MC-6 model hash vs SOURCES.md",
+   "mutation": "one byte appended to the OPA365 model",
+   "broken_result": "FAIL",
+   "restored_result": "PASS",
+   "detected": true,
+   "detail": "SOURCES.md sha matches the unmodified file"
+  }
+ ],
+ "lowcost": {
+  "supply": {
+   "span": [
+    5.274,
+    5.445
+   ],
+   "bipolar_ok": false,
+   "abs_ok": true
+  },
+  "noise": {
+   "nf_taps": 17.769143670392612,
+   "nf_ext": 16.30467515493013
+  },
+  "rs": {
+   "rs": 680.0,
+   "i_unpowered_1p8_mA": 1.911764705882353,
+   "i_unpowered_5_mA": 6.617647058823529,
+   "gain_err_pct": 0.002956521739130435,
+   "offset_uV": 34.0
+  },
+  "tee|+-1.25 V, 256 points": {
+   "fit": 0.02207580457939215,
+   "sense": 0.002956521739130435,
+   "linear": 0.025032326318522584
+  },
+  "tee|+-5 V, 1024 points": {
+   "fit": 0.04192645938796668,
+   "sense": 0.002956521739130435,
+   "linear": 0.04488298112709711
+  },
+  "a2": {
+   "ron_pct": 0.0013,
+   "tee": {
+    "+-1.25 V, 256 points": [
+     0.063,
+     0.063
+    ],
+    "+-5 V, 1024 points": [
+     0.085,
+     0.111
+    ]
+   },
+   "input_current_pct": {
+    "25 C (the +-15 nA graph axis)": 0.09999999999999998,
+    "85 C (the +-50 nA axis)": 0.33333333333333326
+   }
+  },
+  "rs_backfeed": {
+   "rs_min": {
+    "1.8": 6580.000000000002,
+    "5.0": 36660.0
+   },
+   "rs_max_for_0p01pct": 2300.0,
+   "gain_err_at_min_pct": 0.15939130434782608
+  },
+  "a3": {
+   "MCP6002, CMRR 76 dB typical": {
+    "gain_err_pct": 0.03169786384922228,
+    "ib_pct": 6.666666666666666e-06,
+    "noise_uVrms": 3.9982901418943464
+   },
+   "MCP6002, CMRR 60 dB minimum": {
+    "gain_err_pct": 0.2,
+    "ib_pct": 6.666666666666666e-06,
+    "noise_uVrms": 3.9982901418943464
+   },
+   "OPA365, CMRR 100 dB minimum": {
+    "gain_err_pct": 0.002,
+    "ib_pct": 6.666666666666664e-05,
+    "noise_uVrms": 3.9630822636511702
+   }
+  },
+  "a3_time": "whatif/tee: 2048-4096 points on +-5 V, about 5-18 min per calibration",
+  "E": {
+   "taps_V": [
+    0.5454545454545454,
+    1.3636363636363638,
+    2.1818181818181817,
+    3.0
+   ],
+   "zmax": 309.09090909090907,
+   "zmax_tol": 312.18181818181813,
+   "i_mA": 2.430724355858046,
+   "parts": 9
+  },
+  "C2": {
+   "c2a": 0.16096171470754683,
+   "c2c": 0.2793106183214043,
+   "stale": 1.3880293682155302,
+   "drops": {
+    "0": 0.26802099218979114,
+    "1": 0.16432747480753954,
+    "2": 0.1610315040312719,
+    "3": 0.2912043063432698
+   }
+  },
+  "D11": {
+   "threshold_LSB": 1.569956965095083,
+   "det": {
+    "0|3": {
+     "p_detect": 0.2852,
+     "p_ident": 0.5788920056100981,
+     "rec_p999": 3.167106733638044,
+     "undetected_err4_p999": 4.272022988497262
+    },
+    "0|5": {
+     "p_detect": 0.7562,
+     "p_ident": 0.7806135942872257,
+     "rec_p999": 3.0163993063817487,
+     "undetected_err4_p999": 5.966851093194143
+    },
+    "0|10": {
+     "p_detect": 1.0,
+     "p_ident": 0.9794,
+     "rec_p999": 3.164120001770022,
+     "undetected_err4_p999": 0.0
+    },
+    "1|3": {
+     "p_detect": 0.7983,
+     "p_ident": 0.8093448578228736,
+     "rec_p999": 1.8131213561215789,
+     "undetected_err4_p999": 2.7118838861503374
+    },
+    "1|5": {
+     "p_detect": 1.0,
+     "p_ident": 0.9301,
+     "rec_p999": 1.7522052192458064,
+     "undetected_err4_p999": 0.0
+    },
+    "1|10": {
+     "p_detect": 1.0,
+     "p_ident": 1.0,
+     "rec_p999": 1.7783456330596075,
+     "undetected_err4_p999": 0.0
+    },
+    "2|3": {
+     "p_detect": 0.8082,
+     "p_ident": 0.8155159613956942,
+     "rec_p999": 1.7629502766209781,
+     "undetected_err4_p999": 2.381207107377355
+    },
+    "2|5": {
+     "p_detect": 1.0,
+     "p_ident": 0.9247,
+     "rec_p999": 1.7883631372778117,
+     "undetected_err4_p999": 0.0
+    },
+    "2|10": {
+     "p_detect": 1.0,
+     "p_ident": 1.0,
+     "rec_p999": 1.826357223217089,
+     "undetected_err4_p999": 0.0
+    },
+    "3|3": {
+     "p_detect": 0.2761,
+     "p_ident": 0.5617529880478087,
+     "rec_p999": 2.8736632871392436,
+     "undetected_err4_p999": 3.729765962919449
+    },
+    "3|5": {
+     "p_detect": 0.7494,
+     "p_ident": 0.7696824125967441,
+     "rec_p999": 2.8341798156580698,
+     "undetected_err4_p999": 5.248914949659018
+    },
+    "3|10": {
+     "p_detect": 1.0,
+     "p_ident": 0.9798,
+     "rec_p999": 2.7571912607266325,
+     "undetected_err4_p999": 0.0
+    }
+   },
+   "base_err4_p999": 1.8147286378309762
+  },
+  "P3": {
+   "removed": {
+    "ADS124S08 IAVDD + IDVDD (conversion, PGA bypassed; AVDD max taken from the PGA-enabled gain-1 row)": 0.435,
+    "ADS124S08 REFP0 input current from the REF3030 (about 250 kohm unbuffered, 6 uA/V max)": 0.018000000000000002,
+    "ladder 3.0 V / R (every element at -tol)": 2.2612974420203336
+   },
+   "added": {
+    "ADS1220 IAVDD (normal, PGA disabled: 240 uA typ, no max; the gain-1 PGA row's 490 uA max) + 70 uA external reference, + IDVDD 110 uA max": 0.67,
+    "ladder nine 680R 1 % at -tol on the REF3030": 2.430724355858046
+   },
+   "delta_mA": 0.3864269138377123
+  },
+  "cost": {
+   "items": {
+    "A ADS1220 for the ADS124S08": 5.5331,
+    "A one BAT54S fewer (D only; S1 is now the reference node) and its 100k": 0.187,
+    "E 8 x 249R 0.1 % -> 9 x 680R 1 %": 1.3691
+   },
+   "total": 7.0892
+  },
+  "cost_a3": {
+   "A''' with the MCP6002 (A + B + E)": 6.7605,
+   "A''' with the OPA365 moved into the buffer role (A + E; B's saving given back)": 4.501899999999999,
+   "A''' alone with the MCP6002 (ADS swap, BAT54S/100k, buffer)": 5.391400000000001
+  }
+ },
+ "cases": [
+  {
+   "id": "P1-a",
+   "req": "AWG op-amp supply < 5.5 V, all start orderings, Vin 4.4/5.25, ramp 1 us-5 ms, Rsrc 0.2-1 ohm, rails at +tol",
+   "limit": "< 5.5 V (OPA365 abs max)",
+   "worst": "4.796 V at the op-amp pins (5.487 V on the bare rails)",
+   "margin": "0.704 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P1-b",
+   "req": "overshoot allowance: if +3.3 V (and -2.07 V) overshoot by X together",
+   "limit": "< 5.5 V",
+   "worst": "X = 300 mV per rail tolerated with the series Schottkys, 0 mV without",
+   "margin": "DC stack alone leaves 0.055 V bare",
+   "ok": true,
+   "note": "overshoot is an ASSUMED sweep (model gap G1)"
+  },
+  {
+   "id": "P2-a",
+   "req": "PW-2 load step, AWG output short step 0->23 mA (and back), droop at the rails",
+   "limit": "<= 20 mV (transient, beyond the static shift)",
+   "worst": "3.39 mV on the rails, 2.60 mV at the AWG op-amp pins; static Schottky shift 348 mV",
+   "margin": "17.4 mV",
+   "ok": true,
+   "note": "LDO loop response assumed (G2)"
+  },
+  {
+   "id": "P2-b",
+   "req": "shut-down (Due powered off, 5V pin collapsing): op-amp supply never exceeds abs max",
+   "limit": "< 5.5 V",
+   "worst": "4.715 V",
+   "margin": "0.785 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-a [OPA365 scope]",
+   "req": "PW-1 AFE current, normal / AWG shorted (PW-3), all datasheet maxima at once",
+   "limit": "<= 100 mA",
+   "worst": "45.7 mA normal, 58.7 mA shorted",
+   "margin": "41.3 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-b [OPA365 scope]",
+   "req": "Due 300 mA + AFE, external +-5 V on AWG (PR-4, exempt from PW-3), all maxima",
+   "limit": "<= 450 mA total (PW-1; afe.md PR-4: a fault is judged against 450, not the 400 mA target)",
+   "worst": "400.7 mA (AFE 100.7)",
+   "margin": "49.3 mA",
+   "ok": true,
+   "note": "typ-sum 398.0 mA"
+  },
+  {
+   "id": "P3-a [OPA354 scope]",
+   "req": "PW-1 AFE current, normal / AWG shorted (PW-3), all datasheet maxima at once",
+   "limit": "<= 100 mA",
+   "worst": "48.3 mA normal, 61.3 mA shorted",
+   "margin": "38.7 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-b [OPA354 scope]",
+   "req": "Due 300 mA + AFE, external +-5 V on AWG (PR-4, exempt from PW-3), all maxima",
+   "limit": "<= 450 mA total (PW-1; afe.md PR-4: a fault is judged against 450, not the 400 mA target)",
+   "worst": "403.3 mA (AFE 103.3)",
+   "margin": "46.7 mA",
+   "ok": true,
+   "note": "typ-sum 398.0 mA"
+  },
+  {
+   "id": "P6-a",
+   "req": "PW-6 rails in regulation (3.3 V dropout, -2.07 V charge-pump headroom) over 5V pin 4.4..5.25 V, Rsrc 1 ohm path + 1 ohm sense",
+   "limit": "margin >= 0 at 4.4 V",
+   "worst": "3.3 V rail margin 0.98 V and -2.07 V margin 2.17 V at 4.4 V (Vin 4.34 V); rails regulate down to V5 = 3.45 V",
+   "margin": "0.98 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P6-b",
+   "req": "USB path polyfuse + FDN340P + contacts at the 400 mA budget (assumed 0.65 ohm *(check)*)",
+   "limit": "V5 >= 4.4 V from a 4.75 V host",
+   "worst": "drop 260 mV -> V5 = 4.49 V",
+   "margin": "0.09 V",
+   "ok": true,
+   "note": "a 4.4 V bus-powered device after its cable reaches V5 = 4.14 V"
+  },
+  {
+   "id": "P4-a",
+   "req": "SC-6 supply residue at the scope ADC pin (LM27762 2 MHz lines + assumed 3 MHz buck lines), both ranges, OPA354 and OPA365",
+   "limit": "<= 20 uV rms (my 10 % allocation of 0.2 mV)",
+   "worst": "4.61 uV rms",
+   "margin": "15.4 uV",
+   "ok": true,
+   "note": "= 2.30 % of SC-6"
+  },
+  {
+   "id": "P4-b",
+   "req": "AW-6 supply residue at the AWG output (both rails coherent + buck lines)",
+   "limit": "<= 20 uV rms (internal share of AW-6's 0.1 mV, 20 %, accepted 2026-11-11)",
+   "worst": "10.93 uV rms",
+   "margin": "9.1 uV",
+   "ok": true,
+   "note": "= 10.93 % of AW-6"
+  },
+  {
+   "id": "P4-c",
+   "req": "PW-2 ripple at the amplifier supply pins (all sources added by magnitude)",
+   "limit": "<= 20 mV",
+   "worst": "0.098 mV pk",
+   "margin": "19.90 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P5-a",
+   "req": "PW-4 AFE-added ripple at the Due 5V pin from the charge pump (2 MHz line), before the Due's own 3.3 V regulator",
+   "limit": "<= 0.3 mV rms at 3.3 V/AREF (rise <= added)",
+   "worst": "0.43 uV rms at the 5V pin at 2 MHz (0 dB regulator rejection assumed)",
+   "margin": "300 uV",
+   "ok": true,
+   "note": "2 MHz is outside the DC-1 MHz test band; reported because the ADC aliases it"
+  },
+  {
+   "id": "P5-b",
+   "req": "PW-4 in-band (10 kHz-1 MHz) IF the pump pulse-skips at light load (datasheet Sec 6.3.3: can fall below 2 kHz)",
+   "limit": "<= 0.3 mV rms with NO help from the Due's regulator",
+   "worst": "needs >= 26 dB of NCP1117 rejection at 10 kHz; 0 dB gives 6.0 mV rms",
+   "margin": "negative at 0 dB",
+   "ok": false,
+   "note": "OPEN: closes only by VT-8 (pump mode at 5 mA is not in the datasheet, gap G3); rejection at 10 kHz-1 MHz not in repo *(check)*"
+  },
+  {
+   "id": "P4-a [with bead, previous]",
+   "req": "SC-6 supply residue at the scope ADC pin (LM27762 2 MHz lines + assumed 3 MHz buck lines), both ranges, OPA354 and OPA365",
+   "limit": "<= 20 uV rms (my 10 % allocation of 0.2 mV)",
+   "worst": "0.21 uV rms",
+   "margin": "19.8 uV",
+   "ok": true,
+   "note": "= 0.10 % of SC-6"
+  },
+  {
+   "id": "P4-b [with bead, previous]",
+   "req": "AW-6 supply residue at the AWG output (both rails coherent + buck lines)",
+   "limit": "<= 20 uV rms (internal share of AW-6's 0.1 mV, 20 %, accepted 2026-11-11)",
+   "worst": "11.08 uV rms",
+   "margin": "8.9 uV",
+   "ok": true,
+   "note": "= 11.08 % of AW-6"
+  },
+  {
+   "id": "P4-c [with bead, previous]",
+   "req": "PW-2 ripple at the amplifier supply pins (all sources added by magnitude)",
+   "limit": "<= 20 mV",
+   "worst": "0.100 mV pk",
+   "margin": "19.90 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P5-a [with bead, previous]",
+   "req": "PW-4 AFE-added ripple at the Due 5V pin from the charge pump (2 MHz line), before the Due's own 3.3 V regulator",
+   "limit": "<= 0.3 mV rms at 3.3 V/AREF (rise <= added)",
+   "worst": "0.07 uV rms at the 5V pin at 2 MHz (0 dB regulator rejection assumed)",
+   "margin": "300 uV",
+   "ok": true,
+   "note": "2 MHz is outside the DC-1 MHz test band; reported because the ADC aliases it; P5-b's pulse-skipping case would need 26 dB of regulator rejection at 10 kHz"
+  },
+  {
+   "id": "P4-a [ripple behind the LDO's 0.8 uH, 5 mV on 2.2 uF]",
+   "req": "SC-6 supply residue at the scope ADC pin (LM27762 2 MHz lines + assumed 3 MHz buck lines), both ranges, OPA354 and OPA365",
+   "limit": "<= 20 uV rms (my 10 % allocation of 0.2 mV)",
+   "worst": "4.61 uV rms",
+   "margin": "15.4 uV",
+   "ok": true,
+   "note": "= 2.30 % of SC-6"
+  },
+  {
+   "id": "P4-b [ripple behind the LDO's 0.8 uH, 5 mV on 2.2 uF]",
+   "req": "AW-6 supply residue at the AWG output (both rails coherent + buck lines)",
+   "limit": "<= 20 uV rms (internal share of AW-6's 0.1 mV, 20 %, accepted 2026-11-11)",
+   "worst": "10.93 uV rms",
+   "margin": "9.1 uV",
+   "ok": true,
+   "note": "= 10.93 % of AW-6"
+  },
+  {
+   "id": "P4-c [ripple behind the LDO's 0.8 uH, 5 mV on 2.2 uF]",
+   "req": "PW-2 ripple at the amplifier supply pins (all sources added by magnitude)",
+   "limit": "<= 20 mV",
+   "worst": "0.098 mV pk",
+   "margin": "19.90 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P4-b [ESR 10 mohm, no ESL, nominal C (previous assumption)]",
+   "req": "AW-6 supply residue at the AWG output, as P4-b",
+   "limit": "<= 20 uV rms",
+   "worst": "10.82 uV rms",
+   "margin": "9.2 uV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P4-b [ESR 20 mohm, no ESL, nominal C]",
+   "req": "AW-6 supply residue at the AWG output, as P4-b",
+   "limit": "<= 20 uV rms",
+   "worst": "16.75 uV rms",
+   "margin": "3.3 uV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P4-b [Samsung data, one 10 uF per rail (previous count)]",
+   "req": "AW-6 supply residue at the AWG output, as P4-b",
+   "limit": "<= 20 uV rms",
+   "worst": "18.85 uV rms",
+   "margin": "1.2 uV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P7-a",
+   "req": "PR-3 Due unpowered, +-12 V on both scope inputs at once (16 uA through each R1): AFE rails",
+   "limit": "< 0.5 V",
+   "worst": "0.106 V",
+   "margin": "0.394 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P7-b",
+   "req": "PR-3 same: current into the Due's supply pins (5V pin; 3.3 V pin through R3 and the sense filter)",
+   "limit": "<= 100 uA each",
+   "worst": "0.00 uA into 5V, 1.81 uA into 3.3 V",
+   "margin": "98.2 uA",
+   "ok": true,
+   "note": "the Due's 3.3 V pin is held at 0 V (a short), its worst case"
+  },
+  {
+   "id": "P7-c",
+   "req": "PR-2 ADC pin and DAC pin voltage, all unpowered cases",
+   "limit": "-0.2 .. 3.45 V",
+   "worst": "-0.149 .. 0.156 V",
+   "margin": "0.051 V",
+   "ok": true,
+   "note": "Due-pin clamps and the unpowered op-amp output are models (gap G6)"
+  },
+  {
+   "id": "P7-d",
+   "req": "PR-4 unpowered, +-5 V on the AWG output: AFE main rails",
+   "limit": "< 0.5 V (PR-3 limits)",
+   "worst": "0.010 V (op-amp pins reach 4.50 V, isolated by the series Schottkys)",
+   "margin": "0.490 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P7-e",
+   "req": "PR-4 unpowered, +-5 V on the AWG output: current into the Due's 5V pin",
+   "limit": "<= 100 uA",
+   "worst": "0.00 uA",
+   "margin": "100.0 uA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-c [OPA365 scope]",
+   "req": "Due 300 mA + AFE with +-5 V on the AWG output powered (PR-4; exempt from PW-3; afe.md judges the fault against PW-1's 450 mA), maxima + simulated increment",
+   "limit": "<= 450 mA",
+   "worst": "409.2 mA (AFE 109.2: base 35.7 + 73.5)",
+   "margin": "40.8 mA",
+   "ok": true,
+   "note": "set by 5 V / 50 ohm, not by the AFE rails; above the 400 mA normal-operation target, which a fault is not held to"
+  },
+  {
+   "id": "P3-c [OPA354 scope]",
+   "req": "Due 300 mA + AFE with +-5 V on the AWG output powered (PR-4; exempt from PW-3; afe.md judges the fault against PW-1's 450 mA), maxima + simulated increment",
+   "limit": "<= 450 mA",
+   "worst": "411.8 mA (AFE 111.8: base 38.3 + 73.5)",
+   "margin": "38.2 mA",
+   "ok": true,
+   "note": "set by 5 V / 50 ohm, not by the AFE rails; above the 400 mA normal-operation target, which a fault is not held to"
+  },
+  {
+   "id": "P8-a [one shared buffer, previous]",
+   "req": "SC-9 channel crosstalk through the shared Vmid node and the shared 3.3 V sense node, full-scale input (+-5 V or +-1.25 V) on the other channel, 1 kHz-10 MHz, RF 953 / RG 249",
+   "limit": "<= 2 LSB = 1.61 mV at the pin",
+   "worst": "4.43 mV = 5.50 LSB (Vmid path 4.97 LSB at 40 kHz, sense path 0.53 LSB at DC)",
+   "margin": "-2.82 mV",
+   "ok": false,
+   "note": "one channel's RG pushes up to 4.67 mA into Vmid (RG 249, was 1 k); the Vmid path passes only if |Z| stays under 0.28 ohm at every frequency. A Vmid buffer per channel (one more OPA365 placement, no new type) removes the shared-node path"
+  },
+  {
+   "id": "P8-b [one shared buffer, previous]",
+   "req": "Vmid output impedance 1 kHz-10 MHz (it is the AC ground for R2, RG and the AWG's Rg)",
+   "limit": "reported (no numeric requirement)",
+   "worst": "11 mohm at 1 kHz, max 1.17 ohm at 40 kHz, 0.01 ohm at 10 MHz",
+   "margin": "-",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P8-g [one shared buffer, previous]",
+   "req": "Vmid step response: 4.67 mA (one channel's full-scale RG current) switched into the node in 10 ns",
+   "limit": "reported: peak, opposite-sign excursion (ringing), settling to 0.5 LSB",
+   "worst": "peak 1.50 mV, opposite excursion 55 % of the peak, settles to 0.5 LSB in 33.7 us",
+   "margin": "-",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P8-a [M-4, one shared buffer]",
+   "req": "SC-9 crosstalk as P8-a with M-4: Rfb 953 ohm (0.1 %), Cfb 1.6 nF",
+   "limit": "<= 2 LSB",
+   "worst": "5.58 LSB (Vmid 5.05 at 40 kHz); |Z| max 1.19 ohm at 40 kHz; step peak 1.48 mV, opposite 56 %, settle 33.1 us",
+   "margin": "-3.58 LSB",
+   "ok": false,
+   "note": "design reads 5.50 LSB, |Z| 1.17 ohm, step opposite 55 %"
+  },
+  {
+   "id": "P8-a [M-5, one shared buffer]",
+   "req": "SC-9 crosstalk as P8-a with M-5: Rfb 10 + 10 ohm, Cfb 100 nF",
+   "limit": "<= 2 LSB",
+   "worst": "5.05 LSB (Vmid 4.52 at 33 kHz); |Z| max 1.08 ohm at 33 kHz; step peak 1.62 mV, opposite 48 %, settle 26.4 us",
+   "margin": "-3.05 LSB",
+   "ok": false,
+   "note": "design reads 5.50 LSB, |Z| 1.17 ohm, step opposite 55 %"
+  },
+  {
+   "id": "P8-a [sensitivity, one shared buffer]",
+   "req": "SC-9 crosstalk as P8-a with sensitivity: design with the 10 uF at 25 % (DC bias, *(check)*)",
+   "limit": "<= 2 LSB",
+   "worst": "5.92 LSB (Vmid 5.39 at 79 kHz); |Z| max 1.23 ohm at 79 kHz; step peak 2.48 mV, opposite 30 %, settle 11.7 us",
+   "margin": "-3.92 LSB",
+   "ok": false,
+   "note": "design reads 5.50 LSB, |Z| 1.17 ohm, step opposite 55 %"
+  },
+  {
+   "id": "P8-f [one shared buffer, previous]",
+   "req": "AWG -> scope through the shared Vmid node: the AWG's Rg return carries out/(G*Rg) at +-1 V (AW-1)",
+   "limit": "<= 2 LSB at the scope pin (SC-9, AWG while DAC0 plays)",
+   "worst": "0.49 mA -> 0.42 mV = 0.52 LSB at 40 kHz",
+   "margin": "1.48 LSB",
+   "ok": true,
+   "note": "the same shared-node mechanism as P8-a"
+  },
+  {
+   "id": "P8-e",
+   "req": "Vmid reference noise at the ADC pin (upper bound, buffer white to 10 MHz; x1.24 on +-1.25 V, the victim coefficient at DC)",
+   "limit": "informational; SC-6 allows 0.2 mV for ALL sources",
+   "worst": "31.6 uV at Vmid, 39.3 uV at the pin = 20 % of SC-6 amplitude; divider kT/C 64 nV (1 uF), 20 nV (10 uF)",
+   "margin": "-",
+   "ok": true,
+   "note": "noise analysis not run: ngspice .noise aborts on the TI model; closes by VT-3/VT-16"
+  },
+  {
+   "id": "P8-l",
+   "req": "SC-9 through the TLV9062 package: one half's output excursion coupled into the other (channel separation 100 dB at DC, TLV9062 datasheet Sec 6.5; no AC figure read)",
+   "limit": "<= 2 LSB",
+   "worst": "an aggressor Vmid excursion of a few mV (P8-a's own-node figure) x 1e-5 = tens of nV",
+   "margin": "-",
+   "ok": true,
+   "note": "separation at the loop's 10-100 kHz peak is not tabulated *(check: the datasheet's crosstalk graph)*; the shared supply pin is held by the +3.3 V_A decoupling"
+  },
+  {
+   "id": "P8-a",
+   "req": "SC-9 crosstalk with Vmid x2: one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 1.20 mV, opposite excursion 86 %, settles in 9.0 us; own |Z| peak 0.25 ohm at 2 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 0.25 ohm at 2 kHz, which is a signal-dependent error on that channel itself of up to 1.81 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-f [AWG on a channel's buffer]",
+   "req": "AWG -> scope through Vmid with the AWG's Rg on the same buffer as one scope channel",
+   "limit": "<= 2 LSB (SC-9)",
+   "worst": "0.19 LSB on that channel, 0.0000 LSB on the other",
+   "margin": "1.81 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P8-f",
+   "req": "AWG -> scope through Vmid with a third OPA365 buffer for the AWG's Rg and Rx",
+   "limit": "<= 2 LSB (SC-9)",
+   "worst": "0.0000 LSB on either channel",
+   "margin": "2.00 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P8-a [Vmid x2, Cfb X7R low (1 uF -10 % -15 %)]",
+   "req": "SC-9 crosstalk with Vmid x2, Cfb X7R low (1 uF -10 % -15 %): one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 1.20 mV, opposite excursion 83 %, settles in 8.3 us; own |Z| peak 0.25 ohm at 3 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 0.25 ohm at 3 kHz, which is a signal-dependent error on that channel itself of up to 1.81 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-a [Vmid x2, Cfb X7R high (1 uF +10 % +15 %)]",
+   "req": "SC-9 crosstalk with Vmid x2, Cfb X7R high (1 uF +10 % +15 %): one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 1.20 mV, opposite excursion 88 %, settles in 9.5 us; own |Z| peak 0.25 ohm at 2 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 0.25 ohm at 2 kHz, which is a signal-dependent error on that channel itself of up to 1.81 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-a [Vmid x2, the 6 x 10 uF at 1.65 V bias (Samsung data, -10 %)]",
+   "req": "SC-9 crosstalk with Vmid x2, the 6 x 10 uF at 1.65 V bias (Samsung data, -10 %): one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 1.25 mV, opposite excursion 83 %, settles in 7.2 us; own |Z| peak 0.26 ohm at 9 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 0.26 ohm at 9 kHz, which is a signal-dependent error on that channel itself of up to 1.81 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-a [Vmid x2, stiffened OPA365 loop (previous design)]",
+   "req": "SC-9 crosstalk with Vmid x2, stiffened OPA365 loop (previous design): one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 0.76 mV, opposite excursion 1 %, settles in 17.9 us; own |Z| peak 0.23 ohm at 22 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 0.23 ohm at 22 kHz, which is a signal-dependent error on that channel itself of up to 1.15 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-a [Vmid x2, previous loop (1R, 1k, 1.5 nF, 1 x 10 uF)]",
+   "req": "SC-9 crosstalk with Vmid x2, previous loop (1R, 1k, 1.5 nF, 1 x 10 uF): one Vmid buffer per channel (TLV9062 halves; the previous loops OPA365) on the shared divider tap (the sense node stays shared), full scale on the other channel, 1 kHz-10 MHz, and a 4.67 mA step",
+   "limit": "<= 2 LSB = 1.61 mV",
+   "worst": "0.530 LSB (Vmid path 0.0000, sense path 0.53 at DC); step: 0.00 uV at the other channel's Vmid; at its own 1.50 mV, opposite excursion 55 %, settles in 33.7 us; own |Z| peak 1.17 ohm at 40 kHz",
+   "margin": "1.47 LSB",
+   "ok": true,
+   "note": "transfer impedance max 0.000 mohm; the channel's own Vmid still peaks at 1.17 ohm at 40 kHz, which is a signal-dependent error on that channel itself of up to 4.97 LSB (not SC-9)"
+  },
+  {
+   "id": "P8-a [shared, flat 0.5 ohm]",
+   "req": "SC-9 with one shared Vmid source of a flat 0.5 ohm (the alternative fix)",
+   "limit": "<= 2 LSB",
+   "worst": "4.13 LSB; 0.28 ohm 2.55, 0.1 ohm 1.25",
+   "margin": "-2.13 LSB",
+   "ok": false,
+   "note": "a flat 0.5 ohm is not enough: the shared node needs about 0.28 ohm"
+  },
+  {
+   "id": "P8-j [other buffers]",
+   "req": "Phase margin, same method, of the AWG's own Vmid follower (no output capacitor, sim/awg buf) and of a follower straight into 10 uF + 100 nF (sim/awg's flag)",
+   "limit": "reported",
+   "worst": "AWG follower 77 deg at 44.8 MHz; direct into 10 uF 3 deg",
+   "margin": "-",
+   "ok": true,
+   "note": "the AWG follower's own netlist (its 100 nF across the 100 nF node is absent here: no output capacitor) is sim/awg's; this is a cross-check only"
+  },
+  {
+   "id": "P8-i",
+   "req": "Per-channel Vmid impedance peak, 1 kHz-1 MHz (owner's target): one TLV9062 half per channel (stand-in fitted to TI's model), 0.25 ohm (4 x 1R), 4.7k / 1 uF X7R, 6 x 10 uF + 100 nF, over Cfb +-23.5 %, the 10 uF at 100 % or at Samsung's 1.65 V derating with -10 % tolerance, and Samsung's ESR at 200 kHz / 22 kHz (or 5 mohm)",
+   "limit": "<= 0.3 ohm",
+   "worst": "0.251 ohm at 2 kHz nominal; worst 0.260 ohm at 9 kHz (Cfb 0.77 uF, C 49 uF, ESR 4 mohm each); the stiffened OPA365 loop (previous design) 0.228 ohm; TI's own model in whatif/lowcost-scope/vmid: 0.252 ohm",
+   "margin": "0.040 ohm",
+   "ok": true,
+   "note": "C15850's ESR and DC-bias derating from Samsung's characterisation (models/cl21a106kaynnne); ESR at 0 V bias, 25 C"
+  },
+  {
+   "id": "P8-j",
+   "req": "Per-channel Vmid loop phase margin (loop broken at the inverting input), same corners",
+   "limit": ">= 45 deg",
+   "worst": "68 deg at 27 kHz nominal; worst 64 deg (Cfb 1.26 uF, C 49 uF, ESR 4 mohm each); one crossing in every corner: True; stiffened OPA365 loop (previous) 82 deg",
+   "margin": "19 deg",
+   "ok": true,
+   "note": "the loop is broken at the op-amp's inverting input, whose impedance (MOhm, pF) is far above the 4.7k / 3 nF network driving it, so the injection sees the capacitive load inside the loop; the previous loop (1R, 1k, 1.5 nF, 10 uF) reads 96 deg the same way"
+  },
+  {
+   "id": "P8-k",
+   "req": "Linear stand-in for the loop agent (the TLV9062 half as A0 / (1 + s A0 / 2 pi GBW) behind Rout), fitted to the design loop's impedance (behavioural TLV9062)",
+   "limit": "within 3 % of the macromodel's |Z|, 1 kHz-1 MHz",
+   "worst": "A0 120.0 dB, GBW 15.0 MHz, Rout 150.0 ohm, double pole 40.0 MHz: 0.00 % (1 kHz-1 MHz), 0.00 % (100 Hz-10 MHz); same parameters at other corners: nominal 0.0 %, Cfb low 0.0 %, C at 1.65 V bias 0.0 %",
+   "margin": "3.00 %",
+   "ok": true,
+   "note": "the design loop's buffer is itself a linear behavioural stand-in (whatif/lowcost-scope/vmid, 0.59 % from TI's TLV9062 model), so this fit is exact by construction and its fidelity to the part is that 0.59 %"
+  },
+  {
+   "id": "P8-c",
+   "req": "AN-4 / SC-2 centring error at the ADC pin, +-5 V and +-1.25 V ranges, V33 3.10 (margin evidence) -3.30 V, Vmid divider 2 x 330k 0.1 % (M-7), R1-R3/RF/RG 0.1 %, 249 ohm sense filter (M-3) carrying both R3 currents, OPA365 offset + bias, stock Due",
+   "limit": "<= 30 mV",
+   "worst": "8.71 mV (ADVREF drop 0.5 mV) / 9.41 mV (5 mV drop); previous parts 8.94 mV",
+   "margin": "20.6 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P8-d",
+   "req": "AN-4 reworked Due, AREF = the 3.0 V reference while Vmid stays V33/2",
+   "limit": "<= 30 mV",
+   "worst": "157 mV",
+   "margin": "-127 mV",
+   "ok": false,
+   "note": "a PA-7 rework needs Vmid derived from the reference, not from V33"
+  },
+  {
+   "id": "P8-h",
+   "req": "PW-7 start-up: the Vmid divider tap (2 x 330k, 10 uF at the tap) settles to 0.5 LSB of its final value from 0 V",
+   "limit": "about 15 s (PW-7)",
+   "worst": "13.7 s (tau 1.65 s)",
+   "margin": "1.3 s",
+   "ok": true,
+   "note": "the buffer and the Vmid node's 10 uF follow in microseconds; readings before this are flagged not ready (PW-7)"
+  },
+  {
+   "id": "C1-a",
+   "req": "SC-10 tap source impedance (ladder Thevenin, worst tap; 8 x 249 ohm 0.1 %, 3 in parallel + 5 in series)",
+   "limit": "<= 5 kohm",
+   "worst": "327 ohm nominal (tap 3), 327 ohm with every element at +tol",
+   "margin": "4673 ohm",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-b",
+   "req": "AN-2 settling into the Due S/H within the 15-clock (667 ns) window, worst tap from a 0 V previous sample, to 0.5 LSB (12 bit, 3.3 V)",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.0000 LSB with no tap capacitor (design); 0.174 LSB with 100 nF at each tap",
+   "margin": "0.500 LSB",
+   "ok": true,
+   "note": "Csample 6.0 pF derived from the 0.054 ns/ohm slope (Cs=6 pF used), Ron 3.8 kohm from the 205 ns intercept: both inferred, not datasheet figures"
+  },
+  {
+   "id": "C1-c",
+   "req": "REF3030E sourcing the ladder directly (B, no buffer), plus the ADS124S08's REFP0 (18 uA): output current, headroom, load regulation, self-heating; every element at -tol",
+   "limit": "I <= 10 mA (the load-regulation range) and VIN - VOUT >= 0.2 V",
+   "worst": "2.28 mA (2.26 nominal); headroom 235 mV at +3.3 V_A = 3.235 V; load regulation <= 103 uV (specified at VIN = VOUT + 0.5 V *(check)*); self-heating 0.17 K = 2.6 ppm",
+   "margin": "7.72 mA, 35 mV",
+   "ok": true,
+   "note": "ratiometric for the ADS124S08 (REFP0 is the ladder's top node); a static term of PA-6 for the Due's gain fit, which uses the top tap's absolute value; element dissipation 1.27 mW (rating not read *(check)*)"
+  },
+  {
+   "id": "C1-d",
+   "req": "B: the Due's sample-and-hold kick on the top tap (= the REF3030E output = REFP0), sampled from 0 V, into the 2 x 100 nF at -10 %",
+   "limit": "<= 0.5 LSB at the Due (C1-b); no Due tap read while the ADS124S08 converts",
+   "worst": "18 pC -> 0.100 mV = 0.12 LSB before the REF3030E recovers it (its output impedance at MHz is not modelled)",
+   "margin": "0.38 LSB",
+   "ok": true,
+   "note": "sequencing rule (B): the Due does not read the ladder while the ADS124S08 converts; calibration already reads them one after the other (C4-c)"
+  },
+  {
+   "id": "C2-a",
+   "req": "PA-9 Due-ADC gain/offset fit from the MCP-read taps, error that the ladder + MCP readback add (6 taps: CH2-CH6 + the buffered top tap on CH7, so the OPA365's offset is pure scale; 8 x 249 ohm 0.1 % (3 parallel + 5 series), buffer offset 200 uV, ADS124S08 read: INL 10 ppm FSR max, 1.2 uVrms, input current 1 nA/V), at the span ends 0.2 V / 3.1 V",
+   "limit": "<= 0.5 LSB (12 bit) at 99.9 %",
+   "worst": "0.097 LSB (99.9th pct), 0.123 max; with nominal ratios instead of MCP readings 0.741 LSB",
+   "margin": "0.403 LSB",
+   "ok": true,
+   "note": "top tap through REFIN+ instead (previous): 0.083 LSB; buffer offset 0: 0.097 LSB"
+  },
+  {
+   "id": "C2-b",
+   "req": "PA-9 fit robustness: one of the 6 taps dropped (5 left), ladder + MCP error",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.102 LSB",
+   "margin": "0.398 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-c",
+   "req": "SC-10 leakage: Due ADC pin leakage 0.5 uA max (Table 45-38) x tap impedance, added to C2-a",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.170 LSB",
+   "margin": "0.330 LSB",
+   "ok": true,
+   "note": "0.5 uA is a MAX over temperature; typical is not given *(check)*"
+  },
+  {
+   "id": "C2-d",
+   "req": "PA-9 taps re-read by the MCP at every calibration: elements drift +-0.01 % (10 ppm/K x 10 K, uncorrelated) after an earlier read; the calibration re-reads them",
+   "limit": "<= 0.5 LSB with the re-read",
+   "worst": "0.097 LSB re-read; 0.133 LSB if the earlier reading is reused (stale)",
+   "margin": "0.403 LSB",
+   "ok": true,
+   "note": "with 10 ppm/K parts even the stale reading passes, so the re-read rule is margin here rather than load-bearing; the guard runs the stale arm at 200 ppm/K"
+  },
+  {
+   "id": "C1-a [330R 5 % arrays (previous)]",
+   "req": "SC-10 tap source impedance, ladder of 8 x 330R 5 % arrays (previous) (3 parallel + 5 series, 1760 ohm)",
+   "limit": "<= 5 kohm",
+   "worst": "433 ohm nominal (tap 3), 455 ohm at +tol",
+   "margin": "4545 ohm",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-b [330R 5 % arrays (previous)]",
+   "req": "AN-2 settling of the worst tap into the Due S/H in 667 ns",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.0000 LSB",
+   "margin": "0.500 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-c [330R 5 % arrays (previous)]",
+   "req": "REF3030E sourcing the ladder directly (B, no buffer) (330R 5 % arrays (previous)), plus the ADS124S08's REFP0 (18 uA): output current, headroom, load regulation, self-heating; every element at -tol",
+   "limit": "I <= 10 mA (the load-regulation range) and VIN - VOUT >= 0.2 V",
+   "worst": "1.81 mA (1.70 nominal); headroom 235 mV at +3.3 V_A = 3.235 V; load regulation <= 82 uV (specified at VIN = VOUT + 0.5 V *(check)*); self-heating 0.14 K = 2.0 ppm",
+   "margin": "8.19 mA, 35 mV",
+   "ok": true,
+   "note": "ratiometric for the ADS124S08 (REFP0 is the ladder's top node); a static term of PA-6 for the Due's gain fit, which uses the top tap's absolute value; element dissipation 1.01 mW of 62.5 mW rating"
+  },
+  {
+   "id": "C2-a [330R 5 % arrays (previous)]",
+   "req": "PA-9 fit from the MCP-read taps, ladder + MCP error",
+   "limit": "<= 0.5 LSB at 99.9 %",
+   "worst": "0.099 LSB; nominal ratios 36.047 LSB",
+   "margin": "0.401 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-b [330R 5 % arrays (previous)]",
+   "req": "PA-9 one tap dropped (5 taps)",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.102 LSB",
+   "margin": "0.398 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-c [330R 5 % arrays (previous)]",
+   "req": "SC-10 pin leakage 0.5 uA x tap impedance, added to C2-a",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.206 LSB (worst tap 433 ohm)",
+   "margin": "0.294 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-d [330R 5 % arrays (previous)]",
+   "req": "PA-9 re-read: drift +-0.20 % (200 ppm/K x 10 K)",
+   "limit": "<= 0.5 LSB with the re-read",
+   "worst": "0.098 LSB re-read; 1.626 LSB stale",
+   "margin": "0.402 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-a [330R 5 % arrays (previous)]",
+   "req": "PW-1 AFE current with this ladder (1.81 mA at -tol), AWG shorted, all maxima",
+   "limit": "<= 100 mA",
+   "worst": "OPA365 scope 58.2 mA, OPA354 scope 60.8 mA",
+   "margin": "39.2 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-a [680R 1 %]",
+   "req": "SC-10 tap source impedance, ladder of 8 x 680R 1 % (3 parallel + 5 series, 3627 ohm)",
+   "limit": "<= 5 kohm",
+   "worst": "892 ohm nominal (tap 3), 901 ohm at +tol",
+   "margin": "4099 ohm",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-b [680R 1 %]",
+   "req": "AN-2 settling of the worst tap into the Due S/H in 667 ns",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.0000 LSB",
+   "margin": "0.500 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-c [680R 1 %]",
+   "req": "REF3030E sourcing the ladder directly (B, no buffer) (680R 1 %), plus the ADS124S08's REFP0 (18 uA): output current, headroom, load regulation, self-heating; every element at -tol",
+   "limit": "I <= 10 mA (the load-regulation range) and VIN - VOUT >= 0.2 V",
+   "worst": "0.85 mA (0.83 nominal); headroom 235 mV at +3.3 V_A = 3.235 V; load regulation <= 38 uV (specified at VIN = VOUT + 0.5 V *(check)*); self-heating 0.06 K = 1.0 ppm",
+   "margin": "9.15 mA, 35 mV",
+   "ok": true,
+   "note": "ratiometric for the ADS124S08 (REFP0 is the ladder's top node); a static term of PA-6 for the Due's gain fit, which uses the top tap's absolute value; element dissipation 0.47 mW (rating not read *(check)*)"
+  },
+  {
+   "id": "C2-a [680R 1 %]",
+   "req": "PA-9 fit from the MCP-read taps, ladder + MCP error",
+   "limit": "<= 0.5 LSB at 99.9 %",
+   "worst": "0.097 LSB; nominal ratios 7.239 LSB",
+   "margin": "0.403 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-b [680R 1 %]",
+   "req": "PA-9 one tap dropped (5 taps)",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.101 LSB",
+   "margin": "0.399 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-c [680R 1 %]",
+   "req": "SC-10 pin leakage 0.5 uA x tap impedance, added to C2-a",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.377 LSB (worst tap 892 ohm)",
+   "margin": "0.123 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-d [680R 1 %]",
+   "req": "PA-9 re-read: drift +-0.10 % (100 ppm/K x 10 K)",
+   "limit": "<= 0.5 LSB with the re-read",
+   "worst": "0.096 LSB re-read; 0.807 LSB stale",
+   "margin": "0.404 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-a [680R 1 %]",
+   "req": "PW-1 AFE current with this ladder (0.85 mA at -tol), AWG shorted, all maxima",
+   "limit": "<= 100 mA",
+   "worst": "OPA365 scope 57.3 mA, OPA354 scope 59.9 mA",
+   "margin": "40.1 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C3-t [+-1.25 V, 256 points]",
+   "req": "PA-3 tee calibration, ADS124S08: gain fit + ratio measurement + 10 K drift, +-1.25 V, 256 points, k = 1/2 (2 x 100k) (whatif/tee re-run with the ADC's INL at the AWG)",
+   "limit": "<= 0.10 % (owner, 2026-11-11)",
+   "worst": "0.051 % (0.051 % at the bound)",
+   "margin": "0.049 %",
+   "ok": true,
+   "note": "quoted from whatif/tee report.md (re-run section), not recomputed; judged at the bound"
+  },
+  {
+   "id": "C3-t [+-5 V, 1024 points]",
+   "req": "PA-3 tee calibration, ADS124S08: gain fit + ratio measurement + 10 K drift, +-5 V, 1024 points, k = 1/2 (2 x 100k) (whatif/tee re-run with the ADC's INL at the AWG)",
+   "limit": "<= 0.10 % (owner, 2026-11-11)",
+   "worst": "0.074 % (0.091 % at the bound)",
+   "margin": "0.009 %",
+   "ok": true,
+   "note": "quoted from whatif/tee report.md (re-run section), not recomputed; judged at the bound"
+  },
+  {
+   "id": "C3-t [+-1.25 V, 256 points, k = 1/3 (previous)]",
+   "req": "PA-3 tee calibration, ADS124S08: gain fit + ratio measurement + 10 K drift, +-1.25 V, 256 points, k = 1/3 (100k + 100k over 100k) (whatif/tee re-run with the ADC's INL at the AWG)",
+   "limit": "<= 0.10 % (owner, 2026-11-11)",
+   "worst": "0.069 % (0.086 % at the bound)",
+   "margin": "0.014 %",
+   "ok": true,
+   "note": "quoted from whatif/tee report.md (re-run section), not recomputed; judged at the bound"
+  },
+  {
+   "id": "C3-t [+-5 V, 1024 points, k = 1/3 (previous)]",
+   "req": "PA-3 tee calibration, ADS124S08: gain fit + ratio measurement + 10 K drift, +-5 V, 1024 points, k = 1/3 (100k + 100k over 100k) (whatif/tee re-run with the ADC's INL at the AWG)",
+   "limit": "<= 0.10 % (owner, 2026-11-11)",
+   "worst": "0.092 % (0.109 % at the bound)",
+   "margin": "-0.009 %",
+   "ok": false,
+   "note": "quoted from whatif/tee report.md (re-run section), not recomputed; judged at the bound"
+  },
+  {
+   "id": "C3-u",
+   "req": "PA-4 ratio switch (one TMUX1119 at the sense divider's bottom: S1 Vmid / S2 3.0 V ladder top): Ron and leakage error on the measured ratio, with the ADC reading the bottom node",
+   "limit": "<= 0.010 % (proposed: 1/10 of the tee's 0.1 %)",
+   "worst": "0 to first order: Ron (9.8 ohm max) and leakage (0.35 nA) act on the node the ADC reads; with the sources read instead (variant) Ron's 2.6 ohm throw-to-throw difference gives 0.00065 % and leakage 2.5e-07 %",
+   "margin": "0.0100 %",
+   "ok": true,
+   "note": "the ADS124S08's 1 nA/V input current on the tap's 50 kohm is 0.0050 % of gain, already in whatif/tee's sense term; the variant also passes (0.0007 %)"
+  },
+  {
+   "id": "C3-v",
+   "req": "PA-4 ratio switch default state: SEL pulled down, so S1 (the AWG's Vmid) at reset, unpowered Due and unconfigured pin (TMUX1119 truth table, Sec 7.5: SEL 0 -> S1)",
+   "limit": "default = Vmid",
+   "worst": "S1 = Vmid with SEL low; both throws (1.65 V, 3.0 V) inside the switch's 0 to +3.3 V_A supply",
+   "margin": "-",
+   "ok": true,
+   "note": "the pull-down is the existing 4.7k (or 10k) type; the AWG sees 200 kohm to the far end either way"
+  },
+  {
+   "id": "C1-q [PR-4 +-1.8 V forced, unpowered]",
+   "req": "TMUX1119 ratio-switch pins (D, S1, S2) unpowered, PR-4 +-1.8 V forced, unpowered: BAT54S (C7420333) on D and on S1 (behind 100.0k from the AWG's Vmid node), to ground and +3.3 V_A; +3.3 V_A held at 0 V or floating on the 4.7k bleed; channel open or on",
+   "limit": "-0.5 V .. VDD + 0.5 V (SCDS401C 5.1)",
+   "worst": "worst 0.199 V beyond a rail (BAT54S at its datasheet maximum Vf; 0.170 V typical); without the clamps 0.600 V; S1 clamp current <= 0.02 mA",
+   "margin": "0.301 V",
+   "ok": true,
+   "note": "the AWG's Vmid node is an ideal source at sim/awg's backed-out unpowered level (pessimistic); the TMUX1119's own ESD and unpowered channel are generic *(check)*"
+  },
+  {
+   "id": "C1-q [PR-4 +-5 V forced, unpowered]",
+   "req": "TMUX1119 ratio-switch pins (D, S1, S2) unpowered, PR-4 +-5 V forced, unpowered: BAT54S (C7420333) on D and on S1 (behind 100.0k from the AWG's Vmid node), to ground and +3.3 V_A; +3.3 V_A held at 0 V or floating on the 4.7k bleed; channel open or on",
+   "limit": "-0.5 V .. VDD + 0.5 V (SCDS401C 5.1)",
+   "worst": "worst 0.216 V beyond a rail (BAT54S at its datasheet maximum Vf; 0.184 V typical); without the clamps 0.618 V; S1 clamp current <= 0.03 mA",
+   "margin": "0.284 V",
+   "ok": true,
+   "note": "the AWG's Vmid node is an ideal source at sim/awg's backed-out unpowered level (pessimistic); the TMUX1119's own ESD and unpowered channel are generic *(check)*; recorded, not judged: PR-4 allows shield damage at +-5 V"
+  },
+  {
+   "id": "C1-r [4.7k to S1, previous]",
+   "req": "PR-3 / PR-4 unpowered: +3.3 V_A lifted by the ratio-switch clamps' current (S1 behind 4.7k from the AWG's Vmid node; the rail loaded by its 4.7k bleed only), BNC forced +1.8 V and +5 V",
+   "limit": "< 0.5 V (PR-3)",
+   "worst": "+1.8 V: 0.800 V; +5 V: 1.460 V",
+   "margin": "-0.300 V at 1.8 V",
+   "ok": false,
+   "note": "the bleed is the rail's only load here; the unpowered op-amps, the REF3030 and the ADC also sink it *(check)*; +5 V is recorded (PR-4 allows shield damage, but not back-feed into the Due)"
+  },
+  {
+   "id": "C1-r [3 x 4.7k to S1]",
+   "req": "PR-3 / PR-4 unpowered: +3.3 V_A lifted by the ratio-switch clamps' current (S1 behind 14.1k from the AWG's Vmid node; the rail loaded by its 4.7k bleed only), BNC forced +1.8 V and +5 V",
+   "limit": "< 0.5 V (PR-3)",
+   "worst": "+1.8 V: 0.427 V; +5 V: 0.825 V",
+   "margin": "0.073 V at 1.8 V",
+   "ok": true,
+   "note": "the bleed is the rail's only load here; the unpowered op-amps, the REF3030 and the ADC also sink it *(check)*; +5 V is recorded (PR-4 allows shield damage, but not back-feed into the Due)"
+  },
+  {
+   "id": "C1-r",
+   "req": "PR-3 / PR-4 unpowered: +3.3 V_A lifted by the ratio-switch clamps' current (S1 behind 100.0k from the AWG's Vmid node; the rail loaded by its 4.7k bleed only), BNC forced +1.8 V and +5 V",
+   "limit": "< 0.5 V (PR-3)",
+   "worst": "+1.8 V: 0.122 V; +5 V: 0.310 V",
+   "margin": "0.378 V at 1.8 V",
+   "ok": true,
+   "note": "the bleed is the rail's only load here; the unpowered op-amps, the REF3030 and the ADC also sink it *(check)*; +5 V is recorded (PR-4 allows shield damage, but not back-feed into the Due)"
+  },
+  {
+   "id": "C1-p [AW-8 reset/boot excursion, powered (sim/awg -1.720 .. +1.513 V)]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, AW-8 reset/boot excursion, powered (sim/awg -1.720 .. +1.513 V), k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AINx -0.3 .. AVDD + 0.3 = 3.55 V at AVDD min (3.588 V nominal), 10 mA",
+   "worst": "tap far end Vmid: -0.048 .. +1.595 V; far end 3.0 V top: +0.637 .. +2.260 V; clamp current <= 1.0 uA through 100k || 100k; operating window -0.05 .. 3.30 V: inside",
+   "margin": "-",
+   "ok": true,
+   "note": "voltage judged powered"
+  },
+  {
+   "id": "C1-p [AW-8 requirement bound +-2.1 V, powered]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, AW-8 requirement bound +-2.1 V, powered, k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AINx -0.3 .. AVDD + 0.3 = 3.55 V at AVDD min (3.588 V nominal), 10 mA",
+   "worst": "tap far end Vmid: -0.238 .. +1.888 V; far end 3.0 V top: +0.447 .. +2.553 V; clamp current <= 4.8 uA through 100k || 100k; operating window -0.05 .. 3.30 V: outside (no reading is taken then)",
+   "margin": "-",
+   "ok": true,
+   "note": "voltage judged powered"
+  },
+  {
+   "id": "C1-p [PR-4 +-1.8 V forced, powered]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, PR-4 +-1.8 V forced, powered, k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AINx -0.3 .. AVDD + 0.3 = 3.55 V at AVDD min (3.588 V nominal), 10 mA",
+   "worst": "tap far end Vmid: -0.088 .. +1.738 V; far end 3.0 V top: +0.597 .. +2.403 V; clamp current <= 1.8 uA through 100k || 100k; operating window -0.05 .. 3.30 V: outside (no reading is taken then)",
+   "margin": "-",
+   "ok": true,
+   "note": "voltage judged powered"
+  },
+  {
+   "id": "C1-p [PR-4 +-1.8 V forced, unpowered]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, PR-4 +-1.8 V forced, unpowered, k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AVDD = 0: AINx current <= 10 mA (current limiting allowed for this part, owner ruling 2026-11-11); voltage -0.3 .. +0.3 V for the record",
+   "worst": "tap far end Vmid (dead): -1.237 .. +1.796 V; far end 3.0 V top (0 V): -0.900 .. +0.900 V; clamp current <= 35.9 uA through 100k || 100k; voltage beyond the rating by 1.496 V",
+   "margin": "-",
+   "ok": true,
+   "note": "unpowered: judged on current, the voltage rating exceeded through current limiting as SBAS660C allows"
+  },
+  {
+   "id": "C1-p [PR-4 +-5 V forced, powered]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, PR-4 +-5 V forced, powered, k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AINx -0.3 .. AVDD + 0.3 = 3.55 V at AVDD min (3.588 V nominal), 10 mA",
+   "worst": "tap far end Vmid: -1.688 .. +3.338 V; far end 3.0 V top: -1.003 .. +4.003 V; clamp current <= 33.8 uA through 100k || 100k; voltage beyond the rating by 1.388 V; operating window -0.05 .. 3.30 V: outside (no reading is taken then)",
+   "margin": "over the voltage limit; PR-4 permits shield damage above +-1.8 V",
+   "ok": true,
+   "note": "voltage judged powered; recorded, not judged: PR-4 allows shield damage at +-5 V"
+  },
+  {
+   "id": "C1-p [PR-4 +-5 V forced, unpowered]",
+   "req": "ADS124S08 sense inputs (tap; the bottom node is the clamped D, C1-q) against absolute maximum, PR-4 +-5 V forced, unpowered, k = 1/2 (taps from sim/awg's AWG levels)",
+   "limit": "AVDD = 0: AINx current <= 10 mA (current limiting allowed for this part, owner ruling 2026-11-11); voltage -0.3 .. +0.3 V for the record",
+   "worst": "tap far end Vmid (dead): -2.848 .. +4.005 V; far end 3.0 V top (0 V): -2.500 .. +2.500 V; clamp current <= 80.1 uA through 100k || 100k; voltage beyond the rating by 3.705 V",
+   "margin": "-",
+   "ok": true,
+   "note": "unpowered: judged on current, the voltage rating exceeded through current limiting as SBAS660C allows; recorded, not judged: PR-4 allows shield damage at +-5 V"
+  },
+  {
+   "id": "C3-w",
+   "req": "PA-4 BAT54S clamp leakage in normal operation, and its effect on the measured ratio",
+   "limit": "<= 0.010 % on the ratio (C3-u's share)",
+   "worst": "model 0.00 / -0.00 nA (junction only) and -5 / -222 nA (with the 25 V / 2 uA resistor) into D at 1.65 / 3.0 V, a 217 nA difference between the states; the datasheet's only figure is 2 uA max at 25 V, so at 1-3 V it bounds each die by 2 uA and no better (monotone in VR assumed). The clamps sit on D and S1, not on the tap: D's leakage flows through the switch into its source, through Ron alone on S2 and through Ron + 100k on S1, and moves D by up to 0.40 V at the datasheet bound (1.0 mV with the model), which the ADC reads; S1's own leakage flows through the same 100k and is read the same way. Ratio error 0 to first order",
+   "margin": "0.0100 %",
+   "ok": true,
+   "note": "the ~0.67 nA tolerance applies to current injected at the tap, where no clamp sits; a clamp on the tap would cost 2 uA x 66.7 kohm = 133 mV there and is not used"
+  },
+  {
+   "id": "C4-a",
+   "req": "PA-1 effective resolution of the ADS124S08 path, noise-free over the 3.0 V span, 20 SPS low-latency filter (Table 3: 1.2 uVrms, 8.0 uVpp)",
+   "limit": ">= 16 bit",
+   "worst": "16.7 bit on external signals (reference noise 4.0 uV dominates), 18.5 bit on ladder taps from the 8.0 uVpp (ratiometric: the reference's noise cancels)",
+   "margin": "0.7 bit",
+   "ok": true,
+   "note": "Table 3 is for PGA enabled, gain 1, internal 2.5 V reference; PGA bypassed at 3.0 V is not tabulated *(check)*"
+  },
+  {
+   "id": "C4-b",
+   "req": "PA-6 absolute accuracy of the ladder and sense readings, claimed only as far as the references allow (worst-case sum, no meter)",
+   "limit": "no claim finer than the sum of its terms",
+   "worst": "+-3.74 mV = +-0.125 % at 3.0 V; with a 6.5-digit meter calibrating the reference: +-0.73 mV = +-0.024 %",
+   "margin": "-",
+   "ok": true,
+   "note": "the ADS124S08's 120 ppm gain error does not enter: every reading is taken against the ladder's top tap"
+  },
+  {
+   "id": "C4-c",
+   "req": "Sample-rate cost: ladder read (6 taps x 4096 samples at 1,046,510 sps total) and ADS124S08 readings (10 single-shot 20 SPS conversions, 56.6 ms each, Table 13)",
+   "limit": "calibration only (PA-9)",
+   "worst": "23.5 ms Due side; 0.57 s ADC side",
+   "margin": "-",
+   "ok": true,
+   "note": "the tee calibration's own point count and time are whatif/tee's"
+  },
+  {
+   "id": "C4-d [100 nF alone at REFP0 (ADS124S08 Sec 9.3.3.2)]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "0.09 uF effective, ESR 30.0 mohm in the large capacitor's branch",
+   "margin": "outside",
+   "ok": false,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*; the 100 nF's ESR is assumed *(check)*; C at its -10 % tolerance (X7R K), DC bias at 3 V not in Yageo's data *(check)*"
+  },
+  {
+   "id": "C4-d [2 x 100 nF at REFP0]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "0.18 uF effective, ESR 15.0 mohm in the large capacitor's branch",
+   "margin": "-",
+   "ok": true,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*; the 100 nF's ESR is assumed *(check)*; C at its -10 % tolerance (X7R K), DC bias at 3 V not in Yageo's data *(check)*"
+  },
+  {
+   "id": "C4-d [100 nF + 10 uF direct (BOM review)]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "6.73 uF effective, ESR 6.4 mohm in the large capacitor's branch",
+   "margin": "outside",
+   "ok": false,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*"
+  },
+  {
+   "id": "C4-d [100 nF + 1R + 10 uF (montreal5)]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "6.73 uF effective, ESR 1006.4 mohm in the large capacitor's branch",
+   "margin": "outside",
+   "ok": false,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*"
+  },
+  {
+   "id": "C4-d [100 nF + (1R || 1R || 1R) + 10 uF]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "6.73 uF effective, ESR 339.7 mohm in the large capacitor's branch",
+   "margin": "-",
+   "ok": true,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*"
+  },
+  {
+   "id": "C4-d [100 nF + (1R || 1R) + 10 uF]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "6.73 uF effective, ESR 506.4 mohm in the large capacitor's branch",
+   "margin": "outside",
+   "ok": false,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*"
+  },
+  {
+   "id": "C4-d [1 uF alone at REFP0 (fallback)]",
+   "req": "REF3030E output load (= ADS124S08 REFP0): inside the datasheet's stable range (CL 0.1-22 uF with ESR 10-500 mohm, REF30E Sec 6.5 note 3)",
+   "limit": "0.1-22 uF and 10-500 mohm",
+   "worst": "1.00 uF effective, ESR 20.0 mohm in the large capacitor's branch",
+   "margin": "-",
+   "ok": true,
+   "note": "the 1R / 10 uF branch carries no DC, so the series R costs no DC accuracy; the reference's ringing with any load is not simulated (encrypted model) *(check, VT)*; the 1 uF's ESR is assumed *(check)*"
+  },
+  {
+   "id": "LC-A1 [lowcost]",
+   "req": "ADS1220 supplies as proposed: AVDD = +3.3 V_A, AVSS = the -2.07 V rail, DVDD = 3.3 V, against SBAS501D 6.3 (recommended) and 6.1 (absolute maximum)",
+   "limit": "6.3: unipolar AVSS -0.1 .. +0.1 V; bipolar AVDD 2.3-2.75 V and AVSS -2.75 .. -2.3 V (to DGND); AVDD - AVSS 2.3-5.5 V",
+   "worst": "AVDD - AVSS 5.27-5.45 V (inside 5.5 V, and 7 V abs max); but AVDD 3.235-3.342 V is above the bipolar 2.75 V and AVSS -2.103 .. -2.039 V is in neither band (bipolar needs -2.3 V or below); inside the absolute maxima (AVSS to DGND -2.8 V)",
+   "margin": "outside 6.3",
+   "ok": false,
+   "note": "6.1 note: outside the recommended conditions 'the device may not be fully functional'; a +-2.5 V pair would need a new +2.5 V regulator and a -2.5 V rail, which the OPA365s (5.5 V abs max across +3.3 V_A) cannot share"
+  },
+  {
+   "id": "LC-A2 [lowcost]",
+   "req": "AWG read at the BNC directly (PGA bypassed: AVSS - 0.1 .. AVDD + 0.1 V), if A1 were met: AW-8 excursion (sim/awg -1.720 .. +1.513 V) and the +-2.1 V requirement bound",
+   "limit": "-2.139 .. +3.335 V operating; -2.339 V abs",
+   "worst": "-1.720 .. +1.513 V inside; -2.1 V inside the absolute maximum, +0.039 V from the operating edge",
+   "margin": "-",
+   "ok": true,
+   "note": "moot while LC-A1 fails"
+  },
+  {
+   "id": "LC-A3 [lowcost]",
+   "req": "PA-1 with the ADS1220 at 20 SPS, normal mode, PGA disabled, gain 1 (Table 7-3: 3.89 uVrms, 13.43 uVpp), over the 3.0 V span",
+   "limit": ">= 16 bit",
+   "worst": "17.8 bit on the taps (ratiometric, from the 13.43 uVpp), 16.3 bit on the AWG reading (with the REF3030's noise)",
+   "margin": "0.3 bit",
+   "ok": true,
+   "note": "Table 7-3 uses the internal 2.048 V reference; with 3.0 V the input-referred noise is taken unchanged (the datasheet says it changes only marginally with an external reference)"
+  },
+  {
+   "id": "LC-A4 [lowcost]",
+   "req": "ADS1220 AVSS on the -2.07 V rail: its ripple against the supply rejection",
+   "limit": "info (6.5: AVDD PSRR at dc 80 dB min; no AVSS figure)",
+   "worst": "0.092 mV pk at the negative rail (P4, LM27762 2 MHz lines); 2 MHz lies 48 kHz from the modulator's 8th harmonic (fMOD 256 kHz) and is removed by the 20 SPS filter; at dc 80 dB -> 9 nV",
+   "margin": "-",
+   "ok": true,
+   "note": "moot while LC-A1 fails; AVSS PSRR is not specified and Fig 6-14 gives AVDD only *(check)*"
+  },
+  {
+   "id": "LC-A5 [lowcost]",
+   "req": "PR-4 with the BNC on an ADS1220 input through a series 680R (C23228, the ladder's type): clamp current unpowered (ESD at 0.5 V), and the error the input current adds through it",
+   "limit": "<= 10 mA (SBAS501D 6.1); SBAS501D 8.3.1 allows series resistors to limit the input current, as SBAS660C does",
+   "worst": "+-1.8 V: 1.9 mA; +-5 V: 6.6 mA; gain error <= 0.0030 % and offset <= 34 uV from a +-50 nA input current (typical graphs only)",
+   "margin": "3.4 mA",
+   "ok": true,
+   "note": "8.3.1: 'external Schottky clamp diodes or series resistors can be required to limit the input current to safe values'"
+  },
+  {
+   "id": "LC-A6 [lowcost] [+-1.25 V, 256 points]",
+   "req": "PA-3 tee share with the ADS1220 reading the AWG directly (no divider, no ratio term, no divider drift), +-1.25 V, 256 points",
+   "limit": "<= 0.10 %",
+   "worst": "fit 0.0221 % (whatif/tee inl_adc.json, 84 uV row, at the bound) + input current through the 680R 0.0030 % = 0.0250 %",
+   "margin": "0.0750 %",
+   "ok": true,
+   "note": "the ADS1220 direct is 90 uV at the AWG (15 ppm FSR), close to the 84 uV row; moot while LC-A1 and LC-A9 fail"
+  },
+  {
+   "id": "LC-A6 [lowcost] [+-5 V, 1024 points]",
+   "req": "PA-3 tee share with the ADS1220 reading the AWG directly (no divider, no ratio term, no divider drift), +-5 V, 1024 points",
+   "limit": "<= 0.10 %",
+   "worst": "fit 0.0419 % (whatif/tee inl_adc.json, 84 uV row, at the bound) + input current through the 680R 0.0030 % = 0.0449 %",
+   "margin": "0.0551 %",
+   "ok": true,
+   "note": "the ADS1220 direct is 90 uV at the AWG (15 ppm FSR), close to the 84 uV row; moot while LC-A1 and LC-A9 fail"
+  },
+  {
+   "id": "LC-A7 [lowcost] [+-1.25 V, 256 points]",
+   "req": "A'' (in specification): ADS1220 unipolar, k = 1/2, the far end switched REF (default) / AGND by one TMUX1119, inputs the sense tap + 3 ladder taps; tee share, +-1.25 V, 256 points",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee (ADS1220, k = 1/2): 0.063 % (0.063 % at the bound) + Ron difference 0.0013 % = 0.064 % at the bound",
+   "margin": "0.036 %",
+   "ok": true,
+   "note": "whatif/tee: on +-5 V the ADS1220 needs 2048 points (4096 at the bound) to pass; its input current is LC-A8"
+  },
+  {
+   "id": "LC-A7 [lowcost] [+-5 V, 1024 points]",
+   "req": "A'' (in specification): ADS1220 unipolar, k = 1/2, the far end switched REF (default) / AGND by one TMUX1119, inputs the sense tap + 3 ladder taps; tee share, +-5 V, 1024 points",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee (ADS1220, k = 1/2): 0.085 % (0.111 % at the bound) + Ron difference 0.0013 % = 0.112 % at the bound",
+   "margin": "-0.012 %",
+   "ok": false,
+   "note": "whatif/tee: on +-5 V the ADS1220 needs 2048 points (4096 at the bound) to pass; its input current is LC-A8"
+  },
+  {
+   "id": "LC-A8 [lowcost]",
+   "req": "A'': the ADS1220's input current (PGA disabled: typical graphs only) through the sense tap's 50 kohm, differing between the two ratio readings, on the measured ratio",
+   "limit": "part of the tee's 0.10 %",
+   "worst": "25 C (the +-15 nA graph axis): up to 0.100 %; 85 C (the +-50 nA axis): up to 0.333 % (bound from the graphs' axes; the curves' values are not in the text)",
+   "margin": "-",
+   "ok": false,
+   "note": "the ADS124S08's 1 nA/V typical makes this 0.005 %; the ADS1220 gives no number, so A'' is not shown to work *(check)*; A''' buffers it"
+  },
+  {
+   "id": "LC-A9 [lowcost]",
+   "req": "A direct: the series resistor from the BNC that keeps the dead +3.3 V_A (4.7k bleed) under 0.5 V through the ADS1220's ESD, against the gain error the input current makes through it",
+   "limit": "rail < 0.5 V (PR-3) and gain error <= 0.01 %",
+   "worst": "back-feed needs Rs >= 6.6k at +1.8 V and 36.7k at +5 V; at 36.7k the +-50 nA input current makes 0.16 % of gain error; 0.01 % allows <= 2.3k",
+   "margin": "no value meets both",
+   "ok": false,
+   "note": "a BAT54S on the pin to the same rails moves the clamp current but does not stop the back-feed; only a clamp to a rail that is not back-fed, or a series diode in the ADS1220's AVDD, would"
+  },
+  {
+   "id": "LC-A10 [lowcost] [MCP6002, CMRR 76 dB typical, +-1.25 V, 256 points]",
+   "req": "A''' = A'' with a unity buffer (MCP6002) between the sense tap and the ADS1220: tee share, +-1.25 V, 256 points, k = 1/2, 256 points",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2 at the bound 0.063 % + Ron 0.0013 + buffer common-mode error c/k 0.0317 + bias current 6.7e-06 = 0.096 %",
+   "margin": "0.004 %",
+   "ok": true,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not; the MCP6002's input stages cross over at 2.13-2.24 V, inside the tap's span with the far end at the reference (0.95-2.08 V, AW-8 to 2.26 V), where its datasheet says to avoid it"
+  },
+  {
+   "id": "LC-A10 [lowcost] [MCP6002, CMRR 76 dB typical, +-5 V, 1024 points]",
+   "req": "A''' = A'' with a unity buffer (MCP6002) between the sense tap and the ADS1220: tee share, +-5 V, 1024 points, k = 1/2, 4096 points (whatif/tee: the ADS1220 passes the bound there, no figure given)",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2: <= 0.10 % at the bound with 4096 points (1024: 0.111 %), its margin not given; added here: Ron 0.0013 + buffer common-mode error c/k 0.0317 + bias current 6.7e-06 = 0.0330 %",
+   "margin": "unknown margin; passed only if the added terms are under 0.005 % *(check: rerun whatif/tee with them)*",
+   "ok": false,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not; the MCP6002's input stages cross over at 2.13-2.24 V, inside the tap's span with the far end at the reference (0.95-2.08 V, AW-8 to 2.26 V), where its datasheet says to avoid it"
+  },
+  {
+   "id": "LC-A10 [lowcost] [MCP6002, CMRR 60 dB minimum, +-1.25 V, 256 points]",
+   "req": "A''' = A'' with a unity buffer (MCP6002) between the sense tap and the ADS1220: tee share, +-1.25 V, 256 points, k = 1/2, 256 points",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2 at the bound 0.063 % + Ron 0.0013 + buffer common-mode error c/k 0.2000 + bias current 6.7e-06 = 0.264 %",
+   "margin": "-0.164 %",
+   "ok": false,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not; the MCP6002's input stages cross over at 2.13-2.24 V, inside the tap's span with the far end at the reference (0.95-2.08 V, AW-8 to 2.26 V), where its datasheet says to avoid it"
+  },
+  {
+   "id": "LC-A10 [lowcost] [MCP6002, CMRR 60 dB minimum, +-5 V, 1024 points]",
+   "req": "A''' = A'' with a unity buffer (MCP6002) between the sense tap and the ADS1220: tee share, +-5 V, 1024 points, k = 1/2, 4096 points (whatif/tee: the ADS1220 passes the bound there, no figure given)",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2: <= 0.10 % at the bound with 4096 points (1024: 0.111 %), its margin not given; added here: Ron 0.0013 + buffer common-mode error c/k 0.2000 + bias current 6.7e-06 = 0.2013 %",
+   "margin": "unknown margin; passed only if the added terms are under 0.005 % *(check: rerun whatif/tee with them)*",
+   "ok": false,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not; the MCP6002's input stages cross over at 2.13-2.24 V, inside the tap's span with the far end at the reference (0.95-2.08 V, AW-8 to 2.26 V), where its datasheet says to avoid it"
+  },
+  {
+   "id": "LC-A10 [lowcost] [OPA365, CMRR 100 dB minimum, +-1.25 V, 256 points]",
+   "req": "A''' = A'' with a unity buffer (OPA365) between the sense tap and the ADS1220: tee share, +-1.25 V, 256 points, k = 1/2, 256 points",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2 at the bound 0.063 % + Ron 0.0013 + buffer common-mode error c/k 0.0020 + bias current 6.7e-05 = 0.066 %",
+   "margin": "0.034 %",
+   "ok": true,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not"
+  },
+  {
+   "id": "LC-A10 [lowcost] [OPA365, CMRR 100 dB minimum, +-5 V, 1024 points]",
+   "req": "A''' = A'' with a unity buffer (OPA365) between the sense tap and the ADS1220: tee share, +-5 V, 1024 points, k = 1/2, 4096 points (whatif/tee: the ADS1220 passes the bound there, no figure given)",
+   "limit": "<= 0.10 %",
+   "worst": "whatif/tee ADS1220 k = 1/2: <= 0.10 % at the bound with 4096 points (1024: 0.111 %), its margin not given; added here: Ron 0.0013 + buffer common-mode error c/k 0.0020 + bias current 6.7e-05 = 0.0034 %",
+   "margin": "unknown margin; passed only if the added terms are under 0.005 % *(check: rerun whatif/tee with them)*",
+   "ok": true,
+   "note": "the buffer's offset and drift cancel in the ratio's two-state difference and land in the AWG's calibrated offset; the common-mode dependence does not"
+  },
+  {
+   "id": "LC-A11 [lowcost]",
+   "req": "A''' buffer: input range, noise, stability into the ADS1220, PR-3 through its input ESD",
+   "limit": "VCM and output inside the rails; noise inside PA-1; stable; rail < 0.5 V",
+   "worst": "tap 0.5 V (AGND state, AWG +1.0 V) to 2.26 V (AW-8 bound, reference state): inside VSS - 0.3 .. VDD + 0.3 (MCP6002) and (V-) - 0.1 .. (V+) + 0.1 V (OPA365); output 25 mV from the rails (MCP6002, 10 kohm); noise 4.00 uVrms with the ADS1220 against 3.89 alone; a follower into the ADS1220's internally buffered input (a few pF, Sec 8.3.2.2) is inside the MCP6002's 60 pF test load (PM 90 deg typ); unpowered, the buffer's input ESD sees the BNC through 100k, <= 44 uA into +3.3 V_A at +5 V",
+   "margin": "-",
+   "ok": true,
+   "note": "no stability run; both parts are unity-gain stable and the load is a few pF *(check)*"
+  },
+  {
+   "id": "LC-E1 [lowcost]",
+   "req": "PA-9 ladder of nine 680R 1 % (C23228, Basic): 680/3 at the bottom, then three 680/2 pairs; worst tap impedance",
+   "limit": "<= 330 ohm (PA-9)",
+   "worst": "taps 0.545, 1.364, 2.182, 3.000 V; worst 309 ohm (312 at +1 %); 2.43 mA",
+   "margin": "18 ohm",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "LC-C2a [lowcost]",
+   "req": "PA-9 Due fit from 3 inner taps + the top (REFP0 itself), the ADS1220 reading the taps (INL 15 ppm FSR, 3.89 uVrms, ~30 Mohm uncorrected), 1 % parts, at 0.2 / 3.1 V",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.161 LSB",
+   "margin": "0.339 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "LC-C2c [lowcost]",
+   "req": "C2-a plus the Due's pin leakage 0.5 uA across each tap",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.279 LSB",
+   "margin": "0.221 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "LC-C2d [lowcost]",
+   "req": "the 1 % parts' tempco (100 ppm/K x 10 K) with the ADS1220's reading reused (not re-read)",
+   "limit": "<= 0.5 LSB with the re-read rule",
+   "worst": "1.388 LSB if not re-read (re-read: C2-a)",
+   "margin": "-",
+   "ok": true,
+   "note": "the re-read rule (PA-9) becomes load-bearing"
+  },
+  {
+   "id": "LC-C2b [lowcost]",
+   "req": "D11 recovery: the fit with one of the four points dropped, each in turn, the top included",
+   "limit": "<= 0.5 LSB",
+   "worst": "without the 0.545 V tap 0.268; without the 1.364 V tap 0.164; without the 2.182 V tap 0.161; without the top (3.0 V) 0.291 LSB",
+   "margin": "0.209 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "LC-D11 [lowcost]",
+   "req": "D11 detect and recover one bad tap (a fault added to the Due's reading of one point, the top included), Due INL 1.2 LSB, leakage 0.5 uA: detection at the 0.1 % false-alarm threshold, identification by leave-one-out, recovery error",
+   "limit": "detect, identify, then <= 0.5 LSB",
+   "worst": "threshold 1.57 LSB; 5 LSB fault: detected 75-100 %, identified 77-93 %; 10 LSB: detected 100 %, identified 98-100 %, recovered 3.16 LSB (p999, correctly identified; the 4-point fit with the same INL reads 1.81); an undetected 5 LSB fault leaves up to 6.0 LSB",
+   "margin": "-",
+   "ok": true,
+   "note": "judged as D11 is written: a fault is shown (detection >= 99 % at 10 LSB) and a fit survives its dropping (LC-C2b); which point is bad is told only 98-100 % of the time at 10 LSB, since a leave-one-out fit of 4 points has one degree of freedom against the Due's own 1.2 LSB INL"
+  },
+  {
+   "id": "LC-P3 [lowcost] [OPA365 scope]",
+   "req": "PW-1 AFE current with the remaining lowcost cuts (A'' + E; B is the design), normal / AWG shorted, and the PR-4 fault total",
+   "limit": "<= 100 mA; fault <= 450 mA",
+   "worst": "46.1 / 59.1 mA; fault 409.6 mA (change +0.39 mA)",
+   "margin": "40.9 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "LC-P3 [lowcost] [OPA354 scope]",
+   "req": "PW-1 AFE current with the remaining lowcost cuts (A'' + E; B is the design), normal / AWG shorted, and the PR-4 fault total",
+   "limit": "<= 100 mA; fault <= 450 mA",
+   "worst": "48.7 / 61.7 mA; fault 412.2 mA (change +0.39 mA)",
+   "margin": "38.3 mA",
+   "ok": true,
+   "note": ""
+  }
+ ]
+}

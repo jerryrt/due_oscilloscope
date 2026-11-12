@@ -1,0 +1,43 @@
+wire OFF (default tie, normal use)                           T0 +1.147..2.312 B 2.88..2.96 in  pinT +1.147 pinB +2.881..+2.960 iT 0.0 iB 0.0 uA Iref 2.22
+wire B-TAP3 (the right position)                             T0 +0.465..1.595 B 1.72..1.76 in  pinT +0.465 pinB +1.720..+1.764 iT 0.0 iB 0.0 uA Iref 2.86
+wire B-TAP4 (header neighbour)                               T0 +0.703..1.835 B 2.12..2.16 in  pinT +0.703 pinB +2.124..+2.165 iT 0.0 iB 0.0 uA Iref 2.48
+wire TAP4-TAP3 (across one rung, B on its default)           T0 +1.147..2.312 B 2.88..2.96 in  pinT +1.147 pinB +2.881..+2.960 iT 0.0 iB 0.0 uA Iref 2.70
+wire B-TAP1 (0.1875 V, via a Due ADC pin)                    T0 -0.317..0.796 B 0.40..0.41 OUT pinT -0.303 pinB +0.398..+0.413 iT 1.1 iB 0.0 uA Iref 4.56
+wire B-TAP2 (0.75 V, via a Due ADC pin)                      T0 +0.159..1.284 B 1.20..1.24 in  pinT +0.158 pinB +1.202..+1.241 iT 0.0 iB 0.0 uA Iref 3.47
+wire B-TAP5 (2.438 V, via a Due ADC pin)                     T0 +0.930..2.061 B 2.51..2.54 in  pinT +0.930 pinB +2.512..+2.541 iT 0.0 iB 0.0 uA Iref 2.28
+wire B-VREF (3.0 V)                                          T0 +1.215..2.337 B 3.00..3.00 in  pinT +1.216 pinB +3.000..+3.000 iT 0.0 iB 0.0 uA Iref 2.10
+wire B-GND                                                   T0 -0.552..0.554 B 0.00..0.00 OUT pinT -0.432 pinB +0.000..+0.000 iT 9.5 iB 0.0 uA Iref 5.13
+wire B-+3V3A (3.3 V)                                         T0 +1.392..2.516 B 3.30..3.30 OUT pinT +1.393 pinB +3.300..+3.300 iT 0.0 iB 0.0 uA Iref 1.80
+wire B-Due 5V (5.25 V max, stress)                           T0 +2.541..3.683 B 5.25..5.25 OUT pinT +2.543 pinB +3.791..+3.793 iT 5.9 iB 113.2 uA Iref 0.20
+wire B-Due VIN (12 V, stress)                                T0 +6.517..7.723 B 12.00..12.00 OUT pinT +3.830 pinB +3.896..+3.897 iT 303.8 iB 629.6 uA Iref 7.02
+wire TAP5-GND (ladder shorted at the top)                    T0 +1.147..2.312 B 2.88..2.96 in  pinT +1.147 pinB +2.881..+2.960 iT 0.0 iB 0.0 uA Iref 11.35
+wire TAP5-VREF (one rung shorted)                            T0 +1.147..2.312 B 2.88..2.96 in  pinT +1.147 pinB +2.881..+2.960 iT 0.0 iB 0.0 uA Iref 0.13
+detect min gap mV 382.96462807787736
+ +5.0 V pow off   Tpin +3.661..+3.666 Bpin +3.041..+3.048 rail-current 14 uA gnd 0 rail 3.210 V
+ +5.0 V pow TAP3  Tpin +3.065..+3.103 Bpin +1.766..+1.788 rail-current 0 uA gnd 0 rail 3.210 V
+ +5.0 V unp off   Tpin +0.965..+0.978 Bpin +0.080..+0.083 rail-current 87 uA gnd 0 rail 0.411 V
+ +5.0 V unp TAP3  Tpin +0.954..+0.967 Bpin +0.022..+0.022 rail-current 85 uA gnd 0 rail 0.402 V
+ -5.0 V pow off   Tpin -0.364..-0.313 Bpin +2.785..+2.796 rail-current 0 uA gnd 3 rail 3.210 V
+ -5.0 V pow TAP3  Tpin -0.521..-0.513 Bpin +1.702..+1.723 rail-current 0 uA gnd 41 rail 3.210 V
+ -5.0 V unp off   Tpin -0.585..-0.583 Bpin -0.066..-0.063 rail-current 0 uA gnd 117 rail 0.000 V
+ -5.0 V unp TAP3  Tpin -0.584..-0.582 Bpin -0.018..-0.017 rail-current 0 uA gnd 115 rail 0.000 V
+ -1.8 V pow off   Tpin +0.957..+1.002 Bpin +2.869..+2.878 rail-current 0 uA gnd 0 rail 3.210 V
+ -1.8 V pow TAP3  Tpin +0.277..+0.316 Bpin +1.718..+1.740 rail-current 0 uA gnd 0 rail 3.210 V
+ -1.8 V unp off   Tpin -0.482..-0.479 Bpin -0.036..-0.034 rail-current 0 uA gnd 22 rail 0.000 V
+ -1.8 V unp TAP3  Tpin -0.479..-0.476 Bpin -0.010..-0.009 rail-current 0 uA gnd 21 rail 0.000 V
+kvm_02 values (15k/10k/3.9k/10k): {'+5.0': {'rail_V': 0.49117658832454636, 'i_rail_uA': 104.50565709032901}, '-5.0': {'rail_V': 0.0, 'i_rail_uA': 0.0}}
+awg {'load_uA': {'off': (-115.60988628724212, -42.84259842931173), 'TAP3': (-84.24422371029672, -10.468680205052927)}, 'drop_mV': (5.768933325733382, 2.1378456616226553), 'thermal_nV': 104.19359233490624, 'ref_nV': 66.97105263157894}
+track {'gain_pct': 0.08760161465940453, 'off_mV': 1.8373061735692222, 'err_mV': 2.588907295952276, 'k_err_pct': 0.10224169337084942}
+indep {'gain_pct': 0.3037773989061685, 'off_mV': 2.6354942394163205, 'err_mV': 6.151799379997877, 'k_err_pct': 0.22718391842810542}
+track_typ {'gain_pct': 0.08762295743066192, 'off_mV': 1.837447147979016, 'err_mV': 2.5892792674523832, 'k_err_pct': 0.05645239026504347}
+indep_typ {'gain_pct': 0.30382339514141776, 'off_mV': 2.634622199521918, 'err_mV': 6.144078287470548, 'k_err_pct': 0.19096684317528823}
+ablation {'channel match 0.1 %': '0.031%/0.51mV', 'offsets 3 LSB': '0.041%/1.56mV', 'resistors 1 %': '0.077%/0.53mV', 'Zcm spread 25 %': '0.281%/1.87mV', 'noise 64 readings': '0.040%/0.64mV', 'INL + model floor (control)': '0.030%/0.51mV'}
+window {'v1 window -1.35..+1.35': {'gain_pct': 0.08760161465940453, 'off_mV': 1.8373061735692222, 'err_mV': 2.588907295952276, 'k_err_pct': 0.10224169337084942}, 'v2 window -1.95..+2.28': {'gain_pct': 0.0580567222687137, 'off_mV': 1.835678449139327, 'err_mV': 2.6200954156316953, 'k_err_pct': 0.10229608980413332}}
+kvm values on v1 {'track': {'gain_pct': 0.10806324340367993, 'off_mV': 1.7809800347212357, 'err_mV': 2.767562451517331, 'k_err_pct': 0.10202983096774651}, 'indep': {'gain_pct': 0.26685214292509757, 'off_mV': 2.3693809078278285, 'err_mV': 5.347678396648048, 'k_err_pct': 0.19670060314584104}}
+{'tracking': {'gain_sum': 0.42760161465940455, 'gain_rss': 0.23358519407474182, 'off_sum': 4.837306173569222, 'off_rss': 3.5179104558580763, 'ok_sum': True, 'ok_rss': True, 'gain_sum_ladder': 0.5606016146594046, 'gain_rss_ladder': 0.26879554105478537}, 'independent': {'gain_sum': 0.6437773989061686, 'gain_rss': 0.3730532242002439, 'off_sum': 5.635494239416321, 'off_rss': 3.993222994774598, 'ok_sum': False, 'ok_rss': True, 'gain_sum_ladder': 0.7767773989061686, 'gain_rss_ladder': 0.39605265822387486}}
+GUARD G-s3-zero fails passes OK
+GUARD G-s3-offset fails passes OK
+GUARD G-s3-eps fails passes OK
+GUARD G-pr3 fails passes OK
+GUARD G-s3-range fails passes OK
+GUARD G-s3-detect fails passes OK

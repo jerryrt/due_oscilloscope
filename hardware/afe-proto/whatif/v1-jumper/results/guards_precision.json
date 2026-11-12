@@ -1,0 +1,72 @@
+[
+ {
+  "id": "G-zero/k1/2",
+  "what": "every error source off: zero error (restored); a host model with Rd twice the truth (tap-channel route), or Zcm 1.5 Mohm against 6, must each exceed 0.05 % (a 5 % wrong R7 does not: k is solved, not trusted)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-zero/k1/3",
+  "what": "every error source off: zero error (restored); a host model with Rd twice the truth (tap-channel route), or Zcm 1.5 Mohm against 6, must each exceed 0.05 % (a 5 % wrong R7 does not: k is solved, not trusted)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-eps",
+  "what": "channel match 2 % instead of 0.1 %: gain must exceed 5 x the 0.1 % figure (the detector sees the dominant source)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-offset",
+  "what": "channel offsets of 60 LSB instead of 3: the offset figure must exceed 3 x the 3-LSB figure",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-range/k1/2",
+  "what": "k = 1/2 with the wire at TAP2 (B = 1.2 V, needs 1.35 V) must FAIL; the designed wire at TAP4 passes",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-range/k1/3",
+  "what": "k = 1/3, wire at TAP2 (B = 1.23 V), window widened to +-3.0 V (needs B >= 2.0 V) must FAIL; +-1.35 V passes",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-range/top",
+  "what": "k = 1/2, A at +3.5 V with B = VREF: the 3.21 V top bound must FAIL (T0 = 3.25 V); the designed +1.35 V passes",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-clamp",
+  "what": "clamp solver at T0 = -0.675 V into 5k: pin must differ from the open circuit by > 0.1 V; a no-op solver must fail that test",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-detect",
+  "what": "distinguishability limit raised to 1000 x resolution (3.1 V) must fail on at least one wrong state; at 20 x all must pass",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-table",
+  "what": "the in-range column must read 'no' for B-GND (T0 = -0.68 V); a column that always read yes would fail this",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ }
+]

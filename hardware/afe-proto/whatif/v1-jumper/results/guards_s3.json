@@ -1,0 +1,44 @@
+[
+ {
+  "id": "G-s3-zero",
+  "what": "all errors off: the model floor (0.02 %, below 0.03 %); a host with Rd twice the truth, Rs twice, or Zcm 1.5 MOhm must each exceed 0.05 %",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-s3-offset",
+  "what": "offsets of 60 LSB must raise the offset figure above 5 x the 3-LSB figure (offsets do not cancel in S3); with the offsets switched off it must not (the check can fail)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-s3-eps",
+  "what": "channel match 2 % against 0.1 %: the gain must move by less than 0.1 % absolute (the match cancels). The same test on the previous structure (single-ended T and B, VREF scale) must fail it",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-pr3",
+  "what": "PR-3 on kvm_02's 15k/10k/3.9k values (105 uA, 0.491 V) must read over the 100 uA row (the check can fail); the final values pass (limits 100 uA and 0.5 V)",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-s3-range",
+  "what": "wire at TAP1 (0.19 V): the tap must read below 0 V (fails); the designed TAP3 stays at or above 0",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ },
+ {
+  "id": "G-s3-detect",
+  "what": "distinguishability limit raised to 1000 x resolution must fail on at least one wrong state; at 20 x all pass",
+  "broken": "fails",
+  "restored": "passes",
+  "good": true
+ }
+]

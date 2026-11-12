@@ -1,0 +1,134 @@
+[
+ {
+  "state": "wire OFF (default tie, normal use)",
+  "where": "header",
+  "t0_min": 0.791517444762852,
+  "t0_max": 2.1678772529387365,
+  "in_range": true,
+  "pin_min": 0.7922835687380383,
+  "pin_max": 2.180167959595682,
+  "i_clamp_uA": -0.01562739762574053,
+  "i_ref_mA": 2.121307900459829
+ },
+ {
+  "state": "wire B-TAP5 (the right position)",
+  "where": "header",
+  "t0_min": 0.571883887673513,
+  "t0_max": 1.942072395500031,
+  "in_range": true,
+  "pin_min": 0.5708152145101264,
+  "pin_max": 1.9524408742805637,
+  "i_clamp_uA": -0.01562676071107724,
+  "i_ref_mA": 2.203472561660845
+ },
+ {
+  "state": "wire B-TAP4 (header neighbour)",
+  "where": "header",
+  "t0_min": 0.3850804986981887,
+  "t0_max": 1.752956273639841,
+  "in_range": true,
+  "pin_min": 0.38245397186022523,
+  "pin_max": 1.761749304874436,
+  "i_clamp_uA": -0.015612925598044183,
+  "i_ref_mA": 2.4303450284762906
+ },
+ {
+  "state": "wire TAP4-TAP5 (across one rung, B left on its default)",
+  "where": "header",
+  "t0_min": 0.791517444762852,
+  "t0_max": 2.1678772529387365,
+  "in_range": true,
+  "pin_min": 0.7922835687380383,
+  "pin_max": 2.180167959595682,
+  "i_clamp_uA": -0.01562739762574053,
+  "i_ref_mA": 2.6095091917321374
+ },
+ {
+  "state": "wire B-TAP2 (0.75 V, via the Due's ADC pin)",
+  "where": "Due pin",
+  "t0_min": -0.07232648249397615,
+  "t0_max": 1.290407619733229,
+  "in_range": false,
+  "pin_min": -0.07737011122305723,
+  "pin_max": 1.2953411548144347,
+  "i_clamp_uA": 0.012265942835347826,
+  "i_ref_mA": 3.446395349809393
+ },
+ {
+  "state": "wire B-VREF (3.0 V, via the Due's ADC pin)",
+  "where": "Due pin",
+  "t0_min": 0.8030120640874017,
+  "t0_max": 2.1709204467418473,
+  "in_range": true,
+  "pin_min": 0.8038703576608826,
+  "pin_max": 2.183177783286834,
+  "i_clamp_uA": -0.015627400597510024,
+  "i_ref_mA": 2.10240745622127
+ },
+ {
+  "state": "wire B-GND",
+  "where": "Due pin",
+  "t0_min": -0.6701400238735608,
+  "t0_max": 0.6817113491947976,
+  "in_range": false,
+  "pin_min": -0.4000756850771269,
+  "pin_max": 0.68155897409148,
+  "i_clamp_uA": 5.614790193658907,
+  "i_ref_mA": 5.127429154128152
+ },
+ {
+  "state": "wire B-+3V3A (3.3 V)",
+  "where": "Due pin",
+  "t0_min": 0.9503272728834977,
+  "t0_max": 2.3211552425265274,
+  "in_range": true,
+  "pin_min": 0.9524129909119505,
+  "pin_max": 2.3346645014070697,
+  "i_clamp_uA": -0.0156274103832446,
+  "i_ref_mA": 1.8034384146401448
+ },
+ {
+  "state": "wire B-Due 5V (5.25 V max, stress)",
+  "where": "Due pin",
+  "t0_min": 1.907876130058123,
+  "t0_max": 3.2976814151269513,
+  "in_range": false,
+  "pin_min": 1.91794011118236,
+  "pin_max": 3.3170556528340684,
+  "i_clamp_uA": 0.029823264428737107,
+  "i_ref_mA": 0.20451287418422284
+ },
+ {
+  "state": "wire B-Due VIN (12 V, stress)",
+  "where": "Due pin",
+  "t0_min": 5.222468327970289,
+  "t0_max": 6.677964320282265,
+  "in_range": false,
+  "pin_min": 3.71365900342182,
+  "pin_max": 3.7534248828091012,
+  "i_clamp_uA": 59.47704099130207,
+  "i_ref_mA": 7.018817769313521
+ },
+ {
+  "state": "wire TAP5-GND (ladder shorted at the top)",
+  "where": "Due pin",
+  "t0_min": 0.791517444762852,
+  "t0_max": 2.1678772529387365,
+  "in_range": true,
+  "pin_min": 0.791517444762852,
+  "pin_max": 2.1678772529387365,
+  "i_clamp_uA": 0.0,
+  "i_ref_mA": 11.254823447737577
+ },
+ {
+  "state": "wire TAP5-VREF (one rung shorted)",
+  "where": "Due pin",
+  "t0_min": 0.791517444762852,
+  "t0_max": 2.1678772529387365,
+  "in_range": true,
+  "pin_min": 0.791517444762852,
+  "pin_max": 2.1678772529387365,
+  "i_clamp_uA": 0.0,
+  "i_ref_mA": 0.032972645575024044
+ }
+]

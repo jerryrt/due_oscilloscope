@@ -1,0 +1,12 @@
+k1/2 max match (0.1 %)                         gain sum 0.725 % RSS 0.442 % | offset sum 5.64 mV RSS 4.00 | sum FAIL RSS PASS
+k1/2 max match (0.1 %) + ladder                gain sum 0.858 % RSS 0.462 % | offset sum 5.64 mV RSS 4.00 | sum FAIL RSS PASS
+k1/2 typical match (0.05 %)                    gain sum 0.658 % RSS 0.384 % | offset sum 5.64 mV RSS 4.00 | sum FAIL RSS PASS
+k1/2 typical match (0.05 %) + ladder           gain sum 0.791 % RSS 0.407 % | offset sum 5.64 mV RSS 4.00 | sum FAIL RSS PASS
+k1/3 max match                                 gain sum 0.814 % RSS 0.521 % | offset sum 6.32 mV RSS 4.47 | sum FAIL RSS FAIL
+k1/3 max match + ladder                        gain sum 0.947 % RSS 0.538 % | offset sum 6.32 mV RSS 4.47 | sum FAIL RSS FAIL
+superseded k1/2 Rd-model design                gain sum 1.456 % RSS 1.137 % | offset sum 23.40 mV RSS 20.62 | sum FAIL RSS FAIL
+superseded k1/2 Rd-model design + ladder       gain sum 1.589 % RSS 1.145 % | offset sum 23.40 mV RSS 20.62 | sum FAIL RSS FAIL
+allotment 0.05 % / 3 mV                        gain sum 0.390 % RSS 0.222 % | offset sum 6.00 mV RSS 4.24 | sum FAIL RSS PASS
+allotment 0.05 % / 3 mV + ladder               gain sum 0.523 % RSS 0.259 % | offset sum 6.00 mV RSS 4.24 | sum FAIL RSS PASS
+{'sum_no_ladder': 0.15999999999999998, 'sum_with_ladder': 0.02699999999999997, 'rss_no_ladder': 0.4506794869971341, 'rss_with_ladder': 0.43060771010282667, 'offset_room': 2.0}
+GUARD G-stack: sense 1.12 % / 20.4 mV passes? False (must be False); sense 0.05 % / 2 mV passes? True (must be True)

@@ -1,0 +1,18 @@
+GUARD G-zero/k1/2 fails passes OK
+GUARD G-zero/k1/3 fails passes OK
+GUARD G-eps fails passes OK
+GUARD G-offset fails passes OK
+GUARD G-range/k1/2 fails passes OK
+GUARD G-range/k1/3 fails passes OK
+GUARD G-range/top fails passes OK
+GUARD G-clamp fails passes OK
+GUARD G-detect fails passes OK
+GUARD G-table fails passes OK
+k1/2           k=0.500 Rth= 23.5k | max match corrZ 0.386 % 2.61 mV (worst point 7.2 mV, k err 0.206 %) | indepZ 0.385 % 2.64 mV | typ 0.318 % 2.64 mV | eps0 0.271 %
+k1/3           k=0.319 Rth= 15.0k | max match corrZ 0.475 % 3.28 mV (worst point 8.5 mV, k err 0.343 %) | indepZ 0.474 % 3.32 mV | typ 0.358 % 3.32 mV | eps0 0.271 %
+k1/4           k=0.250 Rth=  7.5k | max match corrZ 0.470 % 3.27 mV (worst point 8.0 mV, k err 0.370 %) | indepZ 0.468 % 3.28 mV | typ 0.307 % 3.29 mV | eps0 0.180 %
+k1/5           k=0.204 Rth=  8.0k | max match corrZ 0.585 % 4.15 mV (worst point 10.1 mV, k err 0.489 %) | indepZ 0.585 % 4.17 mV | typ 0.387 % 4.18 mV | eps0 0.230 %
+k1/2 matched   k=0.500 Rth= 23.5k | max match corrZ 0.197 % 1.77 mV (worst point 3.6 mV, k err 0.103 %) | indepZ 0.445 % 2.97 mV | typ 0.397 % 2.96 mV | eps0 0.364 %
+k1/3 matched   k=0.319 Rth= 15.0k | max match corrZ 0.292 % 2.26 mV (worst point 5.1 mV, k err 0.211 %) | indepZ 0.530 % 3.75 mV | typ 0.429 % 3.75 mV | eps0 0.372 %
+k1/4 matched   k=0.250 Rth=  7.5k | max match corrZ 0.369 % 2.66 mV (worst point 6.6 mV, k err 0.293 %) | indepZ 0.491 % 3.60 mV | typ 0.348 % 3.59 mV | eps0 0.245 %
+k1/5 matched   k=0.204 Rth=  8.0k | max match corrZ 0.453 % 3.29 mV (worst point 8.2 mV, k err 0.379 %) | indepZ 0.634 % 4.64 mV | typ 0.447 % 4.63 mV | eps0 0.322 %

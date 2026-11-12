@@ -1,0 +1,1237 @@
+{
+ "dc": {
+  "A_3.1": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.22314815610746885,
+   "use": 0.8529281918103259,
+   "edge": 1.0269162072724587,
+   "i": 7.891081358462759e-06,
+   "lsb": 0.0005927515300580735
+  },
+  "A_3.125": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.20869360264029369,
+   "use": 0.8461047662758434,
+   "edge": 1.0067008776142794,
+   "i": 7.954719111353384e-06,
+   "lsb": 0.0005975317843327353
+  },
+  "A_3.15": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.19423904917311896,
+   "use": 0.8393896490831779,
+   "edge": 0.9868064262046421,
+   "i": 8.018356864244012e-06,
+   "lsb": 0.0006023120386073973
+  },
+  "A_3.175": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.17978449570594357,
+   "use": 0.8327802817675624,
+   "edge": 0.9672252732424007,
+   "i": 8.081994617135297e-06,
+   "lsb": 0.000607092292882059
+  },
+  "A_3.2": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.16532994223876885,
+   "use": 0.8262741858162532,
+   "edge": 0.9479500757951946,
+   "i": 8.145632370025924e-06,
+   "lsb": 0.0006118725471567209
+  },
+  "A_3.225": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.15087538877159368,
+   "use": 0.8198689595696157,
+   "edge": 0.9289737186184877,
+   "i": 8.20927012291721e-06,
+   "lsb": 0.0006166528014313828
+  },
+  "A_3.25": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.1364208353044183,
+   "use": 0.8135622752652338,
+   "edge": 0.9102893053983453,
+   "i": 8.272907875807177e-06,
+   "lsb": 0.0006214330557060448
+  },
+  "A_3.275": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.12196628183724334,
+   "use": 0.8073518762174078,
+   "edge": 0.8918901503953047,
+   "i": 8.336545628698464e-06,
+   "lsb": 0.0006262133099807066
+  },
+  "A_3.3": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.10751172837006862,
+   "use": 0.8012355741248516,
+   "edge": 0.8737697704680675,
+   "i": 8.40018338158909e-06,
+   "lsb": 0.0006309935642553685
+  },
+  "B_3.1": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.1798463806443351,
+   "use": 0.8478720739382172,
+   "edge": 0.9848049848855268,
+   "i": 8.024288603412783e-06,
+   "lsb": 0.000596286286888695
+  },
+  "B_3.125": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.1650426193105221,
+   "use": 0.8410890973467116,
+   "edge": 0.9647094907428767,
+   "i": 8.089000608278674e-06,
+   "lsb": 0.0006010950472668296
+  },
+  "B_3.15": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.1502388579767091,
+   "use": 0.8344137870503091,
+   "edge": 0.9449329726977292,
+   "i": 8.153712613145227e-06,
+   "lsb": 0.0006059038076449642
+  },
+  "B_3.175": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.1354350966428961,
+   "use": 0.8278435997507004,
+   "edge": 0.9254678958816389,
+   "i": 8.218424618011777e-06,
+   "lsb": 0.0006107125680230988
+  },
+  "B_3.2": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.12063133530908243,
+   "use": 0.8213760716276479,
+   "edge": 0.9063069608907995,
+   "i": 8.283136622877669e-06,
+   "lsb": 0.0006155213284012336
+  },
+  "B_3.225": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.10582757397526965,
+   "use": 0.8150088152584414,
+   "edge": 0.8874430946595089,
+   "i": 8.34784862774356e-06,
+   "lsb": 0.0006203300887793682
+  },
+  "B_3.25": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.09102381264145598,
+   "use": 0.8087395166795305,
+   "edge": 0.870547379061932,
+   "i": 8.412560632610113e-06,
+   "lsb": 0.0006251388491575027
+  },
+  "B_3.275": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.10369379335881512,
+   "use": 0.8025659325827402,
+   "edge": 0.8755594737480681,
+   "i": 8.477272637476663e-06,
+   "lsb": 0.0006299476095356373
+  },
+  "B_3.3": {
+   "gain": [
+    1.134611265961153,
+    1.1747952905409043
+   ],
+   "off": 0.118388745261645,
+   "use": 0.7964858876389315,
+   "edge": 0.8804956276056259,
+   "i": 8.541984642342555e-06,
+   "lsb": 0.000634756369913772
+  }
+ },
+ "dc_lowest_aref": {
+  "AW-7 gain": 3.1,
+  "AW-7 offset": null,
+  "AW-1 width": 3.1,
+  "AW-1 edge": 3.25,
+  "AW-5": 3.1,
+  "AW-2": 3.1
+ },
+ "dnl_step_mV": 2.523974257021474,
+ "dc_tol_0p1pct": {
+  "gain": [
+   1.1501531238853582,
+   1.1591941596456459
+  ],
+  "off_A": 0.14650803493357523,
+  "off_B": 0.10189358231071632,
+  "use": 0.8151088585778997
+ },
+ "dc_xcheck": {
+  "spice": 0.9880803892320058,
+  "analytic": 0.9775019535502605
+ },
+ "dc_offset_nominal_V": 0.006669834419996443,
+ "swing": {
+  "hiz/1.55/-2.071162790697674/+1": {
+   "v": 0.9960871780509685,
+   "err": 1.921972156981866e-07
+  },
+  "hiz/1.55/-2.071162790697674/-1": {
+   "v": -1.003445027006814,
+   "err": 5.036761652199573e-08
+  },
+  "hiz/1.55/-1.9676046511627903/+1": {
+   "v": 0.9961584803254325,
+   "err": 1.9733929168541664e-07
+  },
+  "hiz/1.55/-1.9676046511627903/-1": {
+   "v": -1.003373649672184,
+   "err": 5.073646613951155e-08
+  },
+  "hiz/1.55/-2.174720930232558/+1": {
+   "v": 0.9959692062453009,
+   "err": 1.8434807080858207e-07
+  },
+  "hiz/1.55/-2.174720930232558/-1": {
+   "v": -1.003563115698568,
+   "err": 4.976068068707207e-08
+  },
+  "hiz/1.685/-2.071162790697674/+1": {
+   "v": 0.9960871780509685,
+   "err": 1.921972156981866e-07
+  },
+  "hiz/1.685/-2.071162790697674/-1": {
+   "v": -1.003445027006814,
+   "err": 5.036761652199573e-08
+  },
+  "hiz/1.685/-1.9676046511627903/+1": {
+   "v": 0.9961584803254325,
+   "err": 1.9733929168541664e-07
+  },
+  "hiz/1.685/-1.9676046511627903/-1": {
+   "v": -1.003373649672184,
+   "err": 5.073646613951155e-08
+  },
+  "hiz/1.685/-2.174720930232558/+1": {
+   "v": 0.9959692062453009,
+   "err": 1.8434807080858207e-07
+  },
+  "hiz/1.685/-2.174720930232558/-1": {
+   "v": -1.003563115698568,
+   "err": 4.976068068707207e-08
+  },
+  "hiz": {
+   "err_max": 1.9733929168541664e-07,
+   "least": 0.9959692062453009,
+   "weak": [
+    3.229747639880267,
+    -1.9676046511627903
+   ],
+   "basis": "blanket +/-5 % of the setting"
+  },
+  "r50/1.55/-2.071162790697674/+1": {
+   "v": 0.4988575702666953,
+   "err": 0.0007629338287741816
+  },
+  "r50/1.55/-2.071162790697674/-1": {
+   "v": -0.5017797592664917,
+   "err": 5.822602881622174e-06
+  },
+  "r50/1.55/-2.0239986184664973/+1": {
+   "v": 0.4988954493049493,
+   "err": 0.0007647710654278828
+  },
+  "r50/1.55/-2.0239986184664973/-1": {
+   "v": -0.5017409303287935,
+   "err": 3.2983569492328613e-06
+  },
+  "r50/1.55/-2.174720930232558/+1": {
+   "v": 0.498796302549706,
+   "err": 0.0007599456964521578
+  },
+  "r50/1.55/-2.174720930232558/-1": {
+   "v": -0.5018409332513165,
+   "err": 8.303186795788342e-06
+  },
+  "r50/1.685/-2.071162790697674/+1": {
+   "v": 0.4988575702666953,
+   "err": 0.0007629338287741816
+  },
+  "r50/1.685/-2.071162790697674/-1": {
+   "v": -0.5017797592664917,
+   "err": 5.822602881622174e-06
+  },
+  "r50/1.685/-2.0239986184664973/+1": {
+   "v": 0.4988954493049493,
+   "err": 0.0007647710654278828
+  },
+  "r50/1.685/-2.0239986184664973/-1": {
+   "v": -0.5017409303287935,
+   "err": 3.2983569492328613e-06
+  },
+  "r50/1.685/-2.174720930232558/+1": {
+   "v": 0.498796302549706,
+   "err": 0.0007599456964521578
+  },
+  "r50/1.685/-2.174720930232558/-1": {
+   "v": -0.5018409332513165,
+   "err": 8.303186795788342e-06
+  },
+  "r50": {
+   "err_max": 0.0007647710654278828,
+   "least": 0.498796302549706,
+   "weak": [
+    3.229747639880267,
+    -2.0239986184664973
+   ],
+   "basis": "LM27762 datasheet: VFB+/- limits (Sec 5.5) and 0.1 % feedback resistors"
+  },
+  "r50_reg34": 0.0003075593610460392,
+  "r50_rail_limit": -1.86279296875
+ },
+ "bw": {
+  "OPA365": {
+   "dc": 1.1543507738481782,
+   "f3db": 14791083.88168188,
+   "peak_db": 4.6530366988251145e-05,
+   "f_peak": 34673.68504525303
+  },
+  "OPA354": {
+   "dc": 1.1543994160929143,
+   "f3db": 14125375.44622736,
+   "peak_db": 4.340230177891266e-05,
+   "f_peak": 33884.41561392012
+  },
+  "OPA356": {
+   "dc": 1.1544975374524737,
+   "f3db": 15135612.48436189,
+   "peak_db": 0.0,
+   "f_peak": 1000.0
+  },
+  "flatness_10k_8M": {
+   "0.5pF": [
+    0.8668341557985126,
+    1.0000054399873695
+   ],
+   "1.5pF": [
+    0.8627060070007662,
+    1.0000053570208187
+   ],
+   "3.5pF": [
+    0.852880863177603,
+    1.000005153722648
+   ]
+  },
+  "corners": {
+   "f3db_min": 13182567.3855639,
+   "f3db_max": 15848931.92461093,
+   "peak_max_db": 5.098347777765838e-05,
+   "f3db_min_r50": 9332543.007969797
+  },
+  "buf_cbo": {
+   "5pF/hiz": {
+    "dc": 1.1543507735657288,
+    "f3db": 14454397.70745909,
+    "peak_db": 4.523083033992567e-05,
+    "f_peak": 34673.68504525303
+   },
+   "5pF/r50": {
+    "dc": 0.5772326515582051,
+    "f3db": 9772372.209557988,
+    "peak_db": 0.0,
+    "f_peak": 1000.0
+   },
+   "10pF/hiz": {
+    "dc": 1.1543507738481782,
+    "f3db": 14791083.88168188,
+    "peak_db": 4.6530366988251145e-05,
+    "f_peak": 34673.68504525303
+   },
+   "10pF/r50": {
+    "dc": 0.577232651699443,
+    "f3db": 9999999.999999877,
+    "peak_db": 0.0,
+    "f_peak": 1000.0
+   },
+   "30pF/hiz": {
+    "dc": 1.1543507749779753,
+    "f3db": 16218100.97358909,
+    "peak_db": 5.182245410399119e-05,
+    "f_peak": 35481.33892335741
+   },
+   "30pF/r50": {
+    "dc": 0.5772326522643945,
+    "f3db": 10232929.92280742,
+    "peak_db": 0.0,
+    "f_peak": 1000.0
+   }
+  },
+  "rout": {
+   "0": {
+    "dc": 1.1543507738481782,
+    "f3db": 14791083.88168188,
+    "peak_db": 4.6530366988251145e-05,
+    "f_peak": 34673.68504525303
+   },
+   "100": {
+    "dc": 1.1540017985145308,
+    "f3db": 14125375.44622736,
+    "peak_db": 4.553342918459324e-05,
+    "f_peak": 34673.68504525303
+   },
+   "300": {
+    "dc": 1.15330447344545,
+    "f3db": 12882495.51693118,
+    "peak_db": 4.318416798162694e-05,
+    "f_peak": 33884.41561392012
+   },
+   "1000": {
+    "dc": 1.150870457770038,
+    "f3db": 10232929.92280742,
+    "peak_db": 3.232320745989288e-05,
+    "f_peak": 29512.09226666375
+   },
+   "3000": {
+    "dc": 1.1439723946089873,
+    "f3db": 6165950.01861475,
+    "peak_db": 2.7926375736356474e-06,
+    "f_peak": 13489.6288259165
+   }
+  },
+  "rout_max_ok": 1000,
+  "dac_pin_Zin": {
+   "1M": [
+    26499.03888283565,
+    6.038550636411247
+   ],
+   "8M": [
+    3376.746152457372,
+    6.01469752194319
+   ]
+  }
+ },
+ "pm": {
+  "OPA365/hiz": {
+   "pm": 76.63791750465374,
+   "fc": 26910136.187672403,
+   "T0": 11176.970159032795
+  },
+  "OPA365/r50": {
+   "pm": 90.97550095443177,
+   "fc": 17222342.152854644,
+   "T0": 7953.768876460363
+  },
+  "OPA365/cable_open": {
+   "pm": 69.20190632172184,
+   "fc": 18616156.694076844,
+   "T0": 11177.494181289883
+  },
+  "OPA365/short": {
+   "pm": 93.47121986354853,
+   "fc": 11999895.291031757,
+   "T0": 6092.7515720270085
+  },
+  "OPA354/hiz": {
+   "pm": 48.219884941125144,
+   "fc": 68966883.53932668,
+   "T0": 12625.619282250878
+  },
+  "OPA354/r50": {
+   "pm": 74.339093800743,
+   "fc": 54031217.896384776,
+   "T0": 10309.725302531993
+  },
+  "OPA354/cable_open": {
+   "pm": 74.26557490514458,
+   "fc": 40763358.897016905,
+   "T0": 12625.978789311532
+  },
+  "OPA354/short": {
+   "pm": 84.25798157195875,
+   "fc": 39051392.01035967,
+   "T0": 8644.85804120891
+  },
+  "OPA356/hiz": {
+   "pm": 53.78253957810749,
+   "fc": 134592577.60958537,
+   "T0": 14120.961558142688
+  },
+  "OPA356/r50": {
+   "pm": 70.22539215429572,
+   "fc": 130273857.86391424,
+   "T0": 10100.177156573292
+  },
+  "OPA356/cable_open": {
+   "pm": 56.6445601541964,
+   "fc": 123654559.56172326,
+   "T0": 14119.001276414647
+  },
+  "OPA356/short": {
+   "pm": 76.87618143100786,
+   "fc": 105012434.09903342,
+   "T0": 2767.2738062033245
+  },
+  "OPA354_min": 48.219884941125144
+ },
+ "loads": {
+  "open": {
+   "dc": 1.1544084275231516,
+   "f3db": 13489628.82591636,
+   "peak_db": 4.358487739473008e-05
+  },
+  "hiz": {
+   "dc": 1.1543507738481782,
+   "f3db": 14791083.88168188,
+   "peak_db": 4.6530366988251145e-05
+  },
+  "r50": {
+   "dc": 0.577232651699443,
+   "f3db": 9999999.999999877,
+   "peak_db": 0.0
+  },
+  "cable_open": {
+   "dc": 1.1544084293351806,
+   "f3db": 14454397.70745909,
+   "peak_db": 6.154623253012719e-05
+  },
+  "cable_r50": {
+   "dc": 0.5772326516994439,
+   "f3db": 9999999.999999877,
+   "peak_db": 0.0
+  },
+  "cable_scope": {
+   "dc": 1.154350775489023,
+   "f3db": 13489628.82591636,
+   "peak_db": 6.355158197227689e-05
+  },
+  "r50_over_open": 0.5000246342084735,
+  "zout": {
+   "0.001M": 49.99507340103101,
+   "0.1M": 50.01015507756963,
+   "1M": 50.24864021030862,
+   "8M": 59.87690898425679,
+   "16M": 74.34573291730443
+  }
+ },
+ "short_buf": {
+  "buf_supply_mA_max": 5.508441088294562,
+  "buf_iq_model_mA": 4.241029756988529,
+  "buf_load_mA": 1.2674113313060333
+ },
+ "short": {
+  "+1V": {
+   "vdac": 2.5160852256357873,
+   "vout": 1.009697487759842,
+   "i_short_mA": 20.19394975519684,
+   "i_pos_mA": 24.35642149280037,
+   "i_neg_mA": -4.451801220405449,
+   "p_amp_mW": 36.242761804238185,
+   "i_buf_mA": 5.391891710541897
+  },
+  "mid": {
+   "vdac": 1.65,
+   "vout": 0.006669361982110122,
+   "i_short_mA": 0.13338723964220242,
+   "i_pos_mA": 4.565513719318954,
+   "i_neg_mA": -5.189706014570999,
+   "p_amp_mW": 4.607151920146398,
+   "i_buf_mA": 4.995192646449873
+  },
+  "window top 2.771": {
+   "vdac": 2.771,
+   "vout": 1.304927760881273,
+   "i_short_mA": 26.09855521762546,
+   "i_pos_mA": 30.37817348355172,
+   "i_neg_mA": -4.423689099758099,
+   "p_amp_mW": 35.88405108559122,
+   "i_buf_mA": 5.508441088294562
+  },
+  "window bottom 0.578": {
+   "vdac": 0.578,
+   "vout": -0.9755839390846137,
+   "i_short_mA": -19.511678781692275,
+   "i_pos_mA": 4.284627366584437,
+   "i_neg_mA": -25.010972097540748,
+   "p_amp_mW": -42.40432269305331,
+   "i_buf_mA": 4.503437092822007
+  }
+ },
+ "level": {
+  "Rmin": 49.5,
+  "vo_win": 1.341567379743754,
+  "vo_norm": 1.15,
+  "isc": 0.065,
+  "level_norm": 2.0675000000000003,
+  "level_win": 1.8759326202562463,
+  "level_aw8": 1.1175000000000002,
+  "stated": 1.8,
+  "sim": {
+   "clamp": [
+    57.9090277578189,
+    0.012224910013123869
+   ],
+   "no clamp": [
+    57.90743622507936,
+    0.0
+   ],
+   "norm2V": 58.76399842570709
+  },
+  "knee": {
+   "2": 1.4327752310782675,
+   "3": 2.149162847362459
+  },
+  "stack_I": {
+   "2/1.0": 2.912003689115039e-05,
+   "2/1.15": 9.98607898301529e-05,
+   "2/1.38": 0.0006533895132628809,
+   "2/2.0": 0.04029639691370446,
+   "2/2.1": 0.05851457604395716,
+   "3/1.0": 1.870471834974907e-06,
+   "3/1.15": 4.267684022285501e-06,
+   "3/1.38": 1.50810675355606e-05,
+   "3/2.0": 0.0004473629474981422,
+   "3/2.1": 0.0007680588032679125
+  },
+  "clamp_error_mV": {
+   "hiz": 3.201478104841726e-05,
+   "r50": 0.10602526905290066
+  }
+ },
+ "step": {
+  "dac_edge/hiz": {
+   "amp": 2.193282176016506,
+   "rise_10_90": 3.005000000000226e-07,
+   "overshoot": 0.00011089567221356234,
+   "settle_1pct": 3.972500000000017e-07
+  },
+  "dac_edge/r50": {
+   "amp": 1.096753158872616,
+   "rise_10_90": 2.9900000000002246e-07,
+   "overshoot": 4.774766751980408e-06,
+   "settle_1pct": 4.027500000000021e-07
+  },
+  "dac_edge/cable_open": {
+   "amp": 2.1933928337882653,
+   "rise_10_90": 3.0000000000002254e-07,
+   "overshoot": 0.0016848080057096926,
+   "settle_1pct": 3.9975000000000187e-07
+  },
+  "dac_edge/cable_r50": {
+   "amp": 1.0967526332778972,
+   "rise_10_90": 2.9900000000002246e-07,
+   "overshoot": 4.777908814368459e-06,
+   "settle_1pct": 4.0775000000000247e-07
+  },
+  "dac_edge/cable_scope": {
+   "amp": 2.193283580169327,
+   "rise_10_90": 3.0000000000002254e-07,
+   "overshoot": 0.002455917345571823,
+   "settle_1pct": 4.002500000000019e-07
+  },
+  "fast/cable_open/Rs50.0": {
+   "amp": 0.5772052259927877,
+   "rise_10_90": 4.499999999999957e-08,
+   "overshoot": 0.008667742053527938,
+   "settle_1pct": 8.525000000000259e-08
+  },
+  "fast/cable_open/Rs0.001": {
+   "amp": 0.5773014914240926,
+   "rise_10_90": 4.1999999999999344e-08,
+   "overshoot": 0.019792764475244695,
+   "settle_1pct": 1.1080000000000282e-07
+  },
+  "fast/cable_r50/Rs50.0": {
+   "amp": 0.2885714443017542,
+   "rise_10_90": 5.550000000000036e-08,
+   "overshoot": 0.0001460487532827237,
+   "settle_1pct": 1.2075000000000526e-07
+  },
+  "fast/cable_r50/Rs0.001": {
+   "amp": 0.5770784815074393,
+   "rise_10_90": 6.100000000000077e-08,
+   "overshoot": 1.5179137232479434e-05,
+   "settle_1pct": 1.2975000000000594e-07
+  },
+  "ideal_edge_open_cable": {
+   "50.0": 2.2204461602726154e-16,
+   "50.0_ring": 3.3306692404089233e-16,
+   "0.001": 0.0005613886787073754,
+   "0.001_ring": 1.0003607962303673
+  },
+  "fast/cable_open/Rs50.0/Cpar_corners": {
+   "0.5pF": 0.009230411264539162,
+   "1.5pF": 0.008667742053527938,
+   "3.5pF": 0.007208962315185863
+  }
+ },
+ "rows": [
+  {
+   "req": "AW-7",
+   "case": "gain 1.10-1.20 [window theory 1/6-5/6 AREF, +/-30 mV centring]",
+   "limit": "1.10..1.20",
+   "worst": "1.1346..1.1748",
+   "margin": "+0.0252",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-7 info",
+   "case": "offset at window centre [A] (calibrated by the MCP3564; AW-1 window use is the binding check)",
+   "limit": "info (was <= 60 mV)",
+   "worst": "165.3 mV",
+   "margin": "-105.3 mV against the old 60 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "window use, width [A]",
+   "limit": "<= 92 %",
+   "worst": "82.6 %",
+   "margin": "+9.4 %",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "window use, position-aware (+/-1 V ends vs window ends) [A]",
+   "limit": "<= 92 %",
+   "worst": "94.8 %",
+   "margin": "-2.8 %",
+   "ok": false,
+   "note": ""
+  },
+  {
+   "req": "AW-5",
+   "case": "DAC pin load at window ends [A]",
+   "limit": "<= 0.1 mA",
+   "worst": "8.4 uA",
+   "margin": "+91.6 uA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-2",
+   "case": "one DAC code at the output [A] (ideal 12-bit)",
+   "limit": "<= 1 mV",
+   "worst": "0.631 mV",
+   "margin": "+0.369 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-7",
+   "case": "gain 1.10-1.20 [measured board window 0.578-2.771 V, +39.5 mV centre]",
+   "limit": "1.10..1.20",
+   "worst": "1.1346..1.1748",
+   "margin": "+0.0252",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-7 info",
+   "case": "offset at window centre [B] (calibrated by the MCP3564; AW-1 window use is the binding check)",
+   "limit": "info (was <= 60 mV)",
+   "worst": "120.6 mV",
+   "margin": "-60.6 mV against the old 60 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "window use, width [B]",
+   "limit": "<= 92 %",
+   "worst": "82.1 %",
+   "margin": "+9.9 %",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "window use, position-aware (+/-1 V ends vs window ends) [B]",
+   "limit": "<= 92 %",
+   "worst": "90.6 %",
+   "margin": "+1.4 %",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-5",
+   "case": "DAC pin load at window ends [B]",
+   "limit": "<= 0.1 mA",
+   "worst": "8.5 uA",
+   "margin": "+91.5 uA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-2",
+   "case": "one DAC code at the output [B] (ideal 12-bit)",
+   "limit": "<= 1 mV",
+   "worst": "0.635 mV",
+   "margin": "+0.365 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-2",
+   "case": "info: single-code step incl. datasheet DNL +3 LSB (the Due's, not an AFE limit)",
+   "limit": "nominal step <= 1 mV",
+   "worst": "2.52 mV",
+   "margin": "",
+   "ok": true,
+   "note": "informational: DNL belongs to the Due"
+  },
+  {
+   "req": "AW-7 info",
+   "case": "nominal parts, DAC at Vmid (1.65 V): output (zero-offset pick Rf/Rg = Rb/Ra + Rb/Rx)",
+   "limit": "info (a few mV)",
+   "worst": "+6.67 mV",
+   "margin": "",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "circuit swing: output at +/-1.0 V commanded (high-Z level), into hiz, 2 Vmid x 3 rail corners, weak corner +3.230 / -1.968 V (blanket +/-5 % of the setting): error against the linear map",
+   "limit": "<= 0.62 mV (one DAC code, AW-2)",
+   "worst": "0.00 mV (smallest |v(bnc)| 0.9960 V, target 1.0 V)",
+   "margin": "+0.62 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1 info",
+   "case": "circuit swing: output at +/-1.0 V commanded (high-Z level), into r50, 2 Vmid x 3 rail corners, weak corner +3.230 / -2.024 V (LM27762 datasheet: VFB+/- limits (Sec 5.5) and 0.1 % feedback resistors): error against the linear map [model rails, 0.2 ohm = 200 uV/mA: information; the row below is judged]",
+   "limit": "<= 0.62 mV (one DAC code, AW-2)",
+   "worst": "0.76 mV (smallest |v(bnc)| 0.4988 V, target 0.5 V)",
+   "margin": "-0.14 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "circuit swing into r50, the same corners, rails at the datasheet load regulation 34 uV/mA (judged; VT-8 measures the + rail into 50 ohm)",
+   "limit": "<= 0.62 mV (one DAC code, AW-2)",
+   "worst": "0.31 mV",
+   "margin": "+0.31 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-3/SM-3",
+   "case": "stage -3 dB bandwidth, OPA365, nominal, into 1 Mohm || 15 pF",
+   "limit": ">= 8 MHz",
+   "worst": "14.8 MHz",
+   "margin": "+6.8 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3 info",
+   "case": "gain 10 kHz-8 MHz relative to DC, V+ parasitic 0.5 / 1.5 / 3.5 pF (attenuator compensation Ca, Cb)",
+   "limit": "info (host calibrates, CA-1)",
+   "worst": "0.863..1.000 nominal, 0.853..1.000 over the three",
+   "margin": "",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "bandwidth into 50 ohm over capacitor/parasitic corners",
+   "limit": ">= 8 MHz",
+   "worst": "9.3 MHz",
+   "margin": "+1.3 MHz",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-3/SM-3",
+   "case": "bandwidth over 16 capacitor/parasitic corners",
+   "limit": ">= 8 MHz",
+   "worst": "13.2..15.8 MHz",
+   "margin": "+5.2 MHz",
+   "ok": true,
+   "note": "max peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/SM-3",
+   "case": "bandwidth with the buffer output at 5 / 10 / 30 pF, hi-Z and 50 ohm",
+   "limit": ">= 8 MHz",
+   "worst": "9.8 MHz",
+   "margin": "+1.8 MHz",
+   "ok": true,
+   "note": "max peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/AW-7",
+   "case": "DAC output impedance tolerated (swept 0-3k; datasheet gives none)",
+   "limit": "gain 1.10-1.20 and BW >= 8 MHz",
+   "worst": "ok up to 1000 ohm of [0, 100, 300, 1000, 3000]",
+   "margin": "",
+   "ok": true,
+   "note": "unknown *(check)*, closed by VT-6"
+  },
+  {
+   "req": "AN-1",
+   "case": "phase margin, OPA365, 4 loads, +2 pF at the inverting node",
+   "limit": ">= 45 deg",
+   "worst": "69.2 deg",
+   "margin": "+24.2 deg",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-4",
+   "case": "amplitude into 50 ohm / into high-Z: total series 50.0 ohm (accuracy cost of the protection, host calibrates it)",
+   "limit": "ideal 0.5000 for the resistors",
+   "worst": "0.5000",
+   "margin": "+0.00 % from ideal",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-1",
+   "case": "into 50 ohm: BNC amplitude when the hi-Z amplitude is +/-1.0 V (<= 92 % of the window)",
+   "limit": "+/-0.5 V (AW-1 second clause)",
+   "worst": "+/-0.500 V",
+   "margin": "+0.000 V",
+   "ok": true,
+   "note": "cost of Zout > 50 ohm: reaching 0.5 V into 50 ohm would need the op-amp at 1.25 V, 102 % of the window"
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "-3 dB bandwidth into hiz",
+   "limit": ">= 8 MHz",
+   "worst": "14.8 MHz",
+   "margin": "+6.8 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "-3 dB bandwidth into cable_open",
+   "limit": ">= 8 MHz",
+   "worst": "14.5 MHz",
+   "margin": "+6.5 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "-3 dB bandwidth into cable_r50",
+   "limit": ">= 8 MHz",
+   "worst": "10.0 MHz",
+   "margin": "+2.0 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "-3 dB bandwidth into cable_scope",
+   "limit": ">= 8 MHz",
+   "worst": "13.5 MHz",
+   "margin": "+5.5 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "AW-3/AW-4",
+   "case": "-3 dB bandwidth into r50",
+   "limit": ">= 8 MHz",
+   "worst": "10.0 MHz",
+   "margin": "+2.0 MHz",
+   "ok": true,
+   "note": "peaking 0.00 dB"
+  },
+  {
+   "req": "PW-3",
+   "case": "short to ground at +/-1 V commanded: output current",
+   "limit": "<= 30 mA",
+   "worst": "20.2 mA",
+   "margin": "+9.8 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PW-3",
+   "case": "short at the DAC window ends: output current",
+   "limit": "<= 30 mA",
+   "worst": "26.10 mA",
+   "margin": "+3.90 mA",
+   "ok": true,
+   "note": "with both resistors 1 % low: 26.36 mA"
+  },
+  {
+   "req": "PW-3/PW-1",
+   "case": "op-amp supply current in the short (+ and - pins summed), AFE total limit 100 mA",
+   "limit": "<= 100 mA",
+   "worst": "26.0 mA",
+   "margin": "+74.0 mA",
+   "ok": true,
+   "note": "the rest of the AFE adds its own"
+  },
+  {
+   "req": "PW-1",
+   "case": "AFE in normal operation, AWG shorted (AW-4 allows it): powercal 35.7 mA (incl. the DAC0 buffer at 5 mA) + AWG increase 26.6 mA",
+   "limit": "<= 100 mA",
+   "worst": "62.3 mA",
+   "margin": "+37.7 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PW-1",
+   "case": "same, buffer at 5 mA + its attenuator load 1.27 mA (model Iq 4.24 mA, worst buffer current 5.51 mA)",
+   "limit": "<= 100 mA",
+   "worst": "63.5 mA",
+   "margin": "+36.5 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PW-3",
+   "case": "op-amp dissipation in the short",
+   "limit": "OPA365 SOT-23 limit *(check)*",
+   "worst": "36 mW",
+   "margin": "",
+   "ok": true,
+   "note": "package limit not read from datasheet *(check)*"
+  },
+  {
+   "req": "PR-4",
+   "case": "stated level +/-1.8 V (>= +/-1.5 V): derived 65 mA x 49.50 ohm - 1.342 V (worst commanded, DAC window end)",
+   "limit": ">= 1.5 V and <= derived",
+   "worst": "1.8 V <= 1.876 V",
+   "margin": "+0.076 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PR-4",
+   "case": "forced +/-1.8 V, DAC at either window end, 4 corners, resistor 49.50 ohm: op-amp output current, clamp present",
+   "limit": "<= 65 mA (ISC typ) *(check)*",
+   "worst": "57.9 mA (clamp 0.01 mA)",
+   "margin": "+7.1 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PR-4",
+   "case": "same, clamp removed (the clamps not conducting)",
+   "limit": "<= 65 mA (ISC typ) *(check)*",
+   "worst": "57.9 mA",
+   "margin": "+7.1 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PR-4",
+   "case": "normal range: output at +/-1.15 V commanded, forced +/-2.0 V of the opposite sign: op-amp output current",
+   "limit": "<= 65 mA (ISC typ) *(check)*",
+   "worst": "58.8 mA",
+   "margin": "+6.2 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "PR-4/AW-8",
+   "case": "3-diode stack: voltage at which it carries 1 mA (model, recalled figures *(check)*)",
+   "limit": ">= 2.1 V (AW-8 limit; above the level)",
+   "worst": "2.15 V (2-diode stack 1.43 V)",
+   "margin": "+0.05 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-7",
+   "case": "3-diode stack: current at the op-amp output at 1.0 / 1.15 / 1.38 V",
+   "limit": "info",
+   "worst": "1.870 / 4.27 / 15.1 uA",
+   "margin": "",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-7",
+   "case": "output error caused by the clamp, DAC over its window, hi-Z and 50 ohm, 2 Vmid/rail corners",
+   "limit": "<= 0.62 mV (one DAC code, AW-2; chosen allocation)",
+   "worst": "0.1060 mV",
+   "margin": "+0.514 mV",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-4 info",
+   "case": "1 m (5 ns) open cable, ideal 2 ns edge (stricter than any signal this stage can make): ringing after 60 ns, source 50.0 ohm",
+   "limit": "info (reflection coefficient (Zs-50)/(Zs+50))",
+   "worst": "0.0 % ring",
+   "margin": "",
+   "ok": true,
+   "note": "0 % at 50.0 ohm, 100 % with no resistor"
+  },
+  {
+   "req": "AW-4",
+   "case": "same cable open, real stage, 42 ns DAC-class edge: far-end overshoot, worst of V+ parasitic 0.5 / 1.5 / 3.5 pF",
+   "limit": "<= 5 %",
+   "worst": "0.9 % (0.9 / 0.9 / 0.7)",
+   "margin": "+4.1 %",
+   "ok": true,
+   "note": "with Rs shorted: 2.0 % (a 42 ns edge is slow against 10 ns round trip)"
+  },
+  {
+   "req": "AW-4",
+   "case": "same cable terminated in 50 ohm: overshoot",
+   "limit": "<= 5 %",
+   "worst": "0.0 %",
+   "margin": "+5.0 %",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-3",
+   "case": "5 V/us DAC edge into hiz: 10-90 % rise, overshoot",
+   "limit": "overshoot <= 5 %",
+   "worst": "301 ns, 0.0 %",
+   "margin": "+5.0 %",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "req": "AW-3",
+   "case": "5 V/us DAC edge into cable_scope: 10-90 % rise, overshoot",
+   "limit": "overshoot <= 5 %",
+   "worst": "300 ns, 0.2 %",
+   "margin": "+4.8 %",
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "design": {
+  "opamp": "OPA365",
+  "Ra": 1000.0,
+  "Rb": 1157.0,
+  "Rx": 0.0,
+  "Rf": 1157.0,
+  "Rg": 1000.0,
+  "Rs": 50.0,
+  "Ca": 0.0,
+  "Cb": 0.0,
+  "Cpar_p": 1.5e-12,
+  "Cpar_n": 2e-12,
+  "Cf": 1.2e-11,
+  "rout": 0.0,
+  "vdac": 1.65,
+  "vmid": 1.65,
+  "vp": 3.3,
+  "vn": -2.071162790697674,
+  "rp": 0.2,
+  "rn": 0.2,
+  "rsink": 1000000000.0,
+  "rbl": 4700.0,
+  "rflt": 11.0,
+  "cbulk": 1e-05,
+  "cpin": 1e-07,
+  "ripple": 0.0,
+  "load": "hiz",
+  "vos": 0.0,
+  "rvm": 1.0,
+  "cvm": 0.0,
+  "loop": false,
+  "Cin_n": 5.4e-12,
+  "sw": false,
+  "swv": 3.3,
+  "sw_pwl": "",
+  "esd_only": false,
+  "R2": 0.0,
+  "clamp": "gnd3",
+  "iso": true,
+  "esr_bulk": null,
+  "dsch": "DBAT54S_TYP",
+  "dleak": true,
+  "buf": true,
+  "Rbin": 680.0,
+  "Rbpl": 330000.0,
+  "Cbo": 1e-11,
+  "cbuf": 1e-07,
+  "biso": true,
+  "bq": 0.0,
+  "bmode": "closed",
+  "Crep": 0.0,
+  "bsup": "sp",
+  "Rsh": 0.0,
+  "bpl_to": "0",
+  "vm_div": [
+   330000.0,
+   330000.0,
+   1.2e-11
+  ],
+  "cvm2": false,
+  "Rinj": 0.0,
+  "sense_ref": "vm",
+  "cat": "out",
+  "inj": null,
+  "sense": true
+ },
+ "ngspice": [
+  "** ngspice-47 : Circuit level simulation program",
+  "** Compiled with KLU Direct Linear Solver"
+ ],
+ "models_sha256": {
+  "OPA365": "cc95b072dc92d3730f2d8c292a6657273d5007ceaaa62f7f504d2256ac722fc8",
+  "OPA354": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+  "OPA356": "bd3c06429aa1453df8878f21916cb67d269e5b38dbdf92d9397665dff1cf009c",
+  "models/awg_behavioural.lib": "1beaf38ee34b834eabaa591b9b7e3010865564f1d5e89f2317b95c5edeb5f9d2"
+ }
+}

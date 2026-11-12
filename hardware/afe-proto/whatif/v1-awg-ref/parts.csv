@@ -1,0 +1,13 @@
+refs,value,lcsc,role,qty
+"R1,R2 (parallel)","100 ohm 1 % 1206","C17901","AW-4 50 ohm back-termination: two in parallel = 50.0 ohm +-1 %; 20 mW each (40 mW in the pair) at the 28 mA short, rated 250 mW each","2"
+"R3","3.3 kohm 1 % 0603","C22978","Rf, feedback","1"
+"R4","4.99 kohm 1 % 0603","C23046","Rg2, inverting node to the offset-filter node X; no Rg1","1"
+"R5","100 ohm 1 % 0603","C22775","offset filter: REF3030E output to node X (kvm_02 version 2 uses the same 100 ohm)","1"
+"C5,C6","10 uF X5R 10 % 0805 25 V","C15850","offset filter: node X to GND, two in parallel, about 14 uF at 3 V DC bias *(check)*","2"
+"R6","51 kohm 1 % 0603","C23196","Rbin: DAC0 series resistor (unpowered current limit, PR-2) and the divider upper arm","1"
+"R7","51 kohm 1 % 0603","C23196","Rbpl, part 1 of 2 in series (51k + 75k = 126k): divider lower arm; an undriven DAC0 commands ground","1"
+"R8","75 kohm 1 % 0603","C23242","Rbpl, part 2 of 2 in series","1"
+"C1","10 pF C0G 5 % 0603","C1634","Cf across Rf: phase margin (AN-1); the smallest Basic C0G","1"
+"C4","10 pF C0G 5 % 0603","C1634","Cbin across Rbin: compensates the divider against the + input capacitance (AW-3); the same type as Cf","1"
+"C2,C3","100 nF X7R 10 % 0603","C14663","supply decoupling at the op-amp, one per supply pin","2"
+"U3","TPH2502-SR dual op-amp SOP-8","C118223","half A is the gain stage (pins 1 OUT, 2 -IN, 3 +IN); half B is tied off locally (pin 5 +IN to GND, pin 6 -IN to pin 7 OUT); V- pin 4, V+ pin 8","1"

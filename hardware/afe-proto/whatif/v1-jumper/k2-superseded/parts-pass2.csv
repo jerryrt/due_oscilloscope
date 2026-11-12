@@ -1,0 +1,14 @@
+action,refs,value,lcsc,class,qty,cny_at_20_each,source,note
+remove,U12,TMUX1119DCKR SC-70-6,C2673327,Extended,1,12.9600,whatif/bom.txt,ratio switch (D25)
+remove,C30,100 nF X7R 0603,C14663,Basic,1,0.1000,whatif/bom.txt,TMUX1119 supply decoupling
+remove,R68,4.7k 1 % 0603,C23162,Basic,1,0.0169,whatif/bom.txt,ratio-switch pull-down on D9_SEL
+remove,D7,BAT54S SOT-23,C7420333,Extended,1,0.0786,whatif/bom.txt,clamp on the switch D node
+change,D8,"BAT54S -> BAV99 (Nexperia BAV99,215) SOT-23",C7420333 -> C2500,Extended -> Basic,1,0.0786 -> 0.0743,whatif/bom.txt; docs/jlcpcb-parts.md,"BAV99 USD 0.0111 at qty 20 x 6.6912 = CNY 0.0743 (check); clamp at the ADS1115 AIN0 pin, no series part"
+change,R7,100k -> 47k 1 % 0603,C25803 -> C25819,Basic -> Basic (new type in the BOM),1,"0.0176 -> (check, taken as 0.0100)",kicad/design.py,"AWG BNC node to tap (the recommended k = 1/2, R7 = R8 = 47k)"
+change,R8,100k -> 47k 1 % 0603,C25803 -> C25819,Basic -> Basic (new type in the BOM),1,"0.0176 -> (check, taken as 0.0100)",kicad/design.py,"tap to B (the far end was the switch D node, now B)"
+add,R_D,1k 1 % 0603,C21190,Basic,1,0.0100,whatif/bom.txt,default tie of the divider bottom end B to VREF; type already in the BOM
+add,J_RAT,"3 plated holes 2.54 mm in a row, no part",-,none,0,0,design.md section 1,pads TAP3 | B | TAP4; hand-fitted wire; not a BOM line
+add,(none),"no series resistor, no Thevenin-match resistor",-,-,0,0,design.md sections 1 and 2,R7 || R8 = 23.5k is the series resistance of every wire state; a match on AIN1/AIN2 was evaluated and not fitted
+keep,U9,ADS1115IDGSR,C37593,Extended,1,,kicad/design.py,AIN0 tap (direct) AIN1 VREF AIN2 B (the header's pin 2 node) AIN3 TAP3 (reassigned)
+total,,"placements -4 +1 = -3 (R7 and R8 change value only); Extended types -1 (TMUX1119); Basic types +2 (BAV99, 47k); 100k stays in use elsewhere",,,,-13.15 (R7/R8 price taken as equal to 1k: -0.015 more),computed,about -USD 1.97 at 6.6912 (check); -20 CNY more per order if the domestic Extended-type fee applies (check)
+alternative,"R7,R8","39k C23153 / 10k C25804 (k = 0.204), wire at TAP2, header TAP3|B|TAP2",,Basic,2,,design.md section 3,if the -0.3 V row must hold for a wire to GND: pin -0.274 V; sense 0.57 % / 4.2 mV

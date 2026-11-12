@@ -1,0 +1,458 @@
+{
+ "k1/2 max match (0.1 %)": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.3853924391381683,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    2.6433981539050753,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.7253924391381683,
+  "gain_rss": 0.44205806422331756,
+  "off_sum": 5.643398153905075,
+  "off_rss": 3.9984439223363832,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "k1/2 max match (0.1 %) + ladder": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.3853924391381683,
+    "precision.py, 99.9th percentile"
+   ],
+   [
+    "ladder drift of a measured tap, 10 K opposed (v2's 330 ohm figure; v1's 8 x 270 ohm at 1 %, same mechanism (check))",
+    0.133,
+    "afe-v2 powercal design.md section 4"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    2.6433981539050753,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.8583924391381683,
+  "gain_rss": 0.46163224773066575,
+  "off_sum": 5.643398153905075,
+  "off_rss": 3.9984439223363832,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "k1/2 typical match (0.05 %)": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.31772541866220827,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    2.643068583683354,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.6577254186622083,
+  "gain_rss": 0.3844963480503755,
+  "off_sum": 5.643068583683354,
+  "off_rss": 3.9982260488939256,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "k1/2 typical match (0.05 %) + ladder": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.31772541866220827,
+    "precision.py, 99.9th percentile"
+   ],
+   [
+    "ladder drift of a measured tap, 10 K opposed (v2's 330 ohm figure; v1's 8 x 270 ohm at 1 %, same mechanism (check))",
+    0.133,
+    "afe-v2 powercal design.md section 4"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    2.643068583683354,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.7907254186622084,
+  "gain_rss": 0.4068494090742612,
+  "off_sum": 5.643068583683354,
+  "off_rss": 3.9982260488939256,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "k1/3 max match": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.4737831214555362,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    3.315916582530998,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.8137831214555362,
+  "gain_rss": 0.5209207676568015,
+  "off_sum": 6.315916582530998,
+  "off_rss": 4.471610759257122,
+  "pass_sum": false,
+  "pass_rss": false
+ },
+ "k1/3 max match + ladder": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.4737831214555362,
+    "precision.py, 99.9th percentile"
+   ],
+   [
+    "ladder drift of a measured tap, 10 K opposed (v2's 330 ohm figure; v1's 8 x 270 ohm at 1 %, same mechanism (check))",
+    0.133,
+    "afe-v2 powercal design.md section 4"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    3.315916582530998,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.9467831214555362,
+  "gain_rss": 0.5376313292360773,
+  "off_sum": 6.315916582530998,
+  "off_rss": 4.471610759257122,
+  "pass_sum": false,
+  "pass_rss": false
+ },
+ "superseded k1/2 Rd-model design": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    1.116,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    20.4,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 1.4560000000000002,
+  "gain_rss": 1.1368130892983246,
+  "off_sum": 23.4,
+  "off_rss": 20.6194083329275,
+  "pass_sum": false,
+  "pass_rss": false
+ },
+ "superseded k1/2 Rd-model design + ladder": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    1.116,
+    "precision.py, 99.9th percentile"
+   ],
+   [
+    "ladder drift of a measured tap, 10 K opposed (v2's 330 ohm figure; v1's 8 x 270 ohm at 1 %, same mechanism (check))",
+    0.133,
+    "afe-v2 powercal design.md section 4"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    20.4,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 1.5890000000000002,
+  "gain_rss": 1.1445667302521074,
+  "off_sum": 23.4,
+  "off_rss": 20.6194083329275,
+  "pass_sum": false,
+  "pass_rss": false
+ },
+ "allotment 0.05 % / 3 mV": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.05,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    3.0,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.39,
+  "gain_rss": 0.22223411079310038,
+  "off_sum": 6.0,
+  "off_rss": 4.242640687119285,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "allotment 0.05 % / 3 mV + ladder": {
+  "gain": [
+   [
+    "REF3030E E grade: 0.1 % initial + 15 ppm/K x 10 K + 100 ppm hysteresis (check) + 40 ppm long term",
+    0.13,
+    "afe-v2 powercal design.md section 6; PA-2"
+   ],
+   [
+    "EN-1 uncalibrated gain drift, +-5 V range, 10 K since calibration (0.336 % over 20 K, halved: linear scaling (check))",
+    0.168,
+    "whatif/v1-basic/values.md section 3, D19"
+   ],
+   [
+    "Due ADC INL fit share, 1024 points on +-5 V",
+    0.042,
+    "afe.md PA-3 (design analysis)"
+   ],
+   [
+    "sense: ADS1115 channel match, offsets, Zcm, resistors, noise (this design)",
+    0.05,
+    "precision.py, 99.9th percentile"
+   ],
+   [
+    "ladder drift of a measured tap, 10 K opposed (v2's 330 ohm figure; v1's 8 x 270 ohm at 1 %, same mechanism (check))",
+    0.133,
+    "afe-v2 powercal design.md section 4"
+   ]
+  ],
+  "offset": [
+   [
+    "EN-1 offset drift (15 to 35 C)",
+    3.0,
+    "afe.md EN-1 requirement figure, not simulated"
+   ],
+   [
+    "sense: ADS1115 offsets, resistors, noise (this design)",
+    3.0,
+    "precision.py, 99.9th percentile"
+   ]
+  ],
+  "gain_sum": 0.523,
+  "gain_rss": 0.2589922778771599,
+  "off_sum": 6.0,
+  "off_rss": 4.242640687119285,
+  "pass_sum": false,
+  "pass_rss": true
+ },
+ "room": {
+  "sum_no_ladder": 0.15999999999999998,
+  "sum_with_ladder": 0.02699999999999997,
+  "rss_no_ladder": 0.4506794869971341,
+  "rss_with_ladder": 0.43060771010282667,
+  "offset_room": 2.0
+ },
+ "guard": {
+  "broken_passes": false,
+  "restored_passes": true
+ }
+}

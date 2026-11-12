@@ -1,0 +1,205 @@
+{
+ "rails": {
+  "vp_nom": 3.3,
+  "vn_nom": 2.0518181818181818,
+  "vp_max": 3.392560606060606,
+  "vn_max": 2.099143250688705,
+  "vp_min": 3.209539603960396,
+  "vn_min": 2.005316831683168,
+  "sum_max": 5.491703856749311
+ },
+ "RT_P": 175000.0,
+ "RT_N": 75000.0,
+ "RB_N": 110000.0,
+ "RTOL_FB": 0.01,
+ "an4_mV": {
+  "as P8-c, network 1 %, Vmid divider 1 %, sense 270 ohm 1 %, ADVREF drop 5 mV": 57.36979870850778,
+  "as P8-c, ADVREF drop 0.5 mV": 55.3149644580746,
+  "Vmid source share only (network ideal), 5 mV drop": 23.11065223018094,
+  "current design reproduced: 0.1 % divider and network, 249 ohm, 5 mV drop": 9.000451666187903
+ },
+ "cases": [
+  {
+   "id": "P1-a",
+   "req": "AWG op-amp supply < 5.5 V, all start orderings, Vin 4.4/5.25, ramp 1 us-5 ms, Rsrc 0.2-1 ohm, rails at +tol",
+   "limit": "< 5.5 V (OPA365 abs max)",
+   "worst": "4.841 V at the op-amp pins (5.534 V on the bare rails)",
+   "margin": "0.659 V",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P1-b",
+   "req": "overshoot allowance: if +3.3 V (and -2.05 V) overshoot by X together",
+   "limit": "< 5.5 V",
+   "worst": "X = 300 mV per rail tolerated with the series Schottkys, -1000 mV without",
+   "margin": "DC stack alone leaves 0.008 V bare",
+   "ok": true,
+   "note": "overshoot is an ASSUMED sweep (model gap G1)"
+  },
+  {
+   "id": "P3-a [OPA365 scope]",
+   "req": "PW-1 AFE current, normal / AWG shorted (PW-3), all datasheet maxima at once",
+   "limit": "<= 100 mA",
+   "worst": "45.5 mA normal, 58.5 mA shorted",
+   "margin": "41.5 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-b [OPA365 scope]",
+   "req": "Due 300 mA + AFE, external +-5 V on AWG (PR-4, exempt from PW-3), all maxima",
+   "limit": "<= 450 mA total (PW-1; afe.md PR-4: a fault is judged against 450, not the 400 mA target)",
+   "worst": "400.5 mA (AFE 100.5)",
+   "margin": "49.5 mA",
+   "ok": true,
+   "note": "typ-sum 397.9 mA"
+  },
+  {
+   "id": "P3-a [OPA354 scope]",
+   "req": "PW-1 AFE current, normal / AWG shorted (PW-3), all datasheet maxima at once",
+   "limit": "<= 100 mA",
+   "worst": "48.1 mA normal, 61.1 mA shorted",
+   "margin": "38.9 mA",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "P3-b [OPA354 scope]",
+   "req": "Due 300 mA + AFE, external +-5 V on AWG (PR-4, exempt from PW-3), all maxima",
+   "limit": "<= 450 mA total (PW-1; afe.md PR-4: a fault is judged against 450, not the 400 mA target)",
+   "worst": "403.1 mA (AFE 103.1)",
+   "margin": "46.9 mA",
+   "ok": true,
+   "note": "typ-sum 397.9 mA"
+  },
+  {
+   "id": "C1-a",
+   "req": "SC-10 tap source impedance (ladder Thevenin, worst tap; 8 x 270 ohm 1 %, 3 in parallel + 5 in series)",
+   "limit": "<= 5 kohm",
+   "worst": "354 ohm nominal (tap 3), 358 ohm with every element at +tol",
+   "margin": "4642 ohm",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C1-b",
+   "req": "AN-2 settling into the Due S/H within the 15-clock (667 ns) window, worst tap from a 0 V previous sample, to 0.5 LSB (12 bit, 3.3 V)",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.0000 LSB with no tap capacitor (design); 0.174 LSB with 100 nF at each tap",
+   "margin": "0.500 LSB",
+   "ok": true,
+   "note": "Csample 6.0 pF derived from the 0.054 ns/ohm slope (Cs=6 pF used), Ron 3.8 kohm from the 205 ns intercept: both inferred, not datasheet figures"
+  },
+  {
+   "id": "C1-c",
+   "req": "REF3030E sourcing the ladder directly (B, no buffer), plus the ADS124S08's REFP0 (18 uA): output current, headroom, load regulation, self-heating; every element at -tol",
+   "limit": "I <= 10 mA (the load-regulation range) and VIN - VOUT >= 0.2 V",
+   "worst": "2.12 mA (2.08 nominal); headroom 210 mV at +3.3 V_A = 3.210 V; load regulation <= 96 uV (specified at VIN = VOUT + 0.5 V *(check)*); self-heating 0.18 K = 2.7 ppm",
+   "margin": "7.88 mA, 10 mV",
+   "ok": true,
+   "note": "ratiometric for the ADS124S08 (REFP0 is the ladder's top node); a static term of PA-6 for the Due's gain fit, which uses the top tap's absolute value; element dissipation 1.18 mW of 100.0 mW rating"
+  },
+  {
+   "id": "C1-d",
+   "req": "B: the Due's sample-and-hold kick on the top tap (= the REF3030E output = REFP0), sampled from 0 V, into the 2 x 100 nF at -10 %",
+   "limit": "<= 0.5 LSB at the Due (C1-b); no Due tap read while the ADS124S08 converts",
+   "worst": "18 pC -> 0.100 mV = 0.12 LSB before the REF3030E recovers it (its output impedance at MHz is not modelled)",
+   "margin": "0.38 LSB",
+   "ok": true,
+   "note": "sequencing rule (B): the Due does not read the ladder while the ADS124S08 converts; calibration already reads them one after the other (C4-c)"
+  },
+  {
+   "id": "C2-a",
+   "req": "PA-9 Due-ADC gain/offset fit from the MCP-read taps, error that the ladder + MCP readback add (6 taps: CH2-CH6 + the buffered top tap on CH7, so the OPA365's offset is pure scale; 8 x 270 ohm 1 % (3 parallel + 5 series), buffer offset 200 uV, ADS124S08 read: INL 10 ppm FSR max, 1.2 uVrms, input current 1 nA/V), at the span ends 0.2 V / 3.1 V",
+   "limit": "<= 0.5 LSB (12 bit) at 99.9 %",
+   "worst": "0.099 LSB (99.9th pct), 0.111 max; with nominal ratios instead of MCP readings 7.506 LSB",
+   "margin": "0.401 LSB",
+   "ok": true,
+   "note": "top tap through REFIN+ instead (previous): 0.089 LSB; buffer offset 0: 0.098 LSB"
+  },
+  {
+   "id": "C2-b",
+   "req": "PA-9 fit robustness: one of the 6 taps dropped (5 left), ladder + MCP error",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.101 LSB",
+   "margin": "0.399 LSB",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "id": "C2-c",
+   "req": "SC-10 leakage: Due ADC pin leakage 0.5 uA max (Table 45-38) x tap impedance, added to C2-a",
+   "limit": "<= 0.5 LSB",
+   "worst": "0.181 LSB",
+   "margin": "0.319 LSB",
+   "ok": true,
+   "note": "0.5 uA is a MAX over temperature; typical is not given *(check)*"
+  },
+  {
+   "id": "C2-d",
+   "req": "PA-9 taps re-read by the MCP at every calibration: elements drift +-0.10 % (100 ppm/K x 10 K, uncorrelated) after an earlier read; the calibration re-reads them",
+   "limit": "<= 0.5 LSB with the re-read",
+   "worst": "0.098 LSB re-read; 0.826 LSB if the earlier reading is reused (stale)",
+   "margin": "0.402 LSB",
+   "ok": true,
+   "note": "with 10 ppm/K parts even the stale reading passes, so the re-read rule is margin here rather than load-bearing; the guard runs the stale arm at 200 ppm/K"
+  }
+ ],
+ "c1_buffer": {
+  "r_min": 1425.6,
+  "i_nom_mA": 2.0833333333333335,
+  "i_max_mA": 2.122377104377104,
+  "headroom_V": 0.20953960396039584,
+  "loadreg_uV": 95.50696969696969,
+  "self_heat_K": 0.18204581886077956,
+  "self_heat_ppm": 2.7306872829116933,
+  "p_series_elem_mW": 1.183712121212121,
+  "p_par_elem_mW": 0.131523569023569,
+  "p_array_max_mW": 4.734848484848484,
+  "p_elem_rating_mW": 100.0,
+  "dT_for_0p2pct_K": 20.0,
+  "theta_for_0p2pct_KperW": 4224.000000000001,
+  "i_lim_mA": 10.0
+ },
+ "c1_zmax": {
+  "nominal": 354.375,
+  "all_elements_5pct_high": 357.91875,
+  "tap": 3
+ },
+ "p1": {
+  "worst_pins_sch": 4.84149,
+  "worst_pins_nosch": 5.53377,
+  "allowed": {
+   "sch": 0.3,
+   "nosch": -1
+  }
+ },
+ "ladder": {
+  "seg": [
+   90.0,
+   270.0,
+   270.0,
+   270.0,
+   270.0,
+   270.0
+  ],
+  "total": 1440.0,
+  "taps_V": [
+   0.1875,
+   0.75,
+   1.3125,
+   1.875,
+   2.4375,
+   3.0
+  ],
+  "zth": [
+   84.375,
+   270.0,
+   354.375,
+   337.5,
+   219.375,
+   0.0
+  ]
+ }
+}

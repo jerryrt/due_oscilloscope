@@ -1,0 +1,25 @@
+ +1.8 V  powered   wire off   T0 +2.39..+2.40  pin +2.390..+2.404  I_clamp    0.0 uA  rail 3.210 V  I_chain 6 uA
+ +1.8 V  powered   wire TAP5  T0 +2.16..+2.18  pin +2.163..+2.176  I_clamp    0.0 uA  rail 3.210 V  I_chain 6 uA
+ +1.8 V  unpowered wire off   T0 +0.90..+0.91  pin +0.466..+0.469  I_clamp    8.8 uA  rail 0.042 V  I_chain 9 uA
+ +1.8 V  unpowered wire TAP5  T0 +0.89..+0.91  pin +0.465..+0.469  I_clamp    8.8 uA  rail 0.041 V  I_chain 9 uA
+ -1.8 V  powered   wire off   T0 +0.56..+0.61  pin +0.565..+0.612  I_clamp    0.0 uA  rail 3.210 V  I_chain 24 uA
+ -1.8 V  powered   wire TAP5  T0 +0.35..+0.39  pin +0.345..+0.390  I_clamp    0.0 uA  rail 3.210 V  I_chain 24 uA
+ -1.8 V  unpowered wire off   T0 -0.91..-0.90  pin -0.432..-0.430  I_clamp    9.6 uA  rail 0.000 V  I_chain 9 uA
+ -1.8 V  unpowered wire TAP5  T0 -0.91..-0.89  pin -0.432..-0.430  I_clamp    9.5 uA  rail 0.000 V  I_chain 9 uA
+ +5.0 V  powered   wire off   T0 +3.99..+4.01  pin +3.626..+3.629  I_clamp    7.7 uA  rail 3.210 V  I_chain 10 uA
+ +5.0 V  powered   wire TAP5  T0 +3.76..+3.78  pin +3.582..+3.588  I_clamp    3.9 uA  rail 3.210 V  I_chain 10 uA
+ +5.0 V  unpowered wire off   T0 +2.49..+2.54  pin +0.682..+0.687  I_clamp   36.8 uA  rail 0.173 V  I_chain 25 uA
+ +5.0 V  unpowered wire TAP5  T0 +2.48..+2.53  pin +0.682..+0.687  I_clamp   36.8 uA  rail 0.173 V  I_chain 25 uA
+ -5.0 V  powered   wire off   T0 -1.06..-0.98  pin -0.447..-0.440  I_clamp   12.2 uA  rail 3.210 V  I_chain 40 uA
+ -5.0 V  powered   wire TAP5  T0 -1.27..-1.20  pin -0.464..-0.459  I_clamp   16.1 uA  rail 3.210 V  I_chain 40 uA
+ -5.0 V  unpowered wire off   T0 -2.54..-2.49  pin -0.520..-0.518  I_clamp   40.1 uA  rail 0.000 V  I_chain 25 uA
+ -5.0 V  unpowered wire TAP5  T0 -2.53..-2.48  pin -0.520..-0.518  I_clamp   40.1 uA  rail 0.000 V  I_chain 25 uA
++12.0 V  powered   wire off   T0 +7.48..+7.56  pin +3.767..+3.768  I_clamp   75.6 uA  rail 3.210 V  I_chain 45 uA
++12.0 V  powered   wire TAP5  T0 +7.23..+7.32  pin +3.763..+3.764  I_clamp   71.1 uA  rail 3.210 V  I_chain 45 uA
++12.0 V  unpowered wire off   T0 +5.97..+6.09  pin +1.035..+1.047  I_clamp  100.4 uA  rail 0.472 V  I_chain 60 uA
++12.0 V  unpowered wire TAP5  T0 +5.95..+6.06  pin +1.036..+1.047  I_clamp  100.4 uA  rail 0.472 V  I_chain 60 uA
+-12.0 V  powered   wire off   T0 -4.61..-4.46  pin -0.562..-0.560  I_clamp   80.6 uA  rail 3.210 V  I_chain 75 uA
+-12.0 V  powered   wire TAP5  T0 -4.81..-4.67  pin -0.565..-0.563  I_clamp   84.9 uA  rail 3.210 V  I_chain 75 uA
+-12.0 V  unpowered wire off   T0 -6.09..-5.97  pin -0.581..-0.579  I_clamp  109.6 uA  rail 0.000 V  I_chain 60 uA
+-12.0 V  unpowered wire TAP5  T0 -6.06..-5.95  pin -0.581..-0.579  I_clamp  109.7 uA  rail 0.000 V  I_chain 60 uA
+{'off': ([-21.4145081878396, -14.70531804231456, -7.996127896789525], [-21.849406543319866, -15.013092762152242, -8.176778980984615]), 'TAP5': ([-19.223175533263802, -12.487641945400965, -5.752108357538135], [-19.635482804683978, -12.774746353392933, -5.9179969921827755])} 4.530381563772872e-08 1.2661194029850747e-08

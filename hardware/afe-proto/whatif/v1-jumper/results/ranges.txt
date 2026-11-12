@@ -1,0 +1,116 @@
+== k1/2 k = 0.500, Rth = 23.5k, header ('TAP3', 'B', 'TAP4')
+wire OFF (default tie, normal use)                             T0 +0.780..2.170 in-range=True  pin +0.780..2.175 Iclamp    0.0 uA  Iref 2.15 mA
+wire B-TAP4 (the right position)                               T0 +0.382..1.757 in-range=True  pin +0.381..1.761 Iclamp    0.0 uA  Iref 2.44 mA
+wire B-TAP3 (header neighbour)                                 T0 +0.182..1.555 in-range=True  pin +0.180..1.558 Iclamp    0.0 uA  Iref 2.83 mA
+wire TAP3-TAP4 (across one rung, B on its default)             T0 +0.780..2.170 in-range=True  pin +0.780..2.175 Iclamp    0.0 uA  Iref 2.63 mA
+wire B-TAP1 (0.1875 V, via a Due ADC pin)                      T0 -0.478..0.884 in-range=False pin -0.383..0.885 Iclamp    4.2 uA  Iref 4.55 mA
+wire B-TAP2 (0.75 V, via a Due ADC pin)                        T0 -0.077..1.293 in-range=False pin -0.079..1.295 Iclamp    0.0 uA  Iref 3.45 mA
+wire B-TAP5 (2.438 V, via a Due ADC pin)                       T0 +0.570..1.947 in-range=True  pin +0.570..1.952 Iclamp    0.0 uA  Iref 2.22 mA
+wire B-VREF (3.0 V)                                            T0 +0.803..2.177 in-range=True  pin +0.804..2.183 Iclamp    0.0 uA  Iref 2.10 mA
+wire B-GND                                                     T0 -0.676..0.682 in-range=False pin -0.437..0.682 Iclamp   10.4 uA  Iref 5.13 mA
+wire B-+3V3A (3.3 V)                                           T0 +0.951..2.328 in-range=True  pin +0.952..2.335 Iclamp    0.0 uA  Iref 1.80 mA
+wire B-Due 5V (5.25 V max, stress)                             T0 +1.913..3.309 in-range=False pin +1.918..3.318 Iclamp    0.0 uA  Iref 0.20 mA
+wire B-Due VIN (12 V, stress)                                  T0 +5.242..6.704 in-range=False pin +3.758..3.798 Iclamp  124.7 uA  Iref 7.02 mA
+wire TAP5-GND (ladder shorted at the top)                      T0 +0.780..2.170 in-range=True  pin +0.780..2.175 Iclamp    0.0 uA  Iref 11.28 mA
+wire TAP5-VREF (one rung shorted)                              T0 +0.780..2.170 in-range=True  pin +0.780..2.175 Iclamp    0.0 uA  Iref 0.06 mA
+right box: dT -0.409..-0.393  dB -0.8139..-0.7959
+  wire B-TAP3 (header neighbour)                                 gap   383.4 mV ok
+  wire TAP3-TAP4 (across one rung, B on its default)             gap   795.9 mV ok
+  wire B-TAP1 (0.1875 V, via a Due ADC pin)                      gap  1729.3 mV ok
+  wire B-TAP2 (0.75 V, via a Due ADC pin)                        gap   906.8 mV ok
+  wire B-TAP5 (2.438 V, via a Due ADC pin)                       gap   366.0 mV ok
+  wire B-VREF (3.0 V)                                            gap   837.6 mV ok
+  wire B-GND                                                     gap  2137.2 mV ok
+  wire B-+3V3A (3.3 V)                                           gap  1137.6 mV ok
+  wire B-Due 5V (5.25 V max, stress)                             gap  3087.6 mV ok
+  wire B-Due VIN (12 V, stress)                                  gap  9837.6 mV ok
+  wire TAP5-GND (ladder shorted at the top)                      gap  1487.8 mV ok
+  wire TAP5-VREF (one rung shorted)                              gap   795.9 mV ok
+awg load {'load_uA': {'off': (-46.247406707389025, -17.055952714177202), 'TAP4': (-37.65299518594395, -8.344231082564498)}, 'drop_mV': (2.307745594698712, 0.8510920404374424), 'thermal_nV': 65.89781387467306, 'ref_nV': 26.78842105263158}
+== k1/3 k = 0.319, Rth = 15.0k, header ('TAP3', 'B', 'TAP2')
+wire OFF (default tie, normal use)                             T0 +1.549..2.462 in-range=True  pin +1.551..2.466 Iclamp    0.0 uA  Iref 2.16 mA
+wire B-TAP2 (the right position)                               T0 +0.386..1.274 in-range=True  pin +0.385..1.276 Iclamp    0.0 uA  Iref 3.45 mA
+wire B-TAP3 (header neighbour)                                 T0 +0.739..1.631 in-range=True  pin +0.739..1.633 Iclamp    0.0 uA  Iref 2.83 mA
+wire TAP3-TAP2 (across one rung, B on its default)             T0 +1.549..2.462 in-range=True  pin +1.551..2.466 Iclamp    0.0 uA  Iref 2.65 mA
+wire B-TAP1 (0.1875 V, via a Due ADC pin)                      T0 -0.163..0.714 in-range=False pin -0.163..0.714 Iclamp    0.1 uA  Iref 4.55 mA
+wire B-TAP4 (1.875 V, via a Due ADC pin)                       T0 +1.013..1.906 in-range=True  pin +1.013..1.909 Iclamp    0.0 uA  Iref 2.45 mA
+wire B-TAP5 (2.438 V, via a Due ADC pin)                       T0 +1.271..2.164 in-range=True  pin +1.273..2.167 Iclamp    0.0 uA  Iref 2.23 mA
+wire B-VREF (3.0 V)                                            T0 +1.592..2.477 in-range=True  pin +1.595..2.481 Iclamp    0.0 uA  Iref 2.10 mA
+wire B-GND                                                     T0 -0.433..0.437 in-range=False pin -0.378..0.436 Iclamp    3.9 uA  Iref 5.13 mA
+wire B-+3V3A (3.3 V)                                           T0 +1.795..2.682 in-range=True  pin +1.798..2.687 Iclamp    0.0 uA  Iref 1.80 mA
+wire B-Due 5V (5.25 V max, stress)                             T0 +3.112..4.015 in-range=False pin +3.118..3.693 Iclamp   22.1 uA  Iref 0.20 mA
+wire B-Due VIN (12 V, stress)                                  T0 +7.669..8.630 in-range=False pin +3.842..3.856 Iclamp  321.1 uA  Iref 7.02 mA
+wire TAP5-GND (ladder shorted at the top)                      T0 +1.549..2.462 in-range=True  pin +1.551..2.466 Iclamp    0.0 uA  Iref 11.29 mA
+wire TAP5-VREF (one rung shorted)                              T0 +1.549..2.462 in-range=True  pin +1.551..2.466 Iclamp    0.0 uA  Iref 0.07 mA
+right box: dT -1.180..-1.154  dB -1.7297..-1.7066
+  wire B-TAP3 (header neighbour)                                 gap   499.1 mV ok
+  wire TAP3-TAP2 (across one rung, B on its default)             gap  1706.6 mV ok
+  wire B-TAP1 (0.1875 V, via a Due ADC pin)                      gap   797.9 mV ok
+  wire B-TAP4 (1.875 V, via a Due ADC pin)                       gap   905.5 mV ok
+  wire B-TAP5 (2.438 V, via a Due ADC pin)                       gap  1290.4 mV ok
+  wire B-VREF (3.0 V)                                            gap  1764.3 mV ok
+  wire B-GND                                                     gap  1204.8 mV ok
+  wire B-+3V3A (3.3 V)                                           gap  2064.3 mV ok
+  wire B-Due 5V (5.25 V max, stress)                             gap  4014.3 mV ok
+  wire B-Due VIN (12 V, stress)                                  gap 10764.3 mV ok
+  wire TAP5-GND (ladder shorted at the top)                      gap  1706.6 mV ok
+  wire TAP5-VREF (one rung shorted)                              gap  1706.6 mV ok
+awg load {'load_uA': {'off': (-62.73743444014441, -23.216925774719467), 'TAP2': (-37.72312952125566, 1.9597597440111143)}, 'drop_mV': (3.1305979785632063, 1.1585245961585013), 'thermal_nV': 76.76862993797849, 'ref_nV': 36.355714285714285}
+== k1/4 k = 0.250, Rth = 7.5k, header ('TAP3', 'B', 'TAP2')
+wire OFF (default tie, normal use)                             T0 +1.814..2.563 in-range=True  pin +1.815..2.565 Iclamp    0.0 uA  Iref 2.21 mA
+wire B-TAP2 (the right position)                               T0 +0.559..1.267 in-range=True  pin +0.558..1.268 Iclamp    0.0 uA  Iref 3.47 mA
+wire B-TAP3 (header neighbour)                                 T0 +0.945..1.660 in-range=True  pin +0.946..1.661 Iclamp    0.0 uA  Iref 2.85 mA
+wire TAP3-TAP2 (across one rung, B on its default)             T0 +1.814..2.563 in-range=True  pin +1.815..2.565 Iclamp    0.0 uA  Iref 2.69 mA
+wire B-TAP1 (0.1875 V, via a Due ADC pin)                      T0 -0.044..0.650 in-range=False pin -0.044..0.650 Iclamp    0.0 uA  Iref 4.56 mA
+wire B-TAP4 (1.875 V, via a Due ADC pin)                       T0 +1.248..1.961 in-range=True  pin +1.248..1.963 Iclamp    0.0 uA  Iref 2.48 mA
+wire B-TAP5 (2.438 V, via a Due ADC pin)                       T0 +1.535..2.245 in-range=True  pin +1.536..2.247 Iclamp    0.0 uA  Iref 2.27 mA
+wire B-VREF (3.0 V)                                            T0 +1.895..2.591 in-range=True  pin +1.897..2.594 Iclamp    0.0 uA  Iref 2.10 mA
+wire B-GND                                                     T0 -0.341..0.343 in-range=False pin -0.329..0.342 Iclamp    1.7 uA  Iref 5.13 mA
+wire B-+3V3A (3.3 V)                                           T0 +2.119..2.817 in-range=True  pin +2.120..2.820 Iclamp    0.0 uA  Iref 1.80 mA
+wire B-Due 5V (5.25 V max, stress)                             T0 +3.572..4.285 in-range=False pin +3.558..3.764 Iclamp   70.4 uA  Iref 0.20 mA
+wire B-Due VIN (12 V, stress)                                  T0 +8.604..9.366 in-range=False pin +3.896..3.906 Iclamp  733.1 uA  Iref 7.02 mA
+wire TAP5-GND (ladder shorted at the top)                      T0 +1.814..2.563 in-range=True  pin +1.815..2.565 Iclamp    0.0 uA  Iref 11.34 mA
+wire TAP5-VREF (one rung shorted)                              T0 +1.814..2.563 in-range=True  pin +1.815..2.565 Iclamp    0.0 uA  Iref 0.12 mA
+right box: dT -1.271..-1.246  dB -1.6916..-1.6689
+  wire B-TAP3 (header neighbour)                                 gap   497.2 mV ok
+  wire TAP3-TAP2 (across one rung, B on its default)             gap  1668.9 mV ok
+  wire B-TAP1 (0.1875 V, via a Due ADC pin)                      gap   794.2 mV ok
+  wire B-TAP4 (1.875 V, via a Due ADC pin)                       gap   902.3 mV ok
+  wire B-TAP5 (2.438 V, via a Due ADC pin)                       gap  1289.1 mV ok
+  wire B-VREF (3.0 V)                                            gap  1769.4 mV ok
+  wire B-GND                                                     gap  1198.8 mV ok
+  wire B-+3V3A (3.3 V)                                           gap  2069.4 mV ok
+  wire B-Due 5V (5.25 V max, stress)                             gap  4019.4 mV ok
+  wire B-Due VIN (12 V, stress)                                  gap 10769.4 mV ok
+  wire TAP5-GND (ladder shorted at the top)                      gap  1668.9 mV ok
+  wire TAP5-VREF (one rung shorted)                              gap  1668.9 mV ok
+awg load {'load_uA': {'off': (-107.1455790583572, -39.7240326099765), 'TAP2': (-64.91033742396317, 3.3460643990948955)}, 'drop_mV': (5.346564395012024, 1.9822292272378272), 'thermal_nV': 100.30922652633802, 'ref_nV': 62.07073170731708}
+== k1/5 k = 0.204, Rth = 8.0k, header ('TAP3', 'B', 'TAP2')
+wire OFF (default tie, normal use)                             T0 +2.026..2.641 in-range=True  pin +2.027..2.644 Iclamp    0.0 uA  Iref 2.19 mA
+wire B-TAP2 (the right position)                               T0 +0.679..1.262 in-range=True  pin +0.679..1.263 Iclamp    0.0 uA  Iref 3.46 mA
+wire B-TAP3 (header neighbour)                                 T0 +1.090..1.679 in-range=True  pin +1.091..1.680 Iclamp    0.0 uA  Iref 2.84 mA
+wire TAP3-TAP2 (across one rung, B on its default)             T0 +2.026..2.641 in-range=True  pin +2.027..2.644 Iclamp    0.0 uA  Iref 2.67 mA
+wire B-TAP1 (0.1875 V, via a Due ADC pin)                      T0 +0.038..0.606 in-range=True  pin +0.037..0.606 Iclamp    0.0 uA  Iref 4.56 mA
+wire B-TAP4 (1.875 V, via a Due ADC pin)                       T0 +1.412..1.999 in-range=True  pin +1.413..2.001 Iclamp    0.0 uA  Iref 2.47 mA
+wire B-TAP5 (2.438 V, via a Due ADC pin)                       T0 +1.716..2.300 in-range=True  pin +1.718..2.302 Iclamp    0.0 uA  Iref 2.25 mA
+wire B-VREF (3.0 V)                                            T0 +2.097..2.666 in-range=True  pin +2.098..2.669 Iclamp    0.0 uA  Iref 2.10 mA
+wire B-GND                                                     T0 -0.278..0.280 in-range=False pin -0.274..0.280 Iclamp    0.7 uA  Iref 5.13 mA
+wire B-+3V3A (3.3 V)                                           T0 +2.334..2.905 in-range=True  pin +2.336..2.908 Iclamp    0.0 uA  Iref 1.80 mA
+wire B-Due 5V (5.25 V max, stress)                             T0 +3.878..4.462 in-range=False pin +3.696..3.777 Iclamp   87.2 uA  Iref 0.20 mA
+wire B-Due VIN (12 V, stress)                                  T0 +9.222..9.849 in-range=False pin +3.900..3.908 Iclamp  752.3 uA  Iref 7.02 mA
+wire TAP5-GND (ladder shorted at the top)                      T0 +2.026..2.641 in-range=True  pin +2.027..2.644 Iclamp    0.0 uA  Iref 11.32 mA
+wire TAP5-VREF (one rung shorted)                              T0 +2.026..2.641 in-range=True  pin +2.027..2.644 Iclamp    0.0 uA  Iref 0.10 mA
+right box: dT -1.361..-1.336  dB -1.7081..-1.6852
+  wire B-TAP3 (header neighbour)                                 gap   498.1 mV ok
+  wire TAP3-TAP2 (across one rung, B on its default)             gap  1685.2 mV ok
+  wire B-TAP1 (0.1875 V, via a Due ADC pin)                      gap   795.9 mV ok
+  wire B-TAP4 (1.875 V, via a Due ADC pin)                       gap   903.6 mV ok
+  wire B-TAP5 (2.438 V, via a Due ADC pin)                       gap  1289.6 mV ok
+  wire B-VREF (3.0 V)                                            gap  1767.1 mV ok
+  wire B-GND                                                     gap  1201.4 mV ok
+  wire B-+3V3A (3.3 V)                                           gap  2067.1 mV ok
+  wire B-Due 5V (5.25 V max, stress)                             gap  4017.1 mV ok
+  wire B-Due VIN (12 V, stress)                                  gap 10767.1 mV ok
+  wire TAP5-GND (ladder shorted at the top)                      gap  1685.2 mV ok
+  wire TAP5-VREF (one rung shorted)                              gap  1685.2 mV ok
+awg load {'load_uA': {'off': (-87.85667836881125, -32.56767597508606), 'TAP2': (-53.040677039954204, 2.734612667024015)}, 'drop_mV': (4.384048250603681, 1.6251270311567945), 'thermal_nV': 90.83386791046608, 'ref_nV': 50.898}

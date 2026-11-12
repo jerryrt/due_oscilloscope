@@ -1,0 +1,16 @@
+action,refs,value,lcsc,class,qty,cny_at_20_each,source,note
+remove,U12,TMUX1119DCKR SC-70-6,C2673327,Extended,1,12.9600,whatif/bom.txt,ratio switch (D25)
+remove,C30,100 nF X7R 0603,C14663,Basic,1,0.1000,whatif/bom.txt,TMUX1119 supply decoupling
+remove,R68,4.7k 1 % 0603,C23162,Basic,1,0.0169,whatif/bom.txt,ratio-switch pull-down on D9_SEL
+remove,D7,BAT54S SOT-23,C7420333,Extended,1,0.0786,whatif/bom.txt,clamp on the switch D node
+change,R7,100k -> 22k 1 % 0603,C25803 -> C31850,Basic -> Basic (new type),1,"0.0176 -> (check, taken 0.0100)",kicad/design.py,AWG BNC node to tap (T0)
+change,R8,100k -> 15k 1 % 0603,C25803 -> C22809,Basic -> Basic (new type),1,"0.0176 -> (check, taken 0.0100)",kicad/design.py,tap T0 to the bottom end B (far end was the switch D node)
+change,D8,"BAT54S -> BAV99 (Nexperia BAV99,215) SOT-23",C7420333 -> C2500,Extended -> Basic,1,0.0786 -> 0.0743,docs/jlcpcb-parts.md (USD 0.0111 at 20 x 6.6912),"clamp on ADS1115 AIN2 (T0 input), after Rs; BAV99 price (check)"
+add,D_B,"BAV99 (Nexperia BAV99,215) SOT-23",C2500,Basic,1,0.0743,docs/jlcpcb-parts.md,"clamp on ADS1115 AIN3 (B input), after Rm"
+add,R_D,1k 1 % 0603,C21190,Basic,1,0.0100,whatif/bom.txt,default tie B to VREF (type in the BOM)
+add,R_S,3.9k 1 % 0603,C23018,Basic,1,0.0100 (check),jlc-basic.csv,"series resistor, T0 to AIN2 (price unread)"
+add,R_M,13k 1 % 0603,C22797,Basic,1,0.0100 (check),jlc-basic.csv,"series resistor, B to AIN3 = R7||R8 + R_S = 8.9k + 3.9k = 12.8k (price unread)"
+add,J_RAT,"3 plated holes 2.54 mm in a row, no part",-,none,0,0,design.md section 1,pads TAP4 | B | TAP3; hand-fitted wire; not a BOM line
+keep,U9,ADS1115IDGSR,C37593,Extended,1,,kicad/design.py,"AIN0 VREF, AIN1 TAP3, AIN2 T0, AIN3 B"
+change,R65,4.7k -> 2.2k 1 % 0603 (+3V3A bleed),C23162 -> C4190,Basic -> Basic (new type),1,"0.0169 -> (check, taken 0.0100)",design.py R65; design.md section 8,"PR-3 worst case needs the bleed below 2.7k; 1.57 mA permanent at the 3.42 V rail maximum, +0.84 mA over the 4.7k"
+total,,"placements -4 +4 = 0 (R7, R8, R65, D8 change value or type); Extended types -1 (TMUX1119); Basic types +6 (22k, 15k, 3.9k, 13k, 2.2k, BAV99)",,,,about -13.07,computed,"about -USD 1.95 at 6.6912 (check); PW-1 +0.84 mA at the 5 V pin (R65); BAT54S stays Extended for D1, D2, D4, D5, D6; -20 CNY more per order if the domestic Extended-type fee applies (check)"
