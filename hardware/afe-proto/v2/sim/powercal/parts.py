@@ -28,7 +28,8 @@ ROWS = [  # refs, value, LCSC, role, qty
  ("R_SRT", "15k 1 % 0603", "C22809", "AWG-sense divider top (Rt)", 1),
  ("R_SRB", "10k 1 % 0603", "C25804", "AWG-sense divider bottom (Rb): k = 0.4", 1),
  ("R_SRD", "1k 1 % 0603", "C21190", "sense divider's permanent default tie of the bottom node to the REF3030E (Rd)", 1),
- ("R_SRS", "4.7k 1 % 0603", "C23162", "series resistor from the tap to ADS1115 input 2: the passive protection (VT-22)", 1),
+ ("R_SRS", "3.9k 1 % 0603", "C23018", "series resistor from the tap to ADS1115 input 2: the passive protection (VT-22); with Rt || Rb it is 9.9k, matched by R_SRM", 1),
+ ("R_SRM", "10k 1 % 0603", "C25804", "series resistor from the divider bottom B to ADS1115 input 3: matches input 2's source impedance so Zcm loading cancels in the differential reading", 1),
 ]
 
 def build(rows=ROWS):

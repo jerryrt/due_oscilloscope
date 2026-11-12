@@ -155,8 +155,8 @@
   }
  },
  "sum": {
-  "linear": 0.7694245356680585,
-  "off": 6.865130895579927,
+  "linear": 0.4182572051282211,
+  "off": 2.353886595748441,
   "rows": [
    [
     "REF3030E: initial 0.1 %, 15 ppm/K x 10 K, hysteresis 100 ppm, long-term 40 ppm",
@@ -164,21 +164,16 @@
     0.0
    ],
    [
-    "AWG sense chain (jumper ratio, ADS1115 at the max channel match, Rs, Zcm, 1 % resistors), 99.9th pct",
-    0.4893987010130032,
-    6.865130895579927
+    "AWG sense chain, structure S3, Zcm spreading independently (the conservative case), 99.9th pct",
+    0.22496002232287626,
+    2.353886595748441
    ],
    [
-    "Due-ADC fit extrapolated to +3.5 V (A, cubic 1.2 LSB, window top 2.2275)",
-    0.018025834655055264,
-    0.0
-   ],
-   [
-    "ladder drift of a measured tap, 10 K since read",
-    0.133,
+    "Due-ADC tee fit extrapolated to +3.5 V (random-knot INL 1.2 LSB, the worst model, window top 2.2275 V; ladder anchors NOT used, D-V2-13)",
+    0.06429718280534485,
     0.0
    ]
   ],
-  "rss": 0.52360865087222
+  "rss": 0.2671743613451952
  }
 }

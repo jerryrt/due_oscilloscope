@@ -1,14 +1,14 @@
 [
  {
-  "case": "sweep, wire ON throughout: sense tap pin voltage over every AWG level -1.95..+2.28 V, every resistor at +-1 %, REF +-0.1 %",
+  "case": "sweep, wire ON throughout: sense tap pin voltage at every AWG level -1.95..+2.28 V, every resistor at +-1 %, REF +-0.1 %",
   "id": "PA-4/range",
   "limit": "0 V .. 3.22 V (ADS supply minimum)",
   "margin": "+0.141 V / +1.329 V",
-  "note": "k = 0.4, bottom node = the 1/3 tap",
+  "note": "k = 0.4, bottom node = the 1/3 tap, Rd 1k",
   "ok": true,
   "req": "PA-4",
   "sect": "sense",
-  "value": "0.141 .. 1.891 V (node 0.140 .. 1.892)"
+  "value": "0.141 .. 1.891 V"
  },
  {
   "case": "the same with the wire OFF (default tie to the REF3030E; the normal-use state)",
@@ -22,102 +22,113 @@
   "value": "0.881 .. 2.697 V"
  },
  {
-  "case": "AWG level read through the sweep, wire on throughout, ratio from wire-off and wire-on readings at one level, ADS channel match 0.1 % (max), 99.9th percentile",
+  "case": "AWG level through the sweep, structure S3 (input 3 = B with a 10k matched resistor, inputs 2-3 read DIFFERENTIALLY, the reference's scale rebuilt on input 3, no other input's gain enters), ADS1115 channel match 0.1 % max (SBAS444E 5.5 'Gain channel match'), offset 3 LSB, Zcm TRACKING between inputs (one input stage behind the mux) *(check)*, 99.9th pct",
   "id": "PA-4/ratio",
-  "limit": "gain <= 0.05 %, offset <= 3 mV (this design's half of the 0.1 % fit share, and of the 5 mV)",
-  "margin": "",
-  "note": "a share of 0.05 % for the sense is this design's allocation of the 0.1 % fit share (the Due-ADC fit takes the rest)",
+  "limit": "gain <= 0.05 %, offset <= 3.0 mV",
+  "margin": "+0.000 %",
+  "note": "this design's allotment of the 0.1 % fit share",
+  "ok": true,
+  "req": "PA-4, SC-7",
+  "sect": "sense",
+  "value": "gain 0.050 %, offset 1.73 mV, worst point 2.38 mV (k error 0.101 %)"
+ },
+ {
+  "case": "the same if Zcm spreads +-25 % INDEPENDENTLY between the inputs (the datasheet gives only a typical 6 Mohm)",
+  "id": "PA-4/ratio-ind",
+  "limit": "gain <= 0.05 %, offset <= 3.0 mV",
+  "margin": "-0.175 %",
+  "note": "fails the sense's 0.05 % share; it fits inside SC-7's whole 0.5 % with the rest of the stack (section 6), and VT-21 measures which case the part is in",
   "ok": false,
   "req": "PA-4, SC-7",
   "sect": "sense",
-  "value": "gain 0.489 %, offset 6.87 mV, worst point 15.71 mV (k error 0.370 %)"
+  "value": "gain 0.225 %, offset 2.35 mV"
  },
  {
-  "case": "the same at the typical channel match 0.05 %",
-  "id": "PA-4/ratio-typ",
+  "case": "the structures compared (gain %, offset mV, 99.9th pct, channel match 0.1 % max): S1 = tap on input 2, B on input 3 in the wire position only, REF on input 1; S2 = B on input 3 in both positions; S3 without the matched resistor; S3 with it",
+  "id": "PA-4/struct",
   "limit": "information",
   "margin": "",
-  "note": "",
+  "note": "S2 removes the offsets of the ratio (\u0394T on one channel, \u0394B on one channel); S3 also removes the channel-gain terms (the differential pair and the REF rebuilt on input 3); rm matches the source impedances",
   "ok": null,
   "req": "PA-4",
   "sect": "sense",
-  "value": "gain 0.336 %, offset 4.87 mV"
+  "value": "S1 0.484 %/6.8 mV; S2 0.313/2.2; S3 0.160/2.1; S3+rm 0.225/2.4 (Zcm tracking 0.050/1.7)"
  },
  {
-  "case": "the same with no channel mismatch (shows what the match costs)",
-  "id": "PA-4/ratio-0",
-  "limit": "information",
-  "margin": "",
-  "note": "",
-  "ok": null,
-  "req": "PA-4",
-  "sect": "sense",
-  "value": "gain 0.246 %, offset 3.76 mV"
- },
- {
-  "case": "ADS1115 free-running on the sense node ONLY during the staircase; B (the wired 1/3 tap) and the reference read at the first and last step, every level between taken from the straight line of the tap through those two (the network is linear)",
-  "id": "D21/sweep",
-  "limit": "the same as reading B at every level",
-  "margin": "",
-  "note": "the free-running reading loses nothing: the tap is a linear function of the AWG level, so the two end readings fix the line; the channel switches (to B and the reference) cost one conversion each at the ends",
-  "ok": true,
-  "req": "D21, PA-4",
-  "sect": "sense",
-  "value": "gain 0.489 %, offset 6.85 mV, worst point 15.71 mV (B at every level: 0.489 %, 6.87 mV)"
- },
- {
-  "case": "ADS1115 at 128 SPS (7.8 ms a conversion, single-cycle settling), staircase step 0.05 s: conversions per level, minus two (the one the step lands in, one for I2C alignment)",
-  "id": "D21/time",
-  "limit": ">= 4 averaged readings at the shortest step",
-  "margin": "",
-  "note": "128 SPS is the fastest rate whose peak-to-peak noise equals its rms in Table 6-1 (250 SPS and up: pp 148 to 267 uV); the staircase step is the Due-side averaging time (PA-3: 100,000 samples a point), which the AWG/Due set, so see the table in design.md for the total time",
-  "ok": true,
-  "req": "D21, PA-3",
-  "sect": "sense",
-  "value": "6 conversions, 4 averaged, 156 uV rms at the AWG node (if the input dithers the converter)"
- },
- {
-  "case": "the loaded ladder tap (1/3, ADS input 3): its shift from 1.000 V over the sweep with the wire on",
+  "case": "the loaded ladder tap (1/3): its shift from 1.000 V over the sweep with the wire on",
   "id": "PA-4/load",
-  "limit": "information (not a calibration point while fitted)",
+  "limit": "information (not a check point while fitted)",
   "margin": "",
-  "note": "the other measured tap (2/3, input 4) is untouched; the wire-off readings before fitting and after removal read every tap",
+  "note": "B is read, so the loading is not an error; the 2/3 tap (input 4) and the reference stay readable",
   "ok": null,
   "req": "PA-4",
   "sect": "sense",
   "value": "631 mV at most, wire current up to 118 uA"
  },
  {
-  "case": "any position the header allows (GND, every tap, +3.3 V_A, and the Due's 5V and VIN as stress): the current into the ADS1115's input diodes through Rt||Rb + Rs",
+  "case": "any position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's input diodes, input 2 through Rt||Rb + 3.9k, input 3 (B) through 10k",
   "id": "VT-22/I",
   "limit": "<= 10 mA (abs max), host takes no action",
-  "margin": "+9571 uA",
-  "note": "Rs 4.7k is the only protection; whether the other three inputs read undisturbed during the overdrive is not in SBAS444E (7.3.1 warns) *(check, VT-22)*",
+  "margin": "+9152 uA",
+  "note": "series resistors are the only protection (no clamp: the ADS1115's own diodes conduct first); whether the other inputs read undisturbed during an overdrive is not in SBAS444E (7.3.1 warns) *(check, VT-22)*",
   "ok": true,
   "req": "VT-22, PA-4",
   "sect": "sense",
-  "value": "429 uA at most"
+  "value": "848 uA at most"
  },
  {
-  "case": "every position gives a distinguishable T shift against the wire-off reading (dT = (1-k)(X - 3.0 V)); smallest gap between positions",
+  "case": "every position gives a distinguishable reading: input 3 reads B itself, which is the node's voltage (0, 0.5, ... 3.3 V): smallest gap between positions",
   "id": "VT-22/dist",
   "limit": ">= 20 x the reading resolution (125 uV + 0.1 % of 3 V)",
   "margin": "",
-  "note": "tap6 = REF reads dT = 0, i.e. as 'no wire': the host says 'wire missing or on the top tap' and stops either way",
+  "note": "the top tap reads as the default (wire missing or on the top tap): the host stops either way",
   "ok": 1.0,
   "req": "V2-5, VT-22",
   "sect": "sense",
-  "value": "180 mV gap vs 3.12 mV resolution"
+  "value": "300 mV gap on input 3 vs 3.12 mV"
  },
  {
-  "case": "a wire left on after the calibration, or missing at its start: the tap's difference between the two positions at every AWG level (the host compares the wire-off reading taken before fitting and after removal with the sweep's)",
+  "case": "a wire left on after the calibration, or missing at its start: input 3 (B) differs between the two positions at every AWG level and tolerance draw",
   "id": "VT-21/22/det",
-  "limit": ">= 50 mV (about 16x the reading resolution) at every level, every tolerance draw",
-  "margin": "+684 mV",
-  "note": "left on in normal use the tap stays inside 0.14 .. 1.89 V (PA-4/range) and the 1/3 ladder tap is loaded by up to 118 uA: nothing is damaged, and the Due's reading of that tap is flagged by the host's end-of-session check",
+  "limit": ">= 50 mV (about 16x the reading resolution)",
+  "margin": "+1180 mV",
+  "note": "left on in normal use the tap stays inside 0.14 .. 1.89 V (PA-4/range) and the 1/3 ladder tap is loaded by up to 118 uA: nothing is damaged, the host's end-of-session reading catches it",
   "ok": 1.0,
   "req": "VT-21, VT-22",
   "sect": "sense",
-  "value": "734 mV minimum"
+  "value": "1230 mV minimum"
+ },
+ {
+  "case": "ADS1115 free-running on the pair, staircase 1.5 to 3 ms a level (D23), 1024 levels: the fit's slope noise from the readings at 860 SPS (1.16 ms) counting only conversions wholly inside a level (0.3 to 1.6 a level); 125 uV rms per conversion x sqrt 2 / k at the AWG node",
+  "id": "D23/time",
+  "limit": "<= 0.005 % (a tenth of the 0.05 % share)",
+  "margin": "",
+  "note": "no averaging per level is needed: one reading per level or less, the fit averages 300 to 1600 of them; the quantisation of a 125 uV code is spread over levels that each move the pair by 13 codes. At 128 SPS (7.8 ms) one conversion spans 3 to 5 levels: aligned by time stamp it is a boxcar of the staircase and the Due codes are averaged over the same window",
+  "ok": true,
+  "req": "D21, D23, PA-3",
+  "sect": "sense",
+  "value": "0.0021 % at 860 SPS; 0.0026 % at the worst of 128 to 860 SPS"
+ },
+ {
+  "case": "total staircase time: 1024 levels x 1.5 to 3 ms, plus the two end readings of B and the wire-off ratio readings (64 conversions at 860 SPS each, 4 of them)",
+  "id": "D23/total",
+  "limit": "information",
+  "margin": "",
+  "note": "staircase only; warm-up is separate. The ratio readings are static levels and are not bounded by D23's step",
+  "ok": null,
+  "req": "D23, PA-3",
+  "sect": "sense",
+  "value": "1.5 to 3.1 s staircase + 0.30 s of readings + channel switches"
+ },
+ {
+  "case": "the sweep drops any level whose reading stops following the DAC code (the AWG clips about 5 to 10 mV above the weak -rail -1.955 V, from -1.923 V down): slope of the pair over the last 3 levels < 0.5 x the sweep's median slope",
+  "id": "CAL/clip",
+  "limit": "the clipped levels dropped, the fit unchanged",
+  "margin": "",
+  "note": "cost: the sweep's bottom moves from -1.95 to about -1.92 V (the window bottom is -1.9 to -1.68 V): it still covers the scope's -1.5 V end, so the coverage of -1.5..+3.5 V does not change; the margin below -1.5 V shrinks by about 30 mV",
+  "ok": true,
+  "req": "D23, AW-1",
+  "sect": "sense",
+  "value": "first dropped level -1.950 V, 6 of 1025 dropped, bottom of the kept range -1.926 V, fit gain error -0.0002 %"
  }
 ]

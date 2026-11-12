@@ -1,6 +1,6 @@
 [
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL cubic 0.5 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +3.2 / B +0.0 mV",
@@ -11,7 +11,7 @@
   "value": "A 0.27 mV (0.008 %), B 3.45 mV (0.099 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL cubic 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +2.9 / B -0.6 mV",
@@ -22,7 +22,7 @@
   "value": "A 0.64 mV (0.018 %), B 4.14 mV (0.118 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL parab 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +1.7 / B +0.2 mV",
@@ -33,7 +33,7 @@
   "value": "A 1.76 mV (0.050 %), B 3.29 mV (0.094 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL knots 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.05 V covers 71 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +1.2 / B -2.2 mV",
@@ -44,7 +44,7 @@
   "value": "A 2.28 mV (0.065 %), B 5.68 mV (0.162 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL cubic 0.5 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +3.2 / B +0.2 mV",
@@ -55,7 +55,7 @@
   "value": "A 0.26 mV (0.008 %), B 3.28 mV (0.094 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL cubic 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +2.9 / B -0.5 mV",
@@ -66,7 +66,7 @@
   "value": "A 0.63 mV (0.018 %), B 4.01 mV (0.115 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL parab 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +1.9 / B +0.4 mV",
@@ -77,7 +77,7 @@
   "value": "A 1.64 mV (0.047 %), B 3.06 mV (0.087 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL knots 1.2 LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.9 .. 2.2275 V covers 75 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +1.2 / B -1.8 mV",
@@ -92,7 +92,7 @@
   "id": "SC-7/ext-ideal",
   "limit": "information",
   "margin": "",
-  "note": "what the ladder would buy if the ADS1115 read its taps exactly",
+  "note": "what the four-anchor quadratic estimator would give with exact ADS readings: still worse than the tee fit for cubic and random-knot INL (review.md section 2); only a parabolic INL favours it. The estimator, not only the ADS1115, loses",
   "ok": null,
   "req": "SC-7",
   "sect": "ext",
@@ -102,12 +102,12 @@
   "case": "this block's gain terms alone, linear sum (RSS in the note), and its offset, against \u00b10.5 % of reading \u00b1 5 mV",
   "id": "SC-7/sum",
   "limit": "<= 0.5 % and <= 5 mV for the WHOLE of SC-7 (the scope's own terms come on top)",
-  "margin": "-0.27 %",
-  "note": "the sense chain's channel match, offsets and 1 % parts are the dominant term, see section 5",
-  "ok": false,
+  "margin": "+0.08 %",
+  "note": "the sense chain still dominates; with Zcm tracking between inputs it is 0.05 % and 1.8 mV and the sum 0.25 %. The ladder's drift is not a term (D-V2-13)",
+  "ok": true,
   "req": "SC-7",
   "sect": "sum",
-  "value": "0.77 % (RSS 0.52 %), 6.9 mV"
+  "value": "0.42 % (RSS 0.27 %), 2.4 mV"
  },
  {
   "case": "ADS1115 noise averaged over 64 conversions, referred to the AWG node through k = 0.4 (125 uV rms per reading, Table 6-1)",

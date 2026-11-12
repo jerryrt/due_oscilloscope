@@ -2,16 +2,16 @@
  {
   "broken": "fails",
   "good": true,
-  "id": "G-timing",
+  "id": "G-clip",
   "restored": "passes",
-  "what": "the timing check with a step of 0.01 s (one conversion at 128 SPS: nothing left to average) must fail"
+  "what": "the clip check with the slope criterion disabled (threshold 0) must fail"
  },
  {
   "broken": "fails",
   "good": true,
-  "id": "G-detect",
+  "id": "G-struct",
   "restored": "passes",
-  "what": "the detection check with the separation limit raised to 2 V must fail"
+  "what": "the ratio check applied to the old structure S1 must fail; S3 with the matched resistor passes (Zcm tracking)"
  },
  {
   "broken": "fails",

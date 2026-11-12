@@ -11,6 +11,6 @@
   "good": true,
   "id": "G-sum",
   "restored": "passes",
-  "what": "the SC-7 sum check against a 1.0 % limit with the sense chain's error multiplied by 10 must fail (the real sum passes the same 1.0 %)"
+  "what": "the SC-7 sum check against a 0.5 % limit with the sense chain's error multiplied by 3 must fail (the real sum passes the same 0.5 %)"
  }
 ]

@@ -1,14 +1,14 @@
 [
  {
-  "case": "supply across the op-amp <= recommended 5.5 V (TPH2502 VDD row) at both rails' worst corners, 1 % Basic feedback, +-10 K, regulation 2 mV",
+  "case": "supply across the op-amp <= recommended 5.5 V (TPH2502 VDD row) at both rails' worst corners, 1 % Basic feedback, +-10 K, regulation 2.5 mV",
   "id": "PW-V2-2",
   "limit": "V+ + |V-| at the maximum corner <= 5.5 V",
-  "margin": "+0.0303 V",
-  "note": "the TPH2502 gives only a VDD 2.5..5.5 V row; abs max 7.0 V. The margin is a few millivolts: see the R3 table",
+  "margin": "+0.0293 V",
+  "note": "the line: TPH2502 datasheet Rev. A, 'Electrical Characteristics' (continued), PDF page 4, row 'VDD Supply Voltage, MIN 2.5, MAX 5.5, V'; its Applications Information (PDF page 7) says 'specified over +2.7 V to +5.5 V ... the supply voltage may range from +2.5 V to +5.5 V'. The datasheet has no Recommended Operating Conditions table: 5.5 V is the top of its specified supply range and is taken as the recommended maximum. Abs max V+ - V- = 7.0 V (Absolute Maximum Ratings, PDF page 2; the text says 7.5 V). Minimum corner sum 5.175 V is inside 2.5 V. See the R3 table",
   "ok": true,
   "req": "V2-2",
   "sect": "rails",
-  "value": "3.4172 + 2.0525 = 5.4697 V"
+  "value": "3.4177 + 2.0530 = 5.4707 V"
  },
  {
   "case": "the same at the abs-max reading (information)",
@@ -19,29 +19,29 @@
   "ok": true,
   "req": "V2-2",
   "sect": "rails",
-  "value": "5.470 V"
+  "value": "5.471 V"
  },
  {
   "case": "the powered scope op-amp's supply <= 3.45 V (anything that drives A0/A1)",
   "id": "PR-2",
   "limit": "<= 3.45 V",
-  "margin": "+0.0328 V",
+  "margin": "+0.0323 V",
   "note": "",
   "ok": true,
   "req": "PR-2",
   "sect": "rails",
-  "value": "3.4172 V"
+  "value": "3.4177 V"
  },
  {
   "case": "REF3030E VIN >= VOUT + 0.2 V (6.3, REF30xxE) at the weakest +rail",
   "id": "PA-2/rail",
   "limit": ">= 3.203 V (VOUT at +0.1 %)",
-  "margin": "+0.0175 V",
+  "margin": "+0.0170 V",
   "note": "only 1 % Basic feedback resistors move this: with VFB 1.5 % and the resistors 1.3 % the rail's window is the reference's whole dropout margin",
   "ok": true,
   "req": "PA-2",
   "sect": "rails",
-  "value": "3.2205 V"
+  "value": "3.2200 V"
  },
  {
   "case": "LDO headroom at 5V pin 4.50 V: +LDO (VIN - V+max) and the pump (|CPOUT| - |V-|max)",
@@ -58,12 +58,12 @@
   "case": "AFE current from the Due's 5V pin, normal operation, IQ at the datasheet maximum, rails at the strong corner",
   "id": "PW-1",
   "limit": "<= 100 mA",
-  "margin": "+16.8 mA",
-  "note": "charge-pump input current = output current + 10 % + IQ 0.39 mA (the datasheet gives no efficiency table in text: check)",
+  "margin": "+17.7 mA",
+  "note": "charge-pump input current = output current + 10 % + IQ 0.39 mA *(check: IQ is a typical, no maximum is given; the datasheet gives no efficiency table in text)*. The AWG's offset path comes from the REF3030E, which the +rail supplies, so it counts on OUT+ either way",
   "ok": true,
   "req": "PW-1",
   "sect": "pw1",
-  "value": "83.2 mA"
+  "value": "82.3 mA"
  },
  {
   "case": "Due (300 mA, D7) + AFE in the worst fault (indefinite short), <= 450 mA",
@@ -80,12 +80,12 @@
   "case": "LM27762 junction at 85 C ambient, worst state, 5.25 V in, RthJA 62.2 C/W (the datasheet's) ",
   "id": "PW-1/th",
   "limit": "<= 125 C",
-  "margin": "+21 K",
+  "margin": "+22 K",
   "note": "RthJA is the datasheet's JEDEC figure; a real board does better or worse: check",
   "ok": true,
   "req": "PW-1",
   "sect": "pw1",
-  "value": "104 C (299 mW)"
+  "value": "103 C (296 mW)"
  },
  {
   "case": "ripple at an amplifier supply pin <= 20 mV",

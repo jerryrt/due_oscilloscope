@@ -28,21 +28,22 @@ def ref_loads():
     div_src_top = max(0.0, (REF["vout"] - 2.28) / SENSE_TOT)
     div_snk_forced = (5.0 - REF["vout"]) / (SENSE_TOT * (1 - TOL))         # AWG forced +5 V (PR-4: may damage, shield only)
     ads = 2 * 0.7e-6
-    return dict(ladder=ladder, scope_src=scope_src, scope_snk=scope_snk, div_src=div_src, div_src_top=div_src_top, div_snk_forced=div_snk_forced, ads=ads)
+    awg_off = 5.95e-3                                                          # the AWG's Rg2 path from the reference, worst (../awg/design.md section 4)
+    return dict(awg_off=awg_off, ladder=ladder, scope_src=scope_src, scope_snk=scope_snk, div_src=div_src, div_src_top=div_src_top, div_snk_forced=div_snk_forced, ads=ads)
 
 def main():
     L = ref_loads(); R["loads"] = L
-    src = L["ladder"] + L["scope_src"] + L["div_src"] + L["ads"]
+    src = L["ladder"] + L["scope_src"] + L["div_src"] + L["ads"] + L["awg_off"]
     snk = max(L["scope_snk"], L["div_snk_forced"] + L["scope_snk"])
-    C.add("REF/src", "PA-2, D-V2-10", "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs)", f"<= {REF['iload'][1]*1e3:.0f} mA (6.3)",
+    C.add("REF/src", "PA-2, D-V2-10", "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 5.95 mA worst, from ../awg/design.md)", f"<= {REF['iload'][1]*1e3:.0f} mA (6.3)",
           f"{src*1e3:.3f} mA", f"{(REF['iload'][1]-src)*1e3:+.2f} mA", src <= REF["iload"][1], "", "ref")
     C.add("REF/snk", "PA-2, D-V2-10", "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)", f"<= {-REF['iload'][0]*1e3:.0f} mA",
           f"{snk*1e6:.0f} uA", f"{(-REF['iload'][0]-snk)*1e3:+.2f} mA", snk <= -REF["iload"][0],
           "the sink load regulation 150 ppm/mA is 10x the source figure but at this current moves the output by %.2f ppm" % (snk * 1e3 * 150e-6 * 1e6 * 1e-3 * 1e3 / 1e3), "ref")
-    dI = L["div_src"] - L["div_src_top"]
+    dI = (L["div_src"] - L["div_src_top"]) + 4.14e-3                          # + the AWG's signal-dependent part of Rg2 across its window (../awg/design.md: 4.14 mA)
     dV = dI * 1e3 * REF["load_src"] * REF["vout"]
     share = REQ["fit_share"] * REF["vout"]
-    C.add("REF/lreg", "SC-7", "the ladder's top tap (= the reference) moves with the AWG level through the sense divider's default tie: change of source current over the sweep x 15 ppm/mA", f"<= {share*1e3:.1f} mV (0.1 % fit share of 3 V)",
+    C.add("REF/lreg", "SC-7", "the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA", f"<= {share*1e3:.1f} mV (0.1 % fit share of 3 V)",
           f"{dI*1e3:.3f} mA -> {dV*1e6:.1f} uV", f"{(share-dV)*1e6:+.0f} uV", dV <= share, "the host reads the reference with every tap reading; this is the movement between two readings", "ref")
     sig = 2 * 5.4e-6 * 1e3 * REF["load_src"] * REF["vout"]
     C.add("REF/signal", "SC-7, D-V2-10", "the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each", f"<= {share*1e3:.1f} mV", f"{sig*1e6:.2f} uV", "", sig <= share, "", "ref")
@@ -72,8 +73,8 @@ def main():
             drift[f"tap{m}_{dT}K"] = (fa / f - 1)
     R["drift"] = drift
     worst10 = max(abs(v) for k, v in drift.items() if k.endswith("10K"))
-    C.add("PA-9/drift", "EN-1, VT-12", "a measured tap's fraction of the reference after 10 K since it was read (rungs +-100 ppm/K, opposed), against the fit share 0.1 %", "<= 0.1 %", f"{worst10*100:.3f} % (1/3 tap), 20 K: {max(abs(v) for k,v in drift.items() if k.endswith('20K'))*100:.3f} %",
-          f"{(0.001-worst10)*100:+.3f} %", worst10 <= 0.001, "the host can re-read the measured taps at any time (no tee, no AWG), so this is the worst drift between the last read and use, not a calibration interval", "ladder")
+    C.add("PA-9/drift", "EN-1, VT-12", "a measured tap's fraction of the reference after 10 K since it was read (rungs +-100 ppm/K, opposed): the size of a check's window, not an SC-7 term", "information", f"{worst10*100:.3f} % (1/3 tap), 20 K: {max(abs(v) for k,v in drift.items() if k.endswith('20K'))*100:.3f} %",
+          f"{(0.001-worst10)*100:+.3f} %", None, "D-V2-13: the taps are checks, not fit anchors, so their drift no longer enters SC-7 and the 10 K recalibration rule stands; information only. The host can re-read the measured taps at any time (no tee, no AWG), so this is the worst drift between the last read and use, not a calibration interval", "ladder")
     # unmeasured taps: tolerance of the fraction, 1 % rungs, 99.9th percentile
     rng = np.random.default_rng(3)
     rl = RL * (1 + rng.uniform(-TOL, TOL, (200000, 6)))
@@ -91,7 +92,9 @@ def main():
     R["dT_max_K"] = float(dtmax)
     C.add("PA-9/dT", "EN-1, VT-12", "the temperature change since a tap was read that keeps its drift inside 0.1 % (and inside 0.05 %, the half this design gives the ladder)", "information (sets the recalibration threshold, D-V2-3)",
           f"{dtmax:.1f} K (0.05 %: {dtmax/2:.1f} K)", "", None, "10 K (EN-1) fails; the host re-reads the two measured taps at the start and end of each session, so the working figure is the change within one session", "ladder")
-    G.add("G-drift", "the drift limit applied to a 1000 ppm/K tempco ladder at 10 K must fail; the 100 ppm/K design passes the same limit at 5 K", dr(1000e-6, 5.0) <= 0.001, dr(TC, 5.0) <= 0.001)
+    # the tap check window: a tap that reads outside nominal +- (1.5 % + drift at 10 K) is a fault; the check must flag a 5 % error and pass the design's own 1.3 % spread
+    win = 0.015 + worst10
+    G.add("G-tapcheck", "the measured-tap fault check (window 1.5 % + 10 K drift) must flag a tap 5 % off", abs(0.05) <= win, abs(R["unmeasured_dev_pct_q999"][1] / 100) <= win)
     C.save(); G.save(); save("refladder", R)
     for c in C.rows: print(("PASS" if c["ok"] else "FAIL" if c["ok"] is False else "INFO"), c["id"], "|", c["value"], "|", c["margin"])
     for g in G.rows: print("GUARD", g["id"], g["broken"], g["restored"], "OK" if g["good"] else "BAD")

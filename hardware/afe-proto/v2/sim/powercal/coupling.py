@@ -35,9 +35,9 @@ def main():
     terms.append(("the +3.3 V rail's load regulation (11 uV/mA) x the AWG's current swing %.1f mA = %.0f uV on the rail, through the scope dual's DC PSRR (80 dB min)" % (dIp * 1e3, dVp * 1e6), dVp * 1e-4))
     dVin = abs(dIin) * R_SENSE_FEED
     terms.append(("the 5 V feed: current swing %.1f mA x %.1f ohm = %.1f mV at VIN, x LDO line regulation 1.9 mV/V, x PSRR" % (dIin * 1e3, R_SENSE_FEED, dVin * 1e3), dVin * LM["line_reg_p"] * 1e-4))
-    dIref = 0.165e-3
+    dIref = 0.165e-3 + 4.14e-3                                   # the sense tie plus the AWG's Rg2 path (its offset comes from the reference: ../awg/design.md)
     dVref = dIref * 1e3 * REF["load_src"] * REF["vout"]
-    terms.append(("the REF3030E: the sense divider's default-tie current changes %.3f mA over the AWG sweep (15 ppm/mA = %.1f uV), to the scope's centre through Rp/R3 = 0.3725 and 1/a" % (dIref * 1e3, dVref * 1e6), dVref * 0.3725 / A_SC))
+    terms.append(("the REF3030E: the sense tie and the AWG's own Rg2 path change its load by %.3f mA over the AWG sweep (15 ppm/mA = %.1f uV), to the scope's centre through Rp/R3 = 0.3725 and 1/a" % (dIref * 1e3, dVref * 1e6), dVref * 0.3725 / A_SC))
     iawg = max(abs(bt["state"]["i_load"]), abs(bb["state"]["i_load"]))
     terms.append(("the shared return: AWG load current %.1f mA x an ASSUMED %.0f mohm of plane shared with a scope input's reference (LR-1) *(check)*" % (iawg * 1e3, R_PLANE * 1e3), iawg * R_PLANE))
     rows = []

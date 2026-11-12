@@ -1,14 +1,14 @@
 [
  {
-  "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs)",
+  "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 5.95 mA worst, from ../awg/design.md)",
   "id": "REF/src",
   "limit": "<= 10 mA (6.3)",
-  "margin": "+8.26 mA",
+  "margin": "+2.31 mA",
   "note": "",
   "ok": true,
   "req": "PA-2, D-V2-10",
   "sect": "ref",
-  "value": "1.736 mA"
+  "value": "7.686 mA"
  },
  {
   "case": "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)",
@@ -22,15 +22,15 @@
   "value": "80 uA"
  },
  {
-  "case": "the ladder's top tap (= the reference) moves with the AWG level through the sense divider's default tie: change of source current over the sweep x 15 ppm/mA",
+  "case": "the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA",
   "id": "REF/lreg",
   "limit": "<= 3.0 mV (0.1 % fit share of 3 V)",
-  "margin": "+2993 uV",
+  "margin": "+2806 uV",
   "note": "the host reads the reference with every tap reading; this is the movement between two readings",
   "ok": true,
   "req": "SC-7",
   "sect": "ref",
-  "value": "0.165 mA -> 7.4 uV"
+  "value": "4.305 mA -> 193.7 uV"
  },
  {
   "case": "the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each",
@@ -99,12 +99,12 @@
   "value": "0.0098 % (1/3 tap), 0.0098 % (2/3 tap)"
  },
  {
-  "case": "a measured tap's fraction of the reference after 10 K since it was read (rungs +-100 ppm/K, opposed), against the fit share 0.1 %",
+  "case": "a measured tap's fraction of the reference after 10 K since it was read (rungs +-100 ppm/K, opposed): the size of a check's window, not an SC-7 term",
   "id": "PA-9/drift",
-  "limit": "<= 0.1 %",
+  "limit": "information",
   "margin": "-0.033 %",
-  "note": "the host can re-read the measured taps at any time (no tee, no AWG), so this is the worst drift between the last read and use, not a calibration interval",
-  "ok": false,
+  "note": "D-V2-13: the taps are checks, not fit anchors, so their drift no longer enters SC-7 and the 10 K recalibration rule stands; information only. The host can re-read the measured taps at any time (no tee, no AWG), so this is the worst drift between the last read and use, not a calibration interval",
+  "ok": null,
   "req": "EN-1, VT-12",
   "sect": "ladder",
   "value": "0.133 % (1/3 tap), 20 K: 0.267 %"

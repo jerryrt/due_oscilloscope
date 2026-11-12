@@ -16,8 +16,8 @@
  {
   "broken": "fails",
   "good": true,
-  "id": "G-drift",
+  "id": "G-tapcheck",
   "restored": "passes",
-  "what": "the drift limit applied to a 1000 ppm/K tempco ladder at 10 K must fail; the 100 ppm/K design passes the same limit at 5 K"
+  "what": "the measured-tap fault check (window 1.5 % + 10 K drift) must flag a tap 5 % off"
  }
 ]

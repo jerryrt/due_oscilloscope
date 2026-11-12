@@ -3,15 +3,15 @@
   "case": "AWG stepped between its window ends into 50 ohm: change of a scope reading, settled, the four paths by which a scope on +3.3 V alone still hears the AWG (sum, 1 LSB = 1.73 mV at the input)",
   "id": "SC-9/DC",
   "limit": "<= 2 LSB",
-  "margin": "+1.88 LSB",
+  "margin": "+1.79 LSB",
   "note": "the scope is on +3.3 V only (its V- is ground), so the negative rail reaches it only through the shared LM27762: the 5 V feed and the +LDO's line regulation; the paths are the +rail's load regulation, the feed, the shared reference, and the shared return",
   "ok": true,
   "req": "V2-1, SC-9, VT-20",
   "sect": "sc9",
-  "value": "0.120 LSB (largest: the assumed plane return, 0.116 LSB)"
+  "value": "0.207 LSB (largest: the assumed plane return, 0.116 LSB)"
  },
  {
-  "case": "the AWG's 15 mA step on OUT+: peak rail movement by hand (2 x 10 uF at 50 % of nominal, 4 mohm ESR, a 1 us LDO response) = 1.53 mV, through an assumed PSRR 80 dB flat to 10 kHz then -20 dB/dec at 200 kHz",
+  "case": "the AWG's 15 mA step on OUT+: peak rail movement by hand (2 x 10 uF at 50 % of nominal, 4 mohm ESR, a 1 us LDO response) = 1.56 mV, through an assumed PSRR 80 dB flat to 10 kHz then -20 dB/dec at 200 kHz",
   "id": "SC-9/AC",
   "limit": "<= 2 LSB",
   "margin": "",

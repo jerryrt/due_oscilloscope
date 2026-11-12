@@ -91,11 +91,11 @@ def main():
     for top in (2.05, 2.2275):
         cover = (top - (-1.5)) / 5.0
         for model, A in (("cubic", 0.5), ("cubic", 1.2), ("parab", 1.2), ("knots", 1.2)):
-            r = run(model=model, A=A, top=top, n=800)
+            r = run(model=model, A=A, top=top, n=800)   # 800 draws behind each 99.9th percentile (about the second-largest value; two seeds agree to 0.1 mV)
             res[f"{top}/{model}/{A}"] = r
             rr = r[3.5]
             okA = rr["A_q999_mV"] <= share(3.5); okB = rr["B_q999_mV"] <= share(3.5)
-            C.add("SC-7/ext", "SC-7, PA-3, VT-23", f"fit extrapolated to +3.5 V (AWG window {LO} .. {top} V covers {cover*100:.0f} % of the range), INL {model} {A} LSB, 1024 points: A = tee only, B = with ladder anchors, 99.9th pct",
+            C.add("SC-7/ext", "SC-7, PA-3, VT-23", f"fit extrapolated to +3.5 V (AWG window {LO} .. {top} V covers {cover*100:.0f} % of the range), INL {model} {A} LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
                   f"<= {share(3.5):.1f} mV (0.1 % of 3.5 V)", f"A {rr['A_q999_mV']:.2f} mV ({rr['A_q999_mV']/3500*100:.3f} %), B {rr['B_q999_mV']:.2f} mV ({rr['B_q999_mV']/3500*100:.3f} %)",
                   f"A {share(3.5)-rr['A_q999_mV']:+.1f} / B {share(3.5)-rr['B_q999_mV']:+.1f} mV", okA, f"B {'passes' if okB else 'fails'} the share; against SC-7's whole 0.5 % + 5 mV = {full(3.5):.1f} mV both leave {full(3.5)-max(rr['A_q999_mV'], rr['B_q999_mV']):.1f} mV. One Due LSB is {LSB_IN_MV:.2f} mV at the input", "ext")
     R["ext"] = res
@@ -103,21 +103,20 @@ def main():
     ideal = run(model="cubic", A=1.2, top=2.2275, n=800, eps=0.0, ads_off_lsb=0.0, ch_off_lsb=0.0)
     R["ext_ideal_anchors"] = ideal
     C.add("SC-7/ext-ideal", "SC-7", "the same (cubic 1.2 LSB, top 2.2275 V) with perfect anchors (no ADS channel mismatch, no offset, no pin offset)", "information",
-          f"A {ideal[3.5]['A_q999_mV']:.2f} mV, B {ideal[3.5]['B_q999_mV']:.2f} mV at +3.5 V", "", None, "what the ladder would buy if the ADS1115 read its taps exactly", "ext")
+          f"A {ideal[3.5]['A_q999_mV']:.2f} mV, B {ideal[3.5]['B_q999_mV']:.2f} mV at +3.5 V", "", None, "what the four-anchor quadratic estimator would give with exact ADS readings: still worse than the tee fit for cubic and random-knot INL (review.md section 2); only a parabolic INL favours it. The estimator, not only the ADS1115, loses", "ext")
     # the sense-chain and reference terms (sense.json), in the SC-7 budget of this block
     import json
     sj = load("sense")
     s = sj["base"]
     refp = REF["tol"] * 100 + REF["tc_max"] * 10 * 100 + REF["hyst_ppm"][1] * 1e-4 + REF["lt_ppm"] * 1e-4     # %: initial + 15 ppm/K x 10 K + hysteresis + long term
     rows = [("REF3030E: initial 0.1 %, 15 ppm/K x 10 K, hysteresis 100 ppm, long-term 40 ppm", refp, 0.0),
-            ("AWG sense chain (jumper ratio, ADS1115 at the max channel match, Rs, Zcm, 1 % resistors), 99.9th pct", s["gain_pct"], s["off_mV"]),
-            ("Due-ADC fit extrapolated to +3.5 V (A, cubic 1.2 LSB, window top 2.2275)", res["2.2275/cubic/1.2"][3.5]["A_q999_mV"] / 3500 * 100, 0.0),
-            ("ladder drift of a measured tap, 10 K since read", 0.133, 0.0)]
+            ("AWG sense chain, structure S3, Zcm spreading independently (the conservative case), 99.9th pct", s["gain_pct"], s["off_mV"]),
+            ("Due-ADC tee fit extrapolated to +3.5 V (random-knot INL 1.2 LSB, the worst model, window top 2.2275 V; ladder anchors NOT used, D-V2-13)", res["2.2275/knots/1.2"][3.5]["A_q999_mV"] / 3500 * 100, 0.0)]
     tot_g = sum(r[1] for r in rows); rss = math.sqrt(sum(r[1] ** 2 for r in rows)); tot_o = sum(r[2] for r in rows)
     R["sum"] = dict(rows=rows, linear=tot_g, rss=rss, off=tot_o)
     C.add("SC-7/sum", "SC-7", "this block's gain terms alone, linear sum (RSS in the note), and its offset, against ±0.5 % of reading ± 5 mV",
           "<= 0.5 % and <= 5 mV for the WHOLE of SC-7 (the scope's own terms come on top)", f"{tot_g:.2f} % (RSS {rss:.2f} %), {tot_o:.1f} mV", f"{0.5-tot_g:+.2f} %", tot_g <= 0.5 and tot_o <= 5.0,
-          "the sense chain's channel match, offsets and 1 % parts are the dominant term, see section 5", "sum")
+          "the sense chain still dominates; with Zcm tracking between inputs it is 0.05 % and 1.8 mV and the sum 0.25 %. The ladder's drift is not a term (D-V2-13)", "sum")
     # ADS noise and averaging at the AWG node
     nav = 64
     nz = ADS["noise_rms"] / math.sqrt(nav) / 0.4 * 1e6
@@ -125,7 +124,7 @@ def main():
     # guards
     big = run(model="cubic", A=12.0, top=2.2275, n=200)
     G.add("G-ext", "the extrapolation check with an INL of 12 LSB must fail the 0.1 % share", big[3.5]["A_q999_mV"] <= share(3.5), res["2.2275/cubic/0.5"][3.5]["A_q999_mV"] <= share(3.5))
-    G.add("G-sum", "the SC-7 sum check against a 1.0 % limit with the sense chain's error multiplied by 10 must fail (the real sum passes the same 1.0 %)", (tot_g + 9 * s["gain_pct"]) <= 1.0, tot_g <= 1.0)
+    G.add("G-sum", "the SC-7 sum check against a 0.5 % limit with the sense chain's error multiplied by 3 must fail (the real sum passes the same 0.5 %)", (tot_g + 2 * s["gain_pct"]) <= 0.5, tot_g <= 0.5)
     C.save(); G.save(); save("sc7", R)
     for c in C.rows: print(("PASS" if c["ok"] else "FAIL" if c["ok"] is False else "INFO"), c["id"], "|", c["value"], "|", c["margin"])
     for g in G.rows: print("GUARD", g["id"], g["broken"], g["restored"], "OK" if g["good"] else "BAD")

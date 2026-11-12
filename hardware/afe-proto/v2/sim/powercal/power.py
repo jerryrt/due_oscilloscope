@@ -20,7 +20,7 @@ FB_LCSC = {120e3: "C25808", 68e3: "C23231", 56e3: "C23206", 8.2e3: "C25981", 100
 TOL_R = 0.01                      # V2-3: Basic 1 %
 TC_R = 100e-6                     # jlc-basic.csv: +-100 ppm/K for the 0603 values used
 DT = 10.0                         # EN-1: 15..35 C is +-10 K about the 25 C at which the 1 % holds
-REG_ALLOW = 2e-3                  # line + load regulation allowance on top of VFB's over-temperature limits (1.9 mV/V x 0.5 V + 11 uV/mA x 65 mA, rounded up)
+REG_ALLOW = 2.5e-3                # line + load regulation allowance on top of VFB's over-temperature limits (1.9 mV/V x 0.75 V (4.5 to 5.25 V at the 5V pin, PW-6) + 11 uV/mA x 100 mA) *(check: whether VFB's limits already include line and load)*
 
 def rails(vfbp, vfbn, r1, r2, r3, r4, tol=TOL_R, dt=DT, tc=TC_R, sign=(1, 1, 1, 1)):
     """One corner: resistor tolerance sign +-1 per R1, R2, R3, R4 and the opposed-tempco drift of dt kelvin applied in the sign's direction."""
@@ -66,7 +66,7 @@ def awg_state(v, vout, rl, vrail, rout=49.5):
 def budget(vp, v, awg_rl, awg_vout, iq_per_amp, pu=True, bleed=10e3, ladder_r=330.0, vref=3.009, rail_ok=True, pump_overhead=0.10,
             rd_node=None):
     """mA of every load on OUT+ and OUT- and the 5 V pin, for one state.  vp = the +rail's value, vref the reference's value."""
-    s = awg_state(v, awg_vout, awg_rl, vp)
+    s = awg_state(v, awg_vout, awg_rl, vref)     # the AWG's offset source is the REF3030E (../awg/design.py), not the +rail
     iq_awg = 2 * iq_per_amp
     ip_awg = iq_awg + s["i_g2"] + max(s["i_o"], 0.0)
     in_awg = iq_awg + max(-s["i_o"], 0.0)
@@ -121,9 +121,9 @@ def main():
     rc = rail_corners()
     R["rails"] = rc
     sum_max = rc["max_p"] + rc["max_n"]
-    C.add("PW-V2-2", "V2-2", "supply across the op-amp <= recommended 5.5 V (TPH2502 VDD row) at both rails' worst corners, 1 % Basic feedback, +-10 K, regulation 2 mV",
+    C.add("PW-V2-2", "V2-2", "supply across the op-amp <= recommended 5.5 V (TPH2502 VDD row) at both rails' worst corners, 1 % Basic feedback, +-10 K, regulation 2.5 mV",
           "V+ + |V-| at the maximum corner <= 5.5 V", f"{rc['max_p']:.4f} + {rc['max_n']:.4f} = {sum_max:.4f} V", f"{5.5-sum_max:+.4f} V", sum_max <= 5.5,
-          "the TPH2502 gives only a VDD 2.5..5.5 V row; abs max 7.0 V. The margin is a few millivolts: see the R3 table", "rails")
+          "the line: TPH2502 datasheet Rev. A, 'Electrical Characteristics' (continued), PDF page 4, row 'VDD Supply Voltage, MIN 2.5, MAX 5.5, V'; its Applications Information (PDF page 7) says 'specified over +2.7 V to +5.5 V ... the supply voltage may range from +2.5 V to +5.5 V'. The datasheet has no Recommended Operating Conditions table: 5.5 V is the top of its specified supply range and is taken as the recommended maximum. Abs max V+ - V- = 7.0 V (Absolute Maximum Ratings, PDF page 2; the text says 7.5 V). Minimum corner sum 5.175 V is inside 2.5 V. See the R3 table", "rails")
     C.add("PW-V2-2b", "V2-2", "the same at the abs-max reading (information)", "7.0 V", f"{rc['max_p']+rc['max_n']:.3f} V", f"{7.0-sum_max:+.2f} V", True, "", "rails")
     C.add("PR-2", "PR-2", "the powered scope op-amp's supply <= 3.45 V (anything that drives A0/A1)", "<= 3.45 V", f"{rc['max_p']:.4f} V", f"{3.45-rc['max_p']:+.4f} V", rc["max_p"] <= 3.45, "", "rails")
     refmin = REF["vout"] * (1 + REF["tol"]) + REF["vin_min_off"]
@@ -146,7 +146,7 @@ def main():
     R["pw1"] = pw
     C.add("PW-1", "PW-1", "AFE current from the Due's 5V pin, normal operation, IQ at the datasheet maximum, rails at the strong corner",
           "<= 100 mA", f"{pw['worst_norm']:.1f} mA", f"{100-pw['worst_norm']:+.1f} mA", pw["worst_norm"] <= 100.0,
-          "charge-pump input current = output current + 10 % + IQ 0.39 mA (the datasheet gives no efficiency table in text: check)", "pw1")
+          "charge-pump input current = output current + 10 % + IQ 0.39 mA *(check: IQ is a typical, no maximum is given; the datasheet gives no efficiency table in text)*. The AWG's offset path comes from the REF3030E, which the +rail supplies, so it counts on OUT+ either way", "pw1")
     tot = pw["worst_fault"] + REQ["due_ma"]
     C.add("PW-1 total", "PW-1", "Due (300 mA, D7) + AFE in the worst fault (indefinite short), <= 450 mA", "<= 450 mA",
           f"{tot:.0f} mA ({pw['worst_fault']:.1f} mA AFE)", f"{450-tot:+.0f} mA", tot <= 450.0, "the short is exempt from the 100 mA, not from the 450 mA total", "pw1")

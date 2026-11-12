@@ -1,22 +1,22 @@
 {
- "dIin_mA": -12.182694881972905,
- "dIn_mA": -24.419607038795416,
- "dIp_mA": 14.678872860702068,
+ "dIin_mA": -11.521308327351043,
+ "dIn_mA": -24.104661060404055,
+ "dIp_mA": 14.993818839093425,
  "dc_terms": [
   [
-   "the +3.3 V rail's load regulation (11 uV/mA) x the AWG's current swing 14.7 mA = 161 uV on the rail, through the scope dual's DC PSRR (80 dB min)",
-   1.6146760146772273e-08,
-   9.348189994855363e-06
+   "the +3.3 V rail's load regulation (11 uV/mA) x the AWG's current swing 15.0 mA = 165 uV on the rail, through the scope dual's DC PSRR (80 dB min)",
+   1.6493200723002768e-08,
+   9.54876226440612e-06
   ],
   [
-   "the 5 V feed: current swing -12.2 mA x 1.2 ohm = 14.6 mV at VIN, x LDO line regulation 1.9 mV/V, x PSRR",
-   2.7776544330898222e-09,
-   1.6081270263847028e-06
+   "the 5 V feed: current swing -11.5 mA x 1.2 ohm = 13.8 mV at VIN, x LDO line regulation 1.9 mV/V, x PSRR",
+   2.626858298636038e-09,
+   1.520823387602063e-06
   ],
   [
-   "the REF3030E: the sense divider's default-tie current changes 0.165 mA over the AWG sweep (15 ppm/mA = 7.4 uV), to the scope's centre through Rp/R3 = 0.3725 and 1/a",
-   5.9840166594547815e-06,
-   0.0034644550458715596
+   "the REF3030E: the sense tie and the AWG's own Rg2 path change its load by 4.305 mA over the AWG sweep (15 ppm/mA = 193.7 uV), to the scope's centre through Rp/R3 = 0.3725 and 1/a",
+   0.00015612843466032022,
+   0.09039078165137615
   ],
   [
    "the shared return: AWG load current 20.1 mA x an ASSUMED 10 mohm of plane shared with a scope input's reference (LR-1) *(check)*",
@@ -24,7 +24,7 @@
    0.11637214820278763
   ]
  ],
- "dc_total_lsb": 0.11984755956568043,
+ "dc_total_lsb": 0.20677399943981578,
  "fsw_seen_Hz": [
   2140000.0
  ],
@@ -36,7 +36,7 @@
   "t_ref": 0.002
  },
  "step": {
-  "droop_mV": 1.526602777513015,
+  "droop_mV": 1.5593571592657163,
   "run": "hand estimate"
  }
 }
