@@ -45,7 +45,11 @@ def main_image():
 
 def test_gate_fails_in_an_image_without_ngspice(main_image):
     if not have_image(CONTROL):
-        pytest.fail(f"{CONTROL} is not built: DUE_PCB_WITHOUT_NGSPICE=1 docker/pcb/build-image.sh")
+        # self-contained: build the control image from the same recipe (docker caches the shared layers)
+        import os
+        b = subprocess.run(["bash", str(REPO / "docker" / "pcb" / "build-image.sh")], capture_output=True, text=True,
+                           env=dict(os.environ, DUE_PCB_WITHOUT_NGSPICE="1"), timeout=1800)
+        assert b.returncode == 0 and have_image(CONTROL), b.stdout[-500:] + b.stderr[-500:]
     sel = ["docker/pcb/run-gate.sh", "-m", "ngspice and not jobcap"]
     good = run_in(main_image, *sel)
     assert good.returncode == 0 and re.search(r"\d+ passed", good.stdout), good.stdout[-800:]   # the control's control
@@ -109,7 +113,7 @@ def test_the_gate_run_twice_passes_twice(main_image):
     fixture directory and the second run failed on the first one's leavings."""
     before = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
                             capture_output=True, text=True).stdout
-    sel = ["docker/pcb/run-gate.sh", "-m", "not docker and not jobcap and not slow"]
+    sel = ["docker/pcb/run-gate.sh"]     # no -m: the guard counts a deselected pcbnew test as one that did not run
     first = run_in(main_image, *sel, m="3G", t=500)
     second = run_in(main_image, *sel, m="3G", t=500)
     after = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,

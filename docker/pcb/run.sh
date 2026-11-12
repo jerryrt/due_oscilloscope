@@ -60,6 +60,7 @@ flags=(
     --volume "$repo:/work" --workdir /work
     --env "DUE_PCB_IMAGE=$image" --env "DUE_PCB_IMAGE_CONTENT=$content"
     --env "DUE_PCB_IMAGE_INSTALLED=$installed"
+    --env "DUE_PCB_MACHINE=${DUE_PCB_MACHINE:-$(hostname)}"
     --env "DUE_PCB_CAP=$M"
     --cidfile "$cidfile"
 )
