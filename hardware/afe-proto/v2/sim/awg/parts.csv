@@ -1,0 +1,11 @@
+refs,value,lcsc,role,qty
+"R1,R2 (parallel)","100 ohm 1 % 1206","C17901","AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)","2"
+"R3","470 ohm 1 % 0603","C23179","Rf, feedback","1"
+"R4","510 ohm 1 % 0603","C23193","Rg2, inverting node straight to the REF3030E output (D-V2-12): no offset filter; there is no Rg1","1"
+"R5","2.4 kohm 1 % 0603","C22940","DAC0 series resistor: back-feed limit and the upper arm of the divider","1"
+"R6","27 kohm 1 % 0603","C22967","DAC0 divider lower arm: attenuates the DAC by 0.918 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground","1"
+"R7,R8","1 ohm 1 % 0603","C22936","output balancing resistors of the two halves","2"
+"C1","10 pF C0G 5 % 0603","C1634","Cf, across Rf: the stability capacitor (AN-1, design.md); the smallest Basic C0G","1"
+"C2","330 pF C0G 5 % 0603","C1664","output pole, from the BNC to ground (bandwidth corner and AW-4 edge, design.md)","1"
+"C3,C4","100 nF X7R 10 % 0603","C14663","supply decoupling at the op-amp, one per supply pin (the 1 uF pair was dropped, AW-6 0.3 mV)","2"
+"U1","TPH2502-SR dual op-amp SOP-8","C118223","both halves paralleled as one gain stage","1"
