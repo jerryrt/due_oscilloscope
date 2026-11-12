@@ -63,7 +63,7 @@ def awg_state(v, vout, rl, vrail, rout=49.5):
     i_o = i_load - i_f                                  # the op-amp output current, + = sourcing from the +rail
     return dict(vinv=vinv, i_load=i_load, i_g2=i_g2, i_o=i_o)
 
-def budget(vp, v, awg_rl, awg_vout, iq_per_amp, pu=True, bleed=10e3, ladder_r=330.0, vref=3.009, rail_ok=True, pump_overhead=0.10,
+def budget(vp, v, awg_rl, awg_vout, iq_per_amp, pu=True, bleed=1.8e3, ladder_r=330.0, vref=3.009, rail_ok=True, pump_overhead=0.10,
             rd_node=None):
     """mA of every load on OUT+ and OUT- and the 5 V pin, for one state.  vp = the +rail's value, vref the reference's value."""
     s = awg_state(v, awg_vout, awg_rl, vref)     # the AWG's offset source is the REF3030E (../awg/design.py), not the +rail
@@ -85,14 +85,14 @@ def sense_default_current(vnode, vref, rt=20e3):
     return abs(vref - vnode) / rt
 
 # ------------------------------------------------------------------------------------------------------------- PW-1
-def run_pw1(awg_top=2.2275, awg_bot=-1.9, iq=TPH["iq_max"], bleed=10e3, limit100=REQ["pw1_ma"], limit450=REQ["pw1_total_ma"]):
+def run_pw1(awg_top=2.133, awg_bot=-1.9226, awg_bot50=-1.810, iq=TPH["iq_max"], bleed=1.8e3, limit100=REQ["pw1_ma"], limit450=REQ["pw1_total_ma"]):
     v, d = awg_values()
     rc = rail_corners()
     states = []
     rails_ = (rc["max_p"], rc["min_p"])
     cases = [("normal, AWG hi-Z at the window top", float("inf"), awg_top),
              ("normal, AWG into 50 ohm at the window top", 50.0, awg_top),
-             ("normal, AWG into 50 ohm at the window bottom", 50.0, awg_bot),
+             ("normal, AWG into 50 ohm at the window bottom", 50.0, awg_bot50),
              ("normal, AWG hi-Z at the window bottom", float("inf"), awg_bot),
              ("fault: BNC shorted, DAC at the window top", 0.0, awg_top),
              ("fault: BNC shorted, DAC at the window bottom", 0.0, awg_bot),
@@ -166,6 +166,7 @@ def main():
 
     # ---------- unpowered rail (PR-3)
     run_unpowered()
+    run_forced()
 
     # ---------- guards
     run_guards()
@@ -221,7 +222,7 @@ def run_unpowered():
     C.add("PR-3/ic", "PR-3", "sink the unpowered ICs provide at 0.5 V by datasheet: feedback divider only", "information", f"{certain*1e6:.1f} uA", "", None,
           "LM27762 shutdown discharge 50 kohm would add 10 uA at 0.5 V but 6.4.1 does not say it works with VIN = 0 *(check)*; ADS1115, REF3030E and the op-amps give no leakage at 0.5 V: none counted", "pr3")
     C.add("PR-3/ic2", "PR-3", "sink counted if the LM27762's discharge works (information)", "information", f"{(certain+pd)*1e6:.1f} uA", "", None, "not relied on", "pr3")
-    choice = 10e3
+    choice = 1.8e3
     s, k = unpowered(choice)
     # bisect the rail voltage with the chosen bleed
     lo, hi = 0.0, 6.0
@@ -231,7 +232,7 @@ def run_unpowered():
         if sum(k_.values()) >= s_: hi = mid
         else: lo = mid
     R["pr3_choice"] = dict(R=choice, rail_v=hi, ua_at_0p5=sum(k.values()) * 1e6, q_ma=3.3 / choice * 1e3, q_ma_max=3.392 / (choice * 0.99) * 1e3)
-    C.add("PR-3", "PR-3", "unpowered +3.3 V_A rail with both scope inputs at +12 V, 10k bleed (C25804) at +1 %, with only the resistive sinks", "<= 0.5 V", f"{hi:.3f} V",
+    C.add("PR-3", "PR-3", "unpowered +3.3 V_A rail with both scope inputs at +12 V, 1.8k bleed (C4177) at +1 %, with only the resistive sinks", "<= 0.5 V", f"{hi:.3f} V",
           f"{0.5-hi:+.3f} V", hi <= 0.5, f"sinks {sum(k.values())*1e6:.1f} uA against {s*1e6:.1f} uA pushed in at 0.5 V", "pr3")
     qm = 3.392 / (choice * 0.99) * 1e3
     C.add("PR-3/Q", "PW-1", "quiescent cost of the bleed, rail at its maximum, resistor -1 %", "information", f"{qm:.3f} mA = {qm:.2f} % of 100 mA", "", None, "", "pr3")
@@ -239,7 +240,46 @@ def run_unpowered():
     C.add("PR-3/Due", "PR-3", "current into the Due's supply pins <= 100 uA", "<= 100 uA", "1.8 uA (scope design, through R3 and the sense filter; nothing reaches the 5V pin)", "", True,
           "the scope design's figure, not re-derived here; the bleed does not change it", "pr3")
 
+import itertools as _it
+def sense_inj(A, vr, bleed_unused=None, Rt=15e3, Rb=10e3, Rs=3.9e3, Rm=10e3, Rd=1e3, mode="open", vd=0.3):
+    """Current into the +3.3 V_A rail (A) through the S3 sense network when the AWG node is forced to A with the AFE unpowered, the rail at vr: AIN2 through Rs and AIN3 through Rm
+    clamp at vr + vd (the ADS1115's diodes to VDD; vd = 0.3 V, the smallest drop, is the worst).  mode: 'open' = the REF3030E's output high-impedance, 'clamp' = its output-to-input
+    diode also conducts into the rail through Rd (worse), 'gnd' = the reference's output held at 0 V."""
+    Vc = vr + vd; gt, gb, gs, gm, gd = 1 / Rt, 1 / Rb, 1 / Rs, 1 / Rm, 1 / Rd
+    for cT, cB, cD in _it.product((True, False), repeat=3):
+        if mode != "clamp" and cD: continue
+        gdd = gd if mode == "gnd" else 0.0
+        M = np.array([[gt + gb + (gs if cT else 0), -gb], [-gb, gb + (gm if cB else 0) + (gd if cD else 0) + gdd]])
+        b = np.array([A * gt + (Vc * gs if cT else 0), (Vc * gm if cB else 0) + (Vc * gd if cD else 0)])
+        T0, B = np.linalg.solve(M, b)
+        if (T0 >= Vc - 1e-9) == cT and (B >= Vc - 1e-9) == (cB or cD):
+            return (max(0, T0 - Vc) / Rs if cT else 0) + (max(0, B - Vc) / Rm if cB else 0) + (max(0, B - Vc) / Rd if cD else 0)
+    return 0.0
+
+def forced_rail(A, bleed, mode="clamp", **kw):
+    rs = 1 / (1 / (bleed * 1.01) + 1 / (188e3 * 1.01)); lo, hi = 0.0, 6.0
+    for _ in range(60):
+        m = (lo + hi) / 2
+        if sense_inj(A, m, Rb=10e3 * 0.99, Rt=15e3 * 0.99, mode=mode, **kw) >= m / rs: lo = m
+        else: hi = m
+    return lo, sense_inj(A, lo, Rb=10e3 * 0.99, Rt=15e3 * 0.99, mode=mode, **kw)
+
+def run_forced():
+    out = []
+    for A in (1.8, 5.0):
+        for bl in (10e3, 1.8e3):
+            for mode in ("open", "clamp", "gnd"):
+                vr, i = forced_rail(A, bl, mode); out.append(dict(A=A, bleed=bl, mode=mode, rail=vr, i_ua=i * 1e6))
+    R["forced"] = out
+    w = max((o for o in out if o["bleed"] == 1.8e3), key=lambda o: o["rail"])
+    w10 = max((o for o in out if o["bleed"] == 10e3), key=lambda o: o["rail"])
+    C.add("PR-3/sense", "PR-3, PR-4, VT-22", "the AWG node forced to +1.8 V (PR-4) and +5 V (up to which PR-4 allows damage on the shield only) with the AFE unpowered, through the S3 network (Rt 15k, Rb 10k, Rd 1k, Rs 3.9k to AIN2, Rm 10k to AIN3): current into the +3.3 V_A rail through the ADS1115's diodes (smallest drop 0.3 V) and the rail it raises, with the 1.8k bleed at +1 %; worst of the REF3030E output open / clamping into the rail / at 0 V",
+          "<= 0.5 V (PR-3; the LM27762's body diode to the Due's 5V pin stays off, so the back-feed into the Due is nil)", f"{w['rail']:.3f} V at A = {w['A']:g} V ({w['i_ua']:.0f} uA into the rail)", f"{0.5-w['rail']:+.3f} V", w["rail"] <= 0.5,
+          "with the 10k bleed of the earlier draft the same case reads %.3f V (+1.8 V: %.3f V) and FAILS; the current into the ADS1115's diodes is at most 0.24 mA (10 mA rating); negative forcing sinks from ground, not the rail" % (w10["rail"], max(o["rail"] for o in out if o["bleed"] == 10e3 and o["A"] == 1.8)), "pr3")
+
 def run_guards():
+    wb = max(o["rail"] for o in R["forced"] if o["bleed"] == 10e3); wg = max(o["rail"] for o in R["forced"] if o["bleed"] == 1.8e3)
+    G.add("G-PR3-sense", "the forced-sense check with the 10k bleed must fail; the 1.8k bleed passes", wb <= 0.5, wg <= 0.5)
     # 1  the V2-2 rating check must fail when the nominal negative rail is raised (R3 = 82k gives 2.26 V)
     ok_b = _sum_ok(rail_corners(r3=82e3))
     ok_r = _sum_ok(rail_corners())
@@ -257,7 +297,7 @@ def run_guards():
             if sum(k_.values()) >= s_: hi = mid
             else: lo = mid
         return hi <= 0.5
-    G.add("G-PR-3", "PR-3 check with the bleed removed (1 Gohm) must fail", pr3(1e9), pr3(10e3))
+    G.add("G-PR-3", "PR-3 check with the bleed removed (1 Gohm) must fail", pr3(1e9), pr3(1.8e3))
     # 4  REF dropout check must fail if the +rail's feedback is lowered (R1 = 150k: 3.0 V nominal)
     def refdrop(r1):
         return rail_corners(r1=r1)["min_p"] >= REF["vout"] * 1.001 + REF["vin_min_off"]

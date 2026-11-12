@@ -130,6 +130,8 @@ The commanded range is untouched. What differs is the window's last codes (infor
 |---|---|
 | SC-9 against the flat 110 ohm bound | **2.99 LSB, over 2**: the graph's curve gives 1.66; no Basic combination meets both AW-3 and the flat bound (needs about 5 kohm and two capacitors) |
 | fragile margins | position-aware 0.9194 (+0.0006), AC peak 59.4 mA (+0.6 mA), AC top end +30 mV, SC-9 +0.34 LSB |
+
+**Watch list.** These four rows have the least margin: position-aware use (+0.0006), the AC supply-pin peak (+0.6 mA), the AC top end (+30 mV) and SC-9 through the reference (+0.34 LSB, against the datasheet curve; D-V2-15). Any part or value change here re-runs those rows first (`python3 -I run.py`).
 | AW-6 | 213 uV against 300: the margin is 87 uV, down from 211 uV; the cause is the 3 kohm resistors and the removed output capacitor |
 | *(check)* | the output saturation of 11.5 ohm per rail; the +-60 mA rating's duration; Fig. 6-14 is for 1.25 V and 5 V parts (a 3.0 V part is between), read by eye, load and capacitance unstated; the effective 14 uF of two 10 uF X5R at 3 V bias; REF3030E noise above 10 kHz; the 0.2-0.3 s above-window reset duration; the scope gain in the PAM ADC codes; DAC edge 5.85 V/us; macromodel PSRR |
 

@@ -8,12 +8,12 @@ Parts are in `parts.csv` (33 parts per board, 24 lines, prices blank). Figures m
 
 | Task | Result |
 |---|---|
-| 1 Rails | R1 120k, R2 68k, R3 56k + 8.2k, R4 100k (all Basic 1 %): **+3.318 V (3.2200 to 3.4177 V) and -2.003 V (-1.954 to -2.053 V)**; V+ + abs(V-) at the corners 5.471 V against the TPH2502's 5.5 V VDD row (29 mV); REF3030E dropout margin 17 mV; PR-2's 3.45 V margin 32 mV. **PW-1: 82.3 mA** worst normal state (limit 100), **417.6 mA total** in the worst fault with the Due at 300 mA (limit 450). SC-9 through the rail: **0.21 LSB** |
-| 2 Unpowered | The datasheets support only the feedback divider's 2.6 uA at 0.5 V; the scope inputs push up to 38.5 uA. **A bleed is needed: 10k (C25804)**, rail 0.378 V (limit 0.5), 0.34 mA permanent |
-| 3 REF3030E | Source 7.69 mA (with the AWG's offset path) and sink 80 uA against +-10 mA; the top tap moves 194 uV over the AWG sweep (6 % of the share) |
+| 1 Rails | R1 120k, R2 68k, R3 56k + 8.2k, R4 100k (all Basic 1 %): **+3.318 V (3.2200 to 3.4177 V) and -2.003 V (-1.954 to -2.053 V)**; V+ + abs(V-) at the corners 5.471 V against the TPH2502's 5.5 V VDD row (29 mV); REF3030E dropout margin 17 mV; PR-2's 3.45 V margin 32 mV. **PW-1: 74.0 mA** worst normal state (limit 100), **419.2 mA total** in the worst fault with the Due at 300 mA (limit 450), on the AWG's committed values. SC-9 through the rail: **0.13 LSB** |
+| 2 Unpowered | The datasheets support only the feedback divider's 2.6 uA at 0.5 V; the scope inputs push up to 38.5 uA. **A 1.8k bleed (C4177) is needed**: rail 0.075 V with both scope inputs at +12 V, and 0.43 V with the AWG node forced to +5 V through the sense network (the 10k of the first draft fails that case, 1.65 V, and even the +1.8 V case, 0.52 V); 1.8 mA permanent |
+| 3 REF3030E | Source 2.72 mA (the AWG's offset path through its 100 ohm + 14 uF filter is 0.98 mA worst) and sink 80 uA against +-10 mA; the top tap moves 36 uV over the AWG sweep (1 % of the share) |
 | 4 Ladder | Six equal 330R: 1.53 mA, worst tap 495 ohm = 0.31 LSB of pin leakage. Taps are checks (D-V2-13): their drift (0.133 % per 10 K) is the size of a check window, not an SC-7 term |
-| 5 Sense + jumper | **Structure S3**: k = 0.4, wire to the 1/3 tap, default tie Rd 1k, ADS input 2 = tap via 3.9k, **input 3 = the divider's bottom node B via 10k, inputs 2 and 3 read as a differential pair**. Full sweep with the wire on throughout works (tap 0.14 to 1.89 V; wire off 0.88 to 2.70 V). **Ratio: 0.050 % gain, 1.7 mV offset (99.9th pct, channel match 0.1 % max) if Zcm tracks between the inputs; 0.225 % and 2.4 mV if it spreads independently** (the old structure: 0.484 % and 6.8 mV) |
-| 6 SC-7 | Tee fit alone over the extrapolated top: at most 2.3 mV (0.065 %). **This block's SC-7 sum: 0.42 % (RSS 0.27 %) and 2.4 mV against 0.5 % and 5 mV: PASS with 0.08 %**; with Zcm tracking, 0.25 % and 1.8 mV. Calibration staircase **1.5 to 3.1 s** |
+| 5 Sense + jumper | **Structure S3**: k = 0.4, wire to the 1/3 tap, default tie Rd 1k, ADS AIN2 = tap via 3.9k, **AIN3 = the divider's bottom node B via 10k, AIN2 and AIN3 read as a differential pair**. Full sweep with the wire on throughout works (tap 0.15 to 1.85 V; wire off 0.89 to 2.66 V). **Ratio: 0.050 % gain, 1.7 mV offset (99.9th pct, channel match 0.1 % max) if Zcm tracks between the inputs; 0.221 % and 2.4 mV if it spreads independently** (the old structure: 0.484 % and 6.8 mV) |
+| 6 SC-7 | Tee fit alone over the extrapolated top (the AWG's lowest window top end 1.785 V, extrapolating 1.7 V): at most 2.35 mV (0.067 %) against 3.5 mV (0.1 %). **This block's SC-7 sum: 0.42 % (RSS 0.26 %) and 2.4 mV against 0.5 % and 5 mV: PASS with 0.08 %**; with Zcm tracking, about 0.25 % and 1.8 mV. Calibration staircase **1.5 to 3.1 s** |
 | 7 Parts | `parts.csv` |
 
 ## 1. The shared rail
@@ -27,27 +27,27 @@ V+ = 1.2 (R1 + R2) / R2 = 3.318 V and V- = -1.22 (R3 + R4) / R4 = -2.003 V nomin
 | V2-2: V+ + abs(V-) at the maximum corner against the TPH2502's VDD row (below) | 5.4707 V | +29 mV |
 | PR-2: the scope op-amp's supply at most 3.45 V | 3.4177 V | +32 mV |
 | REF3030E VIN at least VOUT + 0.2 V (SBVS032K 6.3) at the weakest corner | 3.2200 V | +17 mV |
-| AWG bottom (the AWG stream's own figures, which use these rails): the weak -rail 1.954 V gives a reach of **-1.9226 V into high impedance and -1.810 V into 50 ohm** (`../awg/design.md`) | | the window bottom of -1.68 V is reachable into 50 ohm with 0.13 V to spare; the -1.9 V used as the sweep's low end is reachable only into high impedance, and the PW-1 state "-1.9 V into 50 ohm" is conservative by about 2 mA |
+| AWG bottom (the AWG's own figures, which use these rails): the weak -rail 1.954 V lets the stage reach about -1.9226 V into high impedance (`../awg/design.md`); its hard-corner window bottom is -2.06 V (information) | | the commanded range (-1.5 V) is reachable with 0.4 V to spare; the sweep's kept bottom is -1.923 V (section 5) |
 
 **Why the margins are this thin, and what it costs the AWG.** Basic 1 % feedback resistors and the LM27762's VFB tolerance make the +rail a +-2.8 % window and the
 -rail +-2.4 %. The rating wants the sum small and the REF3030E and the AWG's bottom want both rails large, so the three limits leave about 70 mV in all, split
 as above. `report.md` lists R3 alternatives: 62.2k (56k + 6.2k) gives 56 mV of rating margin but a -1.931 V weak rail; the 68k of an earlier draft fails the rating by 18 mV.
-**The AWG stream should state which of its bottom-end figures it needs: if the window bottom must be -1.9 V into 50 ohm, the rail pair cannot be made from 1 % Basic feedback parts.**
 **The rating line (TPH2502 datasheet, 3PEAK Rev. A, TPH2501/2502/2503/2504):** 'Electrical Characteristics' (continued), PDF page 4, row **`VDD  Supply Voltage  MIN 2.5  MAX 5.5  V`**; the Applications Information (PDF page 7) adds "specified over a power-supply range of +2.7 V to +5.5 V ... the supply voltage may range from +2.5 V to +5.5 V". There is **no Recommended Operating Conditions table**; 5.5 V is the top of the specified supply range and is taken as the recommended maximum *(check with the vendor)*. Absolute Maximum Ratings, PDF page 2: V+ - V- = 7.0 V (the Applications text says 7.5 V). **The sum of the rails at the 1 % corners is 5.4707 V: 29 mV under 5.5 V** (and 5.175 V at the low corner, above 2.5 V).
 
-**PW-1.** Loads on OUT+ and OUT-, every IQ at the datasheet maximum (7.5 mA per half, TPH2502): scope dual 15 mA; AWG dual 15 mA on each rail; the AWG's offset path through Rg2
+**PW-1.** Loads on OUT+ and OUT-, every IQ at the datasheet maximum (7.5 mA per half, TPH2502): scope dual 15 mA; AWG dual 15 mA on each rail; the AWG's offset path through Rg2 + Rvr
 (from `../awg/design.py`, read at run time); its output current; ADS1115 300 uA; REF3030E 37 uA; the ladder 1.5 mA; the sense divider's default tie; two scope centres; I2C pull-ups
 1.4 mA if fitted on the AFE; the bleed. The 5V pin carries OUT+ plus OUT- x 1.10 plus the 0.39 mA IQ (a **typical; the datasheet gives no maximum** *(check)*; the inverting pump's input current is its output current; the 10 % is an allowance, the datasheet's efficiency table is not in the PDF text *(check)*). **The AWG's offset (Rg2) now comes from the REF3030E, not the +rail** (`../awg/design.py`, sha256 in report.md); the reference is supplied from the +rail, so the current still counts on OUT+.
 
 | State | OUT+ mA | OUT- mA | 5V pin mA |
 |---|---|---|---|
-| AWG hi-Z at the window top | 34.5 | 15.8 | 52.3 |
-| AWG into 50 ohm at the top | 56.2 | 15.0 | 73.1 |
-| AWG into 50 ohm at the window bottom (-1.9 V): **worst normal** | 38.9 | 39.1 | **82.3** (limit 100) |
-| fault: BNC shorted, DAC at the 3.3 V reset level | 100.7 | 15.0 | **117.6** (exempt from 100; total with the Due 417.6 of 450) |
+| AWG hi-Z at the window top (2.133 V) | 35.4 | 15.1 | 52.5 |
+| AWG into 50 ohm at the window top | 56.8 | 15.0 | 73.7 |
+| AWG into 50 ohm at its reach (-1.81 V) | 36.2 | 34.0 | 74.0 |
+| fault: BNC shorted, DAC at the window bottom | 36.3 | 54.6 | 96.8 |
+| fault: BNC shorted, DAC at the 3.3 V reset level (the model lets the output clip 0.1 V under the rail: the AWG's own figure with its derived saturation is 76 mA at its + pin, mine is 84) | 102.3 | 15.0 | **119.2** (exempt from 100; total with the Due 419.2 of 450) |
 
-The AWG's offset path (read from `../awg/design.py` at run time: Rf 470, Rg2 510, no Rg1, Rvr 0, sha256 in report.md) draws about 5 mA from the reference through Rg2 and the op-amp sinks it into the -rail: the bottom state costs 39.1 mA on OUT-.
-LM27762 dissipation at 5.25 V in the worst state is 296 mW, 103 C junction at 85 C ambient on the datasheet's 62.2 C/W (limit 125) *(check on the board)*.
+The worst normal state is **74.0 mA** (the AWG into 50 ohm at its -1.81 V reach); the AWG's offset path is under 1 mA with its 3k resistors.
+LM27762 dissipation at 5.25 V in the worst state is 277 mW, 102 C junction at 85 C ambient on the datasheet's 62.2 C/W (limit 125) *(check on the board)*.
 PW-6: at the 4.50 V minimum the +LDO keeps 1.08 V and the pump 2.35 V of headroom.
 
 **PW-2 and the switching-frequency rule.** The pump runs at 1.7 to 2.3 MHz (2 MHz typ) and cannot be set; it sits inside SM-3's 8 MHz path. The rule as stated: the line
@@ -59,11 +59,9 @@ decade; the TPH2502 gives only the DC figure) it is 13 uV at the scope pin again
 **PW-7.** Rails reach 90 % in under 1 ms in TI's model, the REF3030E settles in 2 ms (to 0.1 %, SBVS032K), the scope node's own RC is about 12 us: **2.5 ms against 15 s**. What takes seconds is thermal (VT-18).
 
 **SC-9 through the rail (VT-20).** The scope is on +3.3 V alone, V- = ground, so the AWG's negative-rail current never touches it directly. It still hears the AWG by four paths:
-(1) the +rail's load regulation (11 uV/mA x the AWG's 16 mA swing = 0.18 mV) through the dual's 80 dB DC PSRR; (2) the 5 V feed (12 mA swing across 1.2 ohm) through the +LDO's 1.9 mV/V and the PSRR; the same current is the only
-way the *negative* rail's load reaches the scope; (3) the shared REF3030E: the AWG's offset path and the sense tie change the reference's load by 4.3 mA, 194 uV, into the scope's centre; (4) the shared return: the AWG's 20 mA across
-**an assumed 10 mohm** of plane *(check, LR-1, VT-20)*. Sum **0.21 LSB** (1 LSB = 1.73 mV at the input), 0.116 of it the assumed plane and 0.09 the shared reference (the AWG's offset path loads it by 4.3 mA, 0.19 mV). The step's peak is a few uV at the pin.
+(1) the +rail's load regulation (11 uV/mA x the AWG's 19 mA swing = 0.21 mV) through the dual's 80 dB DC PSRR; (2) the 5 V feed (2.7 mA swing across 1.2 ohm) through the +LDO's 1.9 mV/V and the PSRR; the same current is the only way the *negative* rail's load reaches the scope; (3) the shared REF3030E: the AWG's offset path (now behind its 100 ohm + 14 uF filter) and the sense tie change the reference's load by 0.81 mA, 36 uV, into the scope's centre; (4) the shared return: the AWG's 20 mA across **an assumed 10 mohm** of plane *(check, LR-1, VT-20)*. Sum **0.13 LSB** (1 LSB = 1.73 mV at the input), 0.116 of it the assumed plane and 0.017 the shared reference. The step's peak is a few uV at the pin.
 
-**LM27762 on TI's transient model (`lm_tran.py`).** One case converged, start-up at 5.25 V into the bottom-state loads with the feedback set for the maximum corner (OUT+ 3.4177 V, OUT- -2.0553 V settled; +rail 90 % at 0.29 ms, -rail at 0.50 ms; peak of OUT+ 3.495 V and OUT- -2.082 V; **the bare sum peaks at 5.499 V** during start-up, a transient against the 5.5 V steady-state VDD row and the 7.0 V absolute maximum; 20.7 mV of ripple on VIN, 0.16 mV on OUT+, pump 1.39 MHz). The 5.0 V start-up, the 4.5 V start-up (one died on a race over the shared patched library, fixed, then not finished), the ripple case and the AWG step did not finish in 22 minutes of CPU and were killed: they are failures of the model (about half of version 1's runs failed too), not results. The step and the ripple/SC-9 figures therefore rest on the one converged run (ripple) and a hand estimate (step: 1.5 mV peak at the rail), both through an assumed PSRR *(check, VT-8, VT-20)*.
+**LM27762 on TI's transient model (`lm_tran.py`).** One case converged, start-up at 5.25 V into 40 mA on each rail (the AWG loads of an earlier draft: the sweep of this run predates the AWG's 3k offset resistors, and the +rail load is now about 4 mA lower) with the feedback set for the maximum corner (OUT+ 3.4177 V, OUT- -2.0553 V settled; +rail 90 % at 0.29 ms, -rail at 0.50 ms; peak of OUT+ 3.495 V and OUT- -2.082 V; **the bare sum peaks at 5.499 V** during start-up, a transient against the 5.5 V steady-state VDD row and the 7.0 V absolute maximum; 20.7 mV of ripple on VIN, 0.16 mV on OUT+, pump 1.39 MHz). The 5.0 V start-up, the 4.5 V start-up (one died on a race over the shared patched library, fixed, then not finished), the ripple case and the AWG step did not finish in 22 minutes of CPU and were killed: they are failures of the model (about half of version 1's runs failed too), not results. The step and the ripple/SC-9 figures therefore rest on the one converged run (ripple) and a hand estimate (step: 1.5 mV peak at the rail), both through an assumed PSRR *(check, VT-8, VT-20)*.
 
 ## 2. The unpowered state (PR-3)
 
@@ -71,31 +69,30 @@ Both scope inputs at +12 V push up to **38.5 uA** into the +3.3 V_A rail through
 What the unpowered ICs already sink at 0.5 V, from datasheets: the LM27762 feedback divider (120k + 68k = 188k: 2.6 uA); the LM27762's shutdown 50 kohm to ground
 (10 uA) is stated for shutdown mode and the datasheet does not say it works with VIN = 0 *(check)*; **the ADS1115, REF3030E and TPH2502 give no figure at a 0.5 V supply**. Only 2.6 uA is certain. A bleed is needed.
 
-| Bleed | sink at 0.5 V | rail with 38.5 uA in | permanent cost at 3.3 V |
-|---|---|---|---|
-| 12k (C22790) | 43.8 uA | 0.443 V | 0.28 mA |
-| **10k (C25804)** | **52.1 uA** | **0.378 V** | **0.33 mA (0.34 % of 100 mA)** |
-| 8.2k (C25981) | 62 uA | 0.321 V | 0.40 mA |
+| Bleed | rail, scope inputs at +12 V | rail, AWG node forced +1.8 V | rail, AWG node forced +5 V | permanent cost at 3.3 V |
+|---|---|---|---|---|
+| 10k (C25804) | 0.378 V | **0.527 V: fails** | **1.651 V: fails** | 0.33 mA |
+| **1.8k (C4177)** | **0.075 V** | **0.138 V** | **0.434 V** | **1.8 mA (1.8 % of 100 mA)** |
 
-10k is the same part as the sense divider's Rb. The rail stays under the limit with 122 mV to spare; nothing was counted from an IC datasheet that does not give it.
+**The forced-sense cases (PR-3, PR-4).** With the AFE unpowered, the AWG node forced to +1.8 V (PR-4's level) or +5 V (up to which PR-4 allows damage on the shield, and the back-feed must meet PR-3) pushes current through Rt, Rb and the series resistors R_SRS (AIN2) and R_SRM (AIN3) into the ADS1115's diodes to VDD, that is into the +3.3 V_A rail. Worst case: the diodes' smallest drop (0.3 V), the REF3030E output open, clamping into the rail through Rd, or at 0 V, resistors at +-1 %. The current into the rail is 54 to 55 uA at 1.8 V and 170 to 172 uA at 5 V (10k bleed); with the 1.8k bleed 75 to 77 uA and 236 to 241 uA, and **the rail stays at 0.43 V at most (limit 0.5 V), so the LM27762's body diode to the Due's 5V pin stays off and the back-feed into the Due is nil**. The current into the ADS1115's diodes is at most 0.24 mA against 10 mA; forcing negative sinks from ground, not the rail. The divider's 25k total is therefore **not** what limits this (a 100k divider would only cut the current 4x, and costs the ratio accuracy: 0.57 % at 4x with Zcm independent); the bleed does: **1.8k, 0.28 mA at 0.5 V** carries the worst 241 uA. kvm_01's v1 model reached the opposite fix (a larger divider, R >= 33k); with this bleed the v1 divider can stay as it is, which would let one bleed serve both versions: to be agreed.
 
 ## 3. The REF3030E's three roles (D-V2-10)
 
-ADS1115 input 1 (the anchor, Kelvin-routed), the ladder's top tap, and the scope's centre through R3 of both channels (and the sense divider's default tie). SBVS032K: output current -10 to +10 mA
+ADS1115 AIN0 (the anchor, Kelvin-routed), the ladder's top tap, and the scope's centre through R3 of both channels (and the sense divider's default tie). SBVS032K: output current -10 to +10 mA
 (6.3), load regulation 15 ppm/mA sourcing and 150 ppm/mA sinking (max), VIN at least VOUT + 0.2 V, CL 0.1 to 22 uF.
 
 | Case | Current | Against | Effect |
 |---|---|---|---|
-| Source: ladder 1.53 mA, both centres at -12 V (5 uA each), sense tie 0.19 mA, ADS 1.4 uA, **the AWG's Rg2 path 5.95 mA worst** | 7.69 mA | 10 mA | 115 ppm = 0.35 mV, constant |
+| Source: ladder 1.53 mA, both centres at -12 V (10 uA), sense tie 0.19 mA, ADS 1.4 uA, **the AWG's Rg2 + Rvr path 0.98 mA worst** (DAC at 0 V) | 2.72 mA | 10 mA | 41 ppm = 0.12 mV, constant |
 | Sink, the clamped-input case: both inputs +12 V (node about 0.9 V past the rail) 1.7 uA, plus the AWG forced +5 V through the divider 77 uA | 80 uA | 10 mA | 12 ppm |
-| Movement of the ladder top over the AWG sweep (the AWG's 4.14 mA and the divider tie's 0.165 mA) | 194 uV | 3 mV (0.1 % of 3 V) | 6 % of the share |
+| Movement of the ladder top over the AWG sweep (the AWG's 0.64 mA and the divider tie's 0.165 mA) | 36 uV | 3 mV (0.1 % of 3 V) | 1 % of the share |
 | The scope's signal current in the reference | 0.49 uV | 3 mV | nil |
 
 The reference is read at the same node the ladder hangs on, so what the ladder does to it is in every reading. A ceramic 1 uF output capacitor is below the datasheet's 10 mohm ESR window *(check)*.
 
 ## 4. The ladder
 
-Six equal 330R (C23138, Basic): taps at 1/6 to 6/6 of the reference, 0.5, **1.0 (measured, ADS input 3)**, 1.5, **2.0 (measured, input 4)**, 2.5, 3.0 V (the reference, input 1). Tap impedances 275, 440, 495, 440, 275 ohm, 0 at the top.
+Six equal 330R (C23138, Basic): taps at 1/6 to 6/6 of the reference, 0.5, 1.0 (read only as B while the wire is on), 1.5, **2.0 (measured, AIN1)**, 2.5, 3.0 V (the reference, AIN0). Tap impedances 275, 440, 495, 440, 275 ohm, 0 at the top.
 
 | Check | Result | Limit |
 |---|---|---|
@@ -114,8 +111,8 @@ The taps are checks (warm-up, between calibrations, faults; D-V2-13), not fit an
                                       |            |  \
                                       Rs 3.9k      |   jumper wire: B to the 1/3 ladder tap
                                       |            Rm 10k
-                              ADS1115 input 2      |
-                                      \--- differential pair ---/ input 3
+                              ADS1115 AIN2      |
+                                      \--- differential pair ---/ AIN3
 ```
 k = Rb / (Rt + Rb) = 0.4, T0 = kA + (1 - k)B. Divider + Rd = 26 kohm, a permanent 0.19 mA at most on the AWG node. Inputs: 1 = reference, 2 = the tap T0, **3 = B (not the 1/3 ladder tap: afe-v2 section 3.4 changes here)**, 4 = the 2/3 tap (check). The 1/3 tap is read only through B while the wire is on.
 
@@ -125,53 +122,59 @@ k = Rb / (Rt + Rb) = 0.4, T0 = kA + (1 - k)B. Divider + Rd = 26 kohm, a permanen
 
 | Structure | Gain | Offset |
 |---|---|---|
-| S1 (the first design): tap on input 2, B read on input 3 only with the wire on, REF on input 1 | 0.484 % | 6.8 mV |
-| S2: B read on input 3 in both wire positions, so dT and dB are each one channel at two times and the offsets cancel; Rd drops out | 0.313 % | 2.2 mV |
-| S3: inputs 2 and 3 read as a DIFFERENTIAL pair, A = B + (T - B) / k, k = d(T - B) / dB; the reference's scale is rebuilt on input 3 from B with the wire off (KCL at B: REF = B - Rd (T - B) / Rb), so no other input's gain enters | 0.160 % | 2.1 mV |
-| **S3 + 10k on input 3 matching input 2's source impedance (Rt || Rb + 3.9k = 9.9k), Zcm tracking between the inputs** | **0.050 %** | **1.7 mV** |
-| the same with Zcm spreading +-25 % independently per input | 0.225 % | 2.4 mV |
+| S1 (the first design): tap on AIN2, B read on AIN3 only with the wire on, REF on AIN0 | 0.484 % | 6.8 mV |
+| S2: B read on AIN3 in both wire positions, so dT and dB are each one channel at two times and the offsets cancel; Rd drops out | 0.313 % | 2.2 mV |
+| S3: AIN2 and AIN3 read as a DIFFERENTIAL pair, A = B + (T - B) / k, k = d(T - B) / dB; the reference's scale is rebuilt on AIN3 from B with the wire off (KCL at B: REF = B - Rd (T - B) / Rb), so no other input's gain enters | 0.160 % | 2.1 mV |
+| **S3 + 10k on AIN3 matching AIN2's source impedance (Rt || Rb + 3.9k = 9.9k), Zcm tracking between the inputs** | **0.050 %** | **1.7 mV** |
+| the same with Zcm spreading +-25 % independently per input | 0.221 % | 2.4 mV |
 
 **Ablation of the shipped models** (`report.md`, 20,000 draws, 99.9th percentile; reproduced independently in `review.md`): in S1, removing the channel mismatch takes 0.484 % to 0.236 % (the match alone is 0.379 %), the offsets 0.455 %, the Zcm spread 0.422 %, the 1 % resistors 0.470 %: the four do not sum to the total, the errors interact through the 1/k amplification. In S3 with the 10k: the match alone costs 0.010 % (it cancels), the offsets alone 0.022 % and 1.3 mV, the 1 % resistors alone 0.035 %, and **the Zcm spread alone 0.212 % and 1.2 mV: it is what is left**, so the result depends on whether Zcm tracks between the inputs. Even at k = 1 a 0.1 % channel match on a three-channel ratio exceeds the 0.05 % allocation; cancelling it (same channel, ratio of differences) is the structural fix. The model draws an independent +-3 LSB of 125 uV per input; the datasheet bounds the difference of any two at 3 LSB of 62.5 uV (specified at +-2.048 V): up to 4x conservative on offsets *(check at +-4.096 V)*. 0.1 % resistors would be worth 0.01 % in S1 and nothing in S3: not worth their Extended cost.
-**v1's +-5 V window against v2's -1.95 .. +2.28 V:** B_on >= 5.2 k / (1 - k) forces k to about 0.16 in v1 (v2: 0.4); the same circuit then gives 0.063 % and 3.5 mV (Zcm tracking, 0.447 % and 5.3 mV independent): the difference is the offset term (the pair's 3-LSB offset divided by k).
+**v1's +-5 V window against v2's -1.923 .. +2.18 V:** B_on >= 5.2 k / (1 - k) forces k to about 0.16 in v1 (v2: 0.4); the same circuit then gives 0.063 % and 3.5 mV (Zcm tracking, 0.447 % and 5.3 mV independent): the difference is the offset term (the pair's 3-LSB offset divided by k).
 
-**Bounds restated for k = 0.4.** Wire off (B = REF through 1k): 0.88 to 2.70 V over A = -1.95 .. +2.28 V. Wire on, B the 1/3 tap pulled toward the reference through Rd, about 1.5 V at the window bottom: 0.4 x (-1.95) + 0.6 x 1.5 = 0.14 V at the bottom, 1.89 V at the top. k = 0.5 puts the tap at -0.21 V (scanned: fails). The 3.3 V limit holds for any B up to the rail. The wire goes to the lowest node that the pair measures (B is measured, so it need not be a measured tap).
+**Bounds restated for k = 0.4.** Wire off (B = REF through 1k): 0.89 to 2.66 V over A = -1.923 .. +2.18 V (the kept sweep, to the AWG's hard-corner DC window top end 2.133 V). Wire on, B the 1/3 tap pulled toward the reference through Rd, about 1.5 V at the window bottom: 0.4 x (-1.923) + 0.6 x 1.5 = 0.15 V at the bottom, 1.85 V at the top. k = 0.5 puts the tap at -0.21 V (scanned: fails). The 3.3 V limit holds for any B up to the rail. The wire goes to the lowest node that the pair measures (B is measured, so it need not be a measured tap).
 
 **One manual action; the sweep with the wire on throughout.** Wire off at the start (the ratio level 2.0 V): B and the pair read. Wire on with the tee cable: the same two readings. The host solves (A, k) from the four with the nominal network, then the staircase runs with the ADS1115 free-running on the pair; **B is read at the first and last level, and every level between uses B from the straight line of the pair through those two** (the network is linear: accuracy unchanged). The loaded ladder tap (shift up to 631 mV, 118 uA) is not a check point while the wire is on; the 2/3 tap and the reference stay readable, and the wire-off readings before and after read everything. At the end the host removes the wire with the tee and reads the ratio level again.
 
 | Check | Result |
 |---|---|
-| Tap range, wire on, every AWG level, 1 % resistors, REF +-0.1 % | 0.141 to 1.891 V (limits 0 to 3.22): PASS |
-| Tap range, wire off (normal use) | 0.881 to 2.697 V: PASS |
-| A wire left on or missing: input 3 differs between the positions at every level and tolerance draw | at least 1230 mV against a 50 mV threshold: detected |
-| Every position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's diodes, input 2 / input 3 | at most 848 uA, against 10 mA; the host takes no action |
-| Distinguishability: input 3 reads B itself | 300 mV smallest gap against 3.1 mV; the top tap reads as the default and the host stops either way |
+| Tap range, wire on, every AWG level, 1 % resistors, REF +-0.1 % | 0.152 to 1.850 V (limits 0 to 3.22): PASS |
+| Tap range, wire off (normal use) | 0.893 to 2.656 V: PASS |
+| A wire left on or missing: AIN3 differs between the positions at every level and tolerance draw | at least 1230 mV against a 50 mV threshold: detected |
+| Every position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's diodes, AIN2 / AIN3 | at most 848 uA, against 10 mA; the host takes no action |
+| Distinguishability: AIN3 reads B itself | 300 mV smallest gap against 3.1 mV; the top tap reads as the default and the host stops either way |
 | Ratio accuracy | see the table above |
 
-Protection is two series resistors (3.9k on input 2, 10k on input 3) and **no clamp diode**, because the ADS1115's own diodes conduct first (SBAS444E 7.3.1: "overdriving an input ... can affect conversions on other inputs" *(check, VT-22)*).
+Protection is two series resistors (3.9k on AIN2, 10k on AIN3) and **no clamp diode**, because the ADS1115's own diodes conduct first (SBAS444E 7.3.1: "overdriving an input ... can affect conversions on other inputs" *(check, VT-22)*).
 
 **The calibration staircase (D21, D23).** The staircase is device-sequenced in lockstep with the ADS1115 free-running on the pair: 1.5 to 3 ms a level, 1024 levels. An ADS1115 conversion takes 1/DR (single-cycle settling, SBAS444E 7.3.6): 1.16 ms at 860 SPS, 2.1 ms at 475, 7.8 ms at 128. Per level that is 0.5 to 2.6 conversions at 860 SPS, of which 0.3 to 1.6 lie wholly inside a level (the step lands inside one); at 128 SPS one conversion spans 3 to 5 levels and, time-stamped, is the boxcar of the staircase that the Due's codes are averaged over in the same window. The pair reads 125 uV rms per conversion (Table 6-1), 0.44 mV at the AWG node; the fit across 300 to 1600 usable conversions gives a slope noise of **0.002 to 0.003 % (budget 0.005 %)**, so **no averaging per level is needed and one reading per level or less is enough**; nothing in this noise needs more than D23's timing. Total: **1.5 to 3.1 s for the staircase**, plus about 0.3 s of end and wire-off readings (64 conversions at 860 SPS each, four times, static levels), warm-up separate. (An earlier 6 to 7 minute figure assumed 0.4 s a level and is superseded.)
 
-**Dropping clipped levels.** The AWG clips about 5 to 10 mV above the weak -rail (-1.955 V), that is below about -1.923 V. The sweep drops any level at which the pair's slope over the next three levels (the last three at the top end) is below 0.5 x the median slope of the sweep: on a simulated staircase this drops the 6 lowest of 1025 levels (all below -1.923 V), the kept bottom is -1.926 V, and the fit gain is unchanged (-0.0002 %). The cost is the sweep's bottom, -1.95 to about -1.92 V, 30 mV; the coverage of the scope's -1.5 .. +3.5 V is unchanged because the window still reaches -1.5 V with 0.4 V to spare.
+**Dropping clipped levels.** The AWG's hard-corner window bottom is -2.06 V (`../awg/design.md`, information), but the weak -rail clips the output below about -1.923 V. The sweep drops any level at which the pair's slope over the next three levels (the last three at the top end) is below 0.5 x the median slope of the sweep: on a simulated staircase of 1025 codes from -2.06 V it drops the 36 lowest levels (all below -1.923 V), the kept bottom is -1.925 V, and the fit gain is unchanged (-0.0001 %). The cost is 36 levels (0.14 V of the window); the coverage of the scope's -1.5 .. +3.5 V is unchanged, the margin below -1.5 V is 0.42 V.
 
 ## 6. The ADS1115 and SC-7
 
 15 bits single-ended at +-4.096 V, 125 uV a code (SBAS444E Table 7-1). Noise, Table 6-1: 125 uV rms at every rate to 128 SPS: one LSB, so the table is quantisation-limited; 64 averaged readings referred to the AWG node through k are 39 uV; without dither the worst case is half a code, 156 uV. INL is 1 LSB at +-2.048 V
 and 8 SPS only *(check at +-4.096 V)*. Gain error 0.15 % max and drift 40 ppm/K cancel in the ratio to the reference; the **channel match (0.1 % max) and offset match (3 LSB) do not** and are the error of section 5.
 
-**The extrapolation.** The AWG window (-1.9 to +2.05 or +2.2275 V) covers 71 to 75 % of the scope's range; the top 1.27 to 1.45 V is extrapolated. Truth model: the Due ADC's INL as a cubic or parabolic bow (0.5 and 1.2 LSB at the extremes) or as random knots every 8 codes (1.2 LSB), a channel offset of +-0.5 LSB between the scope pin and the ladder pin *(assumed)*, the pin leakage.
-99.9th percentile error at +3.5 V, 1024 points (1 LSB at the input = 1.73 mV; 0.1 % of 3.5 V = 3.5 mV; the whole of SC-7 there = 22.5 mV):
+**The extrapolation.** The sweep reaches the AWG's **window**, not just the commanded range: the DAC's last codes drive the output to the window top end, which the AWG's note puts between **1.785 V (lowest over its tolerances) and 2.133 V (hard-corner DC), with the guaranteed commandable top at +1.63 V**. The fit uses every kept level, so the extrapolation starts at the board's own window top; **1.785 V is used as the worst case** (a longer extrapolation: 1.7 V of the scope's 5 V, covering 66 %), and the table shows 1.63 V (the commanded top, if the window's last codes were unusable) and 2.133 V as well. Truth model: the Due ADC's INL as a cubic or parabolic bow (0.5 and 1.2 LSB at the extremes) or random knots every 8 codes (1.2 LSB), a channel offset of +-0.5 LSB between the scope pin and the ladder pin *(assumed)*, the pin leakage. 99.9th percentile error at +3.5 V, 1024 points, 800 draws each (1 LSB at the input = 1.73 mV; 0.1 % of 3.5 V = 3.5 mV; the whole of SC-7 there = 22.5 mV):
 
 | Window top | INL model | A: tee fit alone | B: with ladder anchors (ground, 1/3, 2/3, reference) |
 |---|---|---|---|
-| 2.05 V | cubic 0.5 LSB | 0.27 mV | 3.45 mV |
-| 2.05 V | cubic 1.2 | 0.64 | 4.14 |
-| 2.05 V | parabolic 1.2 | 1.76 | 3.29 |
-| 2.05 V | knots 1.2 | 2.28 | 5.68 |
-| 2.2275 V | the same four | 0.26 / 0.63 / 1.64 / 2.25 | 3.28 / 4.01 / 3.06 / 5.33 |
+| 1.63 V | cubic 0.5 LSB | 0.52 mV (0.148 %) | 3.83 mV |
+| 1.63 V | cubic 1.2 LSB | 1.25 mV (0.356 %) | 4.33 mV |
+| 1.63 V | knots 1.2 LSB | 2.35 mV (0.670 %) | 6.69 mV |
+| 1.63 V | parab 1.2 LSB | 2.07 mV (0.591 %) | 3.86 mV |
+| 1.785 V | cubic 0.5 LSB | 0.42 mV (0.121 %) | 3.70 mV |
+| 1.785 V | cubic 1.2 LSB | 1.01 mV (0.290 %) | 4.28 mV |
+| 1.785 V | knots 1.2 LSB | 2.33 mV (0.665 %) | 6.25 mV |
+| 1.785 V | parab 1.2 LSB | 1.96 mV (0.560 %) | 3.65 mV |
+| 2.133 V | cubic 0.5 LSB | 0.24 mV (0.069 %) | 3.38 mV |
+| 2.133 V | cubic 1.2 LSB | 0.58 mV (0.165 %) | 4.08 mV |
+| 2.133 V | knots 1.2 LSB | 2.30 mV (0.658 %) | 5.53 mV |
+| 2.133 V | parab 1.2 LSB | 1.72 mV (0.491 %) | 3.20 mV |
 
-**SC-7's fit share holds over the extrapolated range with the tee fit alone (at most 2.3 mV, 0.065 %; 800 draws behind each 99.9th percentile, two seeds within 0.1 mV) for the three INL models used.** The four-anchor quadratic estimator (column B; information only, D-V2-13) is worse: with exact ADS readings it is still worse for cubic (1.4 against 0.6 mV) and random-knot INL (3.8 against 2.3 mV) and better only for a parabolic INL (0.0 against 1.6 mV). It is the estimator, and the ADS1115's channel match and offset make it worse again (3 to 6 mV); nothing here shows that no use of the anchors could help (a lower-order correction was not tried, `review.md` section 2). They remain a fault check and a quiet DC source. The INL shapes and the scope pin map are assumptions (VT-23).
+**SC-7's fit share holds over the extrapolated range with the tee fit alone (at most 2.35 mV, 0.067 %, against 3.5 mV; 800 draws behind each 99.9th percentile, two seeds within 0.1 mV) for the three INL models used.** The four-anchor quadratic estimator (column B; information only, D-V2-13) is worse: with exact ADS readings it is still worse for cubic (1.4 against 0.6 mV) and random-knot INL (3.8 against 2.3 mV) and better only for a parabolic INL (0.0 against 1.6 mV). It is the estimator, and the ADS1115's channel match and offset make it worse again (3 to 6 mV); nothing here shows that no use of the anchors could help (a lower-order correction was not tried, `review.md` section 2). They remain a fault check and a quiet DC source. The INL shapes and the scope pin map are assumptions (VT-23).
 
-**This block's SC-7 terms (gain %, offset mV), Zcm independent (the conservative case):** REF3030E 0.13 % (initial 0.1 %, 15 ppm/K x 10 K, hysteresis, long-term); sense chain 0.231 % and 2.4 mV; extrapolated tee fit 0.064 % (random-knot INL, the worst model). **Sum 0.42 %, RSS 0.27 %, 2.4 mV against SC-7's 0.5 % and 5 mV: PASS with 0.08 %**; the scope's own terms come on top. With Zcm tracking the sense term is 0.050 % / 1.7 mV and the sum 0.24 %. The ladder's drift is not a term (D-V2-13).
+**This block's SC-7 terms (gain %, offset mV), Zcm independent (the conservative case):** REF3030E 0.129 % (initial 0.1 %, 15 ppm/K x 10 K, hysteresis, long-term); sense chain 0.221 % and 2.4 mV (the same Monte Carlo as the ratio row); extrapolated tee fit 0.067 % (random-knot INL, the worst model, window top 1.785 V). **Sum 0.42 %, RSS 0.26 %, 2.4 mV against SC-7's 0.5 % and 5 mV: PASS with 0.08 %**; the scope's own terms come on top. With Zcm tracking the sense term is 0.050 % / 1.7 mV and the sum about 0.25 %. The ladder's drift is not a term (D-V2-13).
 
 ## 7. Parts
 
@@ -180,7 +183,7 @@ The scope dual, REF3030E, ADS1115, ladder and sense divider are on +3.3 V_A and 
 
 ## 8. What needs the owner or another stream
 
-1. **Sense ratio**: with S3 and a matched resistor it is 0.050 % / 1.7 mV if the ADS1115's input impedance tracks between inputs and 0.225 % / 2.4 mV if not; SC-7's whole budget holds either way (0.42 % worst, no relaxation). VT-21 decides which case. afe-v2 section 3.4's allocation changes: input 3 reads the divider's bottom node.
-2. **Rails**: about 70 mV to share (section 1); the AWG's bottom-end figure.
-3. The AWG stream already uses these rails and takes its offset from the REF3030E: the reference carries 7.69 mA (rating 10) and moves 194 uV with the AWG level; both are in this block's rows.
-4. The AWG's reset-with-short state draws 66.5 mA from OUT+ (117.6 mA total here): the AWG stream's PW-3 row.
+1. **Sense ratio**: with S3 and a matched resistor it is 0.050 % / 1.7 mV (at the 0.05 % limit within Monte Carlo noise) if the ADS1115's input impedance tracks between AINx and 0.221 % / 2.4 mV if not; SC-7's whole budget holds either way (0.42 % worst, no relaxation). VT-21 decides which case. afe-v2 section 3.4's pins: AIN0 = REF3030E, AIN1 = the 2/3 tap, AIN2 = the sense tap via R_SRS, AIN3 = B via R_SRM, read as AIN2 - AIN3 (the model's pairing check: the figures do not change with which columns carry the tap and B).
+2. **Rails**: about 70 mV to share (section 1).
+3. **The unpowered bleed is 1.8k, not 10k** (section 2): the AWG node forced to +1.8 V or +5 V through the sense network needs it; v1 should use the same value or a larger divider, to be agreed with the v1 helper.
+4. The AWG's reset-with-short state (DAC0 at 3.3 V into a shorted BNC): this block's model lets the stage clip 0.1 V under the rail and reads 102 mA on OUT+ (119 mA from the 5V pin, 419 mA with the Due); the AWG note's own figure, with its derived saturation, is 76 mA at its + pin and is accepted there (D-V2-12). Both leave the 450 mA total with margin.

@@ -28,19 +28,24 @@ def ref_loads():
     div_src_top = max(0.0, (REF["vout"] - 2.28) / SENSE_TOT)
     div_snk_forced = (5.0 - REF["vout"]) / (SENSE_TOT * (1 - TOL))         # AWG forced +5 V (PR-4: may damage, shield only)
     ads = 2 * 0.7e-6
-    awg_off = 5.95e-3                                                          # the AWG's Rg2 path from the reference, worst (../awg/design.md section 4)
-    return dict(awg_off=awg_off, ladder=ladder, scope_src=scope_src, scope_snk=scope_snk, div_src=div_src, div_src_top=div_src_top, div_snk_forced=div_snk_forced, ads=ads)
+    import power
+    v_, _ = power.awg_values()
+    rg = (v_["Rg2"] + v_.get("Rvr", 0.0)) * (1 - TOL)
+    kin = v_["Rbpl"] / (v_["Rbin"] + v_["Rbpl"])
+    awg_off = REF["vout"] * (1 + REF["tol"] * 2) / rg                          # the AWG's Rg2 path from the reference, worst: DAC at 0 V (node at 0), Rg2 + Rvr -1 %, reference +0.2 % (../awg/design.md section 4: 0.98 mA)
+    awg_swing = kin * (2.771 - 0.578) / (v_["Rg2"] + v_.get("Rvr", 0.0))      # its signal-dependent part across the DAC window 0.578 .. 2.771 V
+    return dict(awg_swing=awg_swing, awg_off=awg_off, ladder=ladder, scope_src=scope_src, scope_snk=scope_snk, div_src=div_src, div_src_top=div_src_top, div_snk_forced=div_snk_forced, ads=ads)
 
 def main():
     L = ref_loads(); R["loads"] = L
     src = L["ladder"] + L["scope_src"] + L["div_src"] + L["ads"] + L["awg_off"]
     snk = max(L["scope_snk"], L["div_snk_forced"] + L["scope_snk"])
-    C.add("REF/src", "PA-2, D-V2-10", "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 5.95 mA worst, from ../awg/design.md)", f"<= {REF['iload'][1]*1e3:.0f} mA (6.3)",
+    C.add("REF/src", "PA-2, D-V2-10", "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 + Rvr, computed from ../awg/design.py: 0.98 mA worst)", f"<= {REF['iload'][1]*1e3:.0f} mA (6.3)",
           f"{src*1e3:.3f} mA", f"{(REF['iload'][1]-src)*1e3:+.2f} mA", src <= REF["iload"][1], "", "ref")
     C.add("REF/snk", "PA-2, D-V2-10", "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)", f"<= {-REF['iload'][0]*1e3:.0f} mA",
           f"{snk*1e6:.0f} uA", f"{(-REF['iload'][0]-snk)*1e3:+.2f} mA", snk <= -REF["iload"][0],
           "the sink load regulation 150 ppm/mA is 10x the source figure but at this current moves the output by %.2f ppm" % (snk * 1e3 * 150e-6 * 1e6 * 1e-3 * 1e3 / 1e3), "ref")
-    dI = (L["div_src"] - L["div_src_top"]) + 4.14e-3                          # + the AWG's signal-dependent part of Rg2 across its window (../awg/design.md: 4.14 mA)
+    dI = (L["div_src"] - L["div_src_top"]) + L["awg_swing"]                    # + the AWG's signal-dependent part of Rg2 across its window
     dV = dI * 1e3 * REF["load_src"] * REF["vout"]
     share = REQ["fit_share"] * REF["vout"]
     C.add("REF/lreg", "SC-7", "the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA", f"<= {share*1e3:.1f} mV (0.1 % fit share of 3 V)",

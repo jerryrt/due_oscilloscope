@@ -34,14 +34,14 @@ def main():
     for k, lab in (("base", "wire on throughout, max channel match 0.1 %"), ("typ_match", "typical channel match 0.05 %"), ("no_match", "no channel mismatch"), ("wire_off_sweep", "wire off throughout (information)")):
         s = sj[k]; L.append(f"| {lab} | {s['gain_pct']:.3f} | {s['off_mV']:.2f} | {s['err_mV']:.2f} | {s['k_err_pct']:.3f} |")
     L += ["", "Structures compared (99.9th percentile, ADS1115 channel match 0.1 % max, offset 3 LSB)", "", "| structure | gain % | offset mV |", "|---|---|---|"]
-    for k, lab in (("S1", "S1: tap on input 2, B on input 3 in the wire position only, REF on input 1"), ("S2", "S2: B on input 3 in both positions"), ("S3_no_rm", "S3: input 3 = B, inputs 2-3 differential, REF scale rebuilt on input 3"), ("S3_rm", "S3 + 10k matched resistor on input 3 (Zcm independent per input)"), ("S3_rm_common", "S3 + matched resistor, Zcm tracking between inputs")):
+    for k, lab in (("S1", "S1: tap on AIN2, B on AIN3 in the wire position only, REF on AIN0"), ("S2", "S2: B on AIN3 in both positions"), ("S3_no_rm", "S3: AIN3 = B, AIN2 - AIN3 differential, REF scale rebuilt on AIN3"), ("S3_rm", "S3 + 10k matched resistor on AIN3 (Zcm independent per input)"), ("S3_rm_common", "S3 + matched resistor, Zcm tracking between inputs")):
         s = sj["structs"][k]; L.append(f"| {lab} | {s['gain_pct']:.3f} | {s['off_mV']:.2f} |")
-    L += ["", "Ablation of the shipped models (20,000 draws, 99.9th percentile; S3 = the design with 10k on input 3, Zcm independent per input; S1 = the first structure)", "", "| case | S3 gain % | S3 offset mV | S1 gain % | S1 offset mV |", "|---|---|---|---|---|"]
+    L += ["", "Ablation of the shipped models (20,000 draws, 99.9th percentile; S3 = the design with 10k on AIN3, Zcm independent per input; S1 = the first structure)", "", "| case | S3 gain % | S3 offset mV | S1 gain % | S1 offset mV |", "|---|---|---|---|---|"]
     for k_, v_ in sj["ablation"].items(): L.append(f"| {k_} | {v_['S3_gain']:.3f} | {v_['S3_off']:.2f} | {v_['S1_gain']:.3f} | {v_['S1_off']:.2f} |")
     L += ["", "ADS1115 timing per level (D23: staircase 1.5 to 3 ms a level, free-running on the pair)", "", "| DR | conversion ms | step ms | conversions per level | whole inside a level | fit slope noise % | staircase s |", "|---|---|---|---|---|---|---|"]
     for t in sj["timing"]: L.append(f"| {t['DR']} | {t['conv_ms']:.2f} | {t['step_ms']:.1f} | {t['per_level']:.2f} | {t['clean_per_level']:.2f} | {t['fit_slope_noise_pct']:.4f} | {t['total_s']:.2f} |")
     L += ["", "Every header position (B tied to node X by the wire; T0 over the AWG sweep -1.95..+2.28 V; dT = change of the tap against the wire-off reading)", "", "| node | X V | T0 min | T0 max | current into ADS diodes uA | wire current uA |", "|---|---|---|---|---|---|"]
-    for w in sj["wrong"]: L.append(f"| {w['node']} | {w['X']} | {w['t0_min']:.3f} | {w['t0_max']:.3f} | {w['iesd_ua']:.0f} (input 3: {w['iesd3_ua']:.0f}) | {w['iwire_ua']:.0f} |")
+    for w in sj["wrong"]: L.append(f"| {w['node']} | {w['X']} | {w['t0_min']:.3f} | {w['t0_max']:.3f} | {w['iesd_ua']:.0f} (AIN3: {w['iesd3_ua']:.0f}) | {w['iwire_ua']:.0f} |")
     sc = load("sc7")
     L += ["", "## SC-7 sum of this block (sc7.py)", "", "| term | gain % | offset mV |", "|---|---|---|"]
     for r in sc["sum"]["rows"]: L.append(f"| {esc(r[0])} | {r[1]:.3f} | {r[2]:.1f} |")

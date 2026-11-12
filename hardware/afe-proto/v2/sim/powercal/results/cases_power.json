@@ -58,34 +58,34 @@
   "case": "AFE current from the Due's 5V pin, normal operation, IQ at the datasheet maximum, rails at the strong corner",
   "id": "PW-1",
   "limit": "<= 100 mA",
-  "margin": "+17.7 mA",
+  "margin": "+26.0 mA",
   "note": "charge-pump input current = output current + 10 % + IQ 0.39 mA *(check: IQ is a typical, no maximum is given; the datasheet gives no efficiency table in text)*. The AWG's offset path comes from the REF3030E, which the +rail supplies, so it counts on OUT+ either way",
   "ok": true,
   "req": "PW-1",
   "sect": "pw1",
-  "value": "82.3 mA"
+  "value": "74.0 mA"
  },
  {
   "case": "Due (300 mA, D7) + AFE in the worst fault (indefinite short), <= 450 mA",
   "id": "PW-1 total",
   "limit": "<= 450 mA",
-  "margin": "+32 mA",
+  "margin": "+31 mA",
   "note": "the short is exempt from the 100 mA, not from the 450 mA total",
   "ok": true,
   "req": "PW-1",
   "sect": "pw1",
-  "value": "418 mA (117.6 mA AFE)"
+  "value": "419 mA (119.2 mA AFE)"
  },
  {
   "case": "LM27762 junction at 85 C ambient, worst state, 5.25 V in, RthJA 62.2 C/W (the datasheet's) ",
   "id": "PW-1/th",
   "limit": "<= 125 C",
-  "margin": "+22 K",
+  "margin": "+23 K",
   "note": "RthJA is the datasheet's JEDEC figure; a real board does better or worse: check",
   "ok": true,
   "req": "PW-1",
   "sect": "pw1",
-  "value": "103 C (296 mW)"
+  "value": "102 C (277 mW)"
  },
  {
   "case": "ripple at an amplifier supply pin <= 20 mV",
@@ -132,15 +132,15 @@
   "value": "12.6 uA"
  },
  {
-  "case": "unpowered +3.3 V_A rail with both scope inputs at +12 V, 10k bleed (C25804) at +1 %, with only the resistive sinks",
+  "case": "unpowered +3.3 V_A rail with both scope inputs at +12 V, 1.8k bleed (C4177) at +1 %, with only the resistive sinks",
   "id": "PR-3",
   "limit": "<= 0.5 V",
-  "margin": "+0.122 V",
-  "note": "sinks 52.1 uA against 38.5 uA pushed in at 0.5 V",
+  "margin": "+0.425 V",
+  "note": "sinks 277.7 uA against 38.5 uA pushed in at 0.5 V",
   "ok": true,
   "req": "PR-3",
   "sect": "pr3",
-  "value": "0.378 V"
+  "value": "0.075 V"
  },
  {
   "case": "quiescent cost of the bleed, rail at its maximum, resistor -1 %",
@@ -151,7 +151,7 @@
   "ok": null,
   "req": "PW-1",
   "sect": "pr3",
-  "value": "0.343 mA = 0.34 % of 100 mA"
+  "value": "1.903 mA = 1.90 % of 100 mA"
  },
  {
   "case": "current into the Due's supply pins <= 100 uA",
@@ -163,5 +163,16 @@
   "req": "PR-3",
   "sect": "pr3",
   "value": "1.8 uA (scope design, through R3 and the sense filter; nothing reaches the 5V pin)"
+ },
+ {
+  "case": "the AWG node forced to +1.8 V (PR-4) and +5 V (up to which PR-4 allows damage on the shield only) with the AFE unpowered, through the S3 network (Rt 15k, Rb 10k, Rd 1k, Rs 3.9k to AIN2, Rm 10k to AIN3): current into the +3.3 V_A rail through the ADS1115's diodes (smallest drop 0.3 V) and the rail it raises, with the 1.8k bleed at +1 %; worst of the REF3030E output open / clamping into the rail / at 0 V",
+  "id": "PR-3/sense",
+  "limit": "<= 0.5 V (PR-3; the LM27762's body diode to the Due's 5V pin stays off, so the back-feed into the Due is nil)",
+  "margin": "+0.066 V",
+  "note": "with the 10k bleed of the earlier draft the same case reads 1.651 V (+1.8 V: 0.527 V) and FAILS; the current into the ADS1115's diodes is at most 0.24 mA (10 mA rating); negative forcing sinks from ground, not the rail",
+  "ok": true,
+  "req": "PR-3, PR-4, VT-22",
+  "sect": "pr3",
+  "value": "0.434 V at A = 5 V (241 uA into the rail)"
  }
 ]

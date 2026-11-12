@@ -1,72 +1,83 @@
 [
  {
-  "case": "sweep, wire ON throughout: sense tap pin voltage at every AWG level -1.95..+2.28 V, every resistor at +-1 %, REF +-0.1 %",
+  "case": "sweep, wire ON throughout: sense tap pin voltage at every AWG level -1.923..+2.18 V, every resistor at +-1 %, REF +-0.1 %",
   "id": "PA-4/range",
   "limit": "0 V .. 3.22 V (ADS supply minimum)",
-  "margin": "+0.141 V / +1.329 V",
+  "margin": "+0.152 V / +1.370 V",
   "note": "k = 0.4, bottom node = the 1/3 tap, Rd 1k",
   "ok": true,
   "req": "PA-4",
   "sect": "sense",
-  "value": "0.141 .. 1.891 V"
+  "value": "0.152 .. 1.850 V"
  },
  {
   "case": "the same with the wire OFF (default tie to the REF3030E; the normal-use state)",
   "id": "PA-4/range-off",
   "limit": "0 V .. 3.22 V",
-  "margin": "+0.881 V / +0.523 V",
+  "margin": "+0.893 V / +0.564 V",
   "note": "",
   "ok": true,
   "req": "PA-4",
   "sect": "sense",
-  "value": "0.881 .. 2.697 V"
+  "value": "0.893 .. 2.656 V"
  },
  {
-  "case": "AWG level through the sweep, structure S3 (input 3 = B with a 10k matched resistor, inputs 2-3 read DIFFERENTIALLY, the reference's scale rebuilt on input 3, no other input's gain enters), ADS1115 channel match 0.1 % max (SBAS444E 5.5 'Gain channel match'), offset 3 LSB, Zcm TRACKING between inputs (one input stage behind the mux) *(check)*, 99.9th pct",
+  "case": "AWG level through the sweep, structure S3 (AIN3 = B with a 10k matched resistor, AIN2 - AIN3 read DIFFERENTIALLY, the reference's scale rebuilt on AIN3, no other input's gain enters), ADS1115 channel match 0.1 % max (SBAS444E 5.5 'Gain channel match'), offset 3 LSB, Zcm TRACKING between inputs (one input stage behind the mux) *(check)*, 99.9th pct",
   "id": "PA-4/ratio",
   "limit": "gain <= 0.05 %, offset <= 3.0 mV",
-  "margin": "+0.000 %",
-  "note": "this design's allotment of the 0.1 % fit share",
+  "margin": "-0.000 %",
+  "note": "this design's allotment (0.05 %; the Monte Carlo reads 0.050 +- 0.002 %, so it is AT the limit, not under it) of the 0.1 % fit share",
   "ok": true,
   "req": "PA-4, SC-7",
   "sect": "sense",
-  "value": "gain 0.050 %, offset 1.73 mV, worst point 2.38 mV (k error 0.101 %)"
+  "value": "gain 0.050 %, offset 1.73 mV, worst point 2.31 mV (k error 0.101 %)"
  },
  {
   "case": "the same if Zcm spreads +-25 % INDEPENDENTLY between the inputs (the datasheet gives only a typical 6 Mohm)",
   "id": "PA-4/ratio-ind",
   "limit": "gain <= 0.05 %, offset <= 3.0 mV",
-  "margin": "-0.175 %",
+  "margin": "-0.171 %",
   "note": "fails the sense's 0.05 % share; it fits inside SC-7's whole 0.5 % with the rest of the stack (section 6), and VT-21 measures which case the part is in",
   "ok": false,
   "req": "PA-4, SC-7",
   "sect": "sense",
-  "value": "gain 0.225 %, offset 2.35 mV"
+  "value": "gain 0.221 %, offset 2.40 mV"
  },
  {
-  "case": "the structures compared (gain %, offset mV, 99.9th pct, channel match 0.1 % max): S1 = tap on input 2, B on input 3 in the wire position only, REF on input 1; S2 = B on input 3 in both positions; S3 without the matched resistor; S3 with it",
+  "case": "the structures compared (gain %, offset mV, 99.9th pct, channel match 0.1 % max): S1 = tap on AIN2, B on AIN3 in the wire position only, REF on AIN0; S2 = B on AIN3 in both positions; S3 without the matched resistor; S3 with it",
   "id": "PA-4/struct",
   "limit": "information",
   "margin": "",
-  "note": "S2 removes the offsets of the ratio (\u0394T on one channel, \u0394B on one channel); S3 also removes the channel-gain terms (the differential pair and the REF rebuilt on input 3); rm matches the source impedances",
+  "note": "S2 removes the offsets of the ratio (\u0394T on one channel, \u0394B on one channel); S3 also removes the channel-gain terms (the differential pair and the REF rebuilt on AIN3); rm matches the source impedances",
   "ok": null,
   "req": "PA-4",
   "sect": "sense",
-  "value": "S1 0.484 %/6.8 mV; S2 0.313/2.2; S3 0.160/2.1; S3+rm 0.225/2.4 (Zcm tracking 0.050/1.7)"
+  "value": "S1 0.484 %/6.8 mV; S2 0.313/2.2; S3 0.165/2.2; S3+rm 0.221/2.4 (Zcm tracking 0.050/1.7)"
+ },
+ {
+  "case": "the ratio figures for other assignments of the sense tap and B to the AINx columns (the model draws gain, offset, INL and Zcm per input independently, so the assignment is only a relabelling; the matching resistor stays on the pin that carries B)",
+  "id": "PA-4/pairing",
+  "limit": "unchanged within the Monte Carlo noise",
+  "margin": "",
+  "note": "the reading sequence in the model: AIN0 = REF3030E and AIN1 = the 2/3 tap are NOT read in the ratio (the reference's scale is rebuilt from AIN3); they are read separately as the anchor and the check; the differential reading AIN2 - AIN3 is one more channel with its own gain and offset",
+  "ok": true,
+  "req": "PA-4",
+  "sect": "sense",
+  "value": "AIN2 tap, AIN3 B (the design)|tracking: 0.050 % / 1.73 mV; AIN2 tap, AIN3 B (the design)|independent: 0.221 % / 2.40 mV; swapped: tap on AIN3, B on AIN2|tracking: 0.050 % / 1.75 mV; swapped: tap on AIN3, B on AIN2|independent: 0.223 % / 2.29 mV; tap on AIN0, B on AIN1|tracking: 0.050 % / 1.75 mV; tap on AIN0, B on AIN1|independent: 0.222 % / 2.31 mV"
  },
  {
   "case": "the loaded ladder tap (1/3): its shift from 1.000 V over the sweep with the wire on",
   "id": "PA-4/load",
   "limit": "information (not a check point while fitted)",
   "margin": "",
-  "note": "B is read, so the loading is not an error; the 2/3 tap (input 4) and the reference stay readable",
+  "note": "B is read, so the loading is not an error; the 2/3 tap (AIN1) and the reference stay readable",
   "ok": null,
   "req": "PA-4",
   "sect": "sense",
-  "value": "631 mV at most, wire current up to 118 uA"
+  "value": "630 mV at most, wire current up to 117 uA"
  },
  {
-  "case": "any position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's input diodes, input 2 through Rt||Rb + 3.9k, input 3 (B) through 10k",
+  "case": "any position the header allows (GND, six taps, +3.3 V_A; the Due's 5V and VIN as stress): current into the ADS1115's input diodes, AIN2 through Rt||Rb + 3.9k, AIN3 (B) through 10k",
   "id": "VT-22/I",
   "limit": "<= 10 mA (abs max), host takes no action",
   "margin": "+9152 uA",
@@ -77,7 +88,7 @@
   "value": "848 uA at most"
  },
  {
-  "case": "every position gives a distinguishable reading: input 3 reads B itself, which is the node's voltage (0, 0.5, ... 3.3 V): smallest gap between positions",
+  "case": "every position gives a distinguishable reading: AIN3 reads B itself, which is the node's voltage (0, 0.5, ... 3.3 V): smallest gap between positions",
   "id": "VT-22/dist",
   "limit": ">= 20 x the reading resolution (125 uV + 0.1 % of 3 V)",
   "margin": "",
@@ -85,18 +96,18 @@
   "ok": 1.0,
   "req": "V2-5, VT-22",
   "sect": "sense",
-  "value": "300 mV gap on input 3 vs 3.12 mV"
+  "value": "300 mV gap on AIN3 vs 3.12 mV"
  },
  {
-  "case": "a wire left on after the calibration, or missing at its start: input 3 (B) differs between the two positions at every AWG level and tolerance draw",
+  "case": "a wire left on after the calibration, or missing at its start: AIN3 (B) differs between the two positions at every AWG level and tolerance draw",
   "id": "VT-21/22/det",
   "limit": ">= 50 mV (about 16x the reading resolution)",
-  "margin": "+1180 mV",
+  "margin": "+1181 mV",
   "note": "left on in normal use the tap stays inside 0.14 .. 1.89 V (PA-4/range) and the 1/3 ladder tap is loaded by up to 118 uA: nothing is damaged, the host's end-of-session reading catches it",
   "ok": 1.0,
   "req": "VT-21, VT-22",
   "sect": "sense",
-  "value": "1230 mV minimum"
+  "value": "1231 mV minimum"
  },
  {
   "case": "ADS1115 free-running on the pair, staircase 1.5 to 3 ms a level (D23), 1024 levels: the fit's slope noise from the readings at 860 SPS (1.16 ms) counting only conversions wholly inside a level (0.3 to 1.6 a level); 125 uV rms per conversion x sqrt 2 / k at the AWG node",
@@ -125,10 +136,10 @@
   "id": "CAL/clip",
   "limit": "the clipped levels dropped, the fit unchanged",
   "margin": "",
-  "note": "cost: the sweep's bottom moves from -1.95 to about -1.92 V (the window bottom is -1.9 to -1.68 V): it still covers the scope's -1.5 V end, so the coverage of -1.5..+3.5 V does not change; the margin below -1.5 V shrinks by about 30 mV",
+  "note": "cost: the AWG's hard-corner window bottom is -2.06 V (../awg/design.md, information) but the weak -rail clips the output below about -1.923 V, so the kept sweep starts at -1.923 V: 0.14 V of the window (about 36 of 1025 levels) is lost; the coverage of the scope's -1.5 .. +3.5 V does not change, the margin below -1.5 V is 0.42 V",
   "ok": true,
   "req": "D23, AW-1",
   "sect": "sense",
-  "value": "first dropped level -1.950 V, 6 of 1025 dropped, bottom of the kept range -1.926 V, fit gain error -0.0002 %"
+  "value": "first dropped level -2.060 V (the sweep's window bottom -2.06 V), 36 of 1025 dropped, bottom of the kept range -1.925 V, fit gain error -0.0001 %"
  }
 ]

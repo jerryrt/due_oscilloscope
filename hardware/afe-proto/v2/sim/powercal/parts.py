@@ -13,7 +13,7 @@ ROWS = [  # refs, value, LCSC, role, qty
  ("R_FB3b", "8.2k 1 % 0603", "C25981", "LM27762 OUT- feedback (R3, second of two)", 1),
  ("R_FB4", "100k 1 % 0603", "C25803", "LM27762 OUT- feedback bottom (R4, >= 50k)", 1),
  ("R_SENSE", "1R 1 % 0603", "C22936", "5 V feed sense resistor (test point either side)", 1),
- ("R_BLEED", "10k 1 % 0603", "C25804", "+3.3 V_A bleed (PR-3): 51 uA at 0.5 V; 0.33 mA at 3.3 V", 1),
+ ("R_BLEED", "1.8k 1 % 0603", "C4177", "+3.3 V_A bleed (PR-3 and the AWG node forced to +5 V unpowered): 0.28 mA at 0.5 V; 1.8 mA at 3.3 V", 1),
  ("C_IN1,C_IN2", "10uF X5R 25 V 0805", "C15850", "LM27762 VIN bulk", 2),
  ("C_CP1,C_CP2", "10uF X5R 25 V 0805", "C15850", "LM27762 CPOUT", 2),
  ("C_OP1,C_OP2", "10uF X5R 25 V 0805", "C15850", "LM27762 OUT+", 2),
@@ -28,8 +28,8 @@ ROWS = [  # refs, value, LCSC, role, qty
  ("R_SRT", "15k 1 % 0603", "C22809", "AWG-sense divider top (Rt)", 1),
  ("R_SRB", "10k 1 % 0603", "C25804", "AWG-sense divider bottom (Rb): k = 0.4", 1),
  ("R_SRD", "1k 1 % 0603", "C21190", "sense divider's permanent default tie of the bottom node to the REF3030E (Rd)", 1),
- ("R_SRS", "3.9k 1 % 0603", "C23018", "series resistor from the tap to ADS1115 input 2: the passive protection (VT-22); with Rt || Rb it is 9.9k, matched by R_SRM", 1),
- ("R_SRM", "10k 1 % 0603", "C25804", "series resistor from the divider bottom B to ADS1115 input 3: matches input 2's source impedance so Zcm loading cancels in the differential reading", 1),
+ ("R_SRS", "3.9k 1 % 0603", "C23018", "series resistor from the tap to ADS1115 AIN2: the passive protection (VT-22); with Rt || Rb it is 9.9k, matched by R_SRM", 1),
+ ("R_SRM", "10k 1 % 0603", "C25804", "series resistor from the divider bottom B to ADS1115 AIN3: matches AIN2's source impedance so Zcm loading cancels in the differential reading", 1),
 ]
 
 def build(rows=ROWS):

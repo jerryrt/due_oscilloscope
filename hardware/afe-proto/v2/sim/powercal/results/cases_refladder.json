@@ -1,14 +1,14 @@
 [
  {
-  "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 5.95 mA worst, from ../awg/design.md)",
+  "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 + Rvr, computed from ../awg/design.py: 0.98 mA worst)",
   "id": "REF/src",
   "limit": "<= 10 mA (6.3)",
-  "margin": "+2.31 mA",
+  "margin": "+7.28 mA",
   "note": "",
   "ok": true,
   "req": "PA-2, D-V2-10",
   "sect": "ref",
-  "value": "7.686 mA"
+  "value": "2.715 mA"
  },
  {
   "case": "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)",
@@ -25,12 +25,12 @@
   "case": "the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA",
   "id": "REF/lreg",
   "limit": "<= 3.0 mV (0.1 % fit share of 3 V)",
-  "margin": "+2806 uV",
+  "margin": "+2964 uV",
   "note": "the host reads the reference with every tap reading; this is the movement between two readings",
   "ok": true,
   "req": "SC-7",
   "sect": "ref",
-  "value": "4.305 mA -> 193.7 uV"
+  "value": "0.808 mA -> 36.3 uV"
  },
  {
   "case": "the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each",
