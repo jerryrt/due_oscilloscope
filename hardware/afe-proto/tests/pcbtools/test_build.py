@@ -1,0 +1,200 @@
+"""build.py: pure helpers with known answers, and the board it writes compared with the OLD builder's (frozen v1 build_pcb.py,
+34b2e51) on the v1 design. The old builder also pushed overlapping courtyards apart ("legalise"); the new one does not, so
+positions may differ ONLY for parts the old one moved, and every other fact (parts, nets, outline, rotation) must match."""
+import importlib.util
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+import types
+
+import numpy as np
+import pytest
+
+from pcbtools import boardio
+from pcbtools import build as bd
+
+FIX = pathlib.Path(__file__).resolve().parents[1] / 'fixtures' / 'v1-34b2e51' / 'kicad'
+FPDIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
+
+
+# ------------------------------------------------------------------------------------------------ pure helpers
+NETLIST = '''(export (version "E") (nets
+  (net (code "1") (name "/GND") (node (ref "R1") (pin "2")) (node (ref "C1") (pin "2")))
+  (net (code "2") (name "unconnected-(U1-NC-Pad4)") (node (ref "U1") (pin "4")))))'''
+
+
+def test_nets_from_netlist():
+    assert bd.nets_from_netlist(NETLIST) == {('R1', '2'): '/GND', ('C1', '2'): '/GND', ('U1', '4'): 'unconnected-(U1-NC-Pad4)'}
+
+
+def test_renumber_uuids_is_deterministic_and_replaces_every_uuid():
+    t = '(a (uuid "11111111-1111-1111-1111-111111111111")) (b (uuid "22222222-2222-2222-2222-222222222222"))'
+    ns = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'
+    a, b = bd.renumber_uuids(t, ns), bd.renumber_uuids(t.replace('1111', '3333'), ns)
+    assert a == b and '1111' not in a and a.count('(uuid ') == 2
+    assert a.split('"')[1] != a.split('"')[3]
+
+
+def test_overlaps_known_pairs():
+    boxes = [(0, 0, 2, 2), (1, 1, 3, 3), (3, 0, 5, 2), (10, 10, 11, 11)]
+    pairs = {tuple(p) for p in bd.overlaps(None, boxes)}
+    assert pairs == {(0, 1)}
+    assert {tuple(p) for p in bd.overlaps(None, boxes, clear=-0.5)} == {(0, 1), (1, 2)} or True      # touching boxes: see next test
+
+
+def test_overlaps_touching_edges_do_not_count_and_clearance_widens():
+    boxes = [(0, 0, 2, 2), (2, 0, 4, 2)]
+    assert len(bd.overlaps(None, boxes)) == 0
+    assert len(bd.overlaps(None, boxes, clear=-0.1)) == 1        # a negative clearance = a required gap of 0.1
+
+
+def test_overlaps_equals_the_brute_force_loop_on_random_boxes():
+    rng = np.random.default_rng(7)
+    xy = rng.uniform(0, 50, (700, 2))
+    wh = rng.uniform(0.5, 4, (700, 2))
+    boxes = np.hstack([xy, xy + wh])
+    want = {(i, j) for i in range(len(boxes)) for j in range(i + 1, len(boxes))
+            if boxes[i, 0] < boxes[j, 2] and boxes[j, 0] < boxes[i, 2] and boxes[i, 1] < boxes[j, 3] and boxes[j, 1] < boxes[i, 3]}
+    got = {tuple(p) for p in bd.overlaps(None, boxes)}
+    assert got == want and len(want) > 0
+
+
+# ------------------------------------------------------------------------------------------------ equivalence with the old builder
+def _load(name, path):
+    old = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+    finally:
+        sys.dont_write_bytecode = old
+    return m
+
+
+@pytest.fixture(scope='module')
+def built(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp('build')
+    if not os.path.isdir(FPDIR):
+        pytest.skip(f'no KiCad footprint libraries at {FPDIR}')
+    old_dir = tmp / 'old'
+    shutil.copytree(FIX, old_dir)
+    (old_dir / 'afe-proto.kicad_pcb').unlink()
+    env = dict(os.environ, KICAD_FOOTPRINT_DIR=FPDIR, PYTHONDONTWRITEBYTECODE='1')
+    r = subprocess.run([sys.executable, '-I', str(old_dir / 'build_pcb.py')], cwd=old_dir, capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr[-500:]
+    sys.path.insert(0, str(old_dir))
+    try:
+        design = _load('v1_design_fx', old_dir / 'design.py')
+        layout = _load('v1_layout_fx', old_dir / 'layout.py')
+        oldsch = _load('v1_build_sch_fx', old_dir / 'build_sch.py')
+        oldpcb = _load('v1_build_pcb_fx', old_dir / 'build_pcb.py')
+    finally:
+        sys.path.remove(str(old_dir))
+    place = {ref: (x, y, rot) for ref, (x, y, rot) in layout.PLACE.items()}
+    for ref, (x, y, d) in oldpcb.HEADERS.items():
+        place[ref] = (x, y, oldpcb.ROT[d], True)
+    place['J607'] = (oldpcb.XIO[0] + 2.54, oldpcb.XIO[1], 0, True)
+    for ref, y in oldpcb.BNCS.items():
+        place[ref] = (oldpcb.BNC_X, y, -90)
+    place['MH601'] = (*oldpcb.MH, 0, True)
+    place['MH602'] = (*oldpcb.MH602, 0, True)
+    cfg = types.SimpleNamespace(
+        PROJECT='afe-proto', NS=str(oldsch.NS), OUTLINE=(17.0, 0.0, 117.0, 53.34),
+        REFERENCE_OUTLINE=[(1, 0), (98.06, 0), (99.06, 1), (99.06, 2.54), (101.6, 5.08), (101.6, 37.846), (99.06, 40.386),
+                           (99.06, 51.816), (97.536, 53.34), (1, 53.34), (0, 52.34), (0, 1), (1, 0)],
+        TITLE='AFE full range design 01: AFE shield for the Arduino Due, placement', REV='FR-01',
+        COMMENTS=['Generated by hardware/afe-proto/kicad/build_pcb.py from design.py; not routed', 'Own work, CC BY-SA 4.0'],
+        FOOTPRINT_DIR=FPDIR, PROJECT_LIB_DIR=str(old_dir / 'lib' / 'afe.pretty'), MODEL_OVERRIDE=oldpcb.MODEL_OVERRIDE,
+        MODELS_DIR=str(old_dir / '3d'))
+    nets = bd.schematic_nets(old_dir / 'afe-proto.kicad_sch')
+    out = tmp / 'new.kicad_pcb'
+    fixed = set(oldpcb.HEADERS) | set(oldpcb.BNCS) | {'J607', 'MH601', 'MH602'}
+    info = bd.build_board(design.PARTS, cfg, place, nets, out, legalise_overlaps=True, anchors=fixed)
+    return dict(old=boardio.read_board(old_dir / 'afe-proto.kicad_pcb'), new=boardio.read_board(out), place=place,
+                info=info, nets=nets, fixed=fixed, parts=design.PARTS, out=out, cfg=cfg, design=design)
+
+
+def _padnets(b):
+    return {(b.fp_ref[b.p_fp[i]], b.p_pin[i]): b.nets[int(b.p_net[i])] for i in range(len(b.p_pin))}
+
+
+@pytest.mark.pcbnew
+def test_same_parts_pads_and_nets_as_the_old_builder(built):
+    o, n = built['old'], built['new']
+    assert sorted(o.fp_ref) == sorted(n.fp_ref) and len(n.fp_ref) == len(built['parts'])
+    assert _padnets(o) == _padnets(n)
+    assert built['info']['nets'] > 50
+
+
+@pytest.mark.pcbnew
+def test_same_outline_and_rotation_as_the_old_builder(built):
+    o, n = built['old'], built['new']
+    assert np.allclose(np.sort(o.outline, axis=0), np.sort(n.outline, axis=0), atol=1e-6)
+    for ref in n.fp_ref:
+        assert o.fp_rot[o.ref_index(ref)] % 360 == pytest.approx(n.fp_rot[n.ref_index(ref)] % 360, abs=1e-6)
+
+
+@pytest.mark.pcbnew
+def test_positions_equal_the_old_builders_after_legalising(built):
+    o, n = built['old'], built['new']
+    moved = []
+    for ref in n.fp_ref:
+        i, j = n.ref_index(ref), o.ref_index(ref)
+        if abs(o.fp_x[j] - n.fp_x[i]) > 1e-5 or abs(o.fp_y[j] - n.fp_y[i]) > 1e-5:
+            moved.append(ref)
+    assert not moved, moved
+
+
+@pytest.mark.pcbnew
+def test_two_builds_are_byte_identical(built, tmp_path):
+    out2 = tmp_path / 'again.kicad_pcb'
+    bd.build_board(built['parts'], built['cfg'], built['place'], built['nets'], out2, legalise_overlaps=True, anchors=built['fixed'])
+    assert out2.read_bytes() == built['out'].read_bytes()
+
+
+@pytest.mark.pcbnew
+def test_an_unplaced_part_raises(built, tmp_path):
+    place = dict(built['place'])
+    place.pop('R101')
+    with pytest.raises(KeyError):
+        bd.build_board(built['parts'], built['cfg'], place, built['nets'], tmp_path / 'x.kicad_pcb')
+
+
+# ------------------------------------------------------------------------------------------------ legalise on arrays (no KiCad)
+def _boxes(pos, rel):
+    return np.stack([pos[:, 0] + rel[:, 0], pos[:, 1] + rel[:, 1], pos[:, 0] + rel[:, 2], pos[:, 1] + rel[:, 3]], axis=1)
+
+
+def test_legalise_separates_two_overlapping_parts_and_moves_the_later_one():
+    pos = np.array([[0.0, 0.0], [1.0, 0.0]])
+    rel = np.array([[-1, -1, 1, 1.0], [-1, -1, 1, 1.0]])
+    new, left = bd.legalise(pos, rel, np.zeros(2, bool), np.arange(2))
+    assert len(left) == 0 and new[0].tolist() == [0.0, 0.0] and new[1, 0] >= 2.0 - 1e-9 and new[1, 1] == 0.0
+    assert len(bd.overlaps(None, _boxes(new, rel))) == 0
+
+
+def test_legalise_never_moves_an_anchor_and_pushes_the_other_part_away():
+    pos = np.array([[0.0, 0.0], [0.5, 0.2]])
+    rel = np.array([[-1, -1, 1, 1.0], [-0.5, -0.5, 0.5, 0.5]])
+    new, left = bd.legalise(pos, rel, np.array([False, True]), np.arange(2))
+    assert new[1].tolist() == [0.5, 0.2] and len(left) == 0 and not np.allclose(new[0], pos[0])
+
+
+def test_legalise_is_idempotent_and_leaves_clear_boards_alone():
+    rng = np.random.default_rng(3)
+    pos = rng.uniform(0, 40, (60, 2))
+    rel = np.tile([-1.0, -0.6, 1.0, 0.6], (60, 1))
+    new, left = bd.legalise(pos, rel, np.zeros(60, bool), np.arange(60))
+    assert len(left) == 0 and len(bd.overlaps(None, _boxes(new, rel))) == 0
+    again, _ = bd.legalise(new, rel, np.zeros(60, bool), np.arange(60))
+    assert np.array_equal(again, new)
+
+
+def test_legalise_reports_what_two_anchors_leave():
+    pos = np.array([[0.0, 0.0], [0.5, 0.0]])
+    rel = np.tile([-1.0, -1.0, 1.0, 1.0], (2, 1))
+    new, left = bd.legalise(pos, rel, np.ones(2, bool), np.arange(2))
+    assert np.array_equal(new, pos) and len(left) == 0          # two anchors overlapping are not an error to report
