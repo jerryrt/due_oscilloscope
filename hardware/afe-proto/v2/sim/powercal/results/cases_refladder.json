@@ -1,0 +1,134 @@
+[
+ {
+  "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs)",
+  "id": "REF/src",
+  "limit": "<= 10 mA (6.3)",
+  "margin": "+8.26 mA",
+  "note": "",
+  "ok": true,
+  "req": "PA-2, D-V2-10",
+  "sect": "ref",
+  "value": "1.736 mA"
+ },
+ {
+  "case": "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)",
+  "id": "REF/snk",
+  "limit": "<= 10 mA",
+  "margin": "+9.92 mA",
+  "note": "the sink load regulation 150 ppm/mA is 10x the source figure but at this current moves the output by 0.01 ppm",
+  "ok": true,
+  "req": "PA-2, D-V2-10",
+  "sect": "ref",
+  "value": "80 uA"
+ },
+ {
+  "case": "the ladder's top tap (= the reference) moves with the AWG level through the sense divider's default tie: change of source current over the sweep x 15 ppm/mA",
+  "id": "REF/lreg",
+  "limit": "<= 3.0 mV (0.1 % fit share of 3 V)",
+  "margin": "+2993 uV",
+  "note": "the host reads the reference with every tap reading; this is the movement between two readings",
+  "ok": true,
+  "req": "SC-7",
+  "sect": "ref",
+  "value": "0.165 mA -> 7.4 uV"
+ },
+ {
+  "case": "the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each",
+  "id": "REF/signal",
+  "limit": "<= 3.0 mV",
+  "margin": "",
+  "note": "",
+  "ok": true,
+  "req": "SC-7, D-V2-10",
+  "sect": "ref",
+  "value": "0.49 uV"
+ },
+ {
+  "case": "VIN >= VOUT + 0.2 V at the weakest +rail (power.py)",
+  "id": "REF/dropout",
+  "limit": ">= 3.200 V",
+  "margin": "",
+  "note": "the rail block's corner, see section 1",
+  "ok": true,
+  "req": "PA-2",
+  "sect": "ref",
+  "value": "see power.json min_p"
+ },
+ {
+  "case": "output capacitor",
+  "id": "REF/CL",
+  "limit": "0.1..22 uF, ESR 10..500 mohm",
+  "margin": "",
+  "note": "1 uF C15849 X5R at the output: the datasheet's CL range 0.1..22 uF holds; its ESR window 10..500 mohm is above a ceramic's (a few mohm) *(check: the datasheet states stability with ceramics only by the CL range)*",
+  "ok": null,
+  "req": "PA-2",
+  "sect": "ref",
+  "value": "1 uF X5R (C15849)"
+ },
+ {
+  "case": "tap source impedance against the Due ADC pin leakage 0.5 uA (over temperature): the worst tap (1/2) x 0.5 uA in LSB of 3.3 V / 4096",
+  "id": "PA-9/Z",
+  "limit": "<= 0.5 LSB",
+  "margin": "+0.19 LSB",
+  "note": "tap impedances (ohm): 275, 440, 495, 440, 275 and 0 for the top; all far under SC-10's 5 kohm",
+  "ok": true,
+  "req": "PA-9, SC-10",
+  "sect": "ladder",
+  "value": "495 ohm -> 0.247 mV = 0.31 LSB"
+ },
+ {
+  "case": "ladder current from the reference",
+  "id": "PA-9/I",
+  "limit": "information",
+  "margin": "",
+  "note": "",
+  "ok": null,
+  "req": "PW-1",
+  "sect": "ladder",
+  "value": "1.53 mA at REF +0.1 %, rungs -1 %"
+ },
+ {
+  "case": "the ADS1115's input current (V - 0.7 V over Zcm 6 Mohm -25 %, typ only) across the tap impedance, the two measured taps",
+  "id": "PA-9/ads",
+  "limit": "<= 0.01 % (a tenth of the fit share)",
+  "margin": "",
+  "note": "SBAS444E gives the input impedance as a typical only *(check)*",
+  "ok": true,
+  "req": "SC-7",
+  "sect": "ladder",
+  "value": "0.0098 % (1/3 tap), 0.0098 % (2/3 tap)"
+ },
+ {
+  "case": "a measured tap's fraction of the reference after 10 K since it was read (rungs +-100 ppm/K, opposed), against the fit share 0.1 %",
+  "id": "PA-9/drift",
+  "limit": "<= 0.1 %",
+  "margin": "-0.033 %",
+  "note": "the host can re-read the measured taps at any time (no tee, no AWG), so this is the worst drift between the last read and use, not a calibration interval",
+  "ok": false,
+  "req": "EN-1, VT-12",
+  "sect": "ladder",
+  "value": "0.133 % (1/3 tap), 20 K: 0.267 %"
+ },
+ {
+  "case": "the three unmeasured taps (1/6, 1/2, 5/6): fraction error from 1 % rungs, 99.9th percentile",
+  "id": "PA-9/unmeas",
+  "limit": "information (fault check threshold)",
+  "margin": "",
+  "note": "so a host fault check on the unmeasured taps uses a window of +-1.5 % of the nominal fraction (derived from this)",
+  "ok": null,
+  "req": "PA-9",
+  "sect": "ladder",
+  "value": "1.30 %, 0.72 %, 0.26 %"
+ },
+ {
+  "case": "the temperature change since a tap was read that keeps its drift inside 0.1 % (and inside 0.05 %, the half this design gives the ladder)",
+  "id": "PA-9/dT",
+  "limit": "information (sets the recalibration threshold, D-V2-3)",
+  "margin": "",
+  "note": "10 K (EN-1) fails; the host re-reads the two measured taps at the start and end of each session, so the working figure is the change within one session",
+  "ok": null,
+  "req": "EN-1, VT-12",
+  "sect": "ladder",
+  "value": "7.5 K (0.05 %: 3.7 K)"
+ }
+]

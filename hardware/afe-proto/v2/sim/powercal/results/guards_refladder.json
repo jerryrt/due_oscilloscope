@@ -1,0 +1,23 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-Z",
+  "restored": "passes",
+  "what": "tap impedance check with 1.5 kohm rungs must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-REF-I",
+  "restored": "passes",
+  "what": "REF source check with a limit of 1 mA must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-drift",
+  "restored": "passes",
+  "what": "the drift limit applied to a 1000 ppm/K tempco ladder at 10 K must fail; the 100 ppm/K design passes the same limit at 5 K"
+ }
+]

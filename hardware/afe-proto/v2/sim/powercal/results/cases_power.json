@@ -1,0 +1,167 @@
+[
+ {
+  "case": "supply across the op-amp <= recommended 5.5 V (TPH2502 VDD row) at both rails' worst corners, 1 % Basic feedback, +-10 K, regulation 2 mV",
+  "id": "PW-V2-2",
+  "limit": "V+ + |V-| at the maximum corner <= 5.5 V",
+  "margin": "+0.0303 V",
+  "note": "the TPH2502 gives only a VDD 2.5..5.5 V row; abs max 7.0 V. The margin is a few millivolts: see the R3 table",
+  "ok": true,
+  "req": "V2-2",
+  "sect": "rails",
+  "value": "3.4172 + 2.0525 = 5.4697 V"
+ },
+ {
+  "case": "the same at the abs-max reading (information)",
+  "id": "PW-V2-2b",
+  "limit": "7.0 V",
+  "margin": "+1.53 V",
+  "note": "",
+  "ok": true,
+  "req": "V2-2",
+  "sect": "rails",
+  "value": "5.470 V"
+ },
+ {
+  "case": "the powered scope op-amp's supply <= 3.45 V (anything that drives A0/A1)",
+  "id": "PR-2",
+  "limit": "<= 3.45 V",
+  "margin": "+0.0328 V",
+  "note": "",
+  "ok": true,
+  "req": "PR-2",
+  "sect": "rails",
+  "value": "3.4172 V"
+ },
+ {
+  "case": "REF3030E VIN >= VOUT + 0.2 V (6.3, REF30xxE) at the weakest +rail",
+  "id": "PA-2/rail",
+  "limit": ">= 3.203 V (VOUT at +0.1 %)",
+  "margin": "+0.0175 V",
+  "note": "only 1 % Basic feedback resistors move this: with VFB 1.5 % and the resistors 1.3 % the rail's window is the reference's whole dropout margin",
+  "ok": true,
+  "req": "PA-2",
+  "sect": "rails",
+  "value": "3.2205 V"
+ },
+ {
+  "case": "LDO headroom at 5V pin 4.50 V: +LDO (VIN - V+max) and the pump (|CPOUT| - |V-|max)",
+  "id": "PW-6",
+  "limit": ">= 0.05 V / 0.03 V (dropout at 100 mA, 5.5 VLDO+/-)",
+  "margin": "",
+  "note": "RNEG 2.5 ohm at 100 mA / 5.5 V; 3 ohm assumed at 4.5 V (check)",
+  "ok": true,
+  "req": "PW-6",
+  "sect": "rails",
+  "value": "1.08 V / 2.35 V"
+ },
+ {
+  "case": "AFE current from the Due's 5V pin, normal operation, IQ at the datasheet maximum, rails at the strong corner",
+  "id": "PW-1",
+  "limit": "<= 100 mA",
+  "margin": "+16.8 mA",
+  "note": "charge-pump input current = output current + 10 % + IQ 0.39 mA (the datasheet gives no efficiency table in text: check)",
+  "ok": true,
+  "req": "PW-1",
+  "sect": "pw1",
+  "value": "83.2 mA"
+ },
+ {
+  "case": "Due (300 mA, D7) + AFE in the worst fault (indefinite short), <= 450 mA",
+  "id": "PW-1 total",
+  "limit": "<= 450 mA",
+  "margin": "+32 mA",
+  "note": "the short is exempt from the 100 mA, not from the 450 mA total",
+  "ok": true,
+  "req": "PW-1",
+  "sect": "pw1",
+  "value": "418 mA (117.6 mA AFE)"
+ },
+ {
+  "case": "LM27762 junction at 85 C ambient, worst state, 5.25 V in, RthJA 62.2 C/W (the datasheet's) ",
+  "id": "PW-1/th",
+  "limit": "<= 125 C",
+  "margin": "+21 K",
+  "note": "RthJA is the datasheet's JEDEC figure; a real board does better or worse: check",
+  "ok": true,
+  "req": "PW-1",
+  "sect": "pw1",
+  "value": "104 C (299 mW)"
+ },
+ {
+  "case": "ripple at an amplifier supply pin <= 20 mV",
+  "id": "PW-2",
+  "limit": "<= 20 mV",
+  "margin": "",
+  "note": "the switching frequency is the part's 1.7 to 2.3 MHz (2 MHz typ), not settable; see the rule in design.md",
+  "ok": null,
+  "req": "PW-2",
+  "sect": "pw2",
+  "value": "see lm27762 runs and section 'PW-2'"
+ },
+ {
+  "case": "worst current pushed into the +3.3 V_A rail by both inputs at +12 V (0.3 V clamp drop assumed, R1 -1 %)",
+  "id": "PR-3/src",
+  "limit": "information",
+  "margin": "",
+  "note": "the scope design's 36 uA was a 0.6 V drop; a Schottky-like input structure raises it: *(check)* the TPH2502 gives no unpowered figure",
+  "ok": null,
+  "req": "PR-3",
+  "sect": "pr3",
+  "value": "38.5 uA"
+ },
+ {
+  "case": "sink the unpowered ICs provide at 0.5 V by datasheet: feedback divider only",
+  "id": "PR-3/ic",
+  "limit": "information",
+  "margin": "",
+  "note": "LM27762 shutdown discharge 50 kohm would add 10 uA at 0.5 V but 6.4.1 does not say it works with VIN = 0 *(check)*; ADS1115, REF3030E and the op-amps give no leakage at 0.5 V: none counted",
+  "ok": null,
+  "req": "PR-3",
+  "sect": "pr3",
+  "value": "2.6 uA"
+ },
+ {
+  "case": "sink counted if the LM27762's discharge works (information)",
+  "id": "PR-3/ic2",
+  "limit": "information",
+  "margin": "",
+  "note": "not relied on",
+  "ok": null,
+  "req": "PR-3",
+  "sect": "pr3",
+  "value": "12.6 uA"
+ },
+ {
+  "case": "unpowered +3.3 V_A rail with both scope inputs at +12 V, 10k bleed (C25804) at +1 %, with only the resistive sinks",
+  "id": "PR-3",
+  "limit": "<= 0.5 V",
+  "margin": "+0.122 V",
+  "note": "sinks 52.1 uA against 38.5 uA pushed in at 0.5 V",
+  "ok": true,
+  "req": "PR-3",
+  "sect": "pr3",
+  "value": "0.378 V"
+ },
+ {
+  "case": "quiescent cost of the bleed, rail at its maximum, resistor -1 %",
+  "id": "PR-3/Q",
+  "limit": "information",
+  "margin": "",
+  "note": "",
+  "ok": null,
+  "req": "PW-1",
+  "sect": "pr3",
+  "value": "0.343 mA = 0.34 % of 100 mA"
+ },
+ {
+  "case": "current into the Due's supply pins <= 100 uA",
+  "id": "PR-3/Due",
+  "limit": "<= 100 uA",
+  "margin": "",
+  "note": "the scope design's figure, not re-derived here; the bleed does not change it",
+  "ok": true,
+  "req": "PR-3",
+  "sect": "pr3",
+  "value": "1.8 uA (scope design, through R3 and the sense filter; nothing reaches the 5V pin)"
+ }
+]

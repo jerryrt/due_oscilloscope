@@ -1,0 +1,44 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-timing",
+  "restored": "passes",
+  "what": "the timing check with a step of 0.01 s (one conversion at 128 SPS: nothing left to average) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-detect",
+  "restored": "passes",
+  "what": "the detection check with the separation limit raised to 2 V must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-range",
+  "restored": "passes",
+  "what": "tap range with k = 0.6 (tap goes below ground at the window bottom) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-ratio",
+  "restored": "passes",
+  "what": "ratio accuracy with a 2 % channel match must fail a 1.5 % gain limit (the designed 0.1 % match passes it)"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-distinct",
+  "restored": "passes",
+  "what": "distinguishability with k = 0.995 (wire barely moves the tap) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-current",
+  "restored": "passes",
+  "what": "ESD current check with the limit lowered to 10 uA must fail"
+ }
+]

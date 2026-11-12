@@ -1,0 +1,9 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-basic",
+  "restored": "passes",
+  "what": "an Extended passive (C861163) in the list must be refused"
+ }
+]

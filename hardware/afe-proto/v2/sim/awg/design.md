@@ -7,7 +7,7 @@ read from `../../whatif/tph2502/models` and the stability models from `$TPH2502_
 
 **Status after D-V2-12:** 86 rows, **0 FAIL**. The window top end stays at or below 2.2275 V in every corner as a hardware guarantee (no firmware clamp).
 AW-1's top is the worst-corner top the design guarantees, **+1.71 V** (hard corners 1.7104 V with 4 % of the window kept free; the lowest window top end with no
-band kept is 1.862 V). The position-aware row passes by 0.0002 (92.0 % against 92 %) and is the thinnest margin in the design.
+band kept is 1.862 V). The position-aware row passes by 0.0002 (92.0 % against 92 %) and is the thinnest margin in the design: **fragile**. Any part or value change in this stage re-runs that row first (`python3 -I run.py`, the AW-1 position-aware rows), and the spec lead has accepted +1.71 V as AW-1's figure without widening the 4 % band or the 92 % use.
 
 ## Circuit
 

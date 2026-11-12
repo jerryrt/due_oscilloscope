@@ -1,0 +1,42 @@
+{
+ "dIin_mA": -12.182694881972905,
+ "dIn_mA": -24.419607038795416,
+ "dIp_mA": 14.678872860702068,
+ "dc_terms": [
+  [
+   "the +3.3 V rail's load regulation (11 uV/mA) x the AWG's current swing 14.7 mA = 161 uV on the rail, through the scope dual's DC PSRR (80 dB min)",
+   1.6146760146772273e-08,
+   9.348189994855363e-06
+  ],
+  [
+   "the 5 V feed: current swing -12.2 mA x 1.2 ohm = 14.6 mV at VIN, x LDO line regulation 1.9 mV/V, x PSRR",
+   2.7776544330898222e-09,
+   1.6081270263847028e-06
+  ],
+  [
+   "the REF3030E: the sense divider's default-tie current changes 0.165 mA over the AWG sweep (15 ppm/mA = 7.4 uV), to the scope's centre through Rp/R3 = 0.3725 and 1/a",
+   5.9840166594547815e-06,
+   0.0034644550458715596
+  ],
+  [
+   "the shared return: AWG load current 20.1 mA x an ASSUMED 10 mohm of plane shared with a scope input's reference (LR-1) *(check)*",
+   0.00020100502512562814,
+   0.11637214820278763
+  ]
+ ],
+ "dc_total_lsb": 0.11984755956568043,
+ "fsw_seen_Hz": [
+  2140000.0
+ ],
+ "ripple_pp_mV": 0.1649100000000736,
+ "startup": {
+  "t90n": 0.0004981,
+  "t90p": 0.00028746,
+  "t_all": 0.0024981,
+  "t_ref": 0.002
+ },
+ "step": {
+  "droop_mV": 1.526602777513015,
+  "run": "hand estimate"
+ }
+}
