@@ -25,7 +25,7 @@ The owner's rules for version 2 (2026-11-11):
 
 Figures marked *derived* below are arithmetic on `afe.md`'s numbers, not
 simulation; the design replaces each with its own. Where this file and the
-design disagree, the owner decides (section 6), and until then this file's
+design disagree, the owner decides (section 7), and until then this file's
 value stands.
 
 ## 1. What version 1 spends, and where the rules act
@@ -125,17 +125,24 @@ measured ladder tap.
 | **MC-12**: the two scope amplifiers in separate packages, the AWG stage in its own | V2-2 | Replaced by V2-2's package rule |
 | **MC-10**: nothing is wired to the Due's headers while the AFE is installed; **MC-11**: an undecided choice is never a jumper | V2-5 | Both hold in normal use. During a calibration, the wires the procedure names are allowed, and are removed afterwards |
 
-## 5. Verification added
+## 5. Layout and routing
+
+The layout rules LR-1 to LR-10 and their check VT-19 (afe.md section 11.1)
+hold unchanged. The shared negative rail (V2-1) gives LR-6 scope branches
+on that rail as well as the AWG's, and VT-20 measures the coupling left
+through it.
+
+## 6. Verification added
 
 | ID | Test | Covers |
 |---|---|---|
-| VT-19 | Coupling through the shared negative rail: the AWG stepping full scale into 50 Ω while each scope channel holds a DC input, and the reverse, each reading's change against SC-9 and AW-6 | V2-1, SC-9, AW-6 |
-| VT-20 | The direct sense input: the ratio it measures against a jumper-measured ratio on the same board, and the other inputs' readings with the AWG held at −1.68 V against the same readings at 0 V | PA-4, SC-7 |
-| VT-21 | Any calibration jumper the procedure names: left off, in each wrong position the headers allow, and in the right one; the host stops on each wrong case and the pins stay inside PR-2 | V2-5, PR-2 |
+| VT-20 | Coupling through the shared negative rail: the AWG stepping full scale into 50 Ω while each scope channel holds a DC input, and the reverse, each reading's change against SC-9 and AW-6 | V2-1, SC-9, AW-6 |
+| VT-21 | The direct sense input: the ratio it measures against a jumper-measured ratio on the same board, and the other inputs' readings with the AWG held at −1.68 V against the same readings at 0 V | PA-4, SC-7 |
+| VT-22 | Any calibration jumper the procedure names: left off, in each wrong position the headers allow, and in the right one; the host stops on each wrong case and the pins stay inside PR-2 | V2-5, PR-2 |
 | VT-6 | As version 1, plus the indefinite short of section 3.2 with the package temperature logged | PW-3 |
 | VT-12 | As version 1, now also setting the recalibration threshold of section 4's SC-7 row | EN-1, SC-7 |
 
-## 6. Decisions for the owner
+## 7. Decisions for the owner
 
 | ID | Decision | Recommendation |
 |---|---|---|
@@ -143,6 +150,6 @@ measured ladder tap.
 | D-V2-2 | DF-3 before calibration and the hardware differential mode, at the design's 1% worst case | Accept: after calibration stays at 44 dB, and SM-6 already holds the hardware mode only to the before-calibration figure |
 | D-V2-3 | EN-1's uncalibrated drift, and SC-7 held by a tighter recalibration threshold rather than a wider limit | Accept both, with the threshold set by VT-12 |
 | D-V2-4 | AW-4 at 51 Ω if no Basic combination reaches 50 Ω ±1% | Decide only if the design finds no combination |
-| D-V2-5 | The ratio measurement: the direct sense input, or the jumper | The direct sense input, if VT-20 and the datasheet check pass; the jumper otherwise |
+| D-V2-5 | The ratio measurement: the direct sense input, or the jumper | The direct sense input, if VT-21 and the datasheet check pass; the jumper otherwise |
 | D-V2-6 | The precision ADC: one ADS1115-class converter reading the REF3030E ratiometrically (V2-8), in place of the ADS124S08, with two of the ladder's taps measured (PA-9) | Accept, if the design shows SC-7's fit share from the ADS1115's datasheet linearity and noise, and JLC stock is adequate. It stays on every board, as in version 1 |
 | D-V2-7 | The AWG's short-circuit current set by the op-amp's limit (about 64 mA) instead of PW-3's 30 mA | Accept, if the design shows the package and rails within their ratings for an indefinite short |
