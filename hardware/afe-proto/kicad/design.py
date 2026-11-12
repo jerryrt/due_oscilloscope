@@ -100,6 +100,7 @@ VREF = 'VREF'   # REF3030E output = ladder top tap = REFP0 (PA-8)
 # ------------------------------------------------------------------ power (architecture.md "Power"; sim/powercal)
 B = 'power'
 two('R408', '1R', P5, P5F, B, '5 V feed sense, take only (PW-1)')
+two('R410', '0Rb', VN, VN, 'power', 'POWER block agent: a 0 ohm link that carries VNEG over the +5V_F column (both pads on VNEG): the generator\'s two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop)')
 two('C403', '10u', P5F, G, B, '5 V bulk = CIN'); two('C404', '10u', P5F, G, B, '5 V bulk = CIN')
 two('C401', '100n', P5F, G, B, 'LM27762 VIN')
 part('U401', 'LM27762', {'1': G, '2': 'LM_FBP', '3': P5F, '4': G, '5': 'LM_CP', '6': VN, '7': 'LM_FBN',

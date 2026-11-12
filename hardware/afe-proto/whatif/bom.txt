@@ -75,7 +75,7 @@ measured with a hand-fitted shunt on J501 (whatif/v1-jumper/, S3); every clamp i
 21  UNI-ROYAL 0603WAF100KT5E   C22936    Basic     1R 1 % 400 ppm/K, 0603                   2  0.0186  0.0186 
       R108       x1    scope dual supply branch
       R408       x1    5 V feed sense
-22  UNI-ROYAL 0603WAF0000T5E   C21189    Basic     0R 1 %, 0603                             9  0.0186  0.0186 
+22  UNI-ROYAL 0603WAF0000T5E   C21189    Basic     0R 1 %, 0603                            10  0.0186  0.0186 
       R109       x1    wall bridge: the scope own +3V3A branch, over the VREF trunk (part 1 of 2)
       R110       x1    wall bridge: the scope own +3V3A branch, over the A1 column (part 2 of 2)
       R309       x1    wall bridge over A1: AWG_BNC sense tap (part 1 of 2)
@@ -85,6 +85,7 @@ measured with a hand-fitted shunt on J501 (whatif/v1-jumper/, S3); every clamp i
       R517       x1    bridge over a VREF leg inside REFCAL: the ADS side of +3V3A
       R518       x1    bridge over a VREF leg inside REFCAL: SDA to the ADS
       R519       x1    bridge over a VREF leg inside REFCAL: SCL to the ADS
+      R410       x1    VNEG link over the +5V_F column inside POWER
 23  Samsung CL10C100JB8NNNC    C1634     Basic     10 pF C0G 5 % 50 V, 0603                 4  0.0600  0.0600 
       C105       x1    scope Cnp, (+) node to GND, CH1
       C203       x1    scope Cnp, (+) node to GND, CH2
