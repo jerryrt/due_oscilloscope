@@ -47,6 +47,7 @@ def test_v1_and_v2_keep_their_own_load_shape(tmp_path):
     assert C.load(str(tmp_path), "", "x", "k", atleast_2d=True).shape == (1, 2)   # v2
 
 
+@pytest.mark.jobcap
 def test_a_runaway_deck_raises_instead_of_running_on(tmp_path):
     big = "big\nV1 in 0 PULSE(0 1 0 1n 1n 5u 10u)\nR1 in out 1k\nC1 out 0 1n\n.tran 1p 100u\n.control\nrun\n.endc\n.end\n"
     with pytest.raises(C.RunError, match="memory cap"):

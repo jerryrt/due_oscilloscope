@@ -80,6 +80,7 @@ def test_a_deck_that_saves_everything_or_steps_is_refused(line):
         nr.prepare(d, ["v(out)"])
 
 
+@pytest.mark.jobcap
 def test_cap_kill_names_the_corner(tmp_path):
     big = "big\nV1 in 0 PULSE(0 1 0 1n 1n 5u 10u)\nR1 in out 1k\nC1 out 0 1n\n.tran 1p 100u\n.end\n"
     with pytest.raises(nr.RunError, match="memory cap"):

@@ -1,0 +1,86 @@
+#!/bin/bash
+# Run a command in the pinned PCB image against this working tree.
+#
+#     docker/pcb/run.sh [-m MEM] [-t SECONDS] [-c CPUS] command ...
+#     docker/pcb/run.sh -m 2G -t 600 pytest -c hardware/afe-proto/tests/pytest.ini hardware/afe-proto
+#
+# Defaults 2G, 300 s, 2 CPUs. The limits are docker's own: --memory with
+# --memory-swap equal to it (swap off), --cpus, and `timeout` inside. At
+# most two heavy jobs at once, never a process pool (house rules).
+#
+# Same exit conventions and one-line summary as hardware/afe-proto/tools/
+# capped.sh, so a bench row looks identical either way: 137 when the cap
+# kills the job, 124 on timeout, the job's own status otherwise.
+#
+#   capped: peak_rss_kb=<n> wall_s=<s> exit=<n> cap=<MEM> limit_s=<T> image=<content>
+#
+# The repository is mounted at /work (read-write: goldens and bench rows are
+# written there), --network none, and the container runs as this user.
+set -euo pipefail
+
+here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo=$(cd -- "$here/../.." && pwd)
+manifest() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$here/image-revisions.json" "$1"; }
+image=${DUE_PCB_IMAGE:-pcb-tools:$(manifest kicad)-r$(manifest current)}
+
+M=2G; T=300; C=2
+while getopts "m:t:c:" o; do
+    case $o in m) M=$OPTARG;; t) T=$OPTARG;; c) C=$OPTARG;;
+        *) echo "usage: run.sh [-m MEM] [-t SECONDS] [-c CPUS] cmd..." >&2; exit 2;; esac
+done
+shift $((OPTIND-1))
+[ $# -ge 1 ] || { echo "usage: run.sh [-m MEM] [-t SECONDS] [-c CPUS] cmd..." >&2; exit 2; }
+
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+    echo "no such image: $image" >&2
+    echo "build it:  docker/pcb/build-image.sh" >&2
+    exit 2
+fi
+# The image must be the one this tree's recipe describes, as run.sh of the
+# firmware image requires: a stale image would certify inputs the commit no
+# longer states. The control image (no ngspice) is exempt by explicit name.
+have=$(docker image inspect "$image" --format '{{index .Config.Labels "due.image.recipe"}}')
+want=$("$here/image-id.sh" recipe)
+if [ "$have" != "$want" ]; then
+    echo "image $image was built from a different recipe" >&2
+    echo "  image recipe: ${have:-none}" >&2
+    echo "  tree recipe:  $want" >&2
+    echo "rebuild:  docker/pcb/build-image.sh" >&2
+    exit 2
+fi
+content=$("$here/image-id.sh" content "$image")
+
+cidfile="${TMPDIR:-/tmp}/due-pcb-$$-${RANDOM}.cid"
+errlog=$(mktemp)
+flags=(
+    --init --user "$(id -u):$(id -g)"
+    --network none
+    --memory "$M" --memory-swap "$M" --cpus "$C"
+    --volume "$repo:/work" --workdir /work
+    --env "DUE_PCB_IMAGE=$image" --env "DUE_PCB_IMAGE_CONTENT=$content"
+    --env "DUE_PCB_CAP=$M"
+    --cidfile "$cidfile"
+)
+cleanup() {
+    if [ -f "$cidfile" ]; then
+        cid=$(cat "$cidfile" 2>/dev/null || true)
+        [ -n "$cid" ] && docker rm -f "$cid" >/dev/null 2>&1 || true
+        rm -f "$cidfile"
+    fi
+    rm -f "$errlog"
+}
+trap cleanup EXIT INT TERM HUP
+
+# Not --rm: after an OOM kill the container's State is the only record of why.
+status=0
+docker run "${flags[@]}" "$image" /work/docker/pcb/capped-inner.sh "$T" "$@" \
+    2> >(tee "$errlog" >&2) || status=$?
+wait
+if ! grep -q '^capped: ' "$errlog"; then
+    # The inner script did not get to report: the kernel killed it with the
+    # job (cap), or the container never started. Say what is known.
+    oom=$(docker inspect "$(cat "$cidfile")" --format '{{.State.OOMKilled}}' 2>/dev/null || echo false)
+    [ "$oom" = true ] && status=137
+    echo "capped: peak_rss_kb=? wall_s=? exit=$status cap=$M limit_s=$T image=$content" >&2
+fi
+exit $status
