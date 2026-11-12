@@ -73,6 +73,7 @@ RAN = {"pcbnew_passed": 0, "pcbnew_selected": 0}
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "guard_last: run after every other test")
+    config._pcbtools_ran = RAN          # read by tests/pcbtools/test_guard.py (an `import conftest` can pick up another suite's conftest)
 
 
 @pytest.hookimpl(hookwrapper=True)
