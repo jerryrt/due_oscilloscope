@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1248" height="688" font-family="sans-serif">
+<rect width="1248" height="688" fill="#ffffff"/>
+<rect x="24.0" y="24.0" width="1200.0" height="640.1" fill="#f4f4f0" stroke="#000" stroke-width="2"/>
+<rect x="74.4" y="397.7" width="297.6" height="296.4" fill="#d9822b" fill-opacity="0.10" stroke="#d9822b" stroke-dasharray="6 4" rx="120.0"/>
+<rect x="134.4" y="409.7" width="264.0" height="273.6" fill="#d9822b" fill-opacity="0.10" stroke="#d9822b" stroke-dasharray="6 4" rx="120.0"/>
+<rect x="597.6" y="322.1" width="55.2" height="318.0" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="348.0" y="646.7" width="678.0" height="12.0" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="384.0" y="370.1" width="26.4" height="282.0" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="381.6" y="260.9" width="57.6" height="139.2" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="451.2" y="64.1" width="36.0" height="336.0" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="564.0" y="97.7" width="19.2" height="302.4" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="667.2" y="425.3" width="12.0" height="226.8" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="1017.6" y="575.3" width="16.8" height="83.4" fill="#999" fill-opacity="0.25" stroke="#777" stroke-dasharray="3 3"/>
+<rect x="36.0" y="400.1" width="312.0" height="208.8" fill="#d9822b" fill-opacity="0.12" stroke="#d9822b" stroke-width="2"/>
+<text x="42.0" y="438.5" font-size="14" fill="#d9822b" font-weight="bold">POWER</text>
+<rect x="414.0" y="400.1" width="180.0" height="208.8" fill="#2a9d8f" fill-opacity="0.12" stroke="#2a9d8f" stroke-width="2"/>
+<text x="420.0" y="438.5" font-size="14" fill="#2a9d8f" font-weight="bold">REFCAL</text>
+<rect x="48.0" y="100.1" width="336.0" height="276.0" fill="#8a4fa8" fill-opacity="0.12" stroke="#8a4fa8" stroke-width="2"/>
+<text x="54.0" y="138.5" font-size="14" fill="#8a4fa8" font-weight="bold">AWG</text>
+<rect x="597.6" y="60.5" width="396.0" height="261.6" fill="#3a6ea5" fill-opacity="0.12" stroke="#3a6ea5" stroke-width="2"/>
+<rect x="652.8" y="322.1" width="340.8" height="103.2" fill="#3a6ea5" fill-opacity="0.12" stroke="#3a6ea5" stroke-width="2"/>
+<rect x="1002.0" y="64.1" width="214.8" height="402.0" fill="#3a6ea5" fill-opacity="0.12" stroke="#3a6ea5" stroke-width="2"/>
+<text x="603.6" y="98.9" font-size="14" fill="#3a6ea5" font-weight="bold">SCOPE</text>
+<rect x="139.7" y="618.0" width="244.6" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="155.3" y="657.6" font-size="10" fill="#000" font-weight="normal">J4</text>
+<rect x="414.0" y="618.0" width="244.6" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="429.6" y="657.6" font-size="10" fill="#000" font-weight="normal">J5</text>
+<rect x="688.3" y="618.0" width="244.6" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="703.9" y="657.6" font-size="10" fill="#000" font-weight="normal">J6</text>
+<rect x="30.0" y="38.9" width="305.5" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="45.6" y="20.9" font-size="10" fill="#000" font-weight="normal">J9</text>
+<rect x="566.4" y="38.9" width="244.6" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="582.0" y="20.9" font-size="10" fill="#000" font-weight="normal">J7</text>
+<rect x="627.4" y="38.9" width="244.6" height="31.2" fill="#ddd" stroke="#444"/>
+<text x="643.0" y="20.9" font-size="10" fill="#000" font-weight="normal">J8</text>
+<circle cx="1044.0" cy="575.3" r="5" fill="#c00"/>
+<text x="1053.6" y="570.5" font-size="10" fill="#c00" font-weight="normal">J3 BNC</text>
+<circle cx="1044.0" cy="374.5" r="5" fill="#c00"/>
+<text x="1053.6" y="369.7" font-size="10" fill="#c00" font-weight="normal">J2 BNC</text>
+<circle cx="1044.0" cy="130.7" r="5" fill="#c00"/>
+<text x="1053.6" y="125.9" font-size="10" fill="#c00" font-weight="normal">J1 BNC</text>
+<circle cx="978.2" cy="633.6" r="5" fill="#c00"/>
+<text x="987.8" y="628.8" font-size="10" fill="#c00" font-weight="normal">MH1</text>
+<circle cx="902.0" cy="54.5" r="5" fill="#c00"/>
+<text x="911.6" y="49.7" font-size="10" fill="#c00" font-weight="normal">MH2</text>
+<circle cx="498.0" cy="512.9" r="5" fill="#c00"/>
+<text x="507.6" y="508.1" font-size="10" fill="#c00" font-weight="normal">J11 CAL</text>
+<circle cx="307.2" cy="608.9" r="7" fill="#fff" stroke="#000"/>
+<text x="302.7" y="612.4" font-size="10">1</text>
+<circle cx="348.0" cy="512.9" r="7" fill="#fff" stroke="#000"/>
+<text x="343.5" y="516.4" font-size="10">2</text>
+<circle cx="252.0" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="247.5" y="403.6" font-size="10">3</text>
+<circle cx="216.0" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="211.5" y="403.6" font-size="10">4</text>
+<circle cx="348.0" cy="606.5" r="7" fill="#fff" stroke="#000"/>
+<text x="343.5" y="610.0" font-size="10">5</text>
+<circle cx="429.6" cy="608.9" r="7" fill="#fff" stroke="#000"/>
+<text x="425.1" y="612.4" font-size="10">7</text>
+<circle cx="432.0" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="427.5" y="403.6" font-size="10">9</text>
+<circle cx="573.6" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="569.1" y="403.6" font-size="10">10</text>
+<circle cx="594.0" cy="390.5" r="7" fill="#fff" stroke="#000"/>
+<text x="589.5" y="394.0" font-size="10">11</text>
+<circle cx="451.2" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="446.7" y="403.6" font-size="10">12</text>
+<circle cx="475.2" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="470.7" y="403.6" font-size="10">13</text>
+<circle cx="463.2" cy="400.1" r="7" fill="#fff" stroke="#000"/>
+<text x="458.7" y="403.6" font-size="10">14</text>
+<circle cx="459.6" cy="608.9" r="7" fill="#fff" stroke="#000"/>
+<text x="455.1" y="612.4" font-size="10">15</text>
+<circle cx="612.5" cy="322.1" r="7" fill="#fff" stroke="#000"/>
+<text x="608.0" y="325.6" font-size="10">18</text>
+<circle cx="643.0" cy="322.1" r="7" fill="#fff" stroke="#000"/>
+<text x="638.5" y="325.6" font-size="10">19</text>
+<circle cx="825.8" cy="641.3" r="7" fill="#fff" stroke="#000"/>
+<text x="821.3" y="644.8" font-size="10">20</text>
+<circle cx="384.0" cy="370.1" r="7" fill="#fff" stroke="#000"/>
+<text x="379.5" y="373.6" font-size="10">21</text>
+<circle cx="420.0" cy="370.1" r="7" fill="#fff" stroke="#000"/>
+<text x="415.5" y="373.6" font-size="10">22</text>
+<rect x="608.5" y="386.5" width="8" height="8" fill="#e63946"/>
+<text x="619.7" y="394.1" font-size="8" fill="#e63946" font-weight="normal">BR1 (R98)</text>
+<rect x="639.0" y="366.1" width="8" height="8" fill="#e63946"/>
+<text x="650.2" y="373.7" font-size="8" fill="#e63946" font-weight="normal">BR2 (R100)</text>
+<text x="30.0" y="9.6" font-size="11" fill="#000" font-weight="normal">AFE v1 floorplan (Due mm); circles = edge points (contract row no.), red squares = bridges, dashed grey = corridors; bottom layer = one GND plane</text>
+</svg>
