@@ -33,7 +33,7 @@
 | BR6 (R110) | P33_S / P33_U | (66.04, 35.7) | the A1 column (x 66.04) |
 
 Notes:
-- v2 arrangement (AWG east beside J301), as the spec lead ruled: LR-7 keeps the AWG current loop and the 50 ohm return in its own zone. Nine 0603 0R bridges (existing type), no hop, no 1206: six in the wall corridor and three inside REFCAL (the block agent found a planar cut there: the VREF tree with exits south, north and east splits the fence and the ADS straddles it, so +3V3A, SDA and SCL cross a VREF leg by a bridge each).
+- v2 arrangement (AWG east beside J301), as the spec lead ruled: LR-7 keeps the AWG current loop and the 50 ohm return in its own zone. Twelve 0603 0R bridges (existing type), no hop, no 1206: six in the wall corridor and three inside REFCAL (the block agent found a planar cut there: the VREF tree with exits south, north and east splits the fence and the ADS straddles it, so +3V3A, SDA and SCL cross a VREF leg by a bridge each).
 - The first v1 contract moved the AWG west and is withdrawn: it put the AWG output lane 95 mm past the TAP and A pads.
 - Strip lane order (spec lead accepted): +3V3A y 0.55 outermost, VNEG y 0.95, VREF C y 1.35 inner; not VNEG outermost. Estimate *(check)*: over about 20 mm of parallel 0.2 / 0.2 mm lane the mutual capacitance is order 0.1-0.2 pF; with about 10 mV of 2 MHz pump ripple *(check)* on VNEG that injects roughly 25 nA into the VREF lane, negligible at the reference output impedance, and the AWG-end 100 ohm / 20 uF filter removes it.
 - Measured on v1 footprints (J601, J602, J603): pad edge y 1.69 (1.7 mm pads), inner lane top y 1.45, gap 0.24; outermost lane edge y 0.45, which is 0.50 mm from the outline (y -0.05).
