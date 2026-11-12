@@ -10,7 +10,7 @@ reviewed at `db85f57`; its bill of materials is
 `hardware/afe-proto/whatif/bom.md` ($37.0 to $37.4 per board at 20 boards,
 $31.5 to $31.7 at 100, domestic order, PCB included).
 
-The owner's rules for version 2 (2026-11-11):
+The owner's rules for version 2 (2026-11-11, V2-9 2026-11-12):
 
 | ID | Rule |
 |---|---|
@@ -22,6 +22,7 @@ The owner's rules for version 2 (2026-11-11):
 | V2-6 | **One scope range, −1.5 to +3.5 V, and an AWG of −1.5 to +3.0 V** |
 | V2-7 | **No TMUX1119, and no analog switch on the board** |
 | V2-8 | **The precision ADC only measures DC, and is chosen for cost**: the REF3030E sets the accuracy, and the converter reads it on its own inputs |
+| V2-9 | **Cost down is the main purpose, and nothing works above 10 MHz** (2026-11-12): no requirement is met beyond what it needs |
 
 Figures marked *derived* below are arithmetic on `afe.md`'s numbers, not
 simulation; the design replaces each with its own. Where this file and the
@@ -53,6 +54,7 @@ read 2026-11-11, *(check)* before ordering):
 | V2-4 | **Cost.** The design reports the per-board cost at 20 and at 100 boards on the domestic service, PCB included, in the version 1 format, with the change against version 1 per block of section 1. The target is the owner's (D-V2-1) |
 | V2-5 | **Calibration connections by jumper wire.** The shield passes every Due pin through and leaves it reachable from the top of the stack (MC-9), so the Due's DAC and ADC pins and the AFE's own calibration nodes can be joined by a jumper wire for a calibration and removed afterwards. A connection used **only during calibration** may be made this way instead of by a permanent trace or a part, where that removes a part or frees a pin. The AFE brings each such node to a labelled header pin or pad beside the Due pin it joins, and the calibration procedure names each wire. **The host verifies every jumper by measurement before using a reading**: each position gives a reading that cannot be mistaken for another, and a missing or misplaced wire stops the calibration with a message, never a wrong fit. A jumper carries only the AFE's own signals (the reference, the ladder, the sense divider, DAC0 or DAC1), all inside 0 V to AREF, so PR-2 holds with any wire in any position the procedure names or with the wire left off. **Nothing in normal use depends on a jumper**: the scope inputs, the AWG output and the wide path are wired permanently |
 | V2-8 | **A cheap DC precision ADC.** The precision channel reads only DC, during calibration and as a slow DC measurement, so it need not be a 24-bit part and need not take an external reference. **The REF3030E (PA-2) is read on the converter's own inputs, and every precision reading is taken as a ratio to it in the same session**, so the converter's internal reference cancels and only its linearity, noise and short-term drift remain; the design shows those inside SC-7's fit share from the datasheet. The candidate is **one ADS1115** (TI, 16-bit, four inputs, I²C), with the SG Micro SGM58031 as a possible second source *(check: pin compatibility, JLC stock and price)*. The bus is the Due's hardware TWI on the edge headers or a software bus on two edge-header pins, which frees the version 1 bus pins D33 to D37. PA-1's "16 bits noise-free" becomes **a 16-bit converter whose averaged reading meets SC-7's fit share**; the design states the averaging. Every input here is at or above ground and the 3.0 V reference needs the ±4.096 V range *(check)*, so the converter works as **15 bits single-ended**, about 125 µV per code (derived), and the budget is sized against that, never 16. The converter is supplied from the +3.3 V analog rail, and every input stays between 0 V and that rail in normal use (PR-4's rule for the unpowered and forced cases, from the chosen part's datasheet). The four inputs are allocated in section 3.4 |
+| V2-9 | **A 10 MHz ceiling, and no over-design.** The owner's words: "cost down is the main purpose here, and I never need it work over 10 MHz at most". **No frequency requirement extends above 10 MHz**, and a part is chosen as the cheapest that meets the requirement as written, never for margin the requirement does not ask for. SM-3's bandwidth stays at least 8 MHz on the one range (D3) and is not a target to exceed: with no filter (SC-5) the ADC folds in every frequency the stage passes, so bandwidth beyond the need adds noise against SC-6 and buys nothing. Requirements whose wording reached past 10 MHz are capped in section 3: SC-9's "any frequency the wide path passes" and AW-3's stage speed. AN-1's phase margin is not a frequency requirement and holds for whatever parts are chosen |
 
 ## 3. Ranges and the switch-free design
 
@@ -73,6 +75,7 @@ logic needs a ×10 probe, which gives −15 to +35 V.
 | **PR-1**: ±12 V on both inputs, powered or unpowered | Held. The divider attenuates less than version 1's (a 5 V span into about 2.3 V at the pin, against 10 V), so ±12 V puts more voltage inside the divider; the design shows where it is clamped and that the clamp's leakage and capacitance stay inside SC-7 and the divider's compensation (SC-3) |
 | **SC-3**: 1 MΩ, compensated, ×1 and ×10 probes; capacitance at most 30 pF | **Nominal 1 MΩ within 1%, from Basic values, with the 1% parts' spread allowed on top** (about ±2% worst case, derived; owner, 2026-11-12, D-V2-9), since the probe compensation is adjusted per channel. Capacitance as version 1 |
 | **The offset centre**: version 1's buffered mid-rail, one TLV9062 half per channel | **Set from the REF3030E through each channel's input resistors** (owner, 2026-11-12, D-V2-10): no buffer and no divider off +3.3 V, whose noise and drift would reach every offset. The reference then has three roles, the precision ADC's anchor, the ladder's top and the scope's centre, and the design shows that its sink rating covers an input clamped past +4 V *(check)*, and that SC-7's budget holds with the scope's signal current flowing in the reference the precision ADC reads |
+| **SC-9**: crosstalk at most 2 LSB for a full-scale input at any frequency the wide path passes | **Up to 10 MHz** (V2-9). The two scope channels may share one dual op-amp: the design's data puts the coupling under 1 LSB at 10 MHz even at three times the datasheet's figure, so V2-2's sharing condition is met and the board carries two duals, one for the scope and one for the AWG. The AWG-into-scope limit is unchanged |
 | **Section 5's PAM table** (on ±5 V and ±1.25 V) | On the one range: about 2,700 codes for a full AWG loopback, PAM128 passes and PAM256 is on the limit; a 1 V signal spans about 590 codes and fits PAM32 (derived, from the 8.6 to 11.4-code level band at 1.68 mV per code) |
 | **VT-15**: PAM16 through the AFE on the ±1.25 V range | On the one range |
 
@@ -86,6 +89,7 @@ logic needs a ×10 probe, which gives −15 to +35 V.
 | **AW-8**: within ±2.1 V through a Due reset or boot | **Within the AFE's rails, about −2.1 to +3.3 V** (derived), returning to the commanded value once the firmware drives DAC0. The documentation states that anything connected to the AWG may see this during a reset or boot |
 | **PR-4**: forced voltage up to ±1.8 V survived with no damage | The design restates the level from the new swing and the op-amp's rating, by PR-4's rule |
 | **AW-7**: the offset reference is the AWG's own | Held; its centre is about +0.75 V instead of 0 V |
+| **AW-3**: an unfiltered stage whose bandwidth is at least the scope path's | **Bandwidth at least SM-3's 8 MHz, and slew enough not to slow the DAC's own edge** (V2-9): about 6 V/µs at the DAC pin *(check)* times the stage's gain of about 2.2 to 2.4, so roughly 13 to 15 V/µs (derived). The DAC updates at most 1.39 M times a second, so the AWG never carries a full-scale 10 MHz sine, and the slew that would need (about 140 V/µs at 4.5 V peak to peak, derived) is not a requirement |
 
 ### 3.3 Calibration with no switch (V2-7)
 
@@ -155,3 +159,4 @@ through it.
 | D-V2-8 | The AWG's top end into 50 Ω | **Decided 2026-11-12: set by the chosen op-amp's output swing, no new rail** (AW-1) |
 | D-V2-9 | SC-3's 1 MΩ from 1% Basic parts | **Decided 2026-11-12: nominal within 1%, the parts' spread allowed on top** |
 | D-V2-10 | The scope's offset centre | **Decided 2026-11-12: from the REF3030E**, on the conditions in section 3.1 |
+| D-V2-11 | The frequency ceiling and sharing one dual between the scope channels | **Decided 2026-11-12: nothing above 10 MHz, cost first** (V2-9); the scope channels share one dual (SC-9) |
