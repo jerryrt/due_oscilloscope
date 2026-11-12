@@ -92,3 +92,9 @@ def test_a_raw_file_with_unrequested_vectors_is_refused_after_the_run(tmp_path, 
     monkeypatch.setattr(nr, "prepare", lambda d, s, c=None: d)
     with pytest.raises(nr.RunError, match="beyond the .save list"):
         nr.run(deck(), save=["v(out)"], workdir=tmp_path, name="all", timeout=60)
+
+
+def test_the_frequency_column_is_real_whatever_ngspice_left_in_its_imaginary_half(tmp_path):
+    out = nr.run(deck(), save=["v(out)"], workdir=tmp_path, name="f", timeout=60)
+    ac = next(p for p in out.plots().values() if "complex" in p.flags)
+    assert np.all(ac["frequency"].imag == 0)

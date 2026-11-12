@@ -76,17 +76,24 @@ def test_numpy_tier_selection_collects_and_runs_this_file(tmp_path):
 HEAVY = re.compile(r"^\s*(?:import pcbnew|from pcbnew\b|.*subprocess.*ngspice|.*\"ngspice\"|.*run_ngspice)", re.M)
 
 
+SCAN_ONLY = {"test_heavy_job_discipline.py"}      # names ngspice in a regex, runs nothing
+
+
 def test_every_heavy_test_file_is_marked():
     """A file that touches pcbnew or ngspice must carry the marker, or the
-    numpy-tier gate runs it without the tool and fails for the wrong reason."""
+    numpy-tier gate runs it without the tool and fails for the wrong reason.
+    A file that drives docker from the host (marker docker) is exempt: it runs
+    the tools in the image, not here."""
     bad = []
     for f in HERE.rglob("test_*.py"):
-        if f.name == "test_harness.py":
+        if f.name == "test_harness.py" or f.name in SCAN_ONLY:
             continue
         s = f.read_text()
-        for name in ("pcbnew", "ngspice"):
-            touches = re.search(rf"^\s*(import {name}|from {name}\b)", s, re.M) if name == "pcbnew" \
-                else re.search(r"ngspice", s, re.I)
+        if re.search(r"mark\.docker", s):
+            continue
+        uses = {"pcbnew": re.search(r"^\s*(import pcbnew|from pcbnew\b)", s, re.M),
+                "ngspice": re.search(r"ngspice_run|run_ng\(|[\[(]\s*[\"']ngspice[\"']\s*[,\])]", s)}
+        for name, touches in uses.items():
             if touches and not re.search(rf"mark\.{name}|pytestmark.*{name}", s):
                 bad.append((f.name, name))
     assert not bad, bad

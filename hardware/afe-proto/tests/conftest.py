@@ -97,6 +97,8 @@ def pytest_collection_modifyitems(config, items):
     RAN["pcbnew_selected"] = sum(1 for i in items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last"))
     if os.environ.get("DUE_PCB_IMAGE_CONTENT"):           # inside docker/pcb: the cap is the container's
         for item in items:
+            if "docker" in item.keywords:
+                item.add_marker(pytest.mark.skip(reason="drives docker from the host; never runs inside the image"))
             if "jobcap" in item.keywords:
                 item.add_marker(pytest.mark.skip(reason="per-job cap: the container's cap is docker's; see test_image_gate"))
     required = {t.strip() for t in config.getoption("--require-tool").split(",") if t.strip()}

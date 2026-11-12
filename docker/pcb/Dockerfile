@@ -16,7 +16,12 @@
 # file name and checked against a sha256 before apt sees them. Python
 # packages come from a lock file with hashes, wheels only.
 #
-# HEADLESS. kicad-cli and `import pcbnew`; no GUI is started. The KiCad
+# HEADLESS. kicad-cli and `import pcbnew`; no GUI is started. `kicad-cli pcb
+# render` works here: it rasterises through Mesa's software driver, which the
+# KiCad package's own dependencies bring in, so no GL pin of ours is needed -
+# but nothing is rendered with component bodies (no 3D model package), and a
+# software render is not byte-stable, so the gate checks that a render is
+# produced and not what it looks like. The KiCad
 # package depends on GTK and wx libraries and they come with it, unused.
 # The 3D model package is not installed (3 GB, nothing here renders it).
 #
@@ -104,7 +109,6 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 RUN set -eux; \
     /usr/bin/python3.14 -m venv --system-site-packages "$VIRTUAL_ENV"; \
-    "$VIRTUAL_ENV/bin/python" -m ensurepip --upgrade >/dev/null 2>&1 || true; \
     "$VIRTUAL_ENV/bin/python" -m pip --version; \
     "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir --require-hashes --only-binary=:all: \
         -r /tmp/requirements-lock.txt; \
@@ -114,9 +118,22 @@ RUN set -eux; \
 
 # The container runs as the invoking user, which has no passwd entry; KiCad
 # wants a writable home for its config, and a sticky world-writable
-# directory serves any uid. It is empty at image time and gone with --rm.
+# directory serves any uid. It is gone with --rm.
+#
+# KiCad's GLOBAL library tables live in the user's config, and an empty
+# home has none: kicad-cli then cannot resolve a standard symbol or
+# footprint, and ERC on the v1 schematic reports 252 violations against 5
+# with them (lib_symbol_issues and footprint_link_issues are the 247).
+# So the two tables KiCad ships as its template are installed here, fixed
+# in the image rather than left to whoever runs it. tests/test_image_gate.py
+# runs ERC on a fixture and requires the libraries to resolve.
 ENV HOME=/opt/pcbhome
-RUN mkdir -m 1777 /opt/pcbhome
+RUN set -eux; \
+    mkdir -m 1777 /opt/pcbhome; \
+    mkdir -p /opt/pcbhome/.config; \
+    mkdir -m 1777 /opt/pcbhome/.config/kicad /opt/pcbhome/.config/kicad/10.0; \
+    install -m 0644 /usr/share/kicad/template/sym-lib-table /usr/share/kicad/template/fp-lib-table \
+        /opt/pcbhome/.config/kicad/10.0/
 
 WORKDIR /work
 CMD ["/bin/bash"]

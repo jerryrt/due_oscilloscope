@@ -58,7 +58,12 @@ def read_raw(path):
         start = end + len(b"Binary:\n")
         if start + nbytes > len(buf):
             raise ValueError(f"{path}: truncated, plot {plotname!r} wants {nbytes} bytes, {len(buf) - start} left")
-        data = np.frombuffer(buf, dtype=dt, count=npts * nvars, offset=start).reshape(npts, nvars)
+        data = np.frombuffer(buf, dtype=dt, count=npts * nvars, offset=start).reshape(npts, nvars).copy()
+        if cplx and names[0] == "frequency":
+            # ngspice leaves the imaginary half of the frequency column uninitialised: it holds
+            # process-dependent pointer bits (measured: two identical runs differ in those 80 bytes
+            # and nowhere else). The frequency is real, so keep only its real part.
+            data[:, 0] = data[:, 0].real
         key = plotname
         while key in plots:
             key += "'"            # a repeated analysis keeps all its plots
