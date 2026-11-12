@@ -1,0 +1,16 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-sc9",
+  "restored": "passes",
+  "what": "the SC-9 DC sum with the plane return assumed 100 ohm instead of 10 mohm must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-pw7",
+  "restored": "passes",
+  "what": "PW-7 check against a 1 ms limit must fail"
+ }
+]

@@ -1,0 +1,79 @@
+[
+ {
+  "case": "AWG stepped between its window ends into 50 ohm: change of a scope reading, settled, the four paths by which a scope on +3.3 V alone still hears the AWG (sum, 1 LSB = 1.73 mV at the input)",
+  "id": "SC-9/DC",
+  "limit": "<= 2 LSB",
+  "margin": "+1.87 LSB",
+  "note": "the scope is on +3.3 V only (its V- is ground), so the negative rail reaches it only through the shared LM27762: the 5 V feed and the +LDO's line regulation; the paths are the +rail's load regulation, the feed, the shared reference, and the shared return",
+  "ok": true,
+  "req": "V2-1, SC-9, VT-20",
+  "sect": "sc9",
+  "value": "0.133 LSB (largest: the assumed plane return, 0.116 LSB)"
+ },
+ {
+  "case": "the AWG's 19 mA step on OUT+: peak rail movement by hand (2 x 10 uF at 50 % of nominal, 4 mohm ESR, a 1 us LDO response) = 2.00 mV, through an assumed PSRR 80 dB flat to 10 kHz then -20 dB/dec at 200 kHz",
+  "id": "SC-9/AC",
+  "limit": "<= 2 LSB",
+  "margin": "",
+  "note": "no converged LM27762 step run: hand estimate *(check)*",
+  "ok": true,
+  "req": "SC-9",
+  "sect": "sc9",
+  "value": "0.0023 LSB"
+ },
+ {
+  "case": "ripple at the +3.3 V rail from this block's LM27762 runs (largest peak-to-peak 0.16 mV), through the assumed PSRR at 2 MHz (-34 dB), at the scope's pin",
+  "id": "PW-2/ripple",
+  "limit": "<= 0.2 mV rms (SC-6) and the rail <= 20 mV (PW-2)",
+  "margin": "",
+  "note": "the model has no LDO loop and under-reads the datasheet (version 1's note); PW-2's 20 mV holds by 30x, SC-6 by 15x on the model's figure *(check, VT-8)*",
+  "ok": true,
+  "req": "PW-2, SC-6",
+  "sect": "pw2",
+  "value": "3.3 uV pk-pk at the pin, 0.16 mV at the rail"
+ },
+ {
+  "case": "switching frequency, the rule: not settable (LM27762 fSW 1.7 to 2.3 MHz, 2 MHz typ at VIN 3.6 V; pulse-skipping below that at light load, the loop 'can drop into the sub-2-kHz range when unloaded', 6.3.3)",
+  "id": "PW-2/fsw",
+  "limit": "stated, with the wide path in mind",
+  "margin": "",
+  "note": "the AFE's idle load is never light: the AWG dual alone draws 15 mA on each rail, so the pump runs at constant frequency (a moving sub-2-MHz spur would need a load under a few mA) *(check at the PFM threshold: not given)*",
+  "ok": null,
+  "req": "PW-2",
+  "sect": "pw2",
+  "value": "line at 2 MHz +-15 %, inside SM-3's 8 MHz band; residue at the pin 3.3 uV"
+ },
+ {
+  "case": "ripple at the AWG dual's supply pin with 100 nF + 1 uF at the pin: 0.16 mV pk-pk on OUT+ (TI model) x 0.3; at the AWG output through the op-amp-like PSRR",
+  "id": "PW-2/AWG",
+  "limit": "<= 20 mV at the pin; <= 0.3 mV rms at the output (AW-6, D22)",
+  "margin": "+299 uV",
+  "note": "the model under-reads: a factor 10 more still passes",
+  "ok": true,
+  "req": "PW-2, AW-6 (D22: 0.3 mV)",
+  "sect": "pw2",
+  "value": "0.05 mV pk-pk at the pin, 0.8 uV rms at the output"
+ },
+ {
+  "case": "ripple at the AWG dual's supply pin with 100 nF only (1 uF dropped): 0.16 mV pk-pk on OUT+ (TI model) x 1.0; at the AWG output through the op-amp-like PSRR",
+  "id": "PW-2/AWG",
+  "limit": "<= 20 mV at the pin; <= 0.3 mV rms at the output (AW-6, D22)",
+  "margin": "+297 uV",
+  "note": "the model under-reads: a factor 10 more still passes",
+  "ok": true,
+  "req": "PW-2, AW-6 (D22: 0.3 mV)",
+  "sect": "pw2",
+  "value": "0.16 mV pk-pk at the pin, 2.6 uV rms at the output"
+ },
+ {
+  "case": "rails up (this block's LM27762 runs: +rail 90 % at 0.29 ms, -rail 0.50 ms) then the REF3030E's 2 ms to 0.1 %, then the scope node's own RC (about 12 us)",
+  "id": "PW-7",
+  "limit": "<= 15 s",
+  "margin": "",
+  "note": "PW-7 is met by 3 orders of magnitude by the electrical start-up; what takes seconds is thermal (VT-18), not the rails. The host flags readings not ready until the ADS1115 sees the reference within 0.1 % of its first valid reading",
+  "ok": true,
+  "req": "PW-7",
+  "sect": "pw7",
+  "value": "2.5 ms"
+ }
+]

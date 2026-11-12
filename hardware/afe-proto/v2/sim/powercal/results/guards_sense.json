@@ -1,0 +1,51 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-forced5",
+  "restored": "passes",
+  "what": "the +5 V forced-sense check with a 4.7k bleed (the v1 helper's) and the REF output open must fail; the 1.8k bleed passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-clip",
+  "restored": "passes",
+  "what": "the clip check with the slope criterion disabled (threshold 0) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-struct",
+  "restored": "passes",
+  "what": "the ratio check applied to the old structure S1 must fail; S3 with the matched resistor passes (Zcm tracking)"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-range",
+  "restored": "passes",
+  "what": "tap range with k = 0.6 (tap goes below ground at the window bottom) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-ratio",
+  "restored": "passes",
+  "what": "ratio accuracy with a 2 % channel match must fail a 1.5 % gain limit (the designed 0.1 % match passes it)"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-distinct",
+  "restored": "passes",
+  "what": "distinguishability with k = 0.995 (wire barely moves the tap) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-current",
+  "restored": "passes",
+  "what": "the ESD-current check with a limit of 100 uA applied to a shunt wired to the Due's 5V / VIN (stress) must fail; the header's own states pass it"
+ }
+]

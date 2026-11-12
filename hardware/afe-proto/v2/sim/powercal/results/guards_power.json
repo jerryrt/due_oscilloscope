@@ -1,0 +1,44 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-divscan",
+  "restored": "passes",
+  "what": "the bleed bound of the scan applied to a 10k bleed on the 25k divider must fail; the 2k the scan finds passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-PR3-sense",
+  "restored": "passes",
+  "what": "the forced-sense check with the 10k bleed must fail; the 1.8k bleed passes"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-PW-rating",
+  "restored": "passes",
+  "what": "V2-2 supply check: R3 = 82k (nominal -2.26 V) must exceed 5.5 V at the corners"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-PW-1",
+  "restored": "passes",
+  "what": "PW-1 check with the limit lowered to 40 mA must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-PR-3",
+  "restored": "passes",
+  "what": "PR-3 check with the bleed removed (1 Gohm) must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-REF-VIN",
+  "restored": "passes",
+  "what": "REF3030E dropout check with R1 = 100k (nominal 2.97 V) must fail"
+ }
+]

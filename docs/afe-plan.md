@@ -95,6 +95,8 @@ them.
 | Optional parts as unfitted footprints, and choices as Due-pin switches (MC-11) | The BOM marks each as fitted or unfitted for the round |
 | Parasitics extracted from the layout, not estimated, added as sensitivity cases | The affected step 2 blocks rerun and passing |
 | Unpowered continuity and insulation checks defined | Checklist the build step runs |
+| **Floorplan and interface contract before any routing (owner, 2026-11-12), for every version.** One fence per LR-11 block inside MC-1's outline, and one table row for every net that crosses a fence: edge point, layer and width, bridge, owning block. One data set draws both. Each block is then placed and routed inside its own fence on a copy of the same full board, a fence check rejects any copy that touches another fence, and one integrator merges the blocks and routes only the nets between them | The floorplan picture and table, reviewed before any block is routed; the fence check and the LR checker each broken once on purpose |
+| The layout rules (afe.md LR-1 to LR-11) checked on the board by a program wherever a program can decide them, at the rule's own values, never looser | The checker's output beside KiCad's design rule check at all severities, both clean, at the gate |
 
 ## Step 4: build and bench
 

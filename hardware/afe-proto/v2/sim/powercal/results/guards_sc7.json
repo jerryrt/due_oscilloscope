@@ -1,0 +1,16 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-ext",
+  "restored": "passes",
+  "what": "the extrapolation check with an INL of 12 LSB must fail the 0.1 % share"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-sum",
+  "restored": "passes",
+  "what": "the SC-7 sum check against a 0.5 % limit with the sense chain's error multiplied by 3 must fail (the real sum passes the same 0.5 %)"
+ }
+]

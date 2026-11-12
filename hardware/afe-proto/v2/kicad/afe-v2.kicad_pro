@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "filename": "afe-v2.kicad_pro",
+    "version": 3
+  },
+  "erc": {
+    "erc_exclusions": [
+      [
+        "pin_to_pin|1244600|457200|77ae6463-3d00-5849-8fd1-f25649c60869|ba6aae53-ea93-565d-b32f-1a9014e6632d|/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055|/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055|/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055",
+        "PGOOD unused, tied to GND per SNVSAF7C; GND carries the PWR_FLAG"
+      ]
+    ]
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "7d7eeb21-0f9a-5ff3-a2e8-058a18f22055",
+      "Root"
+    ]
+  ]
+}

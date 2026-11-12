@@ -1,0 +1,23 @@
+[
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-Z",
+  "restored": "passes",
+  "what": "tap impedance check with 1.5 kohm rungs must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-REF-I",
+  "restored": "passes",
+  "what": "REF source check with a limit of 1 mA must fail"
+ },
+ {
+  "broken": "fails",
+  "good": true,
+  "id": "G-tapcheck",
+  "restored": "passes",
+  "what": "the measured-tap fault check (window 1.5 % + 10 K drift) must flag a tap 5 % off"
+ }
+]
