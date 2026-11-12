@@ -47,22 +47,23 @@ Cdp vcc 0 1e-07
 Cdn vee 0 1e-07
 Vdac dacs 0 DC 1.6745
 Rdacs dacs dac 1m
-Rbin dac bin 2400.0
+Rbin dac bin 2700.0
 Rbpl bin 0 27000.0
 XA bin fb vcc vee oa TPH2502
 XB bin fb vcc vee ob TPH2502
 Rba oa vo 1.0
 Rbb ob vo 1.0
-Rf vo fb 470.0
-Rg2 fb vref 510.0
+Rf vo fb 3000.0
+Rg2 fb vref 3000.0
 Cfb fb 0 2e-12
 Vrf vrfs 0 DC 3.0
-Rzr vrfs vref 0.05
-Czr vref 0 1.1e-06
+Rzr vrfs vrf0 0.05
+Czr vrf0 0 1.1e-06
+Rvr vrf0 vref 100.0
+Cvr vref 0 1.4e-05
 Cf vo fb 1e-11
 Cpv bin 0 1.5e-12
 Ro vo bnc 50.0
-Cout bnc 0 3.3e-10
 Rl bnc 0 1Meg
 Cl bnc 0 15p
 

@@ -32,13 +32,13 @@ AREF = (3.20, 3.30)
 # DAC window: scenario A = theory 1/6..5/6 of AREF with +-30 mV centring uncertainty (sim/awg/run.py dc_mc, kept);
 # scenario B = the board as measured, 0.578..2.771 V at AREF 3.27 V (docs/hardware.md), scaled with AREF, +-5 mV residual.
 # Section limits: AW-1 <= 92 %, AW-2 <= 1.5 mV per code.
-OUT_LO, OUT_HI = -1.5, 1.71        # AW-1 after D-V2-12: -1.5 V to the guaranteed top, 1.71 V = the worst-corner commandable top with 4 % of the window kept free (hard corners 1.7104 V)
+OUT_LO, OUT_HI = -1.5, 1.63        # AW-1 after the offset filter: -1.5 V to the guaranteed top, 1.63 V = the worst-corner commandable top with 4 % of the window kept free (hard corners 1.6311 V)
 TOP_END_LIM = (0.060 - 0.015) * 49.5  # PW-3: window top end <= (60 mA supply pin - 15 mA IQ max of the dual) x 49.5 ohm = 2.2275 V
 RAIL_REACH_LO = -1.9226                 # ngspice (run.py): where the stage clips into high impedance at the weak negative rail -1.9549 V (the macro stops 32 mV short of it)
 USE_LIM, LSB_LIM = 0.92, 1.5e-3
 VOS_MAX = 0.5e-3          # TPH2502 VOS max (datasheet p3)
 
-VALUES = dict(Rf=470.0, Rg1=float('inf'), Rg2=510.0, Rvr=0.0, Rbin=2400.0, Rbpl=27e3)   # the design (design.md)
+VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=100.0, Rbin=2700.0, Rbpl=27e3)   # the design (design.md)
 
 
 def catalogue(kind='resistor'):
@@ -106,11 +106,13 @@ def corner_stats(v, tol=0.01, th=None, tl=None, arefs=AREF, scens='AB', rails=VR
     th = OUT_HI if th is None else th; tl = OUT_LO if tl is None else tl
     names = ['Rf', 'Rg2', 'Rvr', 'Rbin', 'Rbpl'] + (['Rg1'] if np.isfinite(v.get('Rg1', np.inf)) else [])
     best = dict(top=-9); bestlo = dict(bot=9)
-    ex = dict(top=-9, topmin=9, bot=9, botmax=-9, edge=0, use=0, lsb=0, tg=9, wbot=9, botg=-9)
+    ex = dict(top=-9, top_ac=-9, topmin=9, bot=9, botmax=-9, edge=0, use=0, lsb=0, tg=9, wbot=9, botg=-9)
     for sg in itertools.product((-1, 1), repeat=len(names)):
         w = {k: v[k] * (1 + tol * s) for k, s in zip(names, sg)}
         Rg2 = w['Rg2'] + w['Rvr']
         Gs0 = 1 + w['Rf'] * (1 / Rg2 + (1 / w['Rg1'] if 'Rg1' in w else 0.0))
+        # above the offset filter's corner its capacitor shorts Rvr: Rg2 alone sets the gain (the shelf), Gac >= Gs0
+        Gac = 1 + w['Rf'] * (1 / w['Rg2'] + (1 / w['Rg1'] if 'Rg1' in w else 0.0))
         kin = w['Rbpl'] / (w['Rbin'] + w['Rbpl']); K = w['Rf'] / Rg2
         for scen in scens:
             for aref in arefs:
@@ -122,6 +124,8 @@ def corner_stats(v, tol=0.01, th=None, tl=None, arefs=AREF, scens='AB', rails=VR
                             vos = vs * vos_mv
                             oh = Gs0 * (kin * hi + vos) - K * vo; ol = Gs0 * (kin * lo + vos) - K * vo
                             sp = oh - ol; c = (oh + ol) / 2
+                            oh_ac = ol + (Gac / Gs0) * sp      # a pulse train: DC mean at the window bottom, peaks at the top code, amplified by the AC gain
+                            ex['top_ac'] = max(ex['top_ac'], oh_ac)
                             ex['topmin'] = min(ex['topmin'], oh); ex['bot'] = min(ex['bot'], ol); ex['wbot'] = ex['bot']
                             ex['botmax'] = max(ex['botmax'], ol)
                             ex['edge'] = max(ex['edge'], max(abs(th - c), abs(tl - c)) / (sp / 2))
@@ -152,33 +156,32 @@ def worst(v, n=40000, tol=0.01, src='rail'):
     return res
 
 
-def search(top=10, tol=0.01):
-    """Basic 1 % values, the topology of design.md (no Rg1, offset from the REF3030E, Rvr 0): Rbin 0.68-3.3 kohm, Rbpl 10-100 kohm with
-    Rbin + Rbpl >= 28 kohm (AW-5 at the DAC's highest code, 2.80 V, 0.1 mA), Rf 220-560, Rg2 220-1200 ohm.  Keeps the sets whose hard-corner
-    window top end is <= TOP_END_LIM, whose commanded -1.5 V sits inside the window with 4 % kept free and whose window bottom is inside the
-    negative-rail reach, sorted by the highest commandable top ('tg', 4 % kept free) they guarantee.  Returns (rows, number kept)."""
+def search(top=10, tol=0.01, rvr=100.0, rf_rng=(1000, 5100), rg2_rng=(1000, 5100)):
+    """Basic 1 % values, the topology of design.md (no Rg1, offset from the REF3030E through Rvr = 100 ohm and the filter capacitor): Rbin 1.8-3.3 kohm,
+    Rbpl 22-56 kohm with Rbin + Rbpl >= 28 kohm (AW-5), Rf and Rg2 in the given ranges.  Keeps the sets whose hard-corner AC window top end (a pulse
+    train: DC mean at the window bottom, peaks at the top code, amplified by the AC gain 1 + Rf/Rg2 that holds above the filter corner) is <= TOP_END_LIM and
+    whose commanded -1.5 V sits inside the window with 4 % kept free, sorted by the highest commandable top ('tg') they guarantee.  Returns (rows, kept)."""
     cat = sorted(catalogue()); rows = []
-    for Rbin in [x for x in cat if 680 <= x <= 3300]:
-        for Rbpl in [x for x in cat if 10e3 <= x <= 100e3]:
+    for Rbin in (1800, 2000, 2200, 2400, 2700, 3000, 3300):
+        for Rbpl in [x for x in cat if 22e3 <= x <= 56e3]:
             if Rbin + Rbpl < 28e3: continue
-            kin = Rbpl / (Rbin + Rbpl)
-            if not 0.89 <= kin <= 0.95: continue
-            for Rf in [x for x in cat if 220 <= x <= 560]:
-                for Rg2 in [x for x in cat if 220 <= x <= 1200]:
-                    K = Rf / Rg2; G = (1 + K) * kin
-                    if not 1.7 <= G <= 1.85: continue
-                    v = dict(Rf=Rf, Rg1=float('inf'), Rg2=Rg2, Rvr=0.0, Rbin=Rbin, Rbpl=Rbpl)
+            for Rf in [x for x in cat if rf_rng[0] <= x <= rf_rng[1]]:
+                for Rg2 in [x for x in cat if rg2_rng[0] <= x <= rg2_rng[1]]:
+                    G = (1 + Rf / (Rg2 + rvr)) * Rbpl / (Rbin + Rbpl)
+                    if not 1.6 <= G <= 1.95: continue
+                    v = dict(Rf=Rf, Rg1=float('inf'), Rg2=Rg2, Rvr=rvr, Rbin=Rbin, Rbpl=Rbpl)
                     e = corner_stats(v, tol)
-                    if e['top'] <= TOP_END_LIM and e['botg'] <= OUT_LO and e['bot'] >= RAIL_REACH_LO:
+                    if e['top_ac'] <= TOP_END_LIM and e['botg'] <= OUT_LO:
                         rows.append((e['tg'], Rf, Rg2, Rbin, Rbpl, G, e))
     rows.sort(key=lambda r: -r[0])
     return rows[:top], len(rows)
 
 
 if __name__ == '__main__':
-    rows, n = search()
-    print(f'{n} Basic sets keep the hard-corner window top end <= {TOP_END_LIM:.4f} V, the commanded {OUT_LO} V inside the window with 4 % free and the window bottom inside the rail reach; best by guaranteed top:')
-    for tg, Rf, Rg2, Rbin, Rbpl, G, e in rows:
-        print(f'Rf {Rf:g} Rg2 {Rg2:g} Rbin {Rbin:g} Rbpl {Rbpl:g}  G {G:.3f}  top end {e["top"]:.3f}  lowest top end {e["topmin"]:.3f}  guaranteed top {tg:.3f}  window bottom {e["bot"]:.3f}')
+    for lab, rr in (('large Rf/Rg2 (1-5.1 kohm)', (1000, 5100)), ('small Rf/Rg2 (0.22-0.68 kohm, the earlier values)', (220, 680))):
+        rows, n = search(rf_rng=rr, rg2_rng=(100, 1200) if rr[0] < 1000 else rr)
+        print(f'{lab}: {n} Basic sets keep the hard-corner AC window top end <= {TOP_END_LIM:.4f} V with -1.5 V inside the window; best by guaranteed top:')
+        for tg, Rf, Rg2, Rbin, Rbpl, G, e in rows[:6]:
+            print(f'  Rf {Rf:g} Rg2 {Rg2:g} Rbin {Rbin:g} Rbpl {Rbpl:g}  G {G:.3f}  DC top {e["top"]:.3f}  AC top {e["top_ac"]:.3f}  lowest top {e["topmin"]:.3f}  guaranteed top {tg:.3f}')
     e = corner_stats(VALUES)
     print('chosen:', {k: (round(float(x), 4) if not isinstance(x, dict) else '...') for k, x in e.items()})

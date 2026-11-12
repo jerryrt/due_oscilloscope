@@ -114,7 +114,7 @@ def case_mc():
         tg = np.concatenate(w['tg'])
         add('AW-1', f'window top end (output at the DAC window maximum), 1 % parts, REF3030E offset 2.994..3.006 V, AREF 3.20..3.30 V [{scen}: {nm}]', f'<= {lim_top:.4f} V (D-V2-7)', f'{w["top"]:.3f} V', f'{lim_top-w["top"]:+.3f} V', w['top'] <= lim_top, f'{n} draws x 3 AREF; the supply-pin limit')
         add('AW-1', f'window use, width, same draws [{scen}]', '<= 92 %', f'{w["use"]*100:.1f} %', f'{(0.92-w["use"])*100:+.1f} %', w['use'] <= 0.92, f'range {design.OUT_LO} V to +{design.OUT_HI} V, the guaranteed range (D-V2-12)')
-        add('AW-1', f'window use, position-aware (+{design.OUT_HI} / {design.OUT_LO} V ends against the window ends, 4 % kept at each end) [{scen}]', '<= 92 %', f'{w["edge"]*100:.1f} %', f'{(0.92-w["edge"])*100:+.1f} %', w['edge'] <= 0.92, 'the guaranteed range is the one this row passes at; +2.05 V would not')
+        add('AW-1', f'window use, position-aware (+{design.OUT_HI} / {design.OUT_LO} V ends against the window ends, 4 % kept at each end) [{scen}]', '<= 92 %', f'{w["edge"]*100:.1f} %', f'{(0.92-w["edge"])*100:+.1f} %', w['edge'] <= 0.92, 'the guaranteed range is the one this row passes at; +1.71 V (before the offset filter) would not')
         info('AW-1', f'highest top the stage can command with 4 % of the window kept free, every draw [{scen}]', f'{tg.min():.3f} V at the worst draw; window top end {w["topmin"]:.3f}..{w["top"]:.3f} V', f'{(tg >= design.OUT_HI).mean()*100:.1f} % of draws reach {design.OUT_HI} V inside the 92 % band; each board\'s actual top is measured at calibration')
         info('AW-1', f'window bottom end against the negative rail reach into high impedance ({design.RAIL_REACH_LO:.4f} V, ngspice, weak rail -1.9549 V) [{scen}]', f'{w["bot"]:.3f} V ({w["bot"]-design.RAIL_REACH_LO:+.3f} V)',
              'information (spec lead, rail-corner decision): the last unused window codes clip on the weak rail; AW-1 is judged on the commanded -1.5 V into 50 ohm (row below)')
@@ -125,6 +125,8 @@ def case_mc():
     # hard corners: every resistor at +-1 %, rail, AREF, centring shift and VOS at both limits, both scenarios
     e = design.corner_stats(V)
     add('AW-1', 'window top end, hard corners (five resistors at +-1 %, rail, AREF, centring and VOS at both limits, both scenarios)', f'<= {lim_top:.4f} V (D-V2-7)', f'{e["top"]:.3f} V', f'{lim_top-e["top"]:+.3f} V', e['top'] <= lim_top, 'the stack of every tolerance at once; the binding row of the design')
+    add('AW-1', 'window top end, AC, hard corners: a pulse train with its DC mean at the window bottom and peaks at the top code, amplified by the AC gain 1 + Rf/Rg2 that holds above the offset filter corner (the filter shelf)', f'<= {lim_top:.4f} V (D-V2-7)', f'{e["top_ac"]:.3f} V', f'{lim_top-e["top_ac"]:+.3f} V', e['top_ac'] <= lim_top,
+        'the binding row once the offset filter is fitted: it, not the DC top end, sets the guaranteed range')
     add('AW-1', 'window use, width, hard corners', '<= 92 %', f'{e["use"]*100:.1f} %', f'{(0.92-e["use"])*100:+.1f} %', e['use'] <= 0.92, f'range {design.OUT_LO} V to +{design.OUT_HI} V')
     add('AW-1', 'window use, position-aware, hard corners', '<= 92 %', f'{e["edge"]*100:.1f} %', f'{(0.92-e["edge"])*100:+.1f} %', e['edge'] <= 0.92, f'the guaranteed top: {e["tg"]:.4f} V is the commandable top with 4 % kept free at the worst corner (+{design.OUT_HI} V is it rounded down); {e["topmin"]:.4f} V is the lowest window top end, no band kept')
     info('AW-1', 'window bottom end against the negative rail reach into high impedance, hard corners', f'{e["bot"]:.3f} V against {design.RAIL_REACH_LO:.4f} V ({e["bot"]-design.RAIL_REACH_LO:+.3f} V)',
@@ -160,7 +162,7 @@ def sat_op(p, load, dac, extra_vecs=()):
 def vd_for(out, rails_v, p=None):
     """DAC pin voltage that commands `out` at the stage output (nominal parts, no offset voltage), from design.py's map."""
     q = dict(D); q.update(p or {})
-    Rg2 = q['Rg2'] + 2.2
+    Rg2 = q['Rg2'] + q['Rvr']
     Gs0 = 1 + q['Rf'] * (1 / q['Rg1'] + 1 / Rg2); kin = q['Rbpl'] / (q['Rbin'] + q['Rbpl'])
     return (out + q['Rf'] / Rg2 * rails_v) / (Gs0 * kin)
 
@@ -235,6 +237,9 @@ def case_short():
     isup = IQ + t['i']
     add('PW-3', 'indefinite short: current through the +supply pin at that corner, IQ max (2 x 7.5 mA) plus the output current, against "Current at Supply Pins +-60 mA"', '<= 60 mA',
         f'{isup*1e3:.1f} mA ({IQ*1e3:.0f} mA + {t["i"]*1e3:.1f} mA)', f'{60-isup*1e3:+.1f} mA', isup <= 0.060, 'D-V2-7 sets it: the window top end row above, in mA; the datasheet states no duration for the rating *(check)*')
+    lim_ac = design.corner_stats(V)['top_ac']
+    add('PW-3', 'instantaneous peak of a pulse train at the window top code: supply-pin current, AC top end (the filter shelf) / 49.5 ohm + IQ max', '<= 60 mA', f'{(IQ + lim_ac / 49.5)*1e3:.1f} mA ({lim_ac:.3f} V AC top end)', f'{60-(IQ + lim_ac/49.5)*1e3:+.1f} mA', IQ + lim_ac / 49.5 <= 0.060,
+        'analytic: the DC short row above is the simulated one; the AC top end is the corner of design.corner_stats')
     isb = IQ + abs(bt['i'])
     add('PW-3', 'indefinite short: current through the -supply pin at the lowest window bottom end (weak negative rail, Rout 49.5 ohm)', '<= 60 mA',
         f'{isb*1e3:.1f} mA ({IQ*1e3:.0f} mA + {abs(bt["i"])*1e3:.1f} mA, stage output {bt["vo"]:.3f} V)', f'{60-isb*1e3:+.1f} mA', isb <= 0.060, 'the stage reaches the bottom end into the short only if the 11.5 ohm per rail saturation holds *(check)*')
@@ -275,23 +280,30 @@ def case_ac():
     for load in ('hiz', 'r50', 'cap100', 'cable_scope'):
         for rails in ('weak', 'strong'):
             res[(load, rails)] = bw(dict(rails=rails), load)
-    # component spread on the output pole and the 8 MHz: C0G 330 pF +-5 %, Rout +-1 %, op-amp model unchanged
+    # component spread against the 8 MHz: Cf +-5 %, Rout +-1 %, Rbin +-1 %, op-amp model unchanged
     cr = []
-    for cs in (-1, 1):
-        for rs in (-1, 1):
-            for cf in (-1, 1):
-                cr.append(bw(dict(Cout=330e-12 * (1 + 0.05 * cs), Rout=50 * (1 + 0.01 * rs), Cf=10e-12 * (1 + 0.05 * cf)), 'hiz')[1])
+    for rs in (-1, 1):
+        for cf in (-1, 1):
+            for rb_ in (-1, 1):
+                cr.append(bw(dict(Rout=50 * (1 + 0.01 * rs), Cf=10e-12 * (1 + 0.05 * cf), Rbin=D['Rbin'] * (1 + 0.01 * rb_)), 'hiz')[1])
     f_hiz = min(res[('hiz', r)][1] for r in ('weak', 'strong')) / 1e6
     f_hiz_c = min(cr) / 1e6
     add('AW-3', 'small-signal -3 dB bandwidth, DAC pin to BNC, 1 Mohm || 15 pF load, both rail corners', '>= 8 MHz', f'{f_hiz:.2f} MHz', f'{f_hiz-8:+.2f} MHz', f_hiz >= 8)
-    add('AW-3', 'the same with C0G 330 pF +-5 %, Cf 10 pF +-5 % and the 50 ohm +-1 % at their worst corners (the output pole is theirs)', '>= 8 MHz', f'{f_hiz_c:.2f} MHz', f'{f_hiz_c-8:+.2f} MHz', f_hiz_c >= 8, f'range {f_hiz_c:.2f}..{max(cr)/1e6:.2f} MHz')
+    add('AW-3', 'the same with Cf 10 pF +-5 %, the 50 ohm +-1 % and Rbin +-1 % at their worst corners (there is no output pole capacitor now)', '>= 8 MHz', f'{f_hiz_c:.2f} MHz', f'{f_hiz_c-8:+.2f} MHz', f_hiz_c >= 8, f'range {f_hiz_c:.2f}..{max(cr)/1e6:.2f} MHz')
     f50 = min(res[('r50', r)][1] for r in ('weak', 'strong')) / 1e6
     add('AW-3', 'bandwidth into 50 ohm (amplitude is half; -3 dB relative to its own DC)', '>= 8 MHz', f'{f50:.1f} MHz', f'{f50-8:+.1f} MHz', f50 >= 8)
     fcap = min(res[('cap100', r)][1] for r in ('weak', 'strong')) / 1e6
     add('AW-3', 'bandwidth into 100 pF (about 1 m of RG-58 *(check)*) open at the far end', '>= 8 MHz (information for a cable)', f'{fcap:.2f} MHz', f'{fcap-8:+.2f} MHz', True,
-        'the output pole is 50 ohm x (330 pF + load): a cable lowers it; version 1 had no such pole (BW 15 MHz); see design.md "what the pole costs"')
+        'the output pole is 50 ohm x the load: a cable lowers it (there is no output capacitor now)')
     pk = max(res[(l, r)][2] for l in ('hiz', 'r50', 'cap100') for r in ('weak', 'strong'))
     info('AW-3', 'peaking of the small-signal response', f'{20*np.log10(pk):.3f} dB', 'flat to the pole; no peaking')
+    h_, d_, _ = core.wr('shelf', core.build(dict(rails='weak', load='hiz'), analysis='', ac=('dac',)), 'ac dec 40 1 1e5', ['v(bnc)'])
+    gm_ = np.abs(d_[:, 1] + 1j * d_[:, 2]); ff_ = d_[:, 0]
+    g_dc, g_ac = float(gm_[0]), float(np.interp(1e4, ff_, gm_))
+    fc_ = 1 / (2 * np.pi * D['Rvr'] * D['Cvr'])
+    info('AW-7', 'the offset filter\'s gain shelf: small-signal gain at 1 Hz and at 10 kHz, hi-Z', f'{g_dc:.4f} -> {g_ac:.4f} ({(g_ac/g_dc-1)*100:+.2f} %), filter corner 1/(2 pi Rvr Cvr) = {fc_:.0f} Hz',
+         'above the corner the capacitor shorts Rvr, so Rg2 alone sets the noise-set gain: the AC gain is higher than the DC gain by Rf Rvr / (Rg2 (Rg2 + Rvr)); the host calibrates gain at the frequency it uses; the top-end limit is judged on the AC gain (AW-1 AC row)')
+    OUT['shelf'] = dict(g_dc=g_dc, g_ac=g_ac, fc=float(fc_))
     g_hiz = res[('hiz', 'weak')][0]
     info('AW-7', 'small-signal gain at low frequency, nominal parts', f'{g_hiz:.4f} hi-Z, {res[("r50", "weak")][0]:.4f} into 50 ohm', 'the 50 ohm row is the exact half')
     OUT['bw'] = {f'{k[0]}|{k[1]}': [float(x) for x in v] for k, v in res.items()}
@@ -379,7 +391,7 @@ def case_tran():
     t, vb, vd = tran(dict(), 'ladder_open', 'tr_cab2', tr=5e-9, t1=1e-6, step=1e-9, v0=1.0, v1=1.5, t0=0.2e-6)
     far = None
     v0c, v1c, tr10c, overc, tsetc = edge_metrics(t, vb, 0.2e-6, 2e-9)
-    info('AW-4', '5 ns, 0.5 V step at the DAC pin into the open line (ten LC sections), BNC-end overshoot', f'{overc:.2f} % (the output pole sets a 25-30 ns edge here)', '')
+    info('AW-4', '5 ns, 0.5 V step at the DAC pin into the open line (ten LC sections), BNC-end overshoot', f'{overc:.2f} % (no output capacitor; the stage bandwidth sets the edge)', '')
     OUT['tran'] = dict(rise_ns=float(tr10*1e9), over=float(over), slew=float(sl))
 
 
@@ -442,7 +454,7 @@ def noise_case():
         hpin[s_] = (d_[:, 0], np.abs(d_[:, 1] + 1j * d_[:, 2]))
     gpin = lambda s_, fr: float(np.interp(np.log(fr), np.log(hpin[s_][0]), hpin[s_][1]))
     OUT['noise']['pin_atten_2M'] = {s_: gpin(s_, 2e6) for s_ in ('vp', 'vn')}
-    NG = 1 + D['Rf'] / (D['Rg2'] + D['Rvr'])        # noise gain, 1.83
+    NG = 1 + D['Rf'] / D['Rg2']        # noise gain at the frequencies that matter: the offset filter's capacitor shorts Rvr
     rp = 0.0
     for f0 in (1.7e6, 2.0e6, 2.3e6):
         pw = 0.0
@@ -453,7 +465,7 @@ def noise_case():
     tot_rp = np.sqrt(tot100 ** 2 + lf ** 2 + rp ** 2)
     add('AW-6', 'sum again with the rail ripple through an op-amp-like PSRR (ripple x noise gain / A(f), A = 120 MHz / f), model noise', f'<= {AW6_UV:g} uV rms', f'{tot_rp*1e6:.1f} uV', f'{AW6_UV-tot_rp*1e6:+.1f} uV', tot_rp <= AW6_UV*1e-6, f'ripple term {rp*1e6:.1f} uV; the datasheet gives PSRR at DC and over temperature only *(check)*')
     OUT['noise']['ripple_opamp_like'] = float(rp)
-    K_ = D['Rf'] / D['Rg2']
+    K_ = D['Rf'] / D['Rg2']      # AC: the filter's capacitor shorts Rvr; the reference's noise below the 160 Hz corner is not attenuated, so no credit is taken for the filter
     ref_n = 51e-6 * K_      # REF3030E 51 uV rms, 10 Hz-10 kHz (E grade, ref30.pdf 6.5; models/ref3030_beh.lib) through the offset path, no filter
     tot_ref = np.sqrt(tot_rp ** 2 + ref_n ** 2)
     add('AW-6', 'the pessimistic-PSRR sum plus the REF3030E noise 51 uV rms (10 Hz-10 kHz) x K through Rg2 with no offset filter', f'<= {AW6_UV:g} uV rms', f'{tot_ref*1e6:.1f} uV', f'{AW6_UV-tot_ref*1e6:+.1f} uV', tot_ref <= AW6_UV * 1e-6,
@@ -485,9 +497,9 @@ def case_startup():
                     # the REF3030E is powered from the +rail: 'follows' tracks it (3.0/3.3 of the ramp), 'late' starts when the rail has finished and takes 2 ms (datasheet turn-on to 0.1 % at 1 uF)
                     if refmode == 'follows': rs = f"Vrf vrfs 0 PWL(0 0 {tp} 0 {tp+tr} 3.0 1 3.0)"
                     else: rs = f"Vrf vrfs 0 PWL(0 0 {tp+tr} 0 {tp+tr+2e-3} 3.0 1 3.0)"
-                    rs += "\nRzr vrfs vref 0.05\nCzr vref 0 1.1u"
+                    rs += f"\nRzr vrfs vrf0 0.05\nCzr vrf0 0 1.1u\nRvr vrf0 vref {D['Rvr']}\nCvr vref 0 {D['Cvr']}"
                     b = core.build(dict(rails=rails, dacsrc=src, load='hiz', sat=True, refsrc=rs), analysis='', supply='src:' + vsrc, extra=TRAN_OPT)
-                    tend = max(tp, tn) + tr * 6 + 10e-6 + (3e-3 if refmode == 'late' else 0)
+                    tend = max(tp, tn) + tr * 6 + 10e-6 + (8e-3 if refmode == 'late' else 5e-3)       # the offset filter (Rvr Cvr 1.4 ms) charges after the reference
                     h, d, log = core.wr('su', b, f'tran {tend/4000:.3e} {tend}', ['v(bnc)', 'v(vpx)', 'v(vnx)'])
                     v = d[:, 1]
                     # excursion against the rails present at that time
@@ -497,7 +509,7 @@ def case_startup():
     mx = max(r[4] for r in rows); mn = min(r[5] for r in rows)
     ovr = max(r[6] for r in rows); und = max(r[7] for r in rows)
     add('AW-8', 'through rail ramps (3 orders x 20 us / 2 ms), the REF3030E following the +rail or 2 ms late, with DAC0 at 0 V, 3.3 V, floating and a reset trace, hi-Z: output extremes, both rail corners', 'within the AFE rails at every instant (at most 10 mV beyond; rails -2.05..+3.42 V at the 1 % feedback corners; V2 AW-8)', f'{mn:.3f}..{mx:.3f} V', f'beyond the +rail {max(ovr, 0)*1e3:.0f} mV, beyond the -rail {max(und, 0)*1e3:.0f} mV', ovr <= 0.010 and und <= 0.010,
-        '48 start-up cases per rail corner; derived output saturation')
+        '48 start-up cases per rail corner, the offset filter charging after the reference; derived output saturation')
     OUT['startup'] = [list(r) for r in rows]
     st = [r for r in rows if r[1] == 'both' and r[3] == '3.3V/follows' and r[0] == 'strong']
     info('AW-8', 'DAC0 held at 3.3 V (reset level) with rails up: steady output', f'{max(r[4] for r in st):.3f} V', 'the output clips under the +rail: the stage gain times 3.3 V is far above the rail')
@@ -546,7 +558,7 @@ def case_forced():
 
 def case_pins():
     i = {x: abs(core.wr('pin', core.build(dict(dac=x), analysis=''), 'op', ['i(Vdac)'])[1][0, 1]) for x in (0.578, 2.75, 2.80, 3.3)}
-    add('AW-5', 'DAC pin load at the DAC\'s own highest code (2.80 V: AREF 3.30 V, window top 2.771 V scaled, +5 mV; 2.4 kohm + 27 kohm to ground; the op-amp input is high impedance)', '<= 0.1 mA', f'{i[2.80]*1e6:.1f} uA', f'{100-i[2.80]*1e6:+.1f} uA', i[2.80] <= 100e-6, 'judged at the DAC\'s own output codes (D-V2-12); the 1 % parts add 1.5 %')
+    add('AW-5', 'DAC pin load at the DAC\'s own highest code (2.80 V: AREF 3.30 V, window top 2.771 V scaled, +5 mV; 2.7 kohm + 27 kohm to ground; the op-amp input is high impedance)', '<= 0.1 mA', f'{i[2.80]*1e6:.1f} uA', f'{100-i[2.80]*1e6:+.1f} uA', i[2.80] <= 100e-6, 'judged at the DAC\'s own output codes (D-V2-12); the 1 % parts add 1.5 %')
     info('AW-5', 'DAC pin load at 3.3 V (the Due reset level, outside the DAC window)', f'{i[3.3]*1e6:.1f} uA ({(i[3.3]/100e-6-1)*100:+.0f} % against 0.1 mA)', 'not a code the DAC can output in operation; accepted with the rows above (D-V2-12)')
     # PR-2: unpowered AFE, DAC0 driven: current through the 1.5 kohm into an input protection diode, hand calculation
     for v in (2.771, 3.3, 3.45):
@@ -561,36 +573,75 @@ def case_power():
 
 
 # ------------------------------------------------------------------------------------------------------- the reference
+# REF3030E output impedance against frequency, read by eye from SBVS032K Fig. 6-14 (the open-load / 100 kohm curve at VOUT = 5 V, the highest; the figure is for the
+# 1.25 V and 5 V parts, not 3.0 V, and the load and output capacitance are not stated) *(check)*: peak about 115 ohm near 1.9 kHz.  The 1 kohm-load curves peak at 27-30 ohm.
+ZREF = np.array([(10, 1), (100, 4), (200, 6), (300, 9), (500, 17), (700, 26), (1000, 45), (1300, 65), (1600, 95), (1900, 115), (2300, 100), (2700, 70), (3200, 40), (4000, 20), (6000, 8), (10000, 3)], float)
+SCOPE_REF_TO_INPUT = 0.3725 / 0.4622       # the scope's centre node moves 0.3725 of the reference, referred to the input through its 0.4622 gain (sim/scope/design.md)
+LSB_IN = 3.3 / 4096 / 0.4622               # one Due ADC code at the scope input, 1.743 mV
+
+
+def ref_move(dV, Rg2, Rflt, C, mode='graph'):
+    """Peak movement (V, peak to peak) of the REF3030E output from the AWG's offset current at 10 Hz-10 kHz.  dV: peak-to-peak voltage on the inverting node (it follows the + input),
+    the current flows through Rg2 from the filter node (Rflt to the reference, C to ground); the reference sees the part that goes through Rflt.  mode: 'graph' (the curve above), 'bound110'
+    (110 ohm flat from 1 to 3 kHz, the spec lead's bound), 'loaded28' (28 ohm flat from 1 to 3 kHz, the 1 kohm-load peak)."""
+    f = np.logspace(1, 4, 800)
+    if C > 0 and Rflt > 0:
+        Zc = 1 / (2j * np.pi * f * C)
+        Zn = Rflt * Zc / (Rflt + Zc)                 # filter node to the reference side
+        i = dV / np.abs(Rg2 + Zn); share = np.abs(Zc / (Rflt + Zc))
+    else:
+        i = dV / (Rg2 + Rflt) * np.ones_like(f); share = np.ones_like(f)
+    if mode == 'graph': Z = np.interp(np.log(f), np.log(ZREF[:, 0]), ZREF[:, 1])
+    elif mode == 'bound110': Z = np.where((f >= 1000) & (f <= 3000), 110.0, 0.0)
+    else: Z = np.where((f >= 1000) & (f <= 3000), 28.0, 0.0)
+    m = i * share * Z
+    k = int(np.argmax(m))
+    return float(m[k]), float(f[k]), float(i[k] * share[k])
+
+
 def case_ref():
-    """The AWG offset comes from the REF3030E (D-V2-12): its load, and what that load does to the reference (PA-2, SC-7)."""
-    names = ['Rf', 'Rg2', 'Rbin', 'Rbpl']
+    """The AWG offset comes from the REF3030E through the offset filter (D-V2-12 and its follow-up): its load, and what that load does to the reference (PA-2, SC-7, SC-9)."""
     kin_n = V['Rbpl'] / (V['Rbin'] + V['Rbpl'])
     # ngspice: current out of the reference at DAC 0 V (boot, floating), the window ends, 3.3 V (reset)
     cur = {}
     for dac in (0.0, 0.55, 2.80, 3.3):
         h, d, _ = core.wr('refi', core.build(dict(dac=dac, load='hiz'), analysis=''), 'op', ['i(Vrf)'])
         cur[dac] = float(-d[0, 1])
-    # worst corner: Rg2 -1 %, reference +0.2 %, vos +1 mV, kin high at the sink end
+    # worst corner: Rg2 and Rvr -1 %, reference +0.2 %, kin high at the sink end
     def iref(vd, tol, vref, kin):
-        return (vref - kin * vd) / (V['Rg2'] * (1 + tol))
+        return (vref - kin * vd) / ((V['Rg2'] + V['Rvr']) * (1 + tol))
     kin_hi = V['Rbpl'] * 1.01 / (V['Rbin'] * 0.99 + V['Rbpl'] * 1.01)
     i_src = iref(0.0, -0.01, design.VREF3030[1], kin_hi)
     i_snk = -iref(3.3, +0.01, design.VREF3030[0], kin_hi) if iref(3.3, 0.01, design.VREF3030[0], kin_hi) < 0 else 0.0
     i_win_lo = iref(0.55, -0.01, design.VREF3030[1], kin_hi); i_win_hi = iref(2.80, +0.01, design.VREF3030[0], kin_hi)
     others = 1.736e-3      # sim/powercal/report.md REF/src: ladder, both scope centres at -12 V, the sense default tie, ADS inputs (ladder alone 1.53 mA, scope 5.4 uA each)
-    info('PA-2', 'AWG offset current out of the REF3030E, ngspice nominal, DAC 0 / 0.55 / 2.80 / 3.3 V', ' / '.join(f'{cur[x]*1e3:.2f}' for x in (0.0, 0.55, 2.80, 3.3)) + ' mA', 'the current flows into Rg2 toward the inverting node, which follows the + input')
-    add('PA-2', 'REF3030E source current with every load at once: the AWG offset at its worst (DAC at 0 V: boot or floating; Rg2 -1 %, reference +0.2 %) plus the ladder, both scope centres, the sense default tie and the ADS inputs (sim/powercal REF/src 1.736 mA, of which ladder 1.53 mA and scope 2 x 5.4 uA)', '<= 10 mA (datasheet rating, source and sink)',
+    info('PA-2', 'AWG offset current out of the REF3030E, ngspice nominal, DAC 0 / 0.55 / 2.80 / 3.3 V', ' / '.join(f'{cur[x]*1e3:.2f}' for x in (0.0, 0.55, 2.80, 3.3)) + ' mA', 'the current flows through Rvr and Rg2 toward the inverting node, which follows the + input')
+    add('PA-2', 'REF3030E source current with every load at once: the AWG offset at its worst (DAC at 0 V: boot or floating; Rg2 + Rvr -1 %, reference +0.2 %) plus the ladder, both scope centres, the sense default tie and the ADS inputs (sim/powercal REF/src 1.736 mA, of which ladder 1.53 mA and scope 2 x 5.4 uA)', '<= 10 mA (datasheet rating, source and sink)',
         f'{(i_src+others)*1e3:.2f} mA ({i_src*1e3:.2f} AWG + {others*1e3:.2f} others)', f'{10-(i_src+others)*1e3:+.2f} mA', i_src + others <= 10e-3, 'the powercal figure already carries a 0.165 mA AWG sense tie; it is counted once there and not removed here (conservative)')
     add('PA-2', 'REF3030E sink current: the AWG at DAC 3.3 V (reset level; the + node then sits above 3.0 V) plus the clamped scope inputs and the forced sense case (powercal 80 uA)', '<= 10 mA', f'{(i_snk+80e-6)*1e3:.2f} mA', f'{10-(i_snk+80e-6)*1e3:+.2f} mA', i_snk + 80e-6 <= 10e-3,
         'sink load regulation 150 ppm/mA against 15 ppm/mA source: at this current it moves the output by 0.5 to 2 ppm')
     dI = i_win_lo - i_win_hi
     dv = dI * 1e3 * 15e-6 * 3.0
-    add('SC-7', 'the reference moves with the AWG level: change of the AWG offset current over the DAC window (0.55 to 2.80 V) x 15 ppm/mA x 3.0 V', '<= 3.0 mV (0.1 % fit share of 3 V, powercal)', f'{dI*1e3:.2f} mA -> {dv*1e6:.0f} uV', f'{(3e-3-dv)*1e6:+.0f} uV', dv <= 3e-3,
-        'the host reads the reference with every reading; this is the movement between two readings. Static shift at 5.95 mA: %.0f uV (calibrated out)' % (i_src * 1e3 * 15e-6 * 3.0 * 1e6))
-    zref = 0.05
-    ac = dI * zref
-    info('SC-9', 'AWG-to-scope coupling through the reference: the offset current swings %.2f mA over the window; at the REF output impedance %.2f ohm (15 ppm/mA x 3 V, DC; the high-frequency impedance is not in the datasheet text *(check)*) it moves the reference' % (dI * 1e3, zref), f'{ac*1e3:.2f} mV peak to peak, {ac*0.3725/0.4622*1e3:.2f} mV at the scope input (centre factor 0.3725, gain 0.4622 from sim/scope/design.md)', 'about 0.1 LSB of the scope ADC against SC-9\'s 2 LSB; no offset filter is fitted')
-    OUT['ref'] = dict(cur={str(k): v for k, v in cur.items()}, i_src=float(i_src), i_snk=float(i_snk), dI=float(dI), dv=float(dv))
+    add('SC-7', 'the reference moves with the AWG level (DC): change of the AWG offset current over the DAC window (0.55 to 2.80 V) x 15 ppm/mA x 3.0 V', '<= 3.0 mV (0.1 % fit share of 3 V, powercal)', f'{dI*1e3:.2f} mA -> {dv*1e6:.0f} uV', f'{(3e-3-dv)*1e6:+.0f} uV', dv <= 3e-3,
+        'the host reads the reference with every reading; this is the movement between two readings. Static shift at the worst offset current: %.0f uV (calibrated out). The kHz movement is the SC-9 rows below' % (i_src * 1e3 * 15e-6 * 3.0 * 1e6))
+    # kHz movement: the AWG's full commanded range as a sine / staircase, 1-3 kHz
+    gac = 1 + V['Rf'] / V['Rg2']
+    dV = (design.OUT_HI - design.OUT_LO) / gac           # peak-to-peak voltage on the inverting node for the full commanded swing at the AC gain
+    res = {}
+    for lab, (Rg2_, Rflt_, C_, mode) in {'chosen, graph': (V['Rg2'], V['Rvr'], D['Cvr'], 'graph'), 'chosen, 110 ohm bound': (V['Rg2'], V['Rvr'], D['Cvr'], 'bound110'), 'chosen, 28 ohm loaded': (V['Rg2'], V['Rvr'], D['Cvr'], 'loaded28'),
+                                         'no filter, graph': (V['Rg2'], 0.0, 0.0, 'graph'), 'no filter, 110 ohm bound': (V['Rg2'], 0.0, 0.0, 'bound110'),
+                                         'filter alone (Rf 470, Rg2 390, 7 uF), graph': (390.0, 100.0, 7e-6, 'graph'), 'filter alone, 110 ohm bound': (390.0, 100.0, 7e-6, 'bound110'),
+                                         'one 10 uF (7 uF), chosen resistors, graph': (V['Rg2'], V['Rvr'], 7e-6, 'graph')}.items():
+        dV_ = dV if not lab.startswith('filter alone') else (design.OUT_HI - design.OUT_LO) / (1 + 470.0 / 390.0)
+        m, fpk, ipk = ref_move(dV_, Rg2_, Rflt_, C_, mode)
+        res[lab] = (m, fpk, ipk, m * SCOPE_REF_TO_INPUT, m * SCOPE_REF_TO_INPUT / LSB_IN)
+    r = res['chosen, graph']
+    add('SC-9', 'AWG-to-scope coupling through the reference, 1-3 kHz, the full commanded swing (%.2f V pp at the inverting node), REF3030E output impedance as the graph (peak 115 ohm), with the offset filter (100 ohm + %.0f uF effective)' % (dV, D['Cvr'] * 1e6), '<= 2 LSB at the scope input (%.2f mV)' % (2 * LSB_IN * 1e3),
+        f'{r[0]*1e3:.2f} mV on the reference at {r[1]:.0f} Hz, {r[3]*1e3:.2f} mV at the scope input = {r[4]:.2f} LSB', f'{2-r[4]:+.2f} LSB', r[4] <= 2.0, 'Fig. 6-14 is read by eye and is for the 1.25 V and 5 V parts, load and output capacitance unstated *(check)*; the scope input factor is 0.806 (sim/scope/design.md)')
+    for lab in ('chosen, 110 ohm bound', 'chosen, 28 ohm loaded', 'no filter, graph', 'no filter, 110 ohm bound', 'filter alone (Rf 470, Rg2 390, 7 uF), graph', 'filter alone, 110 ohm bound', 'one 10 uF (7 uF), chosen resistors, graph'):
+        q = res[lab]
+        info('SC-9', f'the same, {lab}', f'{q[0]*1e3:.1f} mV on the reference, {q[3]*1e3:.2f} mV at the scope input = {q[4]:.2f} LSB', 'the spec lead\'s flat 110 ohm bound is the conservative reading of the same graph' if 'bound' in lab else '')
+    OUT['ref'] = dict(cur={str(k): v for k, v in cur.items()}, i_src=float(i_src), i_snk=float(i_snk), dI=float(dI), dv=float(dv), move={k: list(map(float, v)) for k, v in res.items()}, dV=float(dV))
 
 
 # -------------------------------------------------------------------------------------------------------------- guards
@@ -609,12 +660,12 @@ def run_guards():
     def g_noise(Rf, Rg2, Cf):
         f, n = core.noise('g_nz', dict(Rf=Rf, Rg2=Rg2, Cf=Cf), f1=10, f2=1e9, ppd=15)
         return core.integ(f, n ** 2, hi=100e6) <= AW6_UV * 1e-6
-    guard('noise', 'feedback network 100x (Rf 39k, Rg2 47k, no Cf) must fail AW-6 at 300 uV (it reads 617 uV); the output pole alone no longer decides AW-6',
-          g_noise, dict(Rf=39e3, Rg2=47e3, Cf=0.0), dict(Rf=390.0, Rg2=470.0, Cf=10e-12))
+    guard('noise', 'feedback network 100 kohm (Rf, Rg2, no Cf) must fail AW-6 at 300 uV; the chosen 3 kohm passes',
+          g_noise, dict(Rf=100e3, Rg2=100e3, Cf=0.0), dict(Rf=D['Rf'], Rg2=D['Rg2'], Cf=D['Cf']))
 
     def g_bw(Cout):
         return bw(dict(Cout=Cout), 'hiz')[1] >= 8e6
-    guard('bandwidth', 'Cout 1 nF must fail 8 MHz', g_bw, dict(Cout=1e-9), dict(Cout=330e-12))
+    guard('bandwidth', 'an output capacitor Cout 1 nF must fail 8 MHz (none fitted passes)', g_bw, dict(Cout=1e-9), dict(Cout=0.0))
 
     def g_bwcpx(cpx):
         return bw(dict(Cf=0.0, cpx=cpx), 'hiz')[1] >= 8e6
@@ -626,40 +677,50 @@ def run_guards():
 
     def g_pm2(cfb):
         return core.phase_margin(dict(cfb=cfb, model='BEH60', rails='strong'), 'hiz', tag='g_pm')[1] >= 45
-    guard('phase margin, node', '30 pF at the inverting node must fail 45 deg on BEH60 with Cf in place', g_pm2, dict(cfb=30e-12), dict(cfb=10e-12))
+    guard('phase margin, node', '60 pF at the inverting node must fail 45 deg on BEH60 with Cf in place', g_pm2, dict(cfb=60e-12), dict(cfb=10e-12))
 
     lim = design.TOP_END_LIM
 
     def g_topend(Rbpl):
         v = dict(V); v['Rbpl'] = Rbpl
-        return design.corner_stats(v)['top'] <= lim
-    guard('window top end', 'Rbpl 30 kohm (the divider one Basic step up from 27 kohm) must fail the 2.2275 V top end (2.242 V); 27 kohm passes', g_topend, dict(Rbpl=30e3), dict(Rbpl=27e3))
+        return design.corner_stats(v)['top_ac'] <= lim
+    guard('window top end', 'Rbpl 33 kohm (the divider two Basic steps up from 27 kohm) must fail the 2.2275 V AC top end; 27 kohm passes', g_topend, dict(Rbpl=33e3), dict(Rbpl=27e3))
 
     def g_tol(tol):
-        return design.corner_stats(V, tol=tol)['top'] <= lim
+        return design.corner_stats(V, tol=tol)['top_ac'] <= lim
     guard('tolerance', '5 % resistors must fail the top end that 1 % passes', g_tol, dict(tol=0.05), dict(tol=0.01))
 
     def g_rout(rout):
         # the top-end limit rewritten as the supply-pin row: current = top end / Rout + 15 mA IQ max <= 60 mA, with the Rout the board has
-        return design.corner_stats(V)['top'] / rout + 0.015 <= 0.060 + 1e-9
+        return design.corner_stats(V)['top_ac'] / rout + 0.015 <= 0.060 + 1e-9
     guard('supply-pin current, Rout', 'a 45 ohm back-termination (wrong Rout, 10 % low) must fail the 60 mA row that 49.5 ohm passes', g_rout, dict(rout=45.0), dict(rout=49.5))
 
     def g_ref(Rg2):
         v = dict(V); v['Rg2'] = Rg2
-        return design.VREF3030[1] / (Rg2 * 0.99) + 1.736e-3 <= 10e-3
-    guard('reference load', 'Rg2 300 ohm loads the REF3030E past its 10 mA rating; 510 ohm does not', g_ref, dict(Rg2=300.0), dict(Rg2=510.0))
+        return design.VREF3030[1] / ((Rg2 + V['Rvr']) * 0.99) + 1.736e-3 <= 10e-3
+    guard('reference load', 'Rg2 200 ohm loads the REF3030E past its 10 mA rating; the chosen 3 kohm does not', g_ref, dict(Rg2=200.0), dict(Rg2=V['Rg2']))
 
     def g_range(th):
         return design.corner_stats(V, th=th)['edge'] <= 0.92
-    guard('guaranteed range', 'commanding +1.86 V (the lowest window top end, no 4 % kept) must fail the position-aware 92 %; the guaranteed +1.71 V passes', g_range, dict(th=1.86), dict(th=1.71))
+    guard('guaranteed range', 'commanding +1.71 V (the earlier guarantee, before the offset filter) must fail the position-aware 92 %; the guaranteed +1.63 V passes', g_range, dict(th=1.71), dict(th=1.63))
+
+    def g_sc9(Rflt, C):
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / V['Rg2']), V['Rg2'], Rflt, C)[0]
+        return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
+    guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); 100 ohm + 14 uF passes', g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
+
+    def g_sc9b(Rg2):
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / Rg2), Rg2, V['Rvr'], D['Cvr'])[0]
+        return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
+    guard('reference coupling, resistors', 'the filter-alone 390 ohm Rg2 must fail SC-9; 3 kohm passes', g_sc9b, dict(Rg2=390.0), dict(Rg2=V['Rg2']))
 
     def g_reach(vn):
         return reach_bottom(vn, 'r50') <= design.OUT_LO
-    guard('bottom reach', 'a negative rail that does not reach -1.5 V into 50 ohm (-1.6 V: clips at -1.455 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.6), dict(vn=-1.9549))
+    guard('bottom reach', 'a negative rail that does not reach -1.5 V into 50 ohm (-1.5 V: clips at -1.4 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.5), dict(vn=-1.9549))
 
     OLD = dict(Rf=560.0, Rg1=1000.0, Rg2=510.0, Rvr=2.2, Rbin=680.0, Rbpl=330e3)     # version 1's values, the +3.0 V top
     def g_oldtop(vals):
-        return design.corner_stats(vals)['top'] / 49.5 + 0.015 <= 0.060
+        return design.corner_stats(vals)['top_ac'] / 49.5 + 0.015 <= 0.060
     guard('supply-pin current, old top', 'version 1 values (+3.0 V top, 3.1 V window top end) must fail the supply-pin row that the new values pass', g_oldtop, dict(vals=OLD), dict(vals=V))
 
     def g_short_sim(cmd):
@@ -675,14 +736,15 @@ def write_outputs():
     q = D
     parts = [
         ('R1,R2 (parallel)', '100 ohm 1 % 1206', 'C17901', 'AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)', 2),
-        ('R3', f'{q["Rf"]:g} ohm 1 % 0603', 'C23179', 'Rf, feedback', 1),
-        ('R4', f'{q["Rg2"]:g} ohm 1 % 0603', 'C23193', 'Rg2, inverting node straight to the REF3030E output (D-V2-12): no offset filter; there is no Rg1', 1),
-        ('R5', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', 'C22940', 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
-        ('R6', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by 0.918 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground', 1),
-        ('R7,R8', '1 ohm 1 % 0603', 'C22936', 'output balancing resistors of the two halves', 2),
+        ('R3', f'{q["Rf"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rf, feedback', 1),
+        ('R4', f'{q["Rg2"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rg2, inverting node to the offset filter node (D-V2-12)', 1),
+        ('R5', f'{q["Rvr"]:g} ohm 1 % 0603', 'C22775', 'Rvr: offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = 160 Hz at 10 uF)', 1),
+        ('C3,C4', '10 uF X5R 10 % 0805 25 V', 'C15850', 'offset filter capacitor, filter node to ground, two in parallel (about 14 uF effective at 3 V bias *(check)*): they keep the AWG current out of the reference at 1-3 kHz where its output impedance peaks', 2),
+        ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', 'C13167', 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
+        ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by 0.909 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground', 1),
+        ('R8,R9', '1 ohm 1 % 0603', 'C22936', 'output balancing resistors of the two halves', 2),
         ('C1', '10 pF C0G 5 % 0603', 'C1634', 'Cf, across Rf: the stability capacitor (AN-1, design.md); the smallest Basic C0G', 1),
-        ('C2', '330 pF C0G 5 % 0603', 'C1664', 'output pole, from the BNC to ground (bandwidth corner and AW-4 edge, design.md)', 1),
-        ('C3,C4', '100 nF X7R 10 % 0603', 'C14663', 'supply decoupling at the op-amp, one per supply pin (the 1 uF pair was dropped, AW-6 0.3 mV)', 2),
+        ('C5,C6', '100 nF X7R 10 % 0603', 'C14663', 'supply decoupling at the op-amp, one per supply pin', 2),
         ('U1', 'TPH2502-SR dual op-amp SOP-8', 'C118223', 'both halves paralleled as one gain stage', 1),
     ]
     with open(os.path.join(core.HERE, 'parts.csv'), 'w') as f:
