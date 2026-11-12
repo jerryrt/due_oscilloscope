@@ -23,6 +23,7 @@ Checks (each reads the file through kicad-cli, never through the generator's ide
       source impedances matched, the pair AIN2 - AIN3 a valid ADS1115 differential pair
   C4  the CAL header: 1x3, TAP4 (2/3 tap) | B | TAP3 (1/2 tap), the states, B touches only the sense divider, the shunt is listed
   C5  rules: no scope part touches the negative rail; no scope or AWG net but the pins' own reaches the ladder
+  C6  the bridges join what they must; the CH2 clamp D201 sits on the dual side of both bridges
   D1  every designator's hundreds digit is its block (1 CH1, 2 CH2, 3 AWG, 4 POWER, 5 REFCAL, 6 EDGE)
   D2  each block holds exactly its key part list (KEY_PARTS); block_of_parts() gives ref -> block for the layout
   H1  the Due headers carry exactly the pins of the header-pin table below, on the V03 header names
@@ -333,12 +334,12 @@ def _rng(prefix, a, b):
 # The key part list of each block, written out here and not derived from design.py: a block outline on the board
 # contains exactly these parts.  U101 is the dual both channels share and sits in CH1.
 KEY_PARTS = {
-    'CH1': {'J101', 'U101', 'D101', 'TP101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
-    'CH2': {'J201', 'D201', 'TP201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
+    'CH1': {'J101', 'U101', 'D101', 'TP101', 'BR101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
+    'CH2': {'J201', 'D201', 'TP201', 'BR201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
     'AWG': {'U301', 'J301', 'C301', 'TP301'} | _rng('R', 301, 309) | _rng('C', 303, 306),
     'POWER': {'U401'} | _rng('R', 401, 407) | _rng('C', 401, 409) | _rng('TP', 401, 404),
-    'REFCAL': {'U501', 'U502', 'J501', 'TP501'} | _rng('R', 501, 511) | _rng('C', 501, 503),
-    'EDGE': _rng('J', 601, 607) | _rng('R', 601, 603) | _rng('BR', 601, 602) | {'MH601', 'MH602'},
+    'REFCAL': {'U501', 'U502', 'J501', 'TP501'} | _rng('R', 501, 514) | _rng('C', 501, 503),
+    'EDGE': _rng('J', 601, 607) | {'MH601', 'MH602'},
 }
 
 
@@ -409,6 +410,11 @@ def computed_checks(comps, nets, parts, tag):
         vp, vn = 1.2 * (r1 + r2) / r2, -1.22 * (r3 + r4) / r4
         good = abs(vp - 3.318) < 0.002 and abs(vn + 2.003) < 0.002 and r2 >= 50e3 and r4 >= 50e3
         msg = f'V+ = {vp:.4f} V (R1 {r1:g}, R2 {r2:g}), V- = {vn:.4f} V (R3 {r3:g}, R4 {r4:g}); expect 3.318 and -2.003'
+    # the enables: tied straight to VIN, no net of their own (SNVSAF7C section 6.1: "Enable inputs can be also shorted
+    # together and connected to VIN"; abs max EN pins GND - 0.3 V to VIN, VIH 1.2 V; no series resistor is required)
+    en_ok = pf[(u, 'EN+')] == pf[(u, 'EN-')] == pf[(u, 'VIN')]
+    good = good and en_ok
+    msg += f'; EN+ and EN- on the VIN net {pf[(u, "VIN")]}: {en_ok}'
     ok &= row('C1' + tag, good, msg or 'feedback networks not found as series chains')
     # C2: ladder
     rungs = sorted((r for r, c in comps.items() if (c['fields'].get('Sim') or '').startswith('pc.R_L')),
@@ -484,6 +490,13 @@ def computed_checks(comps, nets, parts, tag):
                        and comps[r]['part'] == 'R')
     ok &= row('C5' + tag, not on_neg and len(ref_users) == 3,
               f'scope parts on the negative rail: {on_neg or "none"}; reference loaded by {ref_users} (R3b of both channels, Rg2)')
+    # C6: the bridges join what they must (placeholder nets, see the README): BR101 from the +3V3A rail to the dual's V+
+    # segment, BR201 from CH2's Riso / clamp side to the Due A0 pin
+    def ends(ref):
+        return {pn.get((ref, '1')), pn.get((ref, '2'))}
+    br = ends('BR101') == {pf[(u, 'OUT+')], pf[('U101', 'V+')]} and ends('BR201') == {pn.get(('R208', '2')), pn.get(('J602', '8'))}
+    ok &= row('C6' + tag, br and pn.get(('D201', '3')) == pn.get(('R208', '2')) and pn.get(('D201', '2')) == pf[('U101', 'V+')],
+              f'BR101 joins {sorted(ends("BR101"), key=str)}, BR201 joins {sorted(ends("BR201"), key=str)}; the CH2 clamp D201 sits on the dual side of both')
     # H1: Due headers
     d = []
     byname = {c['value']: r for r, c in comps.items() if c['fields'].get('Block') == 'EDGE' and c['part'].startswith('Conn_0')}
@@ -591,11 +604,15 @@ def arm_designator(parts):
 
 
 def arm_bridge_value(parts):
-    P(parts, 'BR601')['value'] = '1k 1%'                          # a bridge that is not 0 ohm
+    P(parts, 'BR101')['value'] = '1k 1%'                          # a bridge that is not 0 ohm
 
 
 def arm_bridge_open(parts):
-    P(parts, 'BR602')['pins']['2'] = 'ORPHAN'                     # a bridge that no longer reaches the pin
+    P(parts, 'BR201')['pins']['2'] = 'ORPHAN'                     # a bridge that no longer reaches the pin
+
+
+def arm_enable(parts):
+    P(parts, 'U401')['pins']['8'] = 'EN_LONG'                      # EN- on a net of its own: the long enable net the layout wants gone
 
 
 def arm_ladder(parts):
@@ -637,8 +654,9 @@ def mutation_arms():
         (arm_lcsc, None, ('B1',), 'LCSC changed'),
         (arm_due, None, ('H1',), 'Due SDA/SCL swapped'),
         (arm_ladder, None, ('C2',), 'ladder rung'),
+        (arm_enable, None, ('C1',), 'LM27762 EN- off VIN'),
         (arm_bridge_value, None, ('N1',), 'bridge not 0 ohm'),
-        (arm_bridge_open, None, ('N1', 'E2'), 'bridge open'),
+        (arm_bridge_open, None, ('C6', 'E2'), 'bridge open'),
         (arm_block_field, None, ('D1', 'D2'), 'block field'),
         (arm_designator, None, ('D1', 'D2'), 'designator out of its block'),
         (arm_cal_header, None, ('C4',), 'CAL header TAP_on'),

@@ -84,7 +84,7 @@ def other(ref, sym, value, fp, pins, block, note='', nc='rest', fitted_by='owner
 
 
 G, P5, P5F, P33A, VN, VREF = 'GND', '+5V_DUE', '+5V_F', '+3V3A', 'VNEG', 'VREF'
-P33A_U = '+3V3A_U'   # the +3V3A segment at the scope dual's V+ pad, beyond bridge BR601
+P33A_U = '+3V3A_U'   # the +3V3A segment at the scope dual's V+ pad, beyond bridge BR101
 
 # ---------------------------------------------------------------- scope: one TPH2502 dual, +3.3 V_A only, V- at ground
 # TPH2502 SOP-8 (datasheet pin figure): 1 OUTA, 2 -INA, 3 +INA, 4 V-, 5 +INB, 6 -INB, 7 OUTB, 8 V+
@@ -112,7 +112,8 @@ for ch in (1, 2):
     two(f'R{b + 7}', '470R', n('N'), n('NP'), B, 'scope.Rnp', 'Rnp, ahead of +IN')
     two(f'C{b + 3}', '10p', n('NP'), G, B, 'scope.Cpx', 'Cpx, +IN to ground')
     two(f'R{b + 8}', '22R', n('OUT'), 'CH2_RISO' if ch == 2 else ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
-    part(f'D{b + 1}', 'BAV99', {'1': G, '3': ADCPIN[ch], '2': P33A}, B, 'scope.Dp',
+    part(f'D{b + 1}', 'BAV99', {'1': G, '3': 'CH2_RISO' if ch == 2 else ADCPIN[ch], '2': P33A_U if ch == 2 else P33A}, B,
+         'scope.Dp',
          'ADC-pin clamp: GND / pin / +3.3 V_A')
 
 # ---------------------------------------------------------------- AWG: one TPH2502 dual, both halves paralleled
@@ -168,15 +169,15 @@ part('U502', 'ADS1115', {'1': G, '3': G, '4': VREF, '5': 'TAP4', '6': 'ADS_TAP',
      'AIN0 = REF3030E, AIN1 = 2/3 ladder tap, AIN2 = sense tap (via R510), AIN3 = sense bottom node B (via R511); differential pair AIN2-AIN3; '
      'ADDR to GND (0x48); ALERT/RDY unused', nc=('2',))
 two('C503', '100n', P33A, G, B, 'pc.C_ADS', 'ADS1115 VDD')
-two('R601', '4.7k', P33A, 'SDA', 'EDGE', '', 'I2C pull-up SDA (required; 4.7k Basic, not in powercal/parts.csv)')
-two('R602', '4.7k', P33A, 'SCL', 'EDGE', '', 'I2C pull-up SCL (required)')
+two('R512', '4.7k', P33A, 'SDA', 'REFCAL', '', 'I2C pull-up SDA (required; 4.7k Basic, not in powercal/parts.csv)')
+two('R513', '4.7k', P33A, 'SCL', 'REFCAL', '', 'I2C pull-up SCL (required)')
 # Top-layer 0 ohm bridges the layout needs (afe.md LR-11 placeholders until the layout names the exact nets):
-# BR601 carries +3V3A over the A0 column to the scope dual's V+ pad; BR602 carries CH2's route over CH1's run (the gap is
-# in CH2's ADC-pin net, between Riso and the A0 pin).  Each joins two segment names of ONE electrical net; the
-# netlist comparison merges them (spicecmp.RULES, bridges are the BR parts).  6xx because they serve no one block.
-two('BR601', '0R', P33A, P33A_U, 'EDGE', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
-two('BR602', '0R', 'CH2_RISO', 'A0', 'EDGE', '', 'top-layer 0R bridge: CH2 Riso to the A0 pin segment (placeholder net)')
-two('R603', '0R', VREF, 'AREF', 'EDGE', '', 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
+# BR101 (CH1) carries +3V3A over the A0 column to the scope dual's V+ pad; BR201 (CH2) carries CH2's route over CH1's run
+# (the gap is in CH2's ADC-pin net, between Riso/the clamp D201 and the A0 pin).  Each joins two segment names of ONE electrical net; the
+# netlist comparison merges them (spicecmp.BR rule: every BR part is a short).  Each sits in the block it serves.
+two('BR101', '0R', P33A, P33A_U, 'CH1', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
+two('BR201', '0R', 'CH2_RISO', 'A0', 'CH2', '', 'top-layer 0R bridge: CH2 Riso to the A0 pin segment (placeholder net)')
+two('R514', '0R', VREF, 'AREF', 'REFCAL', '', 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
 
 # ---------------------------------------------------------------- calibration ladder, sense divider (sim/powercal)
 B = 'REFCAL'

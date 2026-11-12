@@ -215,6 +215,8 @@ def schematic_elements(comps, nets, block):
     for ref, c in sorted(comps.items()):
         if c['fields'].get('Block') not in BLOCKS[block] or ref.startswith('#'):
             continue
+        if ref.startswith('BR'):
+            continue          # a bridge is a short: its two nets are already merged above
         pins = {pin: v for (r, pin), v in pinnet.items() if r == ref}
         lib = c['part']
         if lib in ('R', 'C'):
