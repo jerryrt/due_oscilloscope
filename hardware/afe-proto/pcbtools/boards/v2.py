@@ -19,12 +19,17 @@ SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures'
 def _load_sources():
     """import design, floorplan and layout from SOURCE_DIR under private module names (nothing is put on sys.path)"""
     mods = {}
-    for name in ('design', 'floorplan', 'layout'):
-        spec = importlib.util.spec_from_file_location(f'_pcbtools_v2_{name}', os.path.join(SOURCE_DIR, name + '.py'))
-        m = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = m
-        spec.loader.exec_module(m)
-        mods[name] = m
+    keep = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True               # the fixture folder is frozen: importing it must not leave __pycache__ in it
+    try:
+        for name in ('design', 'floorplan', 'layout'):
+            spec = importlib.util.spec_from_file_location(f'_pcbtools_v2_{name}', os.path.join(SOURCE_DIR, name + '.py'))
+            m = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = m
+            spec.loader.exec_module(m)
+            mods[name] = m
+    finally:
+        sys.dont_write_bytecode = keep
     return mods['design'], mods['floorplan'], mods['layout']
 
 
