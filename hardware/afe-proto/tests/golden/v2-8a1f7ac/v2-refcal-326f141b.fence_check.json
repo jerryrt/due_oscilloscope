@@ -1,0 +1,41 @@
+{
+ "attempts": 1,
+ "clean": false,
+ "cmd": "-B /home/jerry/EE.Projects/due_oscilloscope_v2/hardware/afe-proto/v2/kicad/fence_check.py REFCAL /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-refcal-326f141b.kicad_pcb /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+ "env": {
+  "image_id": null,
+  "interpreter": "/home/jerry/EE.Projects/due_oscilloscope_pcbtools/.venv-pcb/bin/python",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "label": "working reference, host .venv-pcb",
+  "numpy": "2.3.5",
+  "python": "3.14.4"
+ },
+ "exit_code": 1,
+ "fixture": "v2-refcal-326f141b",
+ "peak_rss_kb": 166772,
+ "raw": "FAIL copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (38.35, 15.05), (47.4, 6.0), 0.3)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (43.35, 19.65), (52.25, 19.65), 0.3)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (47.5, 0.75), (47.5, 6.0), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/AREF', 0, (48.4, 34.2), (48.4, 49.4), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/AWG_BNC_L', 0, (64.0, 19.95), (64.85, 19.95), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/SCL', 0, (46.4, 27.0), (46.4, 47.5), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/SDA', 0, (47.4, 27.8), (47.4, 48.5), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP1', 0, (63.25, 3.35), (63.25, 5.55), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP2', 0, (60.7, 3.35), (60.7, 5.2), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP3', 0, (58.15, 3.35), (58.15, 5.55), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP4', 0, (52.15, 2.05), (52.15, 6.4), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP4', 0, (55.65, 3.35), (55.65, 5.25), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/TAP5', 0, (53.1, 3.35), (53.1, 5.55), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (49.95, 3.35), (49.95, 7.1), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (50.0, 3.35), (50.0, 5.5), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (56.55, 31.6), (61.45, 36.5), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (61.0, 14.35), (64.75, 14.35), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.7, 16.05), (62.7, 36.3), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.8, 15.2), (62.8, 46.6), 0.2)\nFAIL copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.8, 22.8), (65.2, 22.8), 0.2)\nREFCAL: 20 violation(s)\n",
+ "tool": "fence_check",
+ "violations": [
+  "copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (38.35, 15.05), (47.4, 6.0), 0.3)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (43.35, 19.65), (52.25, 19.65), 0.3)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/+3V3A', 0, (47.5, 0.75), (47.5, 6.0), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/AREF', 0, (48.4, 34.2), (48.4, 49.4), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/AWG_BNC_L', 0, (64.0, 19.95), (64.85, 19.95), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/SCL', 0, (46.4, 27.0), (46.4, 47.5), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/SDA', 0, (47.4, 27.8), (47.4, 48.5), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP1', 0, (63.25, 3.35), (63.25, 5.55), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP2', 0, (60.7, 3.35), (60.7, 5.2), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP3', 0, (58.15, 3.35), (58.15, 5.55), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP4', 0, (52.15, 2.05), (52.15, 6.4), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP4', 0, (55.65, 3.35), (55.65, 5.25), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/TAP5', 0, (53.1, 3.35), (53.1, 5.55), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (49.95, 3.35), (49.95, 7.1), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (50.0, 3.35), (50.0, 5.5), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (56.55, 31.6), (61.45, 36.5), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (61.0, 14.35), (64.75, 14.35), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.7, 16.05), (62.7, 36.3), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.8, 15.2), (62.8, 46.6), 0.2)",
+  "copper outside the REFCAL fence removed or changed: ('trk', '/VREF', 0, (62.8, 22.8), (65.2, 22.8), 0.2)"
+ ],
+ "wall_s": 0.29
+}

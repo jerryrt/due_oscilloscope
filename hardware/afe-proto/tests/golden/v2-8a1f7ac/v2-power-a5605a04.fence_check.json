@@ -1,0 +1,20 @@
+{
+ "attempts": 1,
+ "clean": true,
+ "cmd": "-B /home/jerry/EE.Projects/due_oscilloscope_v2/hardware/afe-proto/v2/kicad/fence_check.py POWER /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power-a5605a04.kicad_pcb /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+ "env": {
+  "image_id": null,
+  "interpreter": "/home/jerry/EE.Projects/due_oscilloscope_pcbtools/.venv-pcb/bin/python",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "label": "working reference, host .venv-pcb",
+  "numpy": "2.3.5",
+  "python": "3.14.4"
+ },
+ "exit_code": 0,
+ "fixture": "v2-power-a5605a04",
+ "peak_rss_kb": 167148,
+ "raw": "POWER: clean\n",
+ "tool": "fence_check",
+ "violations": [],
+ "wall_s": 0.29
+}

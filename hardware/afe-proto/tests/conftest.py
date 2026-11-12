@@ -65,7 +65,35 @@ _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".
            "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH")}
 
 
+# pcbtools additions: run the guard test after every other test, count pcbnew-marked passes for it, and a fixture that fails
+# (never skips) when the environment claims pcbnew (PCBTOOLS_EXPECT_PCBNEW=1, set by tests/run_pcbnew_tests.sh) and it is missing.
+EXPECT = os.environ.get("PCBTOOLS_EXPECT_PCBNEW") == "1"
+RAN = {"pcbnew_passed": 0, "pcbnew_selected": 0}
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "guard_last: run after every other test")
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    rep = (yield).get_result()
+    if rep.when == "call" and rep.passed and item.get_closest_marker("pcbnew") and not item.get_closest_marker("guard_last"):
+        RAN["pcbnew_passed"] += 1
+
+
+@pytest.fixture(scope="session")
+def pcbnew_required():
+    """use in a pcbnew-marked test: fails (never skips) when the environment claims pcbnew and it is missing"""
+    if EXPECT and pcbnew_version() is None:
+        pytest.fail("PCBTOOLS_EXPECT_PCBNEW=1 but pcbnew cannot be imported")
+
+
 def pytest_collection_modifyitems(config, items):
+    last = [i for i in items if i.get_closest_marker("guard_last")]
+    rest = [i for i in items if not i.get_closest_marker("guard_last")]
+    items[:] = rest + last
+    RAN["pcbnew_selected"] = sum(1 for i in items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last"))
     required = {t.strip() for t in config.getoption("--require-tool").split(",") if t.strip()}
     unknown = required - set(_PROBES)
     if unknown:

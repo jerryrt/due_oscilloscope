@@ -1,0 +1,4 @@
+ unmutated copy: PASSED | 16 passed, 1 warning in 0.67s
+ caught   tiles: last row of every tile dropped  [FAILED | 1 failed, 1 warning in 0.17s]
+ caught   tiles: last column of every tile dropped  [FAILED | 1 failed, 1 warning in 0.16s]
+ every mutant caught

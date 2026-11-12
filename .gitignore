@@ -115,3 +115,6 @@ hardware/**/sim/*.dat
 hardware/**/sim/screen-output/
 hardware/**/.history/
 hardware/**/~*.lck
+.venv-pcb/
+hardware/afe-proto/pcbtools/.scratch/
+.pytest_cache/
