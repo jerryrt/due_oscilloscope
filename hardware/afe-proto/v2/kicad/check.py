@@ -21,7 +21,7 @@ Checks (each reads the file through kicad-cli, never through the generator's ide
       ADS1115's 2/3-tap input
   C3  the sense divider: k = 0.4, default tie to the reference, ADS inputs AIN2 / AIN3 through 3.9k and 10k, input
       source impedances matched, the pair AIN2 - AIN3 a valid ADS1115 differential pair
-  C4  the CAL header: 1x3, TAP_low | B | TAP_on (1/3 tap), B touches only the sense divider, the shunt is listed
+  C4  the CAL header: 1x3, TAP4 (2/3 tap) | B | TAP3 (1/2 tap), the states, B touches only the sense divider, the shunt is listed
   C5  rules: no scope part touches the negative rail; no scope or AWG net but the pins' own reaches the ladder
   H1  the Due headers carry exactly the pins of the header-pin table below, on the V03 header names
 
@@ -298,6 +298,10 @@ def schematic_checks(sch, parts, spice, tag='', quick=False):
                 if a is None or b is None or spicecmp.sig(a) != b:
                     d1.append(f"{p['ref']} value {p['value']!r} != {v!r} ({p['sim']})")
     for k, (n, v, lc) in want_rows.items():
+        if k in design.NOT_A_SYMBOL:          # a loose part: it must be on the hand-fitted list instead
+            if not any(design.NOT_A_SYMBOL[k] in h and k.split('.')[1] in h for h in design.HAND_FITTED):
+                d1.append(f'{k} is not a symbol and not on the hand-fitted list')
+            continue
         if cnt.get(k, 0) != n:
             d1.append(f'{k}: {cnt.get(k, 0)} placed, parts.csv says {n}')
     ok &= row('B1' + tag, not d1 and len(cnt) >= 50, f'{len(cnt)} studied parts against {len(want_rows)} parts.csv keys'
@@ -419,18 +423,17 @@ def computed_checks(comps, nets, parts, tag):
                   + (': failed ' + '; '.join(bad) if bad else ''))
     except Exception as e:
         ok &= row('C3' + tag, False, f'{type(e).__name__}: {e}')
-    # C4: the calibration header: 1x3 "CAL", TAP_low | B | TAP_on, shunt across B and TAP_on
-    ladder = {f'TAP{k}' for k in range(1, 6)}
+    # C4: the calibration header: 1x3 "CAL", pin 1 TAP4 (2/3 tap, 2.0 V) | pin 2 B | pin 3 TAP3 (1/2 tap, 1.5 V)
     hdr = {p: pn.get(('J11', p)) for p in '123'}
     b = hdr['2']
     on_b = {r for (r, p), net in pn.items() if net == b and r != 'J11'}
     nj = [r for r, c in comps.items() if r == 'J11' and c['part'] == 'Conn_01x03']
-    states = {'off': b, 'shunt 1-2 (low)': hdr['1'], 'shunt 2-3 (on)': hdr['3']}
-    ok &= row('C4' + tag, len(nj) == 1 and hdr['1'] in ladder and hdr['3'] == 'TAP2' and hdr['1'] != hdr['3'] and
+    states = {'no shunt (default tie)': b, 'shunt 2-3 (calibrate)': f'B = {hdr["3"]}', 'shunt 1-2 (slip)': f'B = {hdr["1"]}'}
+    ok &= row('C4' + tag, len(nj) == 1 and hdr['1'] == 'TAP4' and hdr['3'] == 'TAP3' and
               all(comps[r]['fields'].get('Sim', '').startswith('pc.R_SR') for r in on_b) and
               any('shunt' in h for h in design.HAND_FITTED),
-              f'J11 is 1x3: pin 1 {hdr["1"]} (TAP_low, TBD), pin 2 B, pin 3 {hdr["3"]} (1/3 tap); B touches {sorted(on_b)} only; '
-              f'B in the three states: {states}; the shunt is on the hand-fitted list')
+              f'J11 is 1x3: pin 1 {hdr["1"]} (2/3 tap) | pin 2 B | pin 3 {hdr["3"]} (1/2 tap); B touches {sorted(on_b)} only; '
+              f'states {states}; the shunt is on the hand-fitted list')
     # C5: rules
     scope = {r for r, c in comps.items() if c['fields'].get('Block') == 'scope'}
     on_neg = sorted(r for (r, p), net in pn.items() if net == 'VNEG' and r in scope)
@@ -533,7 +536,7 @@ def arm_due(parts):
 
 
 def arm_cal_header(parts):
-    P(parts, 'J11')['pins']['3'] = 'TAP3'                         # TAP_on moved off the 1/3 tap
+    P(parts, 'J11')['pins']['3'] = 'TAP2'                         # the calibration pin moved to the 1/3 tap
 
 
 def arm_ladder(parts):

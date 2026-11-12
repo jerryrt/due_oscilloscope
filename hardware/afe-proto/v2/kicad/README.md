@@ -71,12 +71,12 @@ powercal parts put 1 uF there and the 100 nF at the input (both treated as the r
    now derives the pair from the netlist and checks it against the multiplexer table.
 2. **I2C** is the SAM3X's TWI0 on PWMH0.9/.10 (labelled SDA1/SCL1 on the Due header; no pull-ups there), with two
    4.7k Basic pull-ups (C23162) to +3.3 V_A on the shield.
-3. **Calibration jumper `J11`**: a 1x3 male header, silkscreen "CAL" (layout), pins TAP_low | B | TAP_on, one 2.54 mm
-   shunt across B and TAP_on (the "on" position, marked). TAP_on is the 1/3 ladder tap (TAP2). **TAP_low is
-   a placeholder**: the power study has not named it, so `design.TAP_LOW` is TAP1 (a ladder tap) in one constant. I
-   did not use a separate net named TAP_LOW_TBD because a single-pin net fails the no-single-pin check. The shunt is
-   a loose hand-fitted part (`design.HAND_FITTED`, checked by `C4`); the other hand-fitted parts are the BNCs, the
-   stacking headers, the J11 header and the two standoffs with screws. Every Due pin stays reachable from the top.
+3. **Calibration jumper `J11`** (powercal's J_RAT, shunt SH_RAT): a 1x3 male header, hand-soldered, silkscreen "CAL" with
+   the on position (pins 2-3) marked (layout). Pin 1 = TAP4 (the 2/3 tap, 2.0 V), pin 2 = B, pin 3 = TAP3 (the 1/2 tap,
+   1.5 V, the calibration node). A 2.54 mm shunt across 2-3 calibrates; across 1-2 is the one wrong placement; no shunt
+   is the default tie. The shunt is a loose hand-fitted part (`design.HAND_FITTED`, `NOT_A_SYMBOL`, checked by `B1`
+   and `C4`); the other hand-fitted parts are the BNCs, the stacking headers, J11 and the two standoffs with screws.
+   Every Due pin stays reachable from the top.
 4. **Part numbers I added** (not in any study): 2 x 4.7k pull-up C23162, 0R C21189 for PA-7 (unfitted), six test
    points, two mounting holes; all Basic per `../jlc-basic.csv`. The BAV99 is drawn with KiCad's
    BAT54S series-pair symbol (pins 1 A1, 2 K2, 3 common), as version 1 did.

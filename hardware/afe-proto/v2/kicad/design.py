@@ -199,17 +199,21 @@ HDR = {
 for ref in sorted(HDR, key=lambda r: int(r[1:])):
     sym, val, fp, pins = HDR[ref]
     other(ref, sym, val, fp, pins, B, 'generic Mega stacking header, owner-fitted; unused pins pass through')
-# V2-5: the calibration jumper, a 1x3 male header "CAL": TAP_low | B | TAP_on, with one 2.54 mm shunt across B and
-# TAP_on (the "on" position, marked on the silkscreen).  TAP_on is the 1/3 ladder tap.  TAP_LOW is a ladder tap whose
-# choice is the power study's and is still open: it is TAP1 here as a placeholder, one constant, to be replaced.
-TAP_LOW = 'TAP1'      # TBD (power study): the ladder tap at the "low" end of the jumper
-TAP_ON = 'TAP2'       # the 1/3 ladder tap
-other('J11', 'Connector_Generic:Conn_01x03', 'CAL', HDR3, {'1': TAP_LOW, '2': 'SNS_B', '3': TAP_ON},
-      B, 'V2-5 jumper "CAL": pin 1 TAP_low (TBD), pin 2 B, pin 3 TAP_on (1/3 tap); shunt across 2-3 = on, '
-         'across 1-2 = low, off = default tie', nc=())
+# V2-5: the calibration jumper, powercal's J_RAT / SH_RAT: a 1x3 male header, silkscreen "CAL", pins
+# TAP_HI | B | TAP_CAL, hand-soldered, with one 2.54 mm shunt.  Shunt across pins 2-3 (B and the 1/2 tap, 1.5 V)
+# calibrates (the "on" position, marked on the silkscreen); across 1-2 (B and the 2/3 tap, 2.0 V) is the one wrong
+# placement; no shunt is the default tie.  Pin 1 is the HIGHER tap.
+TAP_HI = 'TAP4'       # pin 1: the 2/3 ladder tap, 2.0 V
+TAP_CAL = 'TAP3'      # pin 3: the 1/2 ladder tap, 1.5 V, the calibration node
+other('J11', 'Connector_Generic:Conn_01x03', 'CAL', HDR3, {'1': TAP_HI, '2': 'SNS_B', '3': TAP_CAL},
+      B, 'V2-5 jumper "CAL" (pc.J_RAT): pin 1 TAP4 (2/3 tap), pin 2 B, pin 3 TAP3 (1/2 tap); shunt across 2-3 = '
+         'calibrate (marked), across 1-2 = the wrong placement, off = default tie', nc=(), fitted_by='owner')
+PARTS[-1]['sim'] = 'pc.J_RAT'
+# powercal rows that are not schematic symbols: the loose shunt
+NOT_A_SYMBOL = {'pc.SH_RAT': 'shunt'}
 # hand-fitted by the owner (not placed by the board house); the shunt is a loose part, not a board footprint
 HAND_FITTED = ['3 x BNC KH-BNC50-3511 (J1-J3)', 'Mega stacking headers (J4-J10)', '1x3 male header (J11)',
-               '1 x 2.54 mm shunt for J11 (loose part)', '2 x M3 x 8 standoff (MH1, MH2) and their M3 x 5 screws']
+               '1 x 2.54 mm shunt for J11 (loose part, pc.SH_RAT)', '2 x M3 x 8 standoff (MH1, MH2) and their M3 x 5 screws']
 # Standoffs over the Due's mounting holes (Due frame, y up): the hole nearest the BNC overhang and the top-right hole.
 # MH2 sits 3.81 mm from XIO0 pin 1 (93.98, 50.8): inside the outline, but the head's clearance to that pad is about
 # 0.2 mm (check at layout, README).
