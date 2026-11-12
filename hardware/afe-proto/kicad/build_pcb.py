@@ -44,16 +44,16 @@ def due(v):
 
 
 # header: (pin-1 x, pin-1 Yup, direction of rising pin numbers) from due-header-table.md section 2
-HEADERS = {'J4': (27.94, 2.54, '+x'), 'J5': (50.80, 2.54, '+x'), 'J6': (73.66, 2.54, '+x'),
-           'J7': (63.50, 50.80, '-x'), 'J8': (68.58, 50.80, '+x'), 'J9': (41.656, 50.80, '-x')}
+HEADERS = {'J601': (27.94, 2.54, '+x'), 'J602': (50.80, 2.54, '+x'), 'J603': (73.66, 2.54, '+x'),
+           'J604': (63.50, 50.80, '-x'), 'J605': (68.58, 50.80, '+x'), 'J606': (41.656, 50.80, '-x')}
 XIO = (93.98, 50.80)        # pin 1; odd pins at x 93.98, even at 96.52, rows step down 2.54
 ROT = {'+x': 90.0, '-x': -90.0}
 # Yup of each BNC centre pin, CH1, CH2, AWG: midway between two XIO0 rows of unused pins (AWG: under the last row),
 # so each input enters straight through the header; 17.78 mm apart, clear of each other's courtyards
-BNCS = {'J1': 44.45, 'J2': 24.13, 'J3': 7.4}    # J3: its legs (5.05 below, 2.6 mm pads) and body clear the bottom edge
-BNC_X = 102.0               # centre pin x: the rear courtyard (2.25 mm back) clears XIO0 (x 98.3) and MH1 (x 99.6)
+BNCS = {'J101': 44.45, 'J201': 24.13, 'J301': 7.4}    # J301: its legs (5.05 below, 2.6 mm pads) and body clear the bottom edge
+BNC_X = 102.0               # centre pin x: the rear courtyard (2.25 mm back) clears XIO0 (x 98.3) and MH601 (x 99.6)
 MH = (96.52, 2.54)
-MH2 = (90.17, 50.8)
+MH602 = (90.17, 50.8)
 
 # zones per block (x0, x1, yup0, yup1), inside the headers' bodies; the SMT field is x 18..92, Yup 4.6..48.4
 # Placement by signal flow (FR-02).  Each group fills its box in rows, in the order given (the signal's order), starting
@@ -65,32 +65,32 @@ def _r(a, b, pre='R'):
 
 PLAN = [
     # 5 V feed and the LM27762 by the 5V pin (x 38.1), bottom up
-    ('power', (18.0, 31.4, 4.6, 48.6), 'bl', ['R70', 'C36', 'C37', 'C23', 'U7', 'C31', 'C38', 'C39', 'C40', 'C41',
-                                              'C42', 'C43', 'R29', 'R5', 'R6', 'R25', 'R26', 'R27', 'R28', 'R65',
-                                              'TP1', 'TP2', 'TP3', 'TP4', 'TP5']),
+    ('power', (18.0, 31.4, 4.6, 48.6), 'bl', ['R408', 'C403', 'C404', 'C401', 'U401', 'C402', 'C405', 'C406', 'C407', 'C408',
+                                              'C409', 'C410', 'R406', 'R401', 'R402', 'R25', 'R403', 'R404', 'R405', 'R407',
+                                              'TP401', 'TP402', 'TP403', 'TP404', 'TP405']),
     # ladder and reference right above A2..A7 (x 50.8..63.5), bottom up
-    ('ladder', (40.0, 64.2, 4.6, 13.8), 'bl', ['R43', 'R44', 'R45', 'R46', 'R47', 'R48', 'R49', 'R50', 'U8', 'C24',
-                                               'C32', 'C26', 'C27', 'R81']),
+    ('ladder', (40.0, 64.2, 4.6, 13.8), 'bl', ['R503', 'R44', 'R45', 'R504', 'R505', 'R506', 'R507', 'R508', 'U501', 'C501',
+                                               'C505', 'C503', 'C504', 'R510']),
     # precision ADC and the AWG-sense divider with its ratio switch
-    ('ads', (32.0, 64.2, 14.4, 26.4), 'br', ['U9', 'C25', 'C33', 'R69', 'R7', 'R8', 'U12', 'C30', 'R68', 'R9', 'D7',
-                                             'D8', 'TP6']),
+    ('ads', (32.0, 64.2, 14.4, 26.4), 'br', ['U502', 'C502', 'C33', 'R509', 'R501', 'R502', 'U12', 'C30', 'R68', 'R9', 'D501',
+                                             'D502', 'TP501']),
     # scope Vmid: CH1's loop on top (next to CH1), the TLV9062 and divider, CH2's loop at the bottom (next to CH2)
     ('vmid', (32.0, 64.2, 27.2, 48.6), 'tr', _r(48, 53, 'C') + ['R73', 'R74', 'R75', 'R76', 'R63', 'C34', 'C16',
                                               'U6', 'C18', 'R20', 'R21', 'C47', 'R38', 'C46', 'C15',
                                               'R77', 'R78', 'R79', 'R80', 'R64', 'C35', 'C17'] + _r(54, 59, 'C')),
     # CH1: input at the top right (BNC at Yup 44.45), output at the bottom left (to A1 down the x 64.4..70 strip)
-    ('ch1', (64.6, 91.8, 37.0, 48.8), 'tr', ['R10', 'R11', 'R1', 'C1', 'R14', 'R15', 'R3', 'R18', 'C9', 'C3', 'C4',
-                                             'C10', 'R52', 'U10', 'R30', 'U1', 'R36', 'R71', 'C44', 'C13', 'C28',
-                                             'R66', 'R55', 'D5']),
+    ('ch1', (64.6, 91.8, 37.0, 48.8), 'tr', ['R102', 'R103', 'R101', 'C101', 'R104', 'R15', 'R3', 'R105', 'C102', 'C3', 'C4',
+                                             'C10', 'R106', 'U10', 'R30', 'U101', 'R36', 'R108', 'C104', 'C103', 'C28',
+                                             'R66', 'R107', 'D101']),
     # CH2: input at the bottom right (BNC at Yup 26.67), same order upward
-    ('ch2', (64.6, 91.8, 24.8, 36.4), 'br', ['R12', 'R13', 'R2', 'C2', 'R16', 'R17', 'R4', 'R19', 'C11', 'C5', 'C6',
-                                             'C12', 'R53', 'U11', 'R31', 'U2', 'R37', 'R72', 'C45', 'C14', 'C29',
-                                             'R67', 'R56', 'D6']),
+    ('ch2', (64.6, 91.8, 24.8, 36.4), 'br', ['R202', 'R203', 'R201', 'C201', 'R204', 'R17', 'R4', 'R205', 'C202', 'C5', 'C6',
+                                             'C12', 'R206', 'U11', 'R31', 'U2', 'R37', 'R72', 'C45', 'C14', 'C29',
+                                             'R67', 'R207', 'D201']),
 
-    # AWG: DAC0 (x 83.8) at the bottom, output to J3 (Yup 8.89) on the right
-    ('awg', (64.6, 91.8, 4.6, 24.0), 'bl', ['R54', 'R22', 'U4', 'D3', 'C19', 'R32', 'R34', 'R39', 'R40', 'R57',
-                                            'R33', 'C7', 'R35', 'R41', 'R42', 'R58', 'U3', 'D9', 'D10', 'D11', 'R51',
-                                            'R59', 'R60', 'C21', 'D1', 'R61', 'R62', 'C22', 'D2',
+    # AWG: DAC0 (x 83.8) at the bottom, output to J301 (Yup 8.89) on the right
+    ('awg', (64.6, 91.8, 4.6, 24.0), 'bl', ['R305', 'R301', 'U4', 'D3', 'C19', 'R32', 'R34', 'R39', 'R40', 'R57',
+                                            'R302', 'C301', 'R303', 'R41', 'R42', 'R58', 'U301', 'D9', 'D10', 'D11', 'R304',
+                                            'R59', 'R60', 'C302', 'D1', 'R61', 'R62', 'C303', 'D2',
                                             'R23', 'R24', 'C8', 'U5', 'D4', 'C20']),
 ]
 GAP = 1.0
@@ -282,7 +282,7 @@ def build():
         f.Reference().SetTextThickness(pcb.FromMM(0.08))
         f.Value().SetVisible(False)
         if p['fitted_by'] != 'none':
-            f.SetExcludedFromBOM(False)           # owner-fitted parts are BOM lines too (MH1's library default excludes it)
+            f.SetExcludedFromBOM(False)           # owner-fitted parts are BOM lines too (MH601's library default excludes it)
         for pad in f.Pads():
             n = SCH_NETS.get((p['ref'], pad.GetNumber()))
             if n:
@@ -291,14 +291,14 @@ def build():
         fps[p['ref']] = f
 
     # fixed parts
-    fixed = set(HEADERS) | set(BNCS) | {'J10', 'MH1', 'MH2'}
+    fixed = set(HEADERS) | set(BNCS) | {'J607', 'MH601', 'MH602'}
     for ref, (x, y, d) in HEADERS.items():
         f = fps[ref]; f.SetOrientationDegrees(ROT[d]); f.SetPosition(at(x, y)); f.SetLocked(True)
-    f = fps['J10']; f.SetOrientationDegrees(0); f.SetPosition(at(XIO[0] + 2.54, XIO[1])); f.SetLocked(True)
+    f = fps['J607']; f.SetOrientationDegrees(0); f.SetPosition(at(XIO[0] + 2.54, XIO[1])); f.SetLocked(True)
     for ref, y in BNCS.items():
         f = fps[ref]; f.SetOrientationDegrees(-90); f.SetPosition(at(BNC_X, y))
-    f = fps['MH1']; f.SetPosition(at(*MH)); f.SetLocked(True)
-    f = fps['MH2']; f.SetPosition(at(*MH2)); f.SetLocked(True)
+    f = fps['MH601']; f.SetPosition(at(*MH)); f.SetLocked(True)
+    f = fps['MH602']; f.SetPosition(at(*MH602)); f.SetLocked(True)
 
     # placement by PLAN: each part, in order, takes the first free spot scanning rows from the named corner (0.2 mm
     # steps), its courtyard GAP clear of every courtyard already in the box

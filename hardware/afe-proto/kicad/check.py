@@ -13,7 +13,7 @@ through the generator's idea of what it wrote:
   P1  every board pad's net equals the schematic netlist (no pad on a wrong or missing net)
   P2  DRC: no courtyard overlap, nothing off the board, no unconnected-item report beyond unrouted nets
   P3  every footprint sits inside the outline and the Due headers sit on the V03 pin positions
-  R1  (--frozen) the committed schematic and board are exactly what the generators make from this tree
+  R101  (--frozen) the committed schematic and board are exactly what the generators make from this tree
 
 Each check is broken on purpose before it is believed (the M-arms below):
 a mutated input must make it fail.
@@ -38,7 +38,7 @@ BOM = os.path.join(HERE, '..', 'whatif', 'bom.txt')
 RESULTS = []
 
 # parts on the board that whatif/bom.txt does not list, each with its reason; anything else missing or extra fails S4
-# (D7 / D8 were here until bom.txt carried them)
+# (D501 / D502 were here until bom.txt carried them)
 BOM_DELTAS = {}
 
 
@@ -196,19 +196,19 @@ def mutation_arms(nets):
     bad = 0
     # M1: a design that swaps one pin's net must not match KiCad's netlist (S2's comparator can see one pin)
     parts = copy.deepcopy(design.PARTS)
-    pr = next(p for p in parts if p['ref'] == 'R14'); pr['pins']['1'], pr['pins']['2'] = pr['pins']['2'], pr['pins']['1']
+    pr = next(p for p in parts if p['ref'] == 'R104'); pr['pins']['1'], pr['pins']['2'] = pr['pins']['2'], pr['pins']['1']
     want = {}
     for p in parts:
         for pin, net in p['pins'].items():
             want.setdefault(net, []).append((p['ref'], pin))
-    bad += row('M1', bool(compare_nets(want, strip_flags(nets))), 'S2 sees R3 (R14, N to VREF) reversed')
+    bad += row('M1', bool(compare_nets(want, strip_flags(nets))), 'S2 sees R3 (R104, N to VREF) reversed')
     # M2: an LCSC code changed must fail S4; a bom.txt designator dropped must fail S4
     parts = copy.deepcopy(design.PARTS)
-    next(p for p in parts if p['ref'] == 'R43')['lcsc'] = 'C2984375'
+    next(p for p in parts if p['ref'] == 'R503')['lcsc'] = 'C2984375'
     bom = bom_txt()
-    bad += row('M2', bool(compare_bom(parts, bom, BOM_DELTAS)), 'S4 sees R43 with another resistor code')
-    bom2 = dict(bom); bom2.pop('C26')
-    bad += row('M2b', bool(compare_bom(design.PARTS, bom2, BOM_DELTAS)), 'S4 sees C26 fitted but missing from bom.txt')
+    bad += row('M2', bool(compare_bom(parts, bom, BOM_DELTAS)), 'S4 sees R503 with another resistor code')
+    bom2 = dict(bom); bom2.pop('C503')
+    bad += row('M2b', bool(compare_bom(design.PARTS, bom2, BOM_DELTAS)), 'S4 sees C503 fitted but missing from bom.txt')
     # M3: geometry: a schematic generated with the passives' rotation wrong must not reproduce the design's nets in
     # KiCad (S2 reads connectivity from the drawing, not from the generator's intent)
     tmp = tempfile.mkdtemp(prefix='afe-mut-')
@@ -267,14 +267,14 @@ def pcb_checks(nets, PCB=PCB, tag=''):
         kinds[v['type']] = kinds.get(v['type'], 0) + 1
     # silk_edge_clearance is allowed on the three BNCs only: they overhang the right edge by design (bom.txt
     # BOARD OUTLINE; the KH-BNC50-3511 drawing is unread, so the stand-in footprint's depth is *(check)*)
-    # courtyards_overlap is allowed for MH2 against the Due's own sockets J8 / J10 and nothing else: the M2.5 screw head over
+    # courtyards_overlap is allowed for MH602 against the Due's own sockets J605 / J607 and nothing else: the M2.5 screw head over
     # the socket housing (afe.md, the spec lead; same treatment as v2's MH602), the screw optional until the owner calipers
     # the housing *(check)*
     def allowed(v):
         if v['type'] == 'courtyards_overlap':
             ds = [i['description'] for i in v['items']]
-            return any('MH2' in x for x in ds) and all(re.search(r'Footprint (MH2|J8|J10)\b', x) for x in ds)
-        return v['type'] == 'silk_edge_clearance' and any(re.search(r'of J[123] on', i['description']) for i in v['items'])
+            return any('MH602' in x for x in ds) and all(re.search(r'Footprint (MH602|J605|J607)\b', x) for x in ds)
+        return v['type'] == 'silk_edge_clearance' and any(re.search(r'of J[123]01 on', i['description']) for i in v['items'])
     hard = {}
     for v in vio:
         if v['type'] != 'unconnected_items' and not allowed(v):
@@ -336,10 +336,10 @@ def frozen_checks():
     import hashlib
     have = {f: hashlib.sha256(open(os.path.join(HERE, f), 'rb').read()).hexdigest()
             for f in ('afe-proto.kicad_sch', 'afe-proto.kicad_pcb')}
-    ok = row('R1', regenerate() == have, 'committed schematic and board regenerate byte for byte')
+    ok = row('R101', regenerate() == have, 'committed schematic and board regenerate byte for byte')
     # the arm: one value changed in design.py must change the regenerated files
     bad = row('MR1', regenerate(("'22 1%'", "'22R 1%'")) != have,
-              'R1 sees one value changed in design.py')
+              'R101 sees one value changed in design.py')
     return ok and bad
 
 

@@ -30,7 +30,7 @@ NS = uuid.UUID('6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001')
 ROOT_UUID = str(uuid.uuid5(NS, 'root'))
 G = 2.54
 PIN_AT = {}
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', '+3V3A_E', 'VNEG_E']
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC']
 
 
 def uid(*k):
@@ -333,8 +333,8 @@ def build():
     # unused (SNVSAF7C table 4-1); GND carries a PWR_FLAG (a power output), and an open collector on a power output is
     # an ERC error by pin type, not by circuit.  Keyed by the two pins' UUIDs and the first pin's position (100 nm units), then
     # the sheet path of the marker and of each item (the format read out of eeschema: key|x|y|id|id|path|path|path).
-    pg = PIN_AT[('U7', '1')]
-    excl = [[f"pin_to_pin|{round(pg[0] * 1e4)}|{round(pg[1] * 1e4)}|{uid('pin', 'U7', 1, '1')}|{uid('pin', '#FLG01', 1, '1')}"
+    pg = PIN_AT[('U401', '1')]
+    excl = [[f"pin_to_pin|{round(pg[0] * 1e4)}|{round(pg[1] * 1e4)}|{uid('pin', 'U401', 1, '1')}|{uid('pin', '#FLG01', 1, '1')}"
              f"|/{ROOT_UUID}|/{ROOT_UUID}|/{ROOT_UUID}",
              'PGOOD unused, tied to GND per SNVSAF7C; GND carries the PWR_FLAG']]
     with open(os.path.join(HERE, 'fp-lib-table'), 'w') as f:

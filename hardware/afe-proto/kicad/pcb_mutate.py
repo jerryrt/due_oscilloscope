@@ -9,15 +9,15 @@ import pcbnew as pcb
 b = pcb.LoadBoard(sys.argv[1])
 fp = {f.GetReference(): f for f in b.GetFootprints()}
 mode = sys.argv[2]
-if mode == 'net':          # R35 (Rf, AWG) with its two pad nets exchanged
-    a, c = list(fp['R35'].Pads())
+if mode == 'net':          # R303 (Rf, AWG) with its two pad nets exchanged
+    a, c = list(fp['R303'].Pads())
     na, nc = a.GetNet(), c.GetNet()
     a.SetNet(nc); c.SetNet(na)
-elif mode == 'overlap':    # R10 dropped onto R11
-    fp['R10'].SetPosition(fp['R11'].GetPosition())
+elif mode == 'overlap':    # R102 dropped onto R103
+    fp['R102'].SetPosition(fp['R103'].GetPosition())
 elif mode == 'header':     # ADCL0 0.2 mm off its V03 position
-    p = fp['J5'].GetPosition()
-    fp['J5'].SetPosition(pcb.VECTOR2I(p.x + pcb.FromMM(0.2), p.y))
+    p = fp['J602'].GetPosition()
+    fp['J602'].SetPosition(pcb.VECTOR2I(p.x + pcb.FromMM(0.2), p.y))
 else:
     raise SystemExit(mode)
 b.Save(sys.argv[1])
