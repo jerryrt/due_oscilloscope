@@ -357,6 +357,7 @@ def report(data, L, res, deltas, flags, v1L, v1res, args):
       "its own %g CNY/m2 (the 2026-09-14 price), so the PCB row in the block table moves by the 40 CNY/m2 rise.\n" % (PCB_ENG, PCB_RATE, BOARD_MM[0], BOARD_MM[1], ar * 1e4, PCB_RATE, PCB_RATE_V1))
     w("## Hand-soldered parts, as their own line\n")
     w("Not assembled by JLC: no loading fee, no joint fee. Bought as loose parts; tier for (boards x quantity) pieces.\n")
+    w("**The 86 pass-through header joints are the owner's largest assembly task** (the BNCs and the CAL header come on top). The header price is a retail listing and its tail length is *(check)*: a set whose tails are too short will not stack into the Due's sockets, and that is the one way this line goes wrong.\n")
     w("| ref | part | LCSC | qty | $ per board @20 | $ per board @100 | price basis |\n|---|---|---|---|---|---|---|")
     to20 = to100 = 0.0
     for x in L:

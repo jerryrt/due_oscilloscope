@@ -60,6 +60,8 @@ Derived (D) parts: .
 
 Not assembled by JLC: no loading fee, no joint fee. Bought as loose parts; tier for (boards x quantity) pieces.
 
+**The 86 pass-through header joints are the owner's largest assembly task** (the BNCs and the CAL header come on top). The header price is a retail listing and its tail length is *(check)*: a set whose tails are too short will not stack into the Due's sockets, and that is the one way this line goes wrong.
+
 | ref | part | LCSC | qty | $ per board @20 | $ per board @100 | price basis |
 |---|---|---|---|---|---|---|
 | J-bnc | BNC 50 ohm right-angle THT KH-BNC50-3511 | C2837587 | 3 | 1.7844 | 1.5468 | domestic ladder read 2026-11-11 (whatif/bom.md) |
