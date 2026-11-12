@@ -95,3 +95,13 @@ def test_every_heavy_test_file_is_marked():
 def test_tool_versions_are_recorded_in_a_row(versions):
     assert set(versions) == {"ngspice", "kicad", "python"}
     assert versions["python"].startswith("3.")
+
+
+def test_require_tool_takes_a_list_and_only_demands_those(tmp_path):
+    p = _no_ngspice(tmp_path)
+    r = _run_isolated(tmp_path, NEEDS_NGSPICE, "--require-tool=pcbnew", env_path=p)
+    assert "1 skipped" in r.stdout and r.returncode == 0, r.stdout   # ngspice not demanded
+    r = _run_isolated(tmp_path, NEEDS_NGSPICE, "--require-tool", "ngspice", env_path=p)
+    assert "1 failed" in r.stdout, r.stdout
+    r = _run_isolated(tmp_path, NEEDS_NGSPICE, "--require-tool=ngspic", env_path=p)
+    assert r.returncode != 0 and "unknown tool" in r.stdout + r.stderr

@@ -21,8 +21,11 @@ import pytest
 
 
 def pytest_addoption(parser):
-    parser.addoption("--require-tool", action="store_true",
-                     help="a test marked pcbnew or ngspice FAILS, not skips, when its tool is missing")
+    parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",
+                     metavar="TOOLS",
+                     help="comma list of tools (pcbnew,ngspice) whose marked tests FAIL, not skip, "
+                          "when the tool is missing; bare flag means both. Write it "
+                          "--require-tool=pcbnew or --require-tool pcbnew")
 
 
 @lru_cache(maxsize=None)
@@ -60,12 +63,15 @@ _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".
 
 
 def pytest_collection_modifyitems(config, items):
-    require = config.getoption("--require-tool")
+    required = {t.strip() for t in config.getoption("--require-tool").split(",") if t.strip()}
+    unknown = required - set(_PROBES)
+    if unknown:
+        raise pytest.UsageError(f"--require-tool: unknown tool {sorted(unknown)}; known: {sorted(_PROBES)}")
     for item in items:
         for name, (probe, ok, what) in _PROBES.items():
             if name in item.keywords and not ok(probe()):
                 msg = f"needs {what}"
-                if require:
+                if name in required:
                     item.runtest = _fail_with(msg)
                 else:
                     item.add_marker(pytest.mark.skip(reason=msg))
