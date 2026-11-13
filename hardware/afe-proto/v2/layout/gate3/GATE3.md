@@ -326,7 +326,7 @@ Parts, LCSC numbers, footprints and quantities are read from the board. Prices, 
 | C4177 | Basic | R407 | 1 | 1.8k 1% | R_0603_1608Metric | 0.0125 | 0.0125 | 0.0125 | 0.0125 | 0.0019 |
 | C4211 | Basic | R303,R304,R306 | 3 | 3k 1% | R_0603_1608Metric | 0.0141 | 0.0141 | 0.0141 | 0.0141 | 0.0063 |
 
-Unit prices are the quantity tier holding (boards, capped at one 50-board order, x parts per board) pieces, as the engine does; the BNC is owner-fitted and tiered on all boards. Derived-from-international prices (marked D in bom.md): C1647, C1671, C22808.
+Unit prices are the quantity tier holding (boards, capped at one 50-board order, x parts per board) pieces, as the engine does; the BNC is owner-fitted and tiered on all boards. Derived-from-international prices (marked D in bom.md and order-5-100.md): C1647, C1671, C22808.
 
 **Parts on the board with no LCSC number** (not JLC-assembled; test-point pads, owner-fitted sockets and headers, mounting holes):
 
@@ -380,7 +380,7 @@ The engine's lists come from the three stream `parts.csv` files, which predate t
 | 20 | 1 | $9.80 / $10.17 | 24.9171 | 11.14 | 2.5 | 3.5559 | 23.4316 | 90 |
 | 100 | 2 | $8.44 / $8.59 | 21.9171 | 8.74 | 1 | 2.9559 | 21.8416 | 90 |
 
-**Engine lists as published in bom.md (no bridges)**
+**Engine stream lists (schematic-era, no bridges; bom.md now reads the board)**
 
 | boards | orders | per-board total USD (X-ray wholly at its tier / tier by tier) | JLC parts CNY/board | fees+joints+X-ray CNY/board | setup CNY/board | PCB CNY/board | owner-fitted CNY/board | placements |
 |---|---|---|---|---|---|---|---|---|

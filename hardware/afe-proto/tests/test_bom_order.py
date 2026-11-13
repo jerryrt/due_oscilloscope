@@ -192,4 +192,26 @@ def test_report_wording_follows_the_name_option(tmp_path):
     t = out.read_text()
     assert t.startswith("# AFE version 1 ") and "version 1 only" in t and "D-V2-1" not in t and "version 2" not in t.replace("`v2/bom", "")
     assert "$2.50" not in t and "priced:" in t
-    assert bom.BOARD_MM == (100.0, 58.34) and bom.PCB_RATE == 410.0
+    assert bom.BOARD_MM == (100.0, 62.34) and bom.PCB_RATE == 410.0
+
+
+def _counts_line(text):
+    """(placements, joints) of the first 'JLC placements / SMT joints per board' row, and the per-board total at the larger volume"""
+    import re
+    m = re.search(r"\| JLC placements / SMT joints per board \| (\d+) / (\d+) \|", text)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def test_bom_md_counts_equal_the_order_files_and_the_boards():
+    md = (BOMDIR / "bom.md").read_text()
+    od = (BOMDIR / "order-5-100.md").read_text()
+    assert _counts_line(md) is not None and _counts_line(md) == _counts_line(od)
+    assert _counts_line(md)[0] == len(board_smt_refs())
+
+
+def test_a_drifted_count_in_bom_md_is_caught():
+    md = (BOMDIR / "bom.md").read_text()
+    od = (BOMDIR / "order-5-100.md").read_text()
+    for old, new in (("| 90 / 214 |", "| 77 / 188 |"), ("| 90 / 214 |", "| 90 / 213 |")):
+        assert old in md
+        assert _counts_line(md.replace(old, new, 1)) != _counts_line(od)
