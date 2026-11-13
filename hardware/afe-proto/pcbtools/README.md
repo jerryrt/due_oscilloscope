@@ -176,10 +176,23 @@ board object kept alive in a module is what ran the shared machine out of memory
 | `renumber.py` | `build_map`, `rewrite` (whole-word, single pass), `unmapped` | the v1 renumber map |
 | `floorplan.py` | `table_md`, `svg`, `validate` from the floorplan data | the v1 contract table |
 | `merge.py` | `merge(base, {block: board}, out, cfg)`; `python -m pcbtools.merge --board v1 --base B --out O BLOCK=PATH ...` (exit 0 all merged, 1 a block refused, 2 usage) | the old `merge_blocks.py`: same merged board, same refusals |
+| `schematic_rows.py` | the rows the v2 schematic needed and v1 did not run (E1-E4 NC pins, single-pin nets, footprints and LCSC, datasheet pin names; the numbering, bridge and header rows; the netlist-comparison row) on a `Project` read from KiCad's netlist, the resistor-chain helpers, and `FlipArm`/`flip_row`: an arm is caught only when a row goes from PASS on the unchanged project to FAIL on the changed one, and a row that already fails on the clean board is `NOT TESTABLE` | the old v2 `check.py` rows, verdict and text, in `tests/golden/v2-kicad-276a116/check.raw.txt` |
+| `spicecmp.py` | a block of the schematic against a study's SPICE netlist: both sides reduced by rules the board's config lists (each with its reason), then a colour refinement over the element/net graph | the old v2 `spicecmp.py` through the rows above |
 
 `boards/v1.py` is the v1 BoardConfig: the fences and the hundreds map, the build data the old build scripts kept as constants (title,
 block titles, headers, BNCs, model overrides, ...) with `sch_cfg()`, `pcb_cfg()` and `pcb_place()` that make the `cfg` objects of
 `schematic.write_all` and `build_board`, and the names the checks and their arms read. The equivalence tests and the bench steps use it.
+`boards/v2_sch.py` and `boards/v2_checks.py` are the v2 SCHEMATIC: the project's constants and `sch_cfg()` (`v2_sch`), and the
+rows, arms and config the generic rows read (`v2_checks`, which is itself the config namespace). `design.py` stays in
+`hardware/afe-proto/v2/kicad` as the board's source data; `v2_sch._load_design()` is the one place that knows where. Commands
+(from `hardware/afe-proto`; `schematic_check`'s CLI takes a board by name and runs S/P rows, and v2 has no PCB yet, so v2's CLI is its own):
+
+    python -m pcbtools.boards.v2_checks [--project DIR] [--arms]    the old check.py rows (and its 24 arms with --arms)
+    python -m pcbtools.boards.v2_checks --build OUT                  write the project, then kicad-cli sch upgrade
+
+`afe-v2.kicad_sch`, the tables and `lib/afe.kicad_sym` are byte-identical to the old `build_sch.py`'s output; the project file is
+too, and the COMMITTED `afe-v2.kicad_pro` is stale (see the equivalence notes in `tests/golden/v2-kicad-276a116/STAMP.json`).
+The footprint library `lib/afe.pretty` is hand-kept and is not generated.
 `schematic_check.py` is the old `check.py`: rows S1-S4 (ERC, netlist, symbols, BOM) and P1-P3 (pad nets, DRC with parity,
 outline and header pins) with their mutation arms, `python -m pcbtools.schematic_check --board v1 --project DIR --pcb --arms`; its
 header lists what a board config provides. Verdicts and details equal the old rows in `tests/golden/v1-34b2e51-image/check_pcb.out`.

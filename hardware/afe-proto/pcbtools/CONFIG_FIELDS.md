@@ -101,3 +101,16 @@ a test point), `EDGE_BLOCK` (`'EDGE'`: the block with no outline of its own), `T
 capacitance windows `(label, nets, pad, cell)` / `(net, pad, cell)`; v2's `CAP_SELF` holds `/AWG_FB` and the divider nodes `/CH1_N`,
 `/CH2_N` (LR-3's N-to-everything stray, no pour and with pour), all at 0.1 mm: their windows are about 7.6 x 9 mm and 2.5 s each, far under `cap.MAX_CELLS`, so 0.2 mm was not needed. NEW `DRC_ARM` (dict): where the LR-10 mutation arm puts its
 0.1 mm track, `{'ref': 'R101', 'pin': '1', 'net': '/CH1_N'}`.
+
+## Schematic projects (`schematic.py`, `schematic_rows.py`, `spicecmp.py`; the shapes of `boards/v2_sch.py` and `boards/v2_checks.py`)
+
+`schematic.write_all` reads `PROJECT`, `NS`, `BLOCK_ORDER`, `BLOCK_TITLE`, `PWR_FLAG_NETS`, `TITLE`, `REV`, `COMMENTS`,
+`PROJECT_SYMBOLS`, `ERC_EXCLUSIONS(pin_at, uid, root)`, `SYMBOL_DIR`, and optionally `PROPS` (the hidden fields, `((part key, field
+name), ...)`), `FLAG_BLOCK`, `CHECK_NC`, `LIB_GENERATOR`, `FP_LIB_TABLE`. The rows read, besides schematic_check's: `ERC_EXCLUDED`,
+`MIN_NETS`, `MIN_COMPS`, `MIN_SPICE_ELEMENTS`, `COMPARE_FIELDS` `((netlist field, part key), ...)`, `FOOTPRINT_DIR`, `PROJECT_LIB_NAME`,
+`FITTED_BY_BOARD_HOUSE`, `DATASHEET_PINS` `{library part: {pin: name}}`, `BLOCKDIGIT`, `KEY_PARTS`, `ROW_IDS`
+(`{'numbering': (id, id), 'bridge': id}`), `BRIDGE_JOINS` `{bridge ref: (end, end)}`, `BRIDGE_SIDES` `[(end, end)]`, `BRIDGE_TEXT` (an end is
+`('pin', ref, pin)` or `('fn', ref, pin name)`), `HEADER_TABLE` `{header value: {pin: net}}`, `HEADER_BLOCK`, `HEADER_PART_PREFIX`,
+`HEADER_LABEL`. `spicecmp` reads `SPICE_RULES` `{block: {anchors, drop, short, esr, derate?, subckt_models}}`, `SPICE_BLOCKS`,
+`BRIDGE_PREFIX`, `DIODE_PAIR_LIBS`, `AMP_LIBS`, `SPICE_IGNORE_LIBS`, `SPICE_IGNORE_VALUES`. A board's own rows and arms (v2's power and
+calibration rows, its 24 arms) live in its own module and are `FlipArm`s.

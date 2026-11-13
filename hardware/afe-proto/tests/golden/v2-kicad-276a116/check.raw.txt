@@ -1,0 +1,529 @@
+FAIL S1: ERC 1 live, 1 excluded: pin_to_pin: Symbol U401 Pin 1 [PGOOD, Open collector, Line]; Symbol #FLG01 Pin 1 [Power output, Line]
+PASS S2: 50 design nets, 50 KiCad nets
+PASS S3: 101 symbols
+PASS E1: 69 NC pins, every one declared; every other pin connected
+PASS E2: 50 nets, none with a single pin
+PASS E3: 101 symbols carry value, footprint, LCSC
+PASS E4: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1: 64 studied parts against 65 parts.csv keys
+PASS N1: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1: 101 designators: hundreds digit = block
+PASS D2: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1: 7 Due headers carry exactly the header-pin table
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "scope value": expecting N1, B1 to FAIL
+PASS S1~scope value: ERC 0 live, 1 excluded
+PASS S2~scope value: 50 design nets, 50 KiCad nets
+PASS S3~scope value: 101 symbols
+PASS E1~scope value: 69 NC pins, every one declared; every other pin connected
+PASS E2~scope value: 50 nets, none with a single pin
+PASS E3~scope value: 101 symbols carry value, footprint, LCSC
+PASS E4~scope value: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+FAIL B1~scope value: 64 studied parts against 65 parts.csv keys: R101 value '51k 1%' != '510k 1%' (scope.R1a)
+FAIL N1~scope value: scope: 29 SPICE elements after reduction, 29 schematic elements: R 51000.0: SPICE 0, schematic 1 | R 510000.0: SPICE 4, schematic 3
+PASS N2~scope value: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~scope value: 101 designators: hundreds digit = block
+PASS D2~scope value: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~scope value: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~scope value: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~scope value: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~scope value: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~scope value: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~scope value: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~scope value: 7 Due headers carry exactly the header-pin table
+PASS M-scope value: ['B1', 'N1'] failed; wanted ['N1', 'B1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "awg value": expecting N2, B1 to FAIL
+PASS S1~awg value: ERC 0 live, 1 excluded
+PASS S2~awg value: 50 design nets, 50 KiCad nets
+PASS S3~awg value: 101 symbols
+PASS E1~awg value: 69 NC pins, every one declared; every other pin connected
+PASS E2~awg value: 50 nets, none with a single pin
+PASS E3~awg value: 101 symbols carry value, footprint, LCSC
+PASS E4~awg value: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+FAIL B1~awg value: 64 studied parts against 65 parts.csv keys: R303 value '4.7k 1%' != '3 kohm 1 % 0603' (awg.R3)
+PASS N1~awg value: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~awg value: awg: 14 SPICE elements after reduction, 14 schematic elements: R 3000.0: SPICE 2, schematic 1 | R 4700.0: SPICE 0, schematic 1
+PASS D1~awg value: 101 designators: hundreds digit = block
+PASS D2~awg value: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~awg value: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~awg value: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~awg value: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~awg value: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~awg value: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~awg value: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~awg value: 7 Due headers carry exactly the header-pin table
+PASS M-awg value: ['B1', 'N2'] failed; wanted ['N2', 'B1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "scope pin swap": expecting N1 to FAIL
+PASS S1~scope pin swap: ERC 0 live, 1 excluded
+PASS S2~scope pin swap: 50 design nets, 50 KiCad nets
+PASS S3~scope pin swap: 101 symbols
+PASS E1~scope pin swap: 69 NC pins, every one declared; every other pin connected
+PASS E2~scope pin swap: 50 nets, none with a single pin
+PASS E3~scope pin swap: 101 symbols carry value, footprint, LCSC
+PASS E4~scope pin swap: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~scope pin swap: 64 studied parts against 65 parts.csv keys
+FAIL N1~scope pin swap: scope: 29 SPICE elements after reduction, 29 schematic elements: same elements and values, different connectivity (graph colours differ)
+PASS N2~scope pin swap: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~scope pin swap: 101 designators: hundreds digit = block
+PASS D2~scope pin swap: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~scope pin swap: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~scope pin swap: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~scope pin swap: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~scope pin swap: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~scope pin swap: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~scope pin swap: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~scope pin swap: 7 Due headers carry exactly the header-pin table
+PASS M-scope pin swap: ['N1'] failed; wanted ['N1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "awg pin swap": expecting N2 to FAIL
+PASS S1~awg pin swap: ERC 0 live, 1 excluded
+PASS S2~awg pin swap: 50 design nets, 50 KiCad nets
+PASS S3~awg pin swap: 101 symbols
+PASS E1~awg pin swap: 69 NC pins, every one declared; every other pin connected
+PASS E2~awg pin swap: 50 nets, none with a single pin
+PASS E3~awg pin swap: 101 symbols carry value, footprint, LCSC
+PASS E4~awg pin swap: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~awg pin swap: 64 studied parts against 65 parts.csv keys
+PASS N1~awg pin swap: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~awg pin swap: awg: 14 SPICE elements after reduction, 14 schematic elements: same elements and values, different connectivity (graph colours differ)
+PASS D1~awg pin swap: 101 designators: hundreds digit = block
+PASS D2~awg pin swap: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~awg pin swap: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~awg pin swap: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~awg pin swap: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~awg pin swap: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~awg pin swap: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~awg pin swap: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~awg pin swap: 7 Due headers carry exactly the header-pin table
+PASS M-awg pin swap: ['N2'] failed; wanted ['N2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "awg connection deleted": expecting N2, E2 to FAIL
+FAIL S1~awg connection deleted: ERC 1 live, 1 excluded: isolated_pin_label: Label 'ORPHAN'
+PASS S2~awg connection deleted: 51 design nets, 51 KiCad nets
+PASS S3~awg connection deleted: 101 symbols
+PASS E1~awg connection deleted: 69 NC pins, every one declared; every other pin connected
+FAIL E2~awg connection deleted: 51 nets, none with a single pin: ORPHAN
+PASS E3~awg connection deleted: 101 symbols carry value, footprint, LCSC
+PASS E4~awg connection deleted: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~awg connection deleted: 64 studied parts against 65 parts.csv keys
+PASS N1~awg connection deleted: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~awg connection deleted: awg: 14 SPICE elements after reduction, 14 schematic elements: same elements and values, different connectivity (graph colours differ)
+PASS D1~awg connection deleted: 101 designators: hundreds digit = block
+PASS D2~awg connection deleted: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~awg connection deleted: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~awg connection deleted: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~awg connection deleted: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~awg connection deleted: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~awg connection deleted: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~awg connection deleted: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~awg connection deleted: 7 Due headers carry exactly the header-pin table
+PASS M-awg connection deleted: ['E2', 'N2', 'S1'] failed; wanted ['N2', 'E2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "scope connection deleted": expecting N1, E2 to FAIL
+FAIL S1~scope connection deleted: ERC 1 live, 1 excluded: isolated_pin_label: Label 'ORPHAN'
+PASS S2~scope connection deleted: 51 design nets, 51 KiCad nets
+PASS S3~scope connection deleted: 101 symbols
+PASS E1~scope connection deleted: 69 NC pins, every one declared; every other pin connected
+FAIL E2~scope connection deleted: 51 nets, none with a single pin: ORPHAN
+PASS E3~scope connection deleted: 101 symbols carry value, footprint, LCSC
+PASS E4~scope connection deleted: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~scope connection deleted: 64 studied parts against 65 parts.csv keys
+FAIL N1~scope connection deleted: scope: 29 SPICE elements after reduction, 29 schematic elements: same elements and values, different connectivity (graph colours differ)
+PASS N2~scope connection deleted: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~scope connection deleted: 101 designators: hundreds digit = block
+PASS D2~scope connection deleted: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~scope connection deleted: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~scope connection deleted: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~scope connection deleted: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~scope connection deleted: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~scope connection deleted: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~scope connection deleted: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~scope connection deleted: 7 Due headers carry exactly the header-pin table
+PASS M-scope connection deleted: ['E2', 'N1', 'S1'] failed; wanted ['N1', 'E2']
+PASS M-pin left out without NC: the generator refuses: R306: pins ['2'] neither connected nor declared NC
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "rail feedback value": expecting C1, B1 to FAIL
+PASS S1~rail feedback value: ERC 0 live, 1 excluded
+PASS S2~rail feedback value: 50 design nets, 50 KiCad nets
+PASS S3~rail feedback value: 101 symbols
+PASS E1~rail feedback value: 69 NC pins, every one declared; every other pin connected
+PASS E2~rail feedback value: 50 nets, none with a single pin
+PASS E3~rail feedback value: 101 symbols carry value, footprint, LCSC
+PASS E4~rail feedback value: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+FAIL B1~rail feedback value: 64 studied parts against 65 parts.csv keys: R401 value '150k 1%' != '120k 1 % 0603' (pc.R_FB1)
+PASS N1~rail feedback value: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~rail feedback value: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~rail feedback value: 101 designators: hundreds digit = block
+PASS D2~rail feedback value: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+FAIL C1~rail feedback value: V+ = 3.8471 V (R1 150000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~rail feedback value: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~rail feedback value: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~rail feedback value: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~rail feedback value: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~rail feedback value: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~rail feedback value: 7 Due headers carry exactly the header-pin table
+PASS M-rail feedback value: ['B1', 'C1'] failed; wanted ['C1', 'B1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "ADS1115 pair": expecting C3 to FAIL
+PASS S1~ADS1115 pair: ERC 0 live, 1 excluded
+PASS S2~ADS1115 pair: 50 design nets, 50 KiCad nets
+PASS S3~ADS1115 pair: 101 symbols
+PASS E1~ADS1115 pair: 69 NC pins, every one declared; every other pin connected
+PASS E2~ADS1115 pair: 50 nets, none with a single pin
+PASS E3~ADS1115 pair: 101 symbols carry value, footprint, LCSC
+PASS E4~ADS1115 pair: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~ADS1115 pair: 64 studied parts against 65 parts.csv keys
+PASS N1~ADS1115 pair: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~ADS1115 pair: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~ADS1115 pair: 101 designators: hundreds digit = block
+PASS D2~ADS1115 pair: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~ADS1115 pair: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~ADS1115 pair: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+FAIL C3~ADS1115 pair: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900: failed AIN2 = T0 through Rs; AIN3 = B through Rm; the pair (T0 input, B input) is a valid mux setting
+PASS C4~ADS1115 pair: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~ADS1115 pair: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~ADS1115 pair: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~ADS1115 pair: 7 Due headers carry exactly the header-pin table
+PASS M-ADS1115 pair: ['C3'] failed; wanted ['C3']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "LCSC changed": expecting B1 to FAIL
+PASS S1~LCSC changed: ERC 0 live, 1 excluded
+PASS S2~LCSC changed: 50 design nets, 50 KiCad nets
+PASS S3~LCSC changed: 101 symbols
+PASS E1~LCSC changed: 69 NC pins, every one declared; every other pin connected
+PASS E2~LCSC changed: 50 nets, none with a single pin
+PASS E3~LCSC changed: 101 symbols carry value, footprint, LCSC
+PASS E4~LCSC changed: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+FAIL B1~LCSC changed: 64 studied parts against 65 parts.csv keys: R401 LCSC C25804 != C25808 (pc.R_FB1)
+PASS N1~LCSC changed: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~LCSC changed: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~LCSC changed: 101 designators: hundreds digit = block
+PASS D2~LCSC changed: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~LCSC changed: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~LCSC changed: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~LCSC changed: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~LCSC changed: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~LCSC changed: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~LCSC changed: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~LCSC changed: 7 Due headers carry exactly the header-pin table
+PASS M-LCSC changed: ['B1'] failed; wanted ['B1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "Due SDA/SCL swapped": expecting H1 to FAIL
+PASS S1~Due SDA/SCL swapped: ERC 0 live, 1 excluded
+PASS S2~Due SDA/SCL swapped: 50 design nets, 50 KiCad nets
+PASS S3~Due SDA/SCL swapped: 101 symbols
+PASS E1~Due SDA/SCL swapped: 69 NC pins, every one declared; every other pin connected
+PASS E2~Due SDA/SCL swapped: 50 nets, none with a single pin
+PASS E3~Due SDA/SCL swapped: 101 symbols carry value, footprint, LCSC
+PASS E4~Due SDA/SCL swapped: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~Due SDA/SCL swapped: 64 studied parts against 65 parts.csv keys
+PASS N1~Due SDA/SCL swapped: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~Due SDA/SCL swapped: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~Due SDA/SCL swapped: 101 designators: hundreds digit = block
+PASS D2~Due SDA/SCL swapped: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~Due SDA/SCL swapped: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~Due SDA/SCL swapped: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~Due SDA/SCL swapped: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~Due SDA/SCL swapped: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~Due SDA/SCL swapped: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~Due SDA/SCL swapped: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+FAIL H1~Due SDA/SCL swapped: 7 Due headers carry exactly the header-pin table: PWMH0: [('10', 'SCL'), ('10', 'SDA'), ('9', 'SCL'), ('9', 'SDA')]
+PASS M-Due SDA/SCL swapped: ['H1'] failed; wanted ['H1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "ladder rung": expecting C2 to FAIL
+PASS S1~ladder rung: ERC 0 live, 1 excluded
+PASS S2~ladder rung: 50 design nets, 50 KiCad nets
+PASS S3~ladder rung: 101 symbols
+PASS E1~ladder rung: 69 NC pins, every one declared; every other pin connected
+PASS E2~ladder rung: 50 nets, none with a single pin
+PASS E3~ladder rung: 101 symbols carry value, footprint, LCSC
+PASS E4~ladder rung: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+FAIL B1~ladder rung: 64 studied parts against 65 parts.csv keys: R503 value '470R 1%' != '330R 1 % 0603' (pc.R_L3)
+PASS N1~ladder rung: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~ladder rung: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~ladder rung: 101 designators: hundreds digit = block
+PASS D2~ladder rung: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~ladder rung: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+FAIL C2~ladder rung: 6 rungs of [330.0, 470.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~ladder rung: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~ladder rung: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~ladder rung: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~ladder rung: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~ladder rung: 7 Due headers carry exactly the header-pin table
+PASS M-ladder rung: ['B1', 'C2'] failed; wanted ['C2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "LM27762 EN- off VIN": expecting C1 to FAIL
+FAIL S1~LM27762 EN- off VIN: ERC 2 live, 1 excluded: pin_not_driven: Symbol U401 Pin 8 [EN-, Input, Line] | isolated_pin_label: Label 'EN_LONG'
+PASS S2~LM27762 EN- off VIN: 51 design nets, 51 KiCad nets
+PASS S3~LM27762 EN- off VIN: 101 symbols
+PASS E1~LM27762 EN- off VIN: 69 NC pins, every one declared; every other pin connected
+FAIL E2~LM27762 EN- off VIN: 51 nets, none with a single pin: EN_LONG
+PASS E3~LM27762 EN- off VIN: 101 symbols carry value, footprint, LCSC
+PASS E4~LM27762 EN- off VIN: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~LM27762 EN- off VIN: 64 studied parts against 65 parts.csv keys
+PASS N1~LM27762 EN- off VIN: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~LM27762 EN- off VIN: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~LM27762 EN- off VIN: 101 designators: hundreds digit = block
+PASS D2~LM27762 EN- off VIN: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+FAIL C1~LM27762 EN- off VIN: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: False
+PASS C2~LM27762 EN- off VIN: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~LM27762 EN- off VIN: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~LM27762 EN- off VIN: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~LM27762 EN- off VIN: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~LM27762 EN- off VIN: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~LM27762 EN- off VIN: 7 Due headers carry exactly the header-pin table
+PASS M-LM27762 EN- off VIN: ['C1', 'E2', 'S1'] failed; wanted ['C1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "bridge not 0 ohm": expecting N1 to FAIL
+PASS S1~bridge not 0 ohm: ERC 0 live, 1 excluded
+PASS S2~bridge not 0 ohm: 50 design nets, 50 KiCad nets
+PASS S3~bridge not 0 ohm: 101 symbols
+PASS E1~bridge not 0 ohm: 69 NC pins, every one declared; every other pin connected
+PASS E2~bridge not 0 ohm: 50 nets, none with a single pin
+PASS E3~bridge not 0 ohm: 101 symbols carry value, footprint, LCSC
+PASS E4~bridge not 0 ohm: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~bridge not 0 ohm: 64 studied parts against 65 parts.csv keys
+FAIL N1~bridge not 0 ohm: scope: 0 SPICE elements after reduction, 0 schematic elements: ValueError: BR101: a bridge must be a 0 ohm resistor, it is '1k 1%'
+FAIL N2~bridge not 0 ohm: awg: 0 SPICE elements after reduction, 0 schematic elements: ValueError: BR101: a bridge must be a 0 ohm resistor, it is '1k 1%'
+PASS D1~bridge not 0 ohm: 101 designators: hundreds digit = block
+PASS D2~bridge not 0 ohm: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~bridge not 0 ohm: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~bridge not 0 ohm: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~bridge not 0 ohm: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~bridge not 0 ohm: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~bridge not 0 ohm: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~bridge not 0 ohm: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~bridge not 0 ohm: 7 Due headers carry exactly the header-pin table
+PASS M-bridge not 0 ohm: ['N1', 'N2'] failed; wanted ['N1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "bridge open": expecting C6, E2 to FAIL
+FAIL S1~bridge open: ERC 1 live, 1 excluded: isolated_pin_label: Label 'ORPHAN'
+PASS S2~bridge open: 51 design nets, 51 KiCad nets
+PASS S3~bridge open: 101 symbols
+PASS E1~bridge open: 69 NC pins, every one declared; every other pin connected
+FAIL E2~bridge open: 51 nets, none with a single pin: ORPHAN
+PASS E3~bridge open: 101 symbols carry value, footprint, LCSC
+PASS E4~bridge open: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~bridge open: 64 studied parts against 65 parts.csv keys
+PASS N1~bridge open: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~bridge open: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~bridge open: 101 designators: hundreds digit = block
+PASS D2~bridge open: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~bridge open: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~bridge open: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~bridge open: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~bridge open: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~bridge open: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+FAIL C6~bridge open: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['CH2_RISO', 'ORPHAN']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~bridge open: 7 Due headers carry exactly the header-pin table
+PASS M-bridge open: ['C6', 'E2', 'S1'] failed; wanted ['C6', 'E2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "block field": expecting D1, D2 to FAIL
+PASS S1~block field: ERC 0 live, 1 excluded
+PASS S2~block field: 50 design nets, 50 KiCad nets
+PASS S3~block field: 101 symbols
+PASS E1~block field: 69 NC pins, every one declared; every other pin connected
+PASS E2~block field: 50 nets, none with a single pin
+PASS E3~block field: 101 symbols carry value, footprint, LCSC
+PASS E4~block field: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~block field: 64 studied parts against 65 parts.csv keys
+PASS N1~block field: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~block field: awg: 14 SPICE elements after reduction, 13 schematic elements: R 2700.0: SPICE 1, schematic 0
+FAIL D1~block field: 101 designators: hundreds digit = block: R306 (POWER)
+FAIL D2~block field: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9 | AWG: missing ['R306'] extra [] | POWER: missing [] extra ['R306']
+PASS C1~block field: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~block field: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~block field: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~block field: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~block field: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~block field: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~block field: 7 Due headers carry exactly the header-pin table
+PASS M-block field: ['D1', 'D2', 'N2'] failed; wanted ['D1', 'D2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "designator out of its block": expecting D1, D2 to FAIL
+PASS S1~designator out of its block: ERC 0 live, 1 excluded
+PASS S2~designator out of its block: 50 design nets, 50 KiCad nets
+FAIL S3~designator out of its block: 100 symbols: R505 value '100k 1%' != '330R 1%' | R505 LCSC 'C25803' != 'C23138' | R505 Sim 'pc.R_FB4' != 'pc.R_L5'
+PASS E1~designator out of its block: 69 NC pins, every one declared; every other pin connected
+PASS E2~designator out of its block: 50 nets, none with a single pin
+PASS E3~designator out of its block: 100 symbols carry value, footprint, LCSC
+PASS E4~designator out of its block: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~designator out of its block: 64 studied parts against 65 parts.csv keys
+PASS N1~designator out of its block: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~designator out of its block: awg: 14 SPICE elements after reduction, 14 schematic elements
+FAIL D1~designator out of its block: 100 designators: hundreds digit = block: R505 (POWER)
+FAIL D2~designator out of its block: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9 | POWER: missing ['R405'] extra ['R505'] | REFCAL: missing ['R505'] extra []
+FAIL C1~designator out of its block: ; EN+ and EN- on the VIN net +5V_F: True
+FAIL C2~designator out of its block: ladder rungs not found
+PASS C3~designator out of its block: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~designator out of its block: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~designator out of its block: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~designator out of its block: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~designator out of its block: 7 Due headers carry exactly the header-pin table
+PASS M-designator out of its block: ['C1', 'C2', 'D1', 'D2', 'S3'] failed; wanted ['D1', 'D2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "CAL header TAP_on": expecting C4 to FAIL
+PASS S1~CAL header TAP_on: ERC 0 live, 1 excluded
+PASS S2~CAL header TAP_on: 50 design nets, 50 KiCad nets
+PASS S3~CAL header TAP_on: 101 symbols
+PASS E1~CAL header TAP_on: 69 NC pins, every one declared; every other pin connected
+PASS E2~CAL header TAP_on: 50 nets, none with a single pin
+PASS E3~CAL header TAP_on: 101 symbols carry value, footprint, LCSC
+PASS E4~CAL header TAP_on: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~CAL header TAP_on: 64 studied parts against 65 parts.csv keys
+PASS N1~CAL header TAP_on: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~CAL header TAP_on: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~CAL header TAP_on: 101 designators: hundreds digit = block
+PASS D2~CAL header TAP_on: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~CAL header TAP_on: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~CAL header TAP_on: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~CAL header TAP_on: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+FAIL C4~CAL header TAP_on: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP2 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP2', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~CAL header TAP_on: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~CAL header TAP_on: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~CAL header TAP_on: 7 Due headers carry exactly the header-pin table
+PASS M-CAL header TAP_on: ['C4'] failed; wanted ['C4']
+105 cells, 15 library symbols, sheet 861 x 312 mm
+  -- arm "scope V- on the negative rail": expecting C5, N1 to FAIL
+PASS S1~scope V- on the negative rail: ERC 0 live, 1 excluded
+PASS S2~scope V- on the negative rail: 50 design nets, 50 KiCad nets
+PASS S3~scope V- on the negative rail: 101 symbols
+PASS E1~scope V- on the negative rail: 69 NC pins, every one declared; every other pin connected
+PASS E2~scope V- on the negative rail: 50 nets, none with a single pin
+PASS E3~scope V- on the negative rail: 101 symbols carry value, footprint, LCSC
+PASS E4~scope V- on the negative rail: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~scope V- on the negative rail: 64 studied parts against 65 parts.csv keys
+FAIL N1~scope V- on the negative rail: scope: 29 SPICE elements after reduction, 29 schematic elements: same elements and values, different connectivity (graph colours differ)
+PASS N2~scope V- on the negative rail: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~scope V- on the negative rail: 101 designators: hundreds digit = block
+PASS D2~scope V- on the negative rail: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~scope V- on the negative rail: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~scope V- on the negative rail: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~scope V- on the negative rail: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~scope V- on the negative rail: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+FAIL C5~scope V- on the negative rail: scope parts on the negative rail: ['U101']; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~scope V- on the negative rail: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~scope V- on the negative rail: 7 Due headers carry exactly the header-pin table
+PASS M-scope V- on the negative rail: ['C5', 'N1'] failed; wanted ['C5', 'N1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "SPICE scope connection": expecting N1 to FAIL
+PASS S1~SPICE scope connection: ERC 0 live, 1 excluded
+PASS S2~SPICE scope connection: 50 design nets, 50 KiCad nets
+PASS S3~SPICE scope connection: 101 symbols
+PASS E1~SPICE scope connection: 69 NC pins, every one declared; every other pin connected
+PASS E2~SPICE scope connection: 50 nets, none with a single pin
+PASS E3~SPICE scope connection: 101 symbols carry value, footprint, LCSC
+PASS E4~SPICE scope connection: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~SPICE scope connection: 64 studied parts against 65 parts.csv keys
+FAIL N1~SPICE scope connection: scope: 28 SPICE elements after reduction, 29 schematic elements: C 1.2e-11: SPICE 1, schematic 2 | C 1e-11: SPICE 1, schematic 2 | C 2.2e-11: SPICE 3, schematic 2
+PASS N2~SPICE scope connection: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~SPICE scope connection: 101 designators: hundreds digit = block
+PASS D2~SPICE scope connection: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~SPICE scope connection: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~SPICE scope connection: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~SPICE scope connection: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~SPICE scope connection: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~SPICE scope connection: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~SPICE scope connection: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~SPICE scope connection: 7 Due headers carry exactly the header-pin table
+PASS M-SPICE scope connection: ['N1'] failed; wanted ['N1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "SPICE awg value": expecting N2 to FAIL
+PASS S1~SPICE awg value: ERC 0 live, 1 excluded
+PASS S2~SPICE awg value: 50 design nets, 50 KiCad nets
+PASS S3~SPICE awg value: 101 symbols
+PASS E1~SPICE awg value: 69 NC pins, every one declared; every other pin connected
+PASS E2~SPICE awg value: 50 nets, none with a single pin
+PASS E3~SPICE awg value: 101 symbols carry value, footprint, LCSC
+PASS E4~SPICE awg value: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~SPICE awg value: 64 studied parts against 65 parts.csv keys
+PASS N1~SPICE awg value: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~SPICE awg value: awg: 14 SPICE elements after reduction, 14 schematic elements: R 3000.0: SPICE 1, schematic 2 | R 3100.0: SPICE 1, schematic 0
+PASS D1~SPICE awg value: 101 designators: hundreds digit = block
+PASS D2~SPICE awg value: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~SPICE awg value: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~SPICE awg value: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~SPICE awg value: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~SPICE awg value: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~SPICE awg value: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~SPICE awg value: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~SPICE awg value: 7 Due headers carry exactly the header-pin table
+PASS M-SPICE awg value: ['N2'] failed; wanted ['N2']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "SPICE scope value": expecting N1 to FAIL
+PASS S1~SPICE scope value: ERC 0 live, 1 excluded
+PASS S2~SPICE scope value: 50 design nets, 50 KiCad nets
+PASS S3~SPICE scope value: 101 symbols
+PASS E1~SPICE scope value: 69 NC pins, every one declared; every other pin connected
+PASS E2~SPICE scope value: 50 nets, none with a single pin
+PASS E3~SPICE scope value: 101 symbols carry value, footprint, LCSC
+PASS E4~SPICE scope value: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~SPICE scope value: 64 studied parts against 65 parts.csv keys
+FAIL N1~SPICE scope value: scope: 29 SPICE elements after reduction, 29 schematic elements: C 1.2e-11: SPICE 1, schematic 2 | C 1.5e-11: SPICE 1, schematic 0
+PASS N2~SPICE scope value: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~SPICE scope value: 101 designators: hundreds digit = block
+PASS D2~SPICE scope value: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~SPICE scope value: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~SPICE scope value: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~SPICE scope value: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~SPICE scope value: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~SPICE scope value: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~SPICE scope value: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~SPICE scope value: 7 Due headers carry exactly the header-pin table
+PASS M-SPICE scope value: ['N1'] failed; wanted ['N1']
+105 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "SPICE new element": expecting N2 to FAIL
+PASS S1~SPICE new element: ERC 0 live, 1 excluded
+PASS S2~SPICE new element: 50 design nets, 50 KiCad nets
+PASS S3~SPICE new element: 101 symbols
+PASS E1~SPICE new element: 69 NC pins, every one declared; every other pin connected
+PASS E2~SPICE new element: 50 nets, none with a single pin
+PASS E3~SPICE new element: 101 symbols carry value, footprint, LCSC
+PASS E4~SPICE new element: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~SPICE new element: 64 studied parts against 65 parts.csv keys
+PASS N1~SPICE new element: scope: 29 SPICE elements after reduction, 29 schematic elements
+FAIL N2~SPICE new element: awg: 15 SPICE elements after reduction, 14 schematic elements: R 1000.0: SPICE 1, schematic 0
+PASS D1~SPICE new element: 101 designators: hundreds digit = block
+PASS D2~SPICE new element: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~SPICE new element: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~SPICE new element: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~SPICE new element: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~SPICE new element: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~SPICE new element: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~SPICE new element: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~SPICE new element: 7 Due headers carry exactly the header-pin table
+PASS M-SPICE new element: ['N2'] failed; wanted ['N2']
+104 cells, 15 library symbols, sheet 861 x 310 mm
+  -- arm "GND flag removed": expecting S1 to FAIL
+FAIL S1~GND flag removed: ERC 1 live, 1 excluded: power_pin_not_driven: Symbol U101 Pin 4 [V-, Power input, Line]
+PASS S2~GND flag removed: 50 design nets, 50 KiCad nets
+PASS S3~GND flag removed: 101 symbols
+PASS E1~GND flag removed: 69 NC pins, every one declared; every other pin connected
+PASS E2~GND flag removed: 50 nets, none with a single pin
+PASS E3~GND flag removed: 101 symbols carry value, footprint, LCSC
+PASS E4~GND flag removed: TPH2502, ADS1115, LM27762 pin names equal the datasheet tables
+PASS B1~GND flag removed: 64 studied parts against 65 parts.csv keys
+PASS N1~GND flag removed: scope: 29 SPICE elements after reduction, 29 schematic elements
+PASS N2~GND flag removed: awg: 14 SPICE elements after reduction, 14 schematic elements
+PASS D1~GND flag removed: 101 designators: hundreds digit = block
+PASS D2~GND flag removed: each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9
+PASS C1~GND flag removed: V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000); expect 3.318 and -2.003; EN+ and EN- on the VIN net +5V_F: True
+PASS C2~GND flag removed: 6 rungs of [330.0], taps ['TAP1', 'TAP2', 'TAP3', 'TAP4', 'TAP5', 'VREF'], Due A2..A7 on taps True, ADS1115 AIN1 on the 2/3 tap True
+PASS C3~GND flag removed: k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900
+PASS C4~GND flag removed: J501 is 1x3: pin 1 TAP4 (2/3 tap) | pin 2 B | pin 3 TAP3 (1/2 tap); B touches ['R508', 'R509', 'R511'] only; states {'no shunt (default tie)': 'SNS_B', 'shunt 2-3 (calibrate)': 'B = TAP3', 'shunt 1-2 (slip)': 'B = TAP4'}; the shunt is on the hand-fitted list
+PASS C5~GND flag removed: scope parts on the negative rail: none; reference loaded by ['R106', 'R206', 'R305'] (R3b of both channels, Rg2)
+PASS C6~GND flag removed: BR101 joins ['+3V3A', '+3V3A_U'], BR201 joins ['A0', 'CH2_RISO']; the CH2 clamp D201 sits on the dual side of both
+PASS H1~GND flag removed: 7 Due headers carry exactly the header-pin table
+PASS M-GND flag removed: ['S1'] failed; wanted ['S1']
+PASS M*: 24 of 24 mutation arms failed the way they must
+FAILED
+exit=1

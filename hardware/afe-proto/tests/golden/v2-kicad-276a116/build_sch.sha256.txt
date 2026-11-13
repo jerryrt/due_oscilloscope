@@ -1,0 +1,12 @@
+exit=0
+# written by the old build_sch.py (then kicad-cli sch upgrade) / the committed file of the same name
+7c6701c32e8d356d08a0b1866b36aba44d08922a429d7be48d51c7da20becee5  generated  afe-v2.kicad_sch
+7c6701c32e8d356d08a0b1866b36aba44d08922a429d7be48d51c7da20becee5  committed  afe-v2.kicad_sch
+0d6942440a79bd089d56dd0a4b301bc78b1f6e8a030bc718faa7836dbec6d444  generated  afe-v2.kicad_pro
+5777cee1e8244016a3d1dd25ad9a24a0e094771b1c5ed67195c12a8964a6cdb3  committed  afe-v2.kicad_pro
+1eb5a78be390e7c78937f735b7540e67b8d428a508655277d172f40d2caed2e1  generated  sym-lib-table
+1eb5a78be390e7c78937f735b7540e67b8d428a508655277d172f40d2caed2e1  committed  sym-lib-table
+85dd195b9c0a815b1e3e6d268943b9c921b5c35c075aba4f7e829f2a45b5129f  generated  fp-lib-table
+85dd195b9c0a815b1e3e6d268943b9c921b5c35c075aba4f7e829f2a45b5129f  committed  fp-lib-table
+6c6f2f2c797bc4f06951f737d5231e5b1a6848319b49377c0165058b74183fa5  generated  lib/afe.kicad_sym
+6c6f2f2c797bc4f06951f737d5231e5b1a6848319b49377c0165058b74183fa5  committed  lib/afe.kicad_sym

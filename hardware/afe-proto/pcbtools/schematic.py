@@ -7,8 +7,11 @@ Nothing here names a board. A board supplies:
     parts   [dict]  ref, sym ('lib:name'), value, fp, lcsc, mpn, fitted_by, note, dnp, pins {number: net}, block
     cfg     object  PROJECT, NS (uuid namespace string), BLOCK_ORDER, BLOCK_TITLE {block: str}, PWR_FLAG_NETS [net],
                     TITLE, REV, COMMENTS [str], PROJECT_SYMBOLS [symbol tree] (the project library's own symbols),
-                    ERC_EXCLUSIONS(pin_at, uid) -> [[key, reason]], SYMBOL_DIR (KiCad's symbol libraries), PROJECT_LIB
-                    (path of the project symbol library file)
+                    ERC_EXCLUSIONS(pin_at, uid, root) -> [[key, reason]], SYMBOL_DIR (KiCad's symbol libraries)
+    optional cfg    PROPS [(part key, field name)] the hidden fields every real part carries (default LCSC, MPN, Fitted by,
+                    Note), FLAG_BLOCK the block the PWR_FLAG cells go in (default 'power'), CHECK_NC (every pin of a symbol is
+                    connected or declared in the part's 'nc'; a part's nc may be 'rest'), LIB_GENERATOR (the project symbol
+                    library's generator string), FP_LIB_TABLE (the footprint library table's text)
 
 `build_tree(parts, cfg, library)` is a pure function of its inputs (no files written); `write_all` writes the schematic, the
 two library tables, the project file and the project symbol library. Output is byte-identical to the old build_sch.py.
@@ -21,6 +24,11 @@ import uuid
 
 from .sexpr import Q, dump, find, first, parse
 
+class SchematicError(ValueError):
+    """the generator refuses a part list (a pin neither connected nor declared NC, a pin the symbol does not have)"""
+
+
+DEFAULT_PROPS = (('lcsc', 'LCSC'), ('mpn', 'MPN'), ('fitted_by', 'Fitted by'), ('note', 'Note'))
 G = 2.54          # schematic grid, mm
 W = 400.0         # column width of the sheet, mm
 
@@ -139,8 +147,8 @@ def box_symbol(name, pins, width, ref='U', value=None, fp='', ds='', desc=''):
             body, pl]
 
 
-def project_lib_text(symbols):
-    return dump(['kicad_symbol_lib', ['version', '20241209'], ['generator', Q('afe_build_sch')],
+def project_lib_text(symbols, generator='afe_build_sch'):
+    return dump(['kicad_symbol_lib', ['version', '20241209'], ['generator', Q(generator)],
                  ['generator_version', Q('10.0')]] + list(symbols)) + '\n'
 
 
@@ -207,16 +215,37 @@ class Cell:
         self.h = self.maxy - self.miny + G
 
 
+def check_nc(parts, library):
+    """a pin the design does not connect must be declared NC (part['nc'], or 'rest' for a header whose unused pins pass
+    through), and a declared NC must not be connected"""
+    for p in parts:
+        lib_pins = {n for (_, n) in library.pins_of(p['sym'])}
+        unknown = set(p['pins']) - lib_pins
+        if unknown:
+            raise SchematicError(f"{p['ref']}: pins {sorted(unknown)} not in symbol {p['sym']}")
+        if p['nc'] == 'rest':
+            continue
+        undeclared = (lib_pins - set(p['pins'])) - set(p['nc'])
+        if undeclared:
+            raise SchematicError(f"{p['ref']}: pins {sorted(undeclared)} neither connected nor declared NC")
+        both = set(p['nc']) & set(p['pins'])
+        if both:
+            raise SchematicError(f"{p['ref']}: pins {sorted(both)} declared NC and connected")
+
+
 # ----------------------------------------------------------------------------- the sheet
 def build_tree(parts, cfg, library):
     """-> (schematic tree, info) with info = {'pin_at': {(ref, pin): (x, y)}, 'cells': n, 'lib_ids': [...], 'size': (w, h)}"""
     uid = lambda *k: make_uid(cfg.NS, *k)      # noqa: E731
     root = str(uuid.uuid5(uuid.UUID(cfg.NS), 'root'))
+    if getattr(cfg, 'CHECK_NC', False):
+        check_nc(parts, library)
     cells = {b: [Cell(p, library) for p in parts if p['block'] == b] for b in cfg.BLOCK_ORDER}
+    flag_block = getattr(cfg, 'FLAG_BLOCK', 'power')
     flags = [dict(ref=f'#FLG{i + 1:02d}', sym='power:PWR_FLAG', value='PWR_FLAG', fp='', lcsc='', mpn='',
-                  pins={'1': n}, block='power', dnp=False, fitted_by='none',
+                  pins={'1': n}, block=flag_block, dnp=False, fitted_by='none',
                   note='ERC: net driven from outside / through a part') for i, n in enumerate(cfg.PWR_FLAG_NETS)]
-    cells['power'] += [Cell(f, library) for f in flags]
+    cells[flag_block] += [Cell(f, library) for f in flags]
 
     body, placed, pin_at = [], [], {}
     col_x = [20.0, 20.0 + W + 20.0]
@@ -254,7 +283,7 @@ def build_tree(parts, cfg, library):
             props = [prop('Reference', p['ref'], (ux, top - 2.2 * G), is_flag), prop('Value', p['value'], (ux, top - 1.2 * G)),
                      prop('Footprint', p['fp'], (ux, sy), True), prop('Datasheet', '~', (ux, sy), True)]
             if not is_flag:
-                for k, name in (('lcsc', 'LCSC'), ('mpn', 'MPN'), ('fitted_by', 'Fitted by'), ('note', 'Note')):
+                for k, name in getattr(cfg, 'PROPS', DEFAULT_PROPS):
                     props.append(prop(name, p[k], (ux, sy), True))
             inst = ['symbol', ['lib_id', Q(cell.lib_id)], ['at', ux, sy, cell.r], ['unit', u],
                     ['exclude_from_sim', 'no'], ['in_bom', 'no' if (is_flag or p['fitted_by'] == 'none') else 'yes'],
@@ -308,7 +337,7 @@ def write_all(parts, cfg, out_dir):
     os.makedirs(os.path.join(out_dir, 'lib'), exist_ok=True)
     lib_path = os.path.join(out_dir, 'lib', 'afe.kicad_sym')
     with open(lib_path, 'w') as f:
-        f.write(project_lib_text(cfg.PROJECT_SYMBOLS))
+        f.write(project_lib_text(cfg.PROJECT_SYMBOLS, getattr(cfg, 'LIB_GENERATOR', 'afe_build_sch')))
     library = Library(cfg.SYMBOL_DIR, lib_path)
     sch, info = build_tree(parts, cfg, library)
     with open(os.path.join(out_dir, cfg.PROJECT + '.kicad_sch'), 'w') as f:
@@ -316,7 +345,7 @@ def write_all(parts, cfg, out_dir):
     with open(os.path.join(out_dir, 'sym-lib-table'), 'w') as f:
         f.write(SYM_LIB_TABLE)
     with open(os.path.join(out_dir, 'fp-lib-table'), 'w') as f:
-        f.write(FP_LIB_TABLE)
+        f.write(getattr(cfg, 'FP_LIB_TABLE', FP_LIB_TABLE))
     with open(os.path.join(out_dir, cfg.PROJECT + '.kicad_pro'), 'w') as f:
         json.dump(project_json(cfg, info), f, indent=2)
         f.write('\n')

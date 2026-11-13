@@ -1,0 +1,28 @@
+{
+ "what": "the OLD v2 schematic tools (frozen at 276a116, tests/fixtures/v2-kicad-276a116: check.py with its 24 mutation arms, build_sch.py) run on a throw-away copy of that fixture in the PCB image",
+ "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+ "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+ "kicad": "10.0.8",
+ "taken": "2026-11-12",
+ "repo_commit": "65706aa (tree the fixture was copied from; 276a116 is the last commit touching v2/kicad)",
+ "how": "docker/pcb/run.sh -m 3G -t 300 bash hardware/afe-proto/tests/golden/v2-kicad-276a116/run_old.sh TOOL OUTDIR (TOOL: check | build_sch)",
+ "reproduced": "check.raw.txt and build_sch.sha256.txt were each produced twice in the image and compared byte for byte: identical; the same check.py run on the host (kicad-cli 10.0.8) prints the same text",
+ "verdict_of_record": "check.py exits 1: S1 FAILS on the committed project (its afe-v2.kicad_pro exclusion is keyed on the pin uuid of U3 pin 1, the part's name before the renumbering to U401: a stale project file), every other row passes and the 24 mutation arms all fail the way they must (M* 24 of 24). build_sch.py's output equals the committed one in every file but afe-v2.kicad_pro, for the same reason.",
+ "single_run_figures": "ONE run each, the cgroup peak of the whole container",
+ "tools": {
+  "check": {
+   "peak_rss_kb": 1477180,
+   "wall_s": 94.71,
+   "exit": 1,
+   "cap": "3G",
+   "limit_s": 300
+  },
+  "build_sch": {
+   "peak_rss_kb": 335552,
+   "wall_s": 2.03,
+   "exit": 0,
+   "cap": "3G",
+   "limit_s": 300
+  }
+ }
+}

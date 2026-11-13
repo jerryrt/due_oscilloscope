@@ -586,6 +586,57 @@
         "sim/scope",
         "dc"
       ]
+    },
+    {
+      "tool": "old-v2-schematic-check",
+      "board": "v2-sch",
+      "expect_exit": 1,
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v2-kicad-276a116/run_old.sh",
+        "check",
+        "/tmp/bench-old-v2"
+      ]
+    },
+    {
+      "tool": "new-v2-schematic-check",
+      "board": "v2-sch",
+      "expect_exit": 1,
+      "argv": [
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools.boards import v2_checks as v; sys.exit(v.main(sys.argv[1:]))",
+        "--project",
+        "hardware/afe-proto/tests/fixtures/v2-kicad-276a116/kicad",
+        "--sim",
+        "hardware/afe-proto/tests/fixtures/v2-kicad-276a116/sim",
+        "--arms"
+      ]
+    },
+    {
+      "tool": "old-v2-build_sch",
+      "board": "v2-sch",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v2-kicad-276a116/run_old.sh",
+        "build_sch",
+        "/tmp/bench-old-v2"
+      ]
+    },
+    {
+      "tool": "new-v2-schematic-build",
+      "board": "v2-sch",
+      "argv": [
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools.boards import v2_checks as v; sys.exit(v.main(sys.argv[1:]))",
+        "--build",
+        "/tmp/bench-new-v2"
+      ]
     }
   ],
   "_note_v2": "old-v2-* steps are the frozen v2 tools (tests/fixtures/v2-8a1f7ac/tools), new-v2-* the pcbtools replacements, one pair per tool and board so the table reads before and after. Exit 0 and 1 are both a finished run (1 = a rule FAILed on the board, which these frozen boards do) unless the output holds a Traceback (an exit 1 from an exception must not pass for a verdict); >1 is a crash. new-v2-fence has no CLI: bench_tools.py fence reads BASE and the block board and runs fence.check_fence. Old vs new cap in the image (3 runs, median): old 26.2 s / 312 MB; new first measured 97.2 s / 551 MB because numpy/scipy started 12 BLAS threads under the container's 2-CPU quota (spinning against it); pcbtools/__init__.py now pins them to one: new 15.3 s / 522 MB, i.e. about 1.7x faster for about 1.7x the memory (CSR operator); budget from the image run. Select only these with --only -v2-",
@@ -605,7 +656,16 @@
     [
       "old-v2-lr_check-mutate",
       "new-v2-check-mutate"
+    ],
+    [
+      "old-v2-schematic-check",
+      "new-v2-schematic-check"
+    ],
+    [
+      "old-v2-build_sch",
+      "new-v2-schematic-build"
     ]
   ],
-  "_pairs_doc": "[old, new] tool names measured interleaved (old, new, old, new, ...) on every board both are defined for, so machine load hits both arms alike; only the ratio is quotable"
+  "_pairs_doc": "[old, new] tool names measured interleaved (old, new, old, new, ...) on every board both are defined for, so machine load hits both arms alike; only the ratio is quotable",
+  "_note_v2_schematic": "old-v2-schematic-* are the frozen v2 schematic tools (tests/fixtures/v2-kicad-276a116, run by tests/golden/v2-kicad-276a116/run_old.sh), new-v2-schematic-* the pcbtools replacements (pcbtools.boards.v2_checks). Both checks run the rows and the 24 mutation arms on the frozen committed project; exit 1 is the finished run of both (S1 fails on the committed project: its afe-v2.kicad_pro exclusion is stale), anything else is a crash. The old check regenerates 25 variants in a scratch folder and the new one the same 25, so the pair is like for like. No budget exists for these rows yet: measure with --pairs in the image first."
 }
