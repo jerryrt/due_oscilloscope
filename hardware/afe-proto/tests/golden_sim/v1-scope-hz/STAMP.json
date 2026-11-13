@@ -1,0 +1,13 @@
+{
+ "what": "sim/scope (version 1 scope channel, variant hz, every section including report) run by the OLD code, before the shared netlib/ngspice plumbing, in the PCB image, on a throw-away copy",
+ "code": "git a5d0a0c^ (hardware/afe-proto/sim and v2 as committed before 'share the netlib plumbing')",
+ "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+ "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+ "ngspice": "45.2",
+ "vendor_models": "fetched and hash-verified by tools/fetch_models.py (opa354, opa365, opa356, ref3030, tmux1119, ts5a3159, lm27762, tlv9062)",
+ "wall_s": 337,
+ "against_committed_results": "49 values differ at about 1e-4 relative: this golden is ngspice 45.2 (the image), the committed results are ngspice 47",
+ "ported_code_vs_this": "the ported code (shared netlib_common, run_ng under the memory cap, auto-derived .save) reproduces every number here to rtol 1e-12 (0 differences)",
+ "taken": "2026-11-12",
+ "committed_results_ngspice": "47 (sim/scope/run.py: 'Needs ngspice 47'; models/SOURCES.md smoke tests)"
+}

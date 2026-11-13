@@ -1,0 +1,15 @@
+Capacitor_SMD.3dshapes/C_0603_1608Metric.step
+Capacitor_SMD.3dshapes/C_0805_2012Metric.step
+Connector_Coaxial.3dshapes/BNC_Amphenol_B6252HB-NPP3G-50_Horizontal.step
+Connector_PinHeader_2.54mm.3dshapes/PinHeader_1x03_P2.54mm_Vertical.step
+Connector_PinSocket_2.54mm.3dshapes/PinSocket_1x08_P2.54mm_Vertical.step
+Connector_PinSocket_2.54mm.3dshapes/PinSocket_1x10_P2.54mm_Vertical.step
+Connector_PinSocket_2.54mm.3dshapes/PinSocket_2x18_P2.54mm_Vertical.step
+Package_SO.3dshapes/MSOP-10_3x3mm_P0.5mm.step
+Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step
+Package_SO.3dshapes/TSSOP-10_3x3mm_P0.5mm.step
+Package_TO_SOT_SMD.3dshapes/SOT-23-5.step
+Package_TO_SOT_SMD.3dshapes/SOT-23.step
+Package_TO_SOT_SMD.3dshapes/SOT-363_SC-70-6.step
+Resistor_SMD.3dshapes/R_0603_1608Metric.step
+Resistor_SMD.3dshapes/R_1206_3216Metric.step

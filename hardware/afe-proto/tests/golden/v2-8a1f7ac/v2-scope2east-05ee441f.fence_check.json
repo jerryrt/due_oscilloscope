@@ -1,0 +1,26 @@
+{
+ "attempts": 1,
+ "clean": false,
+ "cmd": "-B /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py SCOPE /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+ "env": {
+  "image_id": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+  "interpreter": "/opt/venv/bin/python3",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "label": "container",
+  "numpy": "2.3.5",
+  "python": "3.14.4"
+ },
+ "exit_code": 1,
+ "fixture": "v2-scope2east-05ee441f",
+ "peak_rss_kb": 168812,
+ "raw": "FAIL copper outside the SCOPE fence removed or changed: ('trk', '/CH1_IN', 0, (87.95, 41.9), (101.2, 41.9), 0.2)\nFAIL copper outside the SCOPE fence removed or changed: ('trk', '/CH2_IN', 0, (87.95, 24.15), (101.2, 24.15), 0.2)\nFAIL copper outside the SCOPE fence added or changed: ('trk', '/CH1_IN', 0, (91.36, 41.91), (102.0, 41.91), 0.2)\nFAIL copper outside the SCOPE fence added or changed: ('trk', '/CH2_IN', 0, (91.36, 24.13), (102.0, 24.13), 0.2)\nSCOPE: 4 violation(s)\n",
+ "tool": "fence_check",
+ "violations": [
+  "copper outside the SCOPE fence removed or changed: ('trk', '/CH1_IN', 0, (87.95, 41.9), (101.2, 41.9), 0.2)",
+  "copper outside the SCOPE fence removed or changed: ('trk', '/CH2_IN', 0, (87.95, 24.15), (101.2, 24.15), 0.2)",
+  "copper outside the SCOPE fence added or changed: ('trk', '/CH1_IN', 0, (91.36, 41.91), (102.0, 41.91), 0.2)",
+  "copper outside the SCOPE fence added or changed: ('trk', '/CH2_IN', 0, (91.36, 24.13), (102.0, 24.13), 0.2)"
+ ],
+ "wall_s": 0.31
+}

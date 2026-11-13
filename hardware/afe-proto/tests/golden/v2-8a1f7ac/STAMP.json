@@ -1,0 +1,26 @@
+{
+ "what": "the OLD v2 tools (frozen at v2-layout-wip 8a1f7ac, tests/fixtures/v2-8a1f7ac/tools) run on the fixture boards in the PCB image",
+ "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+ "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+ "label": "container",
+ "taken": "2026-11-12",
+ "how": [
+  "docker/pcb/run.sh -m 3G -t 1500 bash -c 'python3 hardware/afe-proto/tests/golden_capture/capture_old.py --out DIR && python3 hardware/afe-proto/tests/golden_capture/run_old_tools.py --out DIR2'",
+  "then reparse_figures.py --into-golden (figures re-derived from the raw text, as the host goldens were)"
+ ],
+ "reproduced": "the whole capture was run twice in the image; every <fixture>.<tool>.json (minus wall/RSS/attempts/env) and every .raw.txt compared byte for byte: identical, 20 JSON + 13 raw. The wx timestamped debug lines go to stderr, which the capture does not record",
+ "nondeterminism": "the old lr_check's LR-10 DRC dict (kicad-cli report order) flips its key ORDER between runs and hosts. Both orders are on record: the host golden of v2-awg-bc96e334 has 'tracks_crossing' before 'shorting_items', the image golden has 'shorting_items' first; the two image runs agreed. Compare that dict as a dict (key-sorted), never as text. No other row differed between host and image",
+ "single_run_figures": "wall_s / peak_rss_kb in old_tools_bench.json and run_old_tools.json are one run each (run A); the capture's peak is per child process",
+ "container_wall_peak_of_whole_job": [
+  {
+   "run": "A",
+   "peak_rss_kb": 1875728,
+   "wall_s": 128.22
+  },
+  {
+   "run": "B",
+   "peak_rss_kb": 1908432,
+   "wall_s": 129.09
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+{
+ "what": "the OLD v1 tools (frozen at v1-layout-wip 34b2e51, tests/fixtures/v1-34b2e51) run on a throw-away copy of that fixture in the PCB image",
+ "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+ "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+ "taken": "2026-11-12",
+ "repo_commit": "5a5dba4",
+ "how": "docker/pcb/run.sh -m 3G -t 300 bash hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh TOOL",
+ "reproduced": "every .out was produced twice and compared byte for byte: identical (wx timestamped debug lines are filtered)",
+ "single_run_figures": "peak_rss_kb and wall_s below are ONE run each, the cgroup peak of the whole container; the bench takes the medians",
+ "tools": {
+  "build_pcb": {
+   "peak_rss_kb": 222104,
+   "wall_s": 2.95,
+   "exit": 0,
+   "cap": "3G",
+   "limit_s": 300
+  },
+  "check_pcb": {
+   "peak_rss_kb": 1575896,
+   "wall_s": 26.25,
+   "exit": 1,
+   "cap": "3G",
+   "limit_s": 300
+  },
+  "lr_check": {
+   "peak_rss_kb": 1599220,
+   "wall_s": 3.53,
+   "exit": 1,
+   "cap": "3G",
+   "limit_s": 300
+  },
+  "lr_check_mutate": {
+   "peak_rss_kb": 1612492,
+   "wall_s": 7.41,
+   "exit": 0,
+   "cap": "3G",
+   "limit_s": 300
+  },
+  "fence_check": {
+   "peak_rss_kb": 72160,
+   "wall_s": 0.29,
+   "exit": 0,
+   "cap": "3G",
+   "limit_s": 300
+  }
+ }
+}

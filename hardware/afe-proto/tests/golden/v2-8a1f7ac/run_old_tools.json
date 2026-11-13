@@ -1,0 +1,118 @@
+{
+ "env": {
+  "label": "container",
+  "image_id": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+  "interpreter": "/opt/venv/bin/python3",
+  "python": "3.14.4",
+  "numpy": "2.3.5",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a"
+ },
+ "tools_dir": "tests/fixtures/v2-8a1f7ac/tools",
+ "rows": [
+  {
+   "fixture": "v2-awg-bc96e334",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.29,
+   "peak_rss_kb": 1579964,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.22,
+   "peak_rss_kb": 1620756,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power-a5605a04",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.46,
+   "peak_rss_kb": 1608408,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power3-7c838703",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.32,
+   "peak_rss_kb": 1549252,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-refcal-326f141b",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.39,
+   "peak_rss_kb": 1586556,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-scope2east-05ee441f",
+   "tool": "lr_check",
+   "exit_code": 1,
+   "wall_s": 4.41,
+   "peak_rss_kb": 1611476,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "lr_check_mutate",
+   "exit_code": 0,
+   "wall_s": 6.77,
+   "peak_rss_kb": 1593448,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power3-7c838703",
+   "tool": "fence_check",
+   "exit_code": 0,
+   "wall_s": 0.39,
+   "peak_rss_kb": 168876,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power-a5605a04",
+   "tool": "fence_check",
+   "exit_code": 0,
+   "wall_s": 0.39,
+   "peak_rss_kb": 171212,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-refcal-326f141b",
+   "tool": "fence_check",
+   "exit_code": 1,
+   "wall_s": 0.35,
+   "peak_rss_kb": 170108,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-awg-bc96e334",
+   "tool": "fence_check",
+   "exit_code": 0,
+   "wall_s": 0.33,
+   "peak_rss_kb": 169208,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-scope2east-05ee441f",
+   "tool": "fence_check",
+   "exit_code": 1,
+   "wall_s": 0.47,
+   "peak_rss_kb": 169148,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "cap",
+   "exit_code": 0,
+   "wall_s": 29.33,
+   "peak_rss_kb": 319132,
+   "attempts": 1
+  }
+ ]
+}

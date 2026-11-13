@@ -1,0 +1,12 @@
+refs,value,lcsc,role,qty
+"R1,R2 (parallel)","100 ohm 1 % 1206","C17901","AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)","2"
+"R3","3 kohm 1 % 0603","C4211","Rf, feedback","1"
+"R4","3 kohm 1 % 0603","C4211","Rg2, inverting node to the offset filter node (D-V2-12)","1"
+"R5","100 ohm 1 % 0603","C22775","Rvr: offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = 160 Hz at 10 uF)","1"
+"C3,C4","10 uF X5R 10 % 0805 25 V","C15850","offset filter capacitor, filter node to ground, two in parallel (about 14 uF effective at 3 V bias *(check)*): they keep the AWG current out of the reference at 1-3 kHz where its output impedance peaks","2"
+"R6","2.7 kohm 1 % 0603","C13167","DAC0 series resistor: back-feed limit and the upper arm of the divider","1"
+"R7","27 kohm 1 % 0603","C22967","DAC0 divider lower arm: attenuates the DAC by 0.909 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground","1"
+"R8,R9","1 ohm 1 % 0603","C22936","output balancing resistors of the two halves","2"
+"C1","10 pF C0G 5 % 0603","C1634","Cf, across Rf: the stability capacitor (AN-1, design.md); the smallest Basic C0G","1"
+"C5,C6","100 nF X7R 10 % 0603","C14663","supply decoupling at the op-amp, one per supply pin","2"
+"U1","TPH2502-SR dual op-amp SOP-8","C118223","both halves paralleled as one gain stage","1"

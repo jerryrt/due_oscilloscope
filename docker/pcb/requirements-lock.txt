@@ -1,0 +1,21 @@
+# Hash-locked Python inputs for the PCB/simulation image (docker/pcb/Dockerfile).
+# Generated from requirements-pcb.txt's pins (numpy 2.3.5, scipy 1.18.1, pytest 9.2.0, networkx 3.7) on Python 3.14.4,
+# the interpreter KiCad's bindings are built for. Wheels only: --require-hashes refuses anything else.
+# Regenerate by pip-installing the pins in a fresh 3.14 venv, then 'pip download --no-deps' and
+# 'pip hash --algorithm sha256' each file; change a pin and its hash together.
+iniconfig==2.3.1 \
+    --hash=sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7
+numpy==2.3.5 \
+    --hash=sha256:fffe29a1ef00883599d1dc2c51aa2e5d80afe49523c261a74933df395c15c520
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+pluggy==1.7.0 \
+    --hash=sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec
+Pygments==2.21.0 \
+    --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9
+pytest==9.2.0 \
+    --hash=sha256:07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588
+scipy==1.18.1 \
+    --hash=sha256:ac0333bdf38309aa3dcbe7e3fa7ea29e7a2c37c6ea306a757b700ded8e4596ad
+networkx==3.7 \
+    --hash=sha256:e3fd2c13a7814cee3746340d8d7f8598a67f16a58bf47fb7f8793fab6efca1b0

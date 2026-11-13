@@ -1,0 +1,14 @@
+[PASS] LR-1: 2 layers, one bottom plane, 0 bottom runs, 37 GND pads each with its own via
+[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)
+[PASS] LR-3: 10 divider nets: no via, short, no track beside
+[PASS] LR-4: A0/A1 top only, no via (41/49 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it
+[PASS] LR-4 INV_MAX: AWG_FB 4.9 mm, CH1_OUT 1.3 mm, CH2_OUT 1.5 mm (<= 5.0)
+[FAIL] LR-12 DECOUP_MAX: C104 is 4.1 mm from U101 pin 8 (limit 3.0); C503 is 5.2 mm from U502 pin 8 (limit 3.0)
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409
+[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads
+[PASS] LR-7: DAC0 1.8 mm; back-termination at the BNC; shell pads on ground
+[FAIL] LR-8: VREF: branches [0, 1, 5] share copper (['BR503', 'J602', 'R106', 'R506', 'R509', 'U502'])
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-10: DRC {'silk_overlap': 31, 'silk_over_copper': 13, 'silk_edge_clearance': 1, 'courtyards_overlap': 2, 'shorting_items': 3, 'tracks_crossing': 2, 'track_dangling': 11}; unconnected 6
+[FAIL] LR-11: REFCAL: outline holds [] extra, lacks ['BR508', 'BR509', 'BR510', 'BR511']
+FAIL: LR-12 DECOUP_MAX, LR-8, LR-10, LR-11

@@ -1,0 +1,12 @@
+[FAIL] LR-1: no bottom GND zone; 45 SMD ground pads without a via of their own: ['C102.2', 'C103.2', 'C104.2', 'C105.2', 'C202.2', 'C203.2']
+[FAIL] LR-2: CH1: output run 0.0 mm is not longer than the divider side 0.0 mm; CH2: output run 0.0 mm is not longer than the divider side 0.0 mm
+[PASS] LR-3: 8 divider nets: no via, short, no track beside
+[FAIL] LR-4: U101.8: no 100 nF within 3 mm (nearest C103 at 3.7 mm)
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C402
+[FAIL] LR-6: /+3V3A: AWG is not one piece (2 pieces); /+3V3A: REF/ADS is not one piece (4 pieces); /VNEG: AWG is not one piece (2 pieces)
+[PASS] LR-7: DAC0 0.0 mm; back-termination at the BNC; shell pads on ground
+[FAIL] LR-8: VREF: A precision readers is not one piece (2 pieces); VREF: B ADS AIN0 is not one piece (2 pieces); VREF: D scope centring + sense tie is not one piece (2 pieces)
+[PASS] LR-9: SDA1 / SCL1 outside every analog courtyard but their own parts and outside the SCOPE and AWG fences
+[FAIL] LR-10: DRC {'courtyards_overlap': 3, 'clearance': 1, 'lib_footprint_issues': 4, 'silk_edge_clearance': 2}; 212 unconnected items
+[FAIL] LR-11: 128 reasons: REFCAL: fence holds ['R108'] extra, lacks []; SCOPE: fence holds [] extra, lacks ['D201', 'R108']; AWG: fence holds [] extra, lacks ['C306']; 119 x designator not on silk at 1.0 mm or more; silk word 'CH1' missing; silk word 'CH2' missing; ...
+FAIL: LR-1, LR-2, LR-4, LR-6, LR-8, LR-10, LR-11

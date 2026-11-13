@@ -85,3 +85,14 @@ Terms: TI datasheets and models are TI copyright; models are provided 'as is' wi
 - Datasheet file names: TI URLs are `lit/ds/symlink/<part>.pdf`; for multi-part families the family file is served under each part name (opa354 = opa2354; opa356 = opa2356; opa365 = opa2365), so one copy is kept. The REF3030 datasheet is `ref30.pdf`.
 - OPA354 pin order for the subckt: +IN -IN V+ V- OUT (3 4 5 2 1). OPA356: OUT V- +IN -IN V+ (1 2 3 4 6).
 - TI product pages were read only to find the model archive codes (SBOC018, SBOM282, ...); some codes on a page belong to related parts (e.g. REF3025/REF3040 archives were downloaded to scratch but are not kept).
+
+## Added later (v2 simulation port)
+
+- **tph2501** (3PEAK TPH2501 SPICE model, used for the TPH2502 in the v2 scope study): `Spice_Model_TPH2501.zip` from
+  `https://static.3peak.com/res/tools/Spice_Model_TPH2501.zip` (932 bytes, sha256 18201e70...2ae7, fetched and compared with the
+  copy the study used, 2026-11-12) and the member `Spice_Model_TPH2501/TPH2501.mdl` (1604 bytes, sha256 fc600102...ce98). Vendor file:
+  never committed (MC-6). ngspice needs one edit, removing ` tc1=0.001` from the IRP line (line 47): `sed 's/ tc1=0.001//'
+  TPH2501.mdl > TPH2501_ngspice.mdl` gives the 1594-byte file the study read (sha256 256eeb24...5e8). The derived file is not fetched.
+- **cl21a106kaynnne** (Samsung C15850 product page): REMOVED from the manifest. The site serves different bytes than the pinned page
+  (sha256 4b7cf7d8...), so re-pinning it would change under us. The DC-bias points and ESR points the studies read from it are
+  committed as numbers with their provenance in `models-open/cl21a106kaynnne/`.

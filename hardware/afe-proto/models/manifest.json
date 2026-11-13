@@ -3,7 +3,8 @@
   "Vendor files used locally and never committed (MC-6, docs/afe.md).",
   "Fetched and verified by hardware/afe-proto/tools/fetch_models.py; provenance, terms and smoke tests in SOURCES.md.",
   "path: under models/. url: the vendor download, null if unknown. member: the file inside the zip at url; archive_sha256 pins that zip.",
-  "sha256 and size pin the file as retrieved 2026-11-10."
+  "sha256 and size pin the file as retrieved 2026-11-10.",
+  "cl21a106kaynnne (Samsung C15850 product page): removed, the site serves different bytes than the pinned page; superseded by the DC-bias and ESR points committed in models-open/cl21a106kaynnne/ with their provenance."
  ],
  "files": [
   {
@@ -288,6 +289,23 @@
    "kind": "download"
   },
   {
+   "path": "tph2501/Spice_Model_TPH2501.zip",
+   "url": "https://static.3peak.com/res/tools/Spice_Model_TPH2501.zip",
+   "sha256": "18201e703107a96d2db652f5030e50554611cddb2d7b4123df8a6a15cf3b2ae7",
+   "size": 932,
+   "kind": "archive"
+  },
+  {
+   "path": "tph2501/TPH2501.mdl",
+   "url": "https://static.3peak.com/res/tools/Spice_Model_TPH2501.zip",
+   "sha256": "fc600102aee23b7a929fa8e7779b3200ff1f14d05ed5794cd07a010d6604ce98",
+   "size": 1604,
+   "member": "Spice_Model_TPH2501/TPH2501.mdl",
+   "archive_sha256": "18201e703107a96d2db652f5030e50554611cddb2d7b4123df8a6a15cf3b2ae7",
+   "kind": "extracted",
+   "note": "3PEAK's vendor SPICE model of the TPH2501 (the TPH25xx family's only published model; used for the TPH2502 in the v2 scope study, whatif/tph2502). ngspice needs one change: remove ' tc1=0.001' from the IRP line (line 47): sed 's/ tc1=0.001//' TPH2501.mdl > TPH2501_ngspice.mdl (sha256 256eeb242fe2d960625eb2c8b8d94d71a3e982730a617f01eb8cfcf90322fae1, 1594 bytes); the derived file is not fetched."
+  },
+  {
    "path": "ts5a3159/SCDM113.zip",
    "url": "https://www.ti.com/lit/zip/SCDM113",
    "sha256": "ce9cdecacf236aa033db6d00e4b7b5d28fdc2f6528d5f8a5ca52081519491ffa",
@@ -359,14 +377,6 @@
    "sha256": "8c5fbf8f378ffcf628e234e1ba617c1708a65c5b1e8e796cb26e071058b9d143",
    "size": 226254,
    "kind": "download"
-  },
-  {
-   "path": "cl21a106kaynnne/CL21A106KAYNNN_product_page.html",
-   "url": "https://product.samsungsem.com/mlcc/CL21A106KAYNNN.do",
-   "sha256": "4b7cf7d8e24b0af8cb7f0d2118a8077c6b512ade8c0662c6b0ab1a4bb4f27c24",
-   "size": 169898,
-   "kind": "download",
-   "note": "Samsung product page for C15850 (CL21A106KAYNNNE); its embedded datasheetData JSON carries |Z| and R against frequency (0 V, 25 C, \"Precise\" model) and DC-bias derating (25 C, 1 kHz). Retrieved 2026-11-11; read as data only (json.loads of that array), never executed."
   },
   {
    "path": "sgm3157/sgm3157.pdf",

@@ -1,0 +1,3 @@
+WARNING: 1 courtyard overlaps left (the DRC and check.py P2 fail until they are gone): [('C105', 'R112')]
+119 footprints, 107 packed, 128 nets -> /tmp/v1-old-build_pcb/kicad/afe-proto.kicad_pcb
+exit=0

@@ -1,0 +1,24 @@
+{
+ "branch": "pcb-tools",
+ "commit": "276a116",
+ "repo_path_prefix": "hardware/afe-proto/v2/ (kicad/ and sim/ here)",
+ "note": "FROZEN INPUTS for the v2 schematic-tool equivalence tests: the OLD v2 tools (build_sch.py, check.py, spicecmp.py: 276a116 is the last commit that touched hardware/afe-proto/v2/kicad, taken from the tree at 65706aa), the design (design.py), the committed schematic, project file, library tables and project library, and the three studies' parts.csv and the two SPICE netlists the old check.py reads from ../sim. The old tools import pcbtools.sexpr: run them with PCBTOOLS_ROOT=hardware/afe-proto (golden/v2-kicad-276a116/run_old.sh does). The committed afe-v2.kicad_pro is STALE: its ERC exclusion is keyed on the pin uuid of U3 pin 1 (the part's name before the renumbering to U401), so the old check.py's S1 FAILS on the committed project and passes on a regenerated one.",
+ "files": {
+  "kicad/afe-v2.kicad_pro": "5777cee1e8244016a3d1dd25ad9a24a0e094771b1c5ed67195c12a8964a6cdb3",
+  "kicad/afe-v2.kicad_sch": "7c6701c32e8d356d08a0b1866b36aba44d08922a429d7be48d51c7da20becee5",
+  "kicad/build_sch.py": "74450afefb97d064c522c4093b884fa4b9420c3a83f54c8bdc4331b3f27c8bdc",
+  "kicad/check.py": "c0966356b2f4fe6a607ef8f9398f7f96a7c929f73f43f0c2ab0ffc03d979c6b0",
+  "kicad/design.py": "a061b254353fc4cefbd61e50aa874d0d037e9dab6c8127c7eae61c7be67d21c4",
+  "kicad/fp-lib-table": "85dd195b9c0a815b1e3e6d268943b9c921b5c35c075aba4f7e829f2a45b5129f",
+  "kicad/lib/afe.kicad_sym": "6c6f2f2c797bc4f06951f737d5231e5b1a6848319b49377c0165058b74183fa5",
+  "kicad/lib/afe.pretty/BNC_Kinghelm_KH-BNC50-3511_Horizontal.kicad_mod": "e6706392176ae97f91c554e3441ac9aa3e21b1ce4aaf3d0cbe29236fc63848ca",
+  "kicad/lib/afe.pretty/PinSocket_2x18_P2.54mm_Vertical_DueXIO.kicad_mod": "c7c72f9b90370767bbe5e74ff0969737589096505494bfb5888c4a6a262de182",
+  "kicad/spicecmp.py": "975dc0a69195afcf72c4612caa22f5e650150c49d0e2502cf606bf7dcacf2018",
+  "kicad/sym-lib-table": "1eb5a78be390e7c78937f735b7540e67b8d428a508655277d172f40d2caed2e1",
+  "sim/awg/awg.cir": "8f76f59bdda1c76e6bfb183f3844677a8dbe57a6b0d5b859a94e73b1eef7d357",
+  "sim/awg/parts.csv": "9f503e27a85e7fa0fdaa9a900f611ea420a6f2388f2614da14a52d165e429a58",
+  "sim/powercal/parts.csv": "c3160e9467a60d005cf474a1df775534bbd3b9a2fdee0fd2b11ff24c21e46c9a",
+  "sim/scope/parts.csv": "5bbd2f594a55f867bffb98d23f5d5a807a2962d3830bb2a815cafdb1849b0473",
+  "sim/scope/scope_v2.cir": "87127fc274faae4bc1a0e8dd0541b6e989fede5a190721cae7ac094436c7ca8a"
+ }
+}

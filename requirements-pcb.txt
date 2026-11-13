@@ -1,0 +1,5 @@
+# PCB design tools (hardware/afe-proto/pcbtools): the pure-numpy core, its tests, and the sparse solver in cap.py.
+# pcbnew is not a pip package: the pcbnew-marked tests run under the system KiCad python (see pcbtools/README.md).
+-r requirements-dev.txt
+scipy==1.18.1
+networkx==3.7

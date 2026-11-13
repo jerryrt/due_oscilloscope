@@ -1,0 +1,15 @@
+{
+ "branch": "origin/gate3-tool",
+ "commit": "a256c8f",
+ "repo_path_prefix": "hardware/afe-proto/kicad/ (kicad/ and kicad/wip/ here)",
+ "note": "FROZEN INPUTS: v1's live design.py, layout.py and floorplan.py (R411-R413, P33_G, which the 34b2e51 fixture predates) and the latest v1 merge, REFCAL routed (kicad/wip/v1_merge5). Used by the v1r routed-arms test (PCBTOOLS_V1_SOURCE) and the gate3_v1 template. Not v1's final board: when that lands on main these are replaced.",
+ "files": {
+  "design.py": "509809d4a69e06182ed3da028e9ad998fca51690404895dd400f1221120286de",
+  "floorplan.py": "5a45debf4ad07f9455a790a931c941c712937bb7f805896ef871ca84a2605dd2",
+  "fp-lib-table": "b8ba77cbfa8a85629261823f4f43b3857fd771c599e433bdc5f84b947b197103",
+  "layout.py": "5b57ad3f2683c482f62009dbc50c1cf8ad72f5bb59307ce541f1a2e13c449543",
+  "sym-lib-table": "cbeb6b708176be0794a5ef5c13244abdb700470833a0f0aff192acd1b0d7afd7",
+  "v1_merge5.kicad_pcb": "0f330ccfdfe0f82dd082211653deaf53c5df53e34612947767588f197914107c",
+  "v1_merge5.kicad_pro": "4d62abed71db97919b227ec87bd20941376543b6707fad8f1e1277d32dc91fe0"
+ }
+}

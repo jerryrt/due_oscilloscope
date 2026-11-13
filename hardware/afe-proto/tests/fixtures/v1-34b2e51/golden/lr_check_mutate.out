@@ -1,0 +1,74 @@
+[FAILED AS REQUIRED] LR-1 bottom copper under U101 (rule on the prepared board: fail): /SCL1: bottom copper under ['U101']
+[FAILED AS REQUIRED] LR-1 4 mm hop (rule on the prepared board: fail): /SCL1: bottom run 4.0 mm, 0 vias (limit 3.0 mm, 2)
+[FAILED AS REQUIRED] LR-1 three vias on a hop (rule on the prepared board: fail): /SCL1: bottom run 2.0 mm, 3 vias (limit 3.0 mm, 2)
+[FAILED AS REQUIRED] LR-1 hop crossing a sensitive top net (rule on the prepared board: fail): /SCL1: bottom segment crosses /A0 on top (bridge it on top)
+[FAILED AS REQUIRED] LR-1 a supply hop under AREF (rule on the prepared board: fail): /+3V3A: bottom segment crosses /AREF on top (bridge it on top)
+[FAILED AS REQUIRED] LR-1 an SCL hop under AREF (rule on the prepared board: fail): /SCL1: bottom segment crosses /AREF on top (bridge it on top)
+[FAILED AS REQUIRED] LR-1 inside the AWG fence (rule on the prepared board: fail): /SCL1: bottom segment inside the fence (69.8, 4.4, 95.5, 19.4)
+[FAILED AS REQUIRED] LR-1 inside the REFCAL fence (rule on the prepared board: fail): /SCL1: bottom segment inside the fence (44.5, 4.6, 64.5, 36.0)
+[FAILED AS REQUIRED] LR-1 under an AWG_INV pad (rule on the prepared board: fail): /SCL1: bottom segment under pad R303.2 of /AWG_INV
+[FAILED AS REQUIRED] LR-1 four copper layers (rule on the prepared board: fail): 4 copper layers
+[FAILED AS REQUIRED] LR-2 flow reversed (Riso east of U101) (rule on the prepared board: fail): CH1: x does not fall BNC > R1 > Rnp > U101 > Riso > ADC pad: [102.0, 90.3, 80.1, 76.0, 81.0, 66.0]
+[FAILED AS REQUIRED] LR-2 generator by the BNC (rule on the prepared board: fail): generator 57.4 mm from the 5 V pad
+[FAILED AS REQUIRED] LR-2 reference under the generator (rule on the prepared board: fail): U501 only 0.0 mm from the generator
+[FAILED AS REQUIRED] LR-2 divider pads of two channels 1 mm apart (rule on the prepared board: fail): channels' divider pads only 1.0 mm apart
+[FAILED AS REQUIRED] LR-3 via on CH1_N (rule on the prepared board: pass): /CH1_N: a via
+[FAILED AS REQUIRED] LR-3 16 mm of CH2_N (rule on the prepared board: pass): /CH2_N: 16.0 mm of track
+[FAILED AS REQUIRED] LR-3 track 0.5 mm beside CH1_N (rule on the prepared board: pass): /CH1_N track within 0.6 mm of /SCL1 track
+[FAILED AS REQUIRED] LR-4 via in A0 (rule on the prepared board: fail): /A0: a via
+[FAILED AS REQUIRED] LR-4 bottom copper on A1 (rule on the prepared board: fail): /A1: bottom copper
+[FAILED AS REQUIRED] LR-4 via on AWG_INV (rule on the prepared board: fail): /AWG_INV: inverting node has a via
+[FAILED AS REQUIRED] LR-4 AWG_INV 16 mm long (rule on the prepared board: fail): /AWG_INV: inverting node 16.0 mm of track (limit 5.0)
+[FAILED AS REQUIRED] LR-4 pour near AWG_INV (rule on the prepared board: fail): /AWG_INV: top ground copper within 0.5 mm (['added ground copper'])
+[FAILED AS REQUIRED] LR-4 100 nF far from U301.8 (rule on the prepared board: fail): U301.8: no 100 nF within 3 mm (nearest C501 at 33.5 mm)
+[FAILED AS REQUIRED] LR-4 Riso far from the output pin (rule on the prepared board: fail): R107 83.9 mm from the output pin
+[FAILED AS REQUIRED] LR-5 VREF track by the generator (rule on the prepared board: pass): /VREF 2.5 mm
+[FAILED AS REQUIRED] LR-5 VREF pad by the generator (rule on the prepared board: pass): /VREF pad R508.2 2.5 mm
+[FAILED AS REQUIRED] LR-6 AWG and REF/ADS on one +3V3A piece (rule on the prepared board: pass): /+3V3A: one piece of copper serves ['AWG', 'REF/ADS']
+[FAILED AS REQUIRED] LR-6 SCOPE and AWG on one +3V3A piece (rule on the prepared board: pass): /+3V3A: one piece of copper serves ['AWG', 'SCOPE']
+[FAILED AS REQUIRED] LR-6 star pad off the rail (rule on the prepared board: fail): /+3V3A: star pads ['C407.1'] are not on the net
+[FAILED AS REQUIRED] LR-7 DAC0 30 mm (rule on the prepared board: pass): DAC0 30.0 mm of track
+[FAILED AS REQUIRED] LR-7 R304 far from the BNC (rule on the prepared board: pass): R304 57 mm from J301
+[FAILED AS REQUIRED] LR-7 BNC shell not on ground (rule on the prepared board: pass): 0 BNC shell pads on ground
+[FAILED AS REQUIRED] LR-8 ladder and ADS share VREF copper (rule on the prepared board: pass): VREF: one piece of copper serves ['A precision readers', 'B ADS AIN0']
+[FAILED AS REQUIRED] LR-8 AWG offset and the scope branch share copper (rule on the prepared board: pass): VREF: one piece of copper serves ['C AWG offset', 'D scope centring + sense tie']
+[FAILED AS REQUIRED] LR-9 SDA1 through U101 (rule on the prepared board: pass): /SDA1 through U101
+[FAILED AS REQUIRED] LR-9 SCL1 inside the AWG fence (rule on the prepared board: pass): /SCL1 inside an analog fence
+[FAILED AS REQUIRED] LR-11 part out of its fence (rule on the prepared board: fail): SCOPE: fence holds [] extra, lacks ['D201', 'R108', 'R201']
+[FAILED AS REQUIRED] LR-11 bridge away from its floorplan point (rule on the prepared board: fail): bridge R515 is 39.9 mm from its floorplan point (66.04, 22.8)
+[FAILED AS REQUIRED] LR-11 designator under 0.8 mm / not on silk (rule on the prepared board: fail): R101: designator not on silk at 1.0 mm or more
+[FAILED AS REQUIRED] LR-11 missing test point (AWG_OUT) (rule on the prepared board: fail): no test point on /AWG_OUT in block AWG
+[FAILED AS REQUIRED] LR-11 test point in the wrong block (rule on the prepared board: fail): no test point on /AWG_OUT in block AWG
+[FAILED AS REQUIRED] LR-11 wrong-numbered designator (rule on the prepared board: fail): R399: designator number says AWG, the part is in CH1
+[FAILED AS REQUIRED] LR-11 block without a test point (rule on the prepared board: fail): block REFCAL has no test point
+[FAILED AS REQUIRED] LR-11 silk word missing (rule on the prepared board: fail): silk word 'AWG' missing
+[REPAIR CLEARS IT] LR-1 every SMD GND pad gets a via: before 1 reasons with 'without a via', after 0
+[REPAIR CLEARS IT] LR-6 each consumer connected on its rail: before 3 reasons with 'is not one piece', after 0
+[REPAIR CLEARS IT] LR-8 each branch connected: before 3 reasons with 'is not one piece', after 0
+[REPAIR CLEARS IT] LR-11 silk and the three test points added: before 119 reasons with 'designator not on silk', after 0
+17:30:08: Debug: Adding duplicate image handler for 'PNG file'
+17:30:08: Debug: Adding duplicate image handler for 'JPEG file'
+17:30:08: Debug: Adding duplicate image handler for 'TIFF file'
+17:30:08: Debug: Adding duplicate image handler for 'GIF file'
+17:30:08: Debug: Adding duplicate image handler for 'PNM file'
+17:30:08: Debug: Adding duplicate image handler for 'PCX file'
+17:30:08: Debug: Adding duplicate image handler for 'IFF file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows icon file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows cursor file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+17:30:08: Debug: Adding duplicate image handler for 'TGA file'
+17:30:08: Debug: Adding duplicate image handler for 'XPM file'
+17:30:08: Debug: Adding duplicate image handler for 'PNG file'
+17:30:08: Debug: Adding duplicate image handler for 'JPEG file'
+17:30:08: Debug: Adding duplicate image handler for 'TIFF file'
+17:30:08: Debug: Adding duplicate image handler for 'GIF file'
+17:30:08: Debug: Adding duplicate image handler for 'PNM file'
+17:30:08: Debug: Adding duplicate image handler for 'PCX file'
+17:30:08: Debug: Adding duplicate image handler for 'IFF file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows icon file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows cursor file'
+17:30:08: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+17:30:08: Debug: Adding duplicate image handler for 'TGA file'
+17:30:08: Debug: Adding duplicate image handler for 'XPM file'
+[FAILED AS REQUIRED] LR-10 (a 0.1 mm track added): before ["DRC {'courtyards_overlap': 3, 'clearance': 1, 'lib_footprint_issues': 4, 'silk_edge_clearance': 2}", '212 unconnected items']; after ["DRC {'track_width': 1, 'courtyards_overlap': 3, 'clearance': 1, 'lib_footprint_issues': 4, 'silk_edge_clearance': 2, 'track_dangling': 1}", '212 unconnected items']
+every arm behaved

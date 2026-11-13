@@ -1,0 +1,14 @@
+[PASS] LR-1: 2 layers, one bottom plane, 1 bottom runs, 37 GND pads each with its own via
+[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)
+[PASS] LR-3: 10 divider nets: no via, short, no track beside
+[PASS] LR-4: A0/A1 top only, no via (46/58 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it
+[PASS] LR-4 INV_MAX: AWG_FB 4.9 mm, CH1_OUT 2.7 mm, CH2_OUT 2.5 mm (<= 5.0)
+[PASS] LR-12 DECOUP_MAX: 7 caps within 3.0 mm: C104>U101.8 1.6, C105>U101.8 2.4, C305>U301.8 2.4, C306>U301.4 2.9, C502>U501.1 2.0, C501>U501.2 1.9, C503>U502.8 2.2
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409
+[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads
+[PASS] LR-7: DAC0 2.2 mm; back-termination at the BNC; shell pads on ground
+[PASS] LR-8: VREF: 6 branches each on its own copper
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-10: DRC {'courtyards_overlap': 2}; unconnected 0
+[FAIL] LR-11: CH1: outline holds ['D201'] extra, lacks ['TP101', 'U101']; CH2: outline holds [] extra, lacks ['D201']
+FAIL: LR-10, LR-11

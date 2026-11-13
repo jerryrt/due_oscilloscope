@@ -1,0 +1,173 @@
+{
+ "env": {
+  "label": "container",
+  "image_id": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+  "interpreter": "/opt/venv/bin/python3",
+  "python": "3.14.4",
+  "numpy": "2.3.5",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a"
+ },
+ "rows": [
+  {
+   "fixture": "v2-BASE-056e1d03",
+   "tool": "counts",
+   "wall_s": 0.33,
+   "peak_rss_kb": 168372,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-awg-bc96e334",
+   "tool": "counts",
+   "wall_s": 0.3,
+   "peak_rss_kb": 166208,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "counts",
+   "wall_s": 0.28,
+   "peak_rss_kb": 167132,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power-a5605a04",
+   "tool": "counts",
+   "wall_s": 0.28,
+   "peak_rss_kb": 166492,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power3-7c838703",
+   "tool": "counts",
+   "wall_s": 0.33,
+   "peak_rss_kb": 167784,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-refcal-326f141b",
+   "tool": "counts",
+   "wall_s": 0.3,
+   "peak_rss_kb": 168944,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-scope2east-05ee441f",
+   "tool": "counts",
+   "wall_s": 0.3,
+   "peak_rss_kb": 166124,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-awg-bc96e334",
+   "tool": "lr_check",
+   "wall_s": 4.35,
+   "peak_rss_kb": 1592368,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "lr_check",
+   "wall_s": 4.2,
+   "peak_rss_kb": 1644644,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power-a5605a04",
+   "tool": "lr_check",
+   "wall_s": 4.58,
+   "peak_rss_kb": 1611712,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power3-7c838703",
+   "tool": "lr_check",
+   "wall_s": 4.41,
+   "peak_rss_kb": 1622136,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-refcal-326f141b",
+   "tool": "lr_check",
+   "wall_s": 4.62,
+   "peak_rss_kb": 1591028,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-scope2east-05ee441f",
+   "tool": "lr_check",
+   "wall_s": 4.64,
+   "peak_rss_kb": 1577044,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "lr_check_mutate",
+   "wall_s": 6.8,
+   "peak_rss_kb": 1585568,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power3-7c838703",
+   "tool": "fence_check",
+   "wall_s": 0.29,
+   "peak_rss_kb": 169992,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-power-a5605a04",
+   "tool": "fence_check",
+   "wall_s": 0.3,
+   "peak_rss_kb": 170200,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-refcal-326f141b",
+   "tool": "fence_check",
+   "wall_s": 0.29,
+   "peak_rss_kb": 171876,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-awg-bc96e334",
+   "tool": "fence_check",
+   "wall_s": 0.31,
+   "peak_rss_kb": 168296,
+   "exit_code": 0,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-scope2east-05ee441f",
+   "tool": "fence_check",
+   "wall_s": 0.31,
+   "peak_rss_kb": 168812,
+   "exit_code": 1,
+   "attempts": 1
+  },
+  {
+   "fixture": "v2-integrated-990d4b03",
+   "tool": "cap",
+   "wall_s": 25.93,
+   "peak_rss_kb": 319464,
+   "exit_code": 0,
+   "attempts": 1
+  }
+ ]
+}
