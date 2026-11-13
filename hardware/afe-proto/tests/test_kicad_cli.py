@@ -14,10 +14,20 @@ SCH = FIX / "v1-34b2e51" / "kicad" / "afe-proto.kicad_sch"
 PCB = FIX / "v2-8a1f7ac" / "v2-awg-bc96e334.kicad_pcb"
 
 
+def staged(tmp_path):
+    """kicad-cli writes a .kicad_prl beside the file it opens; work on a copy so the fixtures stay as committed."""
+    import shutil
+    d = tmp_path / "fixtures"
+    if not d.exists():
+        shutil.copytree(FIX, d)
+    return d
+
+
 def erc(tmp_path, home):
     env = dict(os.environ, HOME=str(home))
     out = tmp_path / "erc.json"
-    r = subprocess.run(["kicad-cli", "sch", "erc", "--format", "json", "-o", str(out), str(SCH)],
+    sch = staged(tmp_path) / SCH.relative_to(FIX)
+    r = subprocess.run(["kicad-cli", "sch", "erc", "--format", "json", "-o", str(out), str(sch)],
                        capture_output=True, text=True, env=env, timeout=250)
     assert out.exists(), r.stdout + r.stderr
     d = json.loads(out.read_text())
@@ -40,7 +50,8 @@ def test_the_same_erc_without_the_tables_does_fail_this_check(tmp_path):
 
 def test_a_render_is_produced(tmp_path):
     out = tmp_path / "r.png"
-    r = subprocess.run(["kicad-cli", "pcb", "render", "-o", str(out), str(PCB)], capture_output=True,
+    pcb = staged(tmp_path) / PCB.relative_to(FIX)
+    r = subprocess.run(["kicad-cli", "pcb", "render", "-o", str(out), str(pcb)], capture_output=True,
                        text=True, timeout=250)
     assert r.returncode == 0 and out.exists(), r.stdout + r.stderr
     b = out.read_bytes()
@@ -82,7 +93,8 @@ def test_the_known_unresolved_models_really_are_missing():
 def _step_products(tmp_path, model_dir):
     out = tmp_path / "b.step"
     env = dict(os.environ, KICAD10_3DMODEL_DIR=str(model_dir))
-    r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-o", str(out), str(PCB)],
+    pcb = staged(tmp_path) / PCB.relative_to(FIX)
+    r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-o", str(out), str(pcb)],
                        capture_output=True, text=True, env=env, timeout=250)
     assert out.exists(), r.stdout + r.stderr
     return out.stat().st_size, __import__("re").findall(r"PRODUCT\('([^']*)'", out.read_text(errors="replace"))

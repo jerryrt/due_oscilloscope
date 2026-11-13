@@ -48,7 +48,26 @@ def versions():
     return out
 
 
-def expand(cfg):
+FIXTURES = "hardware/afe-proto/tests/fixtures"
+
+
+def stage_fixtures():
+    """Copy the fixtures to a temp tree. kicad-cli writes a .kicad_prl (and a lock) beside whatever board
+    it opens, and the fixtures are checked against a manifest: a bench run must leave them as found."""
+    import shutil
+    import tempfile
+    stage = Path(tempfile.mkdtemp(prefix="bench-fixtures-"))
+    shutil.copytree(REPO / FIXTURES, stage / "fixtures")
+    return stage
+
+
+def expand(cfg, stage):
+    def fix(a):
+        return a.replace(FIXTURES, str(stage / "fixtures"))
+    cfg = json.loads(json.dumps(cfg))
+    cfg["boards"] = {k: fix(v) for k, v in cfg["boards"].items()}
+    for t in cfg["per_board"] + cfg["global"]:
+        t["argv"] = [fix(a) for a in t["argv"]]
     steps = []
     for tool in cfg["per_board"]:
         for board, path in cfg["boards"].items():
@@ -117,12 +136,15 @@ def main():
             "installed": os.environ.get("DUE_PCB_IMAGE_INSTALLED", "unknown"),
             "machine": os.environ.get("DUE_PCB_MACHINE", "unknown"), "versions": versions(), "runs": a.runs}
     rows = []
-    for board, tool, argv in expand(cfg):
+    stage = stage_fixtures()
+    for board, tool, argv in expand(cfg, stage):
         if a.only and a.only not in tool:
             continue
         r = measure(board, tool, argv, a.runs, a.mem, a.timeout)
         print(json.dumps(r), flush=True)
         rows.append(r)
+    import shutil
+    shutil.rmtree(stage, ignore_errors=True)
     if not rows:
         sys.exit("bench: no step selected")                    # a bench that measured nothing is not a pass
     if a.write:
