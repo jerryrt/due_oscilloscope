@@ -93,7 +93,7 @@ AMP_LIBS = {'TPH2502': dict(halves='AB', roles={'inp': '+IN{h}', 'inn': '-IN{h}'
 SPICE_IGNORE_LIBS = ('Conn_Coaxial', 'TestPoint')
 SPICE_IGNORE_VALUES = ('KH-BNC50-3511',)
 SPICE_BLOCKS = {'scope': {'CH1', 'CH2'}, 'awg': {'AWG'}}      # the Block fields each study's circuit spans
-SPICE_ROWS = (('N1', 'scope', os.path.join('scope', 'scope_v2.cir')), ('N2', 'awg', os.path.join('awg', 'awg.cir')))
+SPICE_ROWS = (('N1', 'scope', os.path.join('scope', 'range5v', 'c18-47', 'scope_5vc.cir')), ('N2', 'awg', os.path.join('awg', 'awg.cir')))
 SPICE_RULES = {
     'scope': dict(
         anchors={'0': 'GND', 'vccl': '+3V3A', 'ref': 'VREF'},
@@ -445,7 +445,7 @@ def spice_awg_value(t):
 
 
 def spice_scope_value(t):
-    s = t['scope'].replace('Cna an 0 1.2e-11', 'Cna an 0 1.5e-11')
+    s = re.sub(r'Cna an 0 ([0-9.e+-]+)', lambda m: 'Cna an 0 %.4g' % (float(m.group(1)) * 1.25), t['scope'])      # Cn 25 % up, whatever the range's value
     assert s != t['scope']
     t['scope'] = s
 

@@ -19,6 +19,11 @@
   "sim/awg/parts.csv": "9f503e27a85e7fa0fdaa9a900f611ea420a6f2388f2614da14a52d165e429a58",
   "sim/powercal/parts.csv": "c3160e9467a60d005cf474a1df775534bbd3b9a2fdee0fd2b11ff24c21e46c9a",
   "sim/scope/parts.csv": "5bbd2f594a55f867bffb98d23f5d5a807a2962d3830bb2a815cafdb1849b0473",
-  "sim/scope/scope_v2.cir": "87127fc274faae4bc1a0e8dd0541b6e989fede5a190721cae7ac094436c7ca8a"
+  "sim/scope/scope_v2.cir": "87127fc274faae4bc1a0e8dd0541b6e989fede5a190721cae7ac094436c7ca8a",
+  "sim_live/awg/awg.cir": "57ab5a9fff8ffae7a4e6a51129917ba0c7d3d0849e8dd59ec1a555d7774de4b7",
+  "sim_live/awg/parts.csv": "f46099d6ec8777c05d9a1dd1e4ea14d8997c5b08fe5204da3e83f4b84c2639a6",
+  "sim_live/powercal/parts.csv": "c3160e9467a60d005cf474a1df775534bbd3b9a2fdee0fd2b11ff24c21e46c9a",
+  "sim_live/scope/parts.csv": "46d82d15c403d9b92306d68b0a7f77811b0419e11c696e789ae2b581db7f06d9",
+  "sim_live/scope/range5v/c18-47/scope_5vc.cir": "75aa4848841220f977cd18b296d00385e0f0d12dcbc494c0d5b2d68f0189a454"
  }
 }

@@ -18,6 +18,7 @@ import os
 import pathlib
 import re
 import shutil
+import sys
 import subprocess
 import types
 
@@ -34,10 +35,28 @@ from pcbtools.schematic_check import Row
 TESTS = pathlib.Path(__file__).resolve().parents[1]
 FIX = TESTS / 'fixtures' / 'v2-kicad-276a116'
 GOLD = TESTS / 'golden' / 'v2-kicad-276a116'
-SIM = FIX / 'sim'
+SIM = FIX / 'sim_live'            # the studies as landed on 2026-11-13 (D-V2-17); SIM_OLD is the first revision's, which the frozen tools read
+SIM_OLD = FIX / 'sim'
 HAVE_CLI = bool(shutil.which('kicad-cli'))
 SYMDIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
 need_cli = pytest.mark.skipif(not HAVE_CLI, reason='no kicad-cli')
+OLD_SCOPE_NETLIST = os.path.join('scope', 'scope_v2.cir')
+
+
+@pytest.fixture
+def frozen(monkeypatch):
+    """The first revision's design and studies: the old tools (tests/fixtures/v2-kicad-276a116/kicad, goldens in tests/golden) can only be compared with the
+    port on the design they were run on, so the values landed on 2026-11-13 are put back for the test and restored after it."""
+    old = {p['ref']: p for p in v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS}
+    saved = {}
+    for p in v2_sch.PARTS:
+        saved[p['ref']] = {k: p[k] for k in ('value', 'lcsc', 'note')}
+        p.update({k: old[p['ref']][k] for k in ('value', 'lcsc', 'note')})
+    monkeypatch.setattr(sys.modules[__name__], 'SIM', SIM_OLD)
+    monkeypatch.setattr(v2, 'SPICE_ROWS', (('N1', 'scope', OLD_SCOPE_NETLIST), ('N2', 'awg', os.path.join('awg', 'awg.cir'))))
+    yield
+    for p in v2_sch.PARTS:
+        p.update(saved[p['ref']])
 
 
 def pure_rows(parts=None, spice=None, tag=''):
@@ -62,7 +81,16 @@ def verdicts(rows):
 def test_the_design_is_loaded_from_one_place_and_leaves_no_plain_module_name():
     import sys
     assert 'design' not in sys.modules and v2_sch._design.__name__ == 'pcbtools._live_v2.design'
-    assert v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS == v2_sch.PARTS
+    # the frozen design is the first revision's; the live one differs from it only by the values landed on 2026-11-13 (D-V2-17):
+    # the scope's six resistors and two capacitors per channel, and the AWG's R305 and R306. Anything else that moves is a failure.
+    old, new = v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS, v2_sch.PARTS
+    assert [p['ref'] for p in old] == [p['ref'] for p in new]
+    changed = set()
+    for a, b in zip(old, new):
+        assert {k: v for k, v in a.items() if k not in ('value', 'lcsc', 'note')} == {k: v for k, v in b.items() if k not in ('value', 'lcsc', 'note')}, a['ref']
+        if a != b:
+            changed.add(a['ref'])
+    assert changed == {f'{k}{ch * 100 + n}' for ch in (1, 2) for k, n in (('R', 1), ('R', 2), ('R', 3), ('R', 4), ('R', 5), ('R', 6), ('C', 1), ('C', 2))} | {'R305', 'R306'}
 
 
 def test_the_old_tools_are_frozen_with_what_they_read():
@@ -322,7 +350,7 @@ def test_known_figures_of_the_power_calibration_and_scope_rows():
 
 def test_study_rows_known_entries():
     w = v2.study_rows(str(SIM))
-    assert w['scope.R1a'][2] == 'C23192' and w['awg.R3'][0] == 1 and len(w) == 65
+    assert w['scope.R1a'][2] == 'C23178' and w['awg.R3'][0] == 1 and len(w) == 65
     assert v2.expand_refs('R_L1..R_L3 (ladder), C_X') == ['R_L1', 'R_L2', 'R_L3', 'C_X']
     assert v2.csv_value('330R 1%') == 330.0 and v2.csv_value('100n X7R') == pytest.approx(1e-7) and v2.csv_value('TPH2502') is None
 
@@ -442,6 +470,7 @@ def digest(p):
 
 @pytest.mark.pcbnew
 @need_cli
+@pytest.mark.usefixtures("frozen")
 def test_generator_is_byte_identical_to_the_old_build_sch(tmp_path):
     """the committed files and the old script's own output are the references; the only differences are the two that are the
     old project's, and both are explained"""
@@ -464,6 +493,7 @@ def test_generator_is_byte_identical_to_the_old_build_sch(tmp_path):
 
 @pytest.mark.pcbnew
 @need_cli
+@pytest.mark.usefixtures("frozen")
 def test_the_default_header_text_is_the_only_difference_from_the_committed_schematic(tmp_path):
     out = tmp_path / 'new'
     v2.build(str(out))
@@ -483,6 +513,7 @@ def project(tmp_path_factory):
 
 @pytest.mark.pcbnew
 @need_cli
+@pytest.mark.usefixtures("frozen")
 def test_rows_equal_the_old_check_rows_verdict_and_text(project):
     work, proj = project
     rows = v2.all_rows(str(proj / 'afe-v2.kicad_sch'), v2.PARTS, v2.spice_texts(str(SIM)), '', str(SIM))
@@ -511,6 +542,7 @@ def test_a_regenerated_project_passes_every_row(tmp_path):
 
 @pytest.mark.pcbnew
 @need_cli
+@pytest.mark.usefixtures("frozen")
 def test_the_command_line(tmp_path, capsys):
     gen = tmp_path / 'gen'
     assert v2.main(['--build', str(gen)]) == 0 and 'cells' in capsys.readouterr().out
@@ -537,6 +569,7 @@ def test_a_changed_part_value_shows_in_the_rows_through_kicad(tmp_path):
 @pytest.mark.slow
 @pytest.mark.pcbnew
 @need_cli
+@pytest.mark.usefixtures("frozen")
 def test_the_24_arms_equal_the_old_arms_text_included(tmp_path):
     rows = v2.run_arms(str(tmp_path), project_dir=str(FIX / 'kicad'), sim_dir=str(SIM))
     g = golden('M')

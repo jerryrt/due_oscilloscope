@@ -38,18 +38,17 @@ HDR3 = 'Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical'
 
 # kind -> (value, LCSC, footprint, symbol).  Every passive is a JLC Basic part (V2-3, v2/jlc-basic.csv).
 T = {
-    '510k': ('510k 1%', 'C23192', R0603), '30k': ('30k 1%', 'C22984', R0603), '1M': ('1M 1%', 'C22935', R0603),
-    '470k': ('470k 1%', 'C23178', R0603), '200k': ('200k 1%', 'C25811', R0603), '470R': ('470R 1%', 'C23179', R0603),
+    '300k': ('300k 1%', 'C23024', R0603), '330k': ('330k 1%', 'C23137', R0603),
+    '470k': ('470k 1%', 'C23178', R0603), '470R': ('470R 1%', 'C23179', R0603),
     '22R': ('22R 1%', 'C23345', R0603), '510R': ('510R 1%', 'C23193', R0603),
     '27k': ('27k 1%', 'C22967', R0603), '1R': ('1R 1%', 'C22936', R0603), '100R1206': ('100R 1%', 'C17901', R1206),
     '120k': ('120k 1%', 'C25808', R0603), '68k': ('68k 1%', 'C23231', R0603), '56k': ('56k 1%', 'C23206', R0603),
     '8.2k': ('8.2k 1%', 'C25981', R0603), '100k': ('100k 1%', 'C25803', R0603), '10k': ('10k 1%', 'C25804', R0603), '1.8k': ('1.8k 1%', 'C4177', R0603),
     '330R': ('330R 1%', 'C23138', R0603), '15k': ('15k 1%', 'C22809', R0603), '1k': ('1k 1%', 'C21190', R0603),
     '3.9k': ('3.9k 1%', 'C23018', R0603), '4.7k': ('4.7k 1%', 'C23162', R0603), '0R': ('0R', 'C21189', R0603),
-    '22p': ('22p C0G', 'C1653', C0603), '12p': ('12p C0G', 'C38523', C0603), '10p': ('10p C0G', 'C1634', C0603),
+    '18p': ('18p C0G', 'C1647', C0603), '47p': ('47p C0G', 'C1671', C0603), '10p': ('10p C0G', 'C1634', C0603),
     '100n': ('100n X7R', 'C14663', C0603), '1u': ('1u X5R', 'C15849', C0603),
-    '10u': ('10u X5R 25V', 'C15850', C0805), '3k': ('3k 1%', 'C4211', R0603), '2.7k': ('2.7k 1%', 'C13167', R0603),
-    '100R': ('100R 1%', 'C22775', R0603),
+    '10u': ('10u X5R 25V', 'C15850', C0805), '3k': ('3k 1%', 'C4211', R0603),     '150R': ('150R 1%', 'C22808', R0603),
     'BAV99': ('BAV99', 'C2500', SOT23),
     'TPH2502': ('TPH2502-SR', 'C118223', SOP8),
     'LM27762': ('LM27762DSSR', 'C473398', WSON12),
@@ -101,14 +100,14 @@ for ch in (1, 2):
     B = f'CH{ch}'
     other(f'J{b + 1}', 'Connector:Conn_Coaxial', 'KH-BNC50-3511', BNC, {'1': n('IN'), '2': G}, B,
           f'CH{ch} input BNC, right-angle', nc=(), lcsc='C2837587')
-    two(f'R{b + 1}', '510k', n('IN'), n('M1'), B, 'scope.R1a', 'R1 first of two (540k)')
-    two(f'R{b + 2}', '30k', n('M1'), n('N'), B, 'scope.R1b', 'R1 second of two')
-    two(f'C{b + 1}', '22p', n('IN'), n('N'), B, 'scope.C1', 'C1 across R1')
-    two(f'R{b + 3}', '1M', n('N'), n('M2'), B, 'scope.R2a', 'R2 first of two (1.51M)')
-    two(f'R{b + 4}', '510k', n('M2'), G, B, 'scope.R2b', 'R2 second of two, to ground')
-    two(f'R{b + 5}', '470k', n('N'), n('M3'), B, 'scope.R3a', 'R3 first of two (670k)')
-    two(f'R{b + 6}', '200k', n('M3'), VREF, B, 'scope.R3b', 'R3 second of two, to the REF3030E output')
-    two(f'C{b + 2}', '12p', n('N'), G, B, 'scope.Cn', 'Cn at the node')
+    two(f'R{b + 1}', '470k', n('IN'), n('M1'), B, 'scope.R1a', 'R1 first of two (770k)')
+    two(f'R{b + 2}', '300k', n('M1'), n('N'), B, 'scope.R1b', 'R1 second of two')
+    two(f'C{b + 1}', '18p', n('IN'), n('N'), B, 'scope.C1', 'C1 across R1')
+    two(f'R{b + 3}', '470k', n('N'), n('M2'), B, 'scope.R2a', 'R2 first of two (800k)')
+    two(f'R{b + 4}', '330k', n('M2'), G, B, 'scope.R2b', 'R2 second of two, to ground')
+    two(f'R{b + 5}', '330k', n('N'), n('M3'), B, 'scope.R3a', 'R3 first of two (330k)')
+    two(f'R{b + 6}', '0R', n('M3'), VREF, B, 'scope.R3b', 'R3 second of two (0R: R3 is 330k), to the REF3030E output')
+    two(f'C{b + 2}', '47p', n('N'), G, B, 'scope.Cn', 'Cn at the node')
     two(f'R{b + 7}', '470R', n('N'), n('NP'), B, 'scope.Rnp', 'Rnp, ahead of +IN')
     two(f'C{b + 3}', '10p', n('NP'), G, B, 'scope.Cpx', 'Cpx, +IN to ground')
     two(f'R{b + 8}', '22R', n('OUT'), 'CH2_RISO' if ch == 2 else ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
@@ -118,19 +117,19 @@ for ch in (1, 2):
 
 # ---------------------------------------------------------------- AWG: one TPH2502 dual, both halves paralleled
 # Follows sim/awg/awg.cir and parts.csv as they stood at 11:03 on 2026-11-12 (the offset filter Rvr / Cvr is back,
-# Rf = Rg2 = 3k, Rbin 2.7k, and the 330 pF output pole is gone).  Designators are version 2's, the studies' in `sim`.
+# Rf = Rg2 = 3k, Rbin 3k (Rvr 150R), and the 330 pF output pole is gone).  Designators are version 2's, the studies' in `sim`.
 B = 'AWG'
 part('U301', 'TPH2502', {'1': 'AWG_OA', '2': 'AWG_FB', '3': 'AWG_BIN', '4': VN, '5': 'AWG_BIN', '6': 'AWG_FB',
                        '7': 'AWG_OB', '8': P33A}, B, 'awg.U1',
      'both halves paralleled as one gain stage (V2-2)')
-two('R306', '2.7k', 'DAC0', 'AWG_BIN', B, 'awg.R6', 'DAC0 series resistor, divider upper arm')
+two('R306', '3k', 'DAC0', 'AWG_BIN', B, 'awg.R6', 'DAC0 series resistor, divider upper arm')
 two('R307', '27k', 'AWG_BIN', G, B, 'awg.R7', 'divider lower arm: an undriven DAC0 commands ground')
 two('R308', '1R', 'AWG_OA', 'AWG_VO', B, 'awg.R8', 'output balancing, half A')
 two('R309', '1R', 'AWG_OB', 'AWG_VO', B, 'awg.R9', 'output balancing, half B')
 two('R303', '3k', 'AWG_VO', 'AWG_FB', B, 'awg.R3', 'Rf, feedback')
 two('C301', '10p', 'AWG_VO', 'AWG_FB', B, 'awg.C1', 'Cf across Rf')
 two('R304', '3k', 'AWG_FB', 'AWG_VREF', B, 'awg.R4', 'Rg2: inverting node to the offset filter node, no Rg1')
-two('R305', '100R', VREF, 'AWG_VREF', B, 'awg.R5', 'offset filter resistor Rvr, REF3030E output to the filter node')
+two('R305', '150R', VREF, 'AWG_VREF', B, 'awg.R5', 'offset filter resistor Rvr, REF3030E output to the filter node')
 two('C303', '10u', 'AWG_VREF', G, B, 'awg.C3', 'offset filter capacitor, one of two in parallel')
 two('C304', '10u', 'AWG_VREF', G, B, 'awg.C4', 'offset filter capacitor, one of two in parallel')
 two('R301', '100R1206', 'AWG_VO', 'AWG_BNC', B, 'awg.R1', 'back-termination, one of two in parallel (50R)')

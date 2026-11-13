@@ -1,0 +1,16 @@
+refdes_per_channel,qty_per_board,value,package,lcsc,library,role,source
+R1a,2,470k 1%,0603,C23178,Basic,input resistor R1 (first of two in series; 770k),v2/jlc-basic.csv; range5v.md
+R1b,2,300k 1%,0603,C23024,Basic,input resistor R1 (second of two in series),v2/jlc-basic.csv; range5v.md
+R2a,2,470k 1%,0603,C23178,Basic,node to ground R2 (first of two; 800k),v2/jlc-basic.csv; range5v.md
+R2b,2,330k 1%,0603,C23137,Basic,node to ground R2 (second of two),v2/jlc-basic.csv; range5v.md
+R3a,2,330k 1%,0603,C23137,Basic,node to REF3030E R3 (first of two; 330k),v2/jlc-basic.csv; range5v.md
+R3b,2,0R,0603,C21189,Basic,node to REF3030E R3 (second of two: a 0R link; R3 is 330k),v2/jlc-basic.csv; range5v.md
+C1,2,18pF C0G 5%,0603,C1647,Basic,compensation across R1,range5v.md section 4
+Cn,2,47pF C0G 5%,0603,C1671,Basic,compensation at the node N to GND (Cpx adds 10 pF at N),range5v.md section 4
+Rnp,2,470R 1%,0603,C23179,Basic,series resistor ahead of +IN: keeps a 12 V edge under 10 mA in the input diodes,report.md protection
+Cpx,2,10pF C0G 5%,0603,C1634,Basic,+IN to GND after Rnp: removes the Rnp x input-capacitance lag (PM 34 -> 60 deg on the datasheet-fitted models),report.md stability (run.py beh)
+Riso,2,22R 1%,0603,C23345,Basic,amplifier output to ADC pin: AN-1 and SC-10,report.md stability
+Dp,2,BAV99,SOT-23,C2500,Basic,"ADC-pin clamp GND / pin / +3.3 V_A (PR-2, unpowered; keep or drop after VT-5)",report.md protection
+U (shared),1,TPH2502-SR,SOP-8,C118223,Extended,one dual: half per channel; V- = GND; +3.3 V_A only,v2/parts.md (owner decision 2026-11-12)
+C (shared),1,100nF X7R,0603,C14663,Basic,dual supply decoupling (simulated: 100 nF + 1 uF at the dual),report.md assumptions
+C (shared),1,1uF X5R,0603,C15849,Basic,dual supply decoupling,report.md assumptions

@@ -2182,7 +2182,7 @@
 				)
 			)
 		)
-		(property "Value" "1M 1%"
+		(property "Value" "470k 1%"
 			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -2228,7 +2228,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C23178"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -2252,7 +2252,7 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (1.51M)"
+		(property "Note" "R2 first of two (800k)"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -2838,7 +2838,7 @@
 				)
 			)
 		)
-		(property "Value" "30k 1%"
+		(property "Value" "300k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -2884,7 +2884,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22984"
+		(property "LCSC" "C23024"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3170,7 +3170,7 @@
 				)
 			)
 		)
-		(property "Value" "12p C0G"
+		(property "Value" "47p C0G"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3216,7 +3216,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C38523"
+		(property "LCSC" "C1671"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3502,7 +3502,7 @@
 				)
 			)
 		)
-		(property "Value" "200k 1%"
+		(property "Value" "0R"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3548,7 +3548,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25811"
+		(property "LCSC" "C21189"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3572,7 +3572,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two, to the REF3030E output"
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3668,7 +3668,7 @@
 				)
 			)
 		)
-		(property "Value" "22p C0G"
+		(property "Value" "18p C0G"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3714,7 +3714,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1653"
+		(property "LCSC" "C1647"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3834,7 +3834,7 @@
 				)
 			)
 		)
-		(property "Value" "200k 1%"
+		(property "Value" "0R"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3880,7 +3880,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25811"
+		(property "LCSC" "C21189"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -3904,7 +3904,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two, to the REF3030E output"
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -5787,7 +5787,7 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
+		(property "Value" "330k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -5833,7 +5833,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
+		(property "LCSC" "C23137"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -5857,7 +5857,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 first of two (670k)"
+		(property "Note" "R3 first of two (330k)"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -6522,7 +6522,7 @@
 				)
 			)
 		)
-		(property "Value" "100R 1%"
+		(property "Value" "150R 1%"
 			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -6568,7 +6568,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22775"
+		(property "LCSC" "C22808"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -8282,7 +8282,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "330k 1%"
 			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -8328,7 +8328,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23137"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -8780,7 +8780,7 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
+		(property "Value" "330k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -8826,7 +8826,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
+		(property "LCSC" "C23137"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -8850,7 +8850,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 first of two (670k)"
+		(property "Note" "R3 first of two (330k)"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -9112,7 +9112,7 @@
 				)
 			)
 		)
-		(property "Value" "30k 1%"
+		(property "Value" "300k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -9158,7 +9158,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22984"
+		(property "LCSC" "C23024"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -9278,7 +9278,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "470k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -9324,7 +9324,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23178"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -9348,7 +9348,7 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (540k)"
+		(property "Note" "R1 first of two (770k)"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -11251,7 +11251,7 @@
 				)
 			)
 		)
-		(property "Value" "2.7k 1%"
+		(property "Value" "3k 1%"
 			(at 0 1.43 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -11297,7 +11297,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C13167"
+		(property "LCSC" "C4211"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -11583,7 +11583,7 @@
 				)
 			)
 		)
-		(property "Value" "1M 1%"
+		(property "Value" "470k 1%"
 			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -11629,7 +11629,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C23178"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -11653,7 +11653,7 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (1.51M)"
+		(property "Note" "R2 first of two (800k)"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -17988,7 +17988,7 @@
 				)
 			)
 		)
-		(property "Value" "22p C0G"
+		(property "Value" "18p C0G"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -18034,7 +18034,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1653"
+		(property "LCSC" "C1647"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -19861,7 +19861,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "470k 1%"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -19907,7 +19907,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23178"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -19931,7 +19931,7 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (540k)"
+		(property "Note" "R1 first of two (770k)"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -20027,7 +20027,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "330k 1%"
 			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -20073,7 +20073,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23137"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -21810,7 +21810,7 @@
 				)
 			)
 		)
-		(property "Value" "12p C0G"
+		(property "Value" "47p C0G"
 			(at 0 1.43 180)
 			(layer "F.Fab")
 			(hide yes)
@@ -21856,7 +21856,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C38523"
+		(property "LCSC" "C1671"
 			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)

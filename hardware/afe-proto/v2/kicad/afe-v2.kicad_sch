@@ -10038,7 +10038,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "330k 1%"
 			(at 723.9 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10080,7 +10080,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23137"
 			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -10567,7 +10567,7 @@
 				)
 			)
 		)
-		(property "Value" "1M 1%"
+		(property "Value" "470k 1%"
 			(at 690.88 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10609,7 +10609,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C23178"
 			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -10653,7 +10653,7 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (1.51M)"
+		(property "Note" "R2 first of two (800k)"
 			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -13299,7 +13299,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "470k 1%"
 			(at 60.96 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13341,7 +13341,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23178"
 			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -13385,7 +13385,7 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (540k)"
+		(property "Note" "R1 first of two (770k)"
 			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -13432,7 +13432,7 @@
 				)
 			)
 		)
-		(property "Value" "200k 1%"
+		(property "Value" "0R"
 			(at 787.4 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13474,7 +13474,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25811"
+		(property "LCSC" "C21189"
 			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -13518,7 +13518,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two, to the REF3030E output"
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
 			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -13701,7 +13701,7 @@
 				)
 			)
 		)
-		(property "Value" "30k 1%"
+		(property "Value" "300k 1%"
 			(at 93.98 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13743,7 +13743,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22984"
+		(property "LCSC" "C23024"
 			(at 93.98 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -14832,7 +14832,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "470k 1%"
 			(at 591.82 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14874,7 +14874,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23178"
 			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -14918,7 +14918,7 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (540k)"
+		(property "Note" "R1 first of two (770k)"
 			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -15225,7 +15225,7 @@
 				)
 			)
 		)
-		(property "Value" "12p C0G"
+		(property "Value" "47p C0G"
 			(at 817.88 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15267,7 +15267,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C38523"
+		(property "LCSC" "C1671"
 			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -17353,7 +17353,7 @@
 				)
 			)
 		)
-		(property "Value" "30k 1%"
+		(property "Value" "300k 1%"
 			(at 624.84 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17395,7 +17395,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22984"
+		(property "LCSC" "C23024"
 			(at 624.84 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -17616,7 +17616,7 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
+		(property "Value" "330k 1%"
 			(at 220.98 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17658,7 +17658,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
+		(property "LCSC" "C23137"
 			(at 220.98 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -17702,7 +17702,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 first of two (670k)"
+		(property "Note" "R3 first of two (330k)"
 			(at 220.98 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -19009,7 +19009,7 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
+		(property "Value" "330k 1%"
 			(at 754.38 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19051,7 +19051,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
+		(property "LCSC" "C23137"
 			(at 754.38 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -19095,7 +19095,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 first of two (670k)"
+		(property "Note" "R3 first of two (330k)"
 			(at 754.38 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -19695,7 +19695,7 @@
 				)
 			)
 		)
-		(property "Value" "510k 1%"
+		(property "Value" "330k 1%"
 			(at 193.04 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19737,7 +19737,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23192"
+		(property "LCSC" "C23137"
 			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -19961,7 +19961,7 @@
 				)
 			)
 		)
-		(property "Value" "2.7k 1%"
+		(property "Value" "3k 1%"
 			(at 500.38 136.652 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20003,7 +20003,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C13167"
+		(property "LCSC" "C4211"
 			(at 500.38 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -20566,7 +20566,7 @@
 				)
 			)
 		)
-		(property "Value" "22p C0G"
+		(property "Value" "18p C0G"
 			(at 657.86 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20608,7 +20608,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1653"
+		(property "LCSC" "C1647"
 			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -21228,7 +21228,7 @@
 				)
 			)
 		)
-		(property "Value" "200k 1%"
+		(property "Value" "0R"
 			(at 256.54 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21270,7 +21270,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25811"
+		(property "LCSC" "C21189"
 			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -21314,7 +21314,7 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two, to the REF3030E output"
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
 			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -21361,7 +21361,7 @@
 				)
 			)
 		)
-		(property "Value" "100R 1%"
+		(property "Value" "150R 1%"
 			(at 734.06 136.652 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21403,7 +21403,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22775"
+		(property "LCSC" "C22808"
 			(at 734.06 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -21494,7 +21494,7 @@
 				)
 			)
 		)
-		(property "Value" "12p C0G"
+		(property "Value" "47p C0G"
 			(at 287.02 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21536,7 +21536,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C38523"
+		(property "LCSC" "C1671"
 			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -22044,7 +22044,7 @@
 				)
 			)
 		)
-		(property "Value" "22p C0G"
+		(property "Value" "18p C0G"
 			(at 127 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22086,7 +22086,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1653"
+		(property "LCSC" "C1647"
 			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -22576,7 +22576,7 @@
 				)
 			)
 		)
-		(property "Value" "1M 1%"
+		(property "Value" "470k 1%"
 			(at 157.48 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22618,7 +22618,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C23178"
 			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -22662,7 +22662,7 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (1.51M)"
+		(property "Note" "R2 first of two (800k)"
 			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
