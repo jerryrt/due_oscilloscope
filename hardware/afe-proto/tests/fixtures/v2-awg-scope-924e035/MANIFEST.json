@@ -1,0 +1,19 @@
+{
+ "branch": "pcb-tools",
+ "commit": "924e035",
+ "repo_path_prefix": "hardware/afe-proto/ (v2/sim/awg, v2/sim/scope and v2/jlc-basic.csv here)",
+ "note": "FROZEN INPUTS for the v2 AWG and scope simulation port: the OLD scripts as of 924e035 (v2/sim/awg: run.py, core.py, design.py, table.py, models/tph2502.inc; v2/sim/scope: run.py, report.py, beh_check.py, models/VENDOR_MODEL.sha256, and netlib.py as of a5d0a0c^, before the shared plumbing) and the Basic-parts table design.py reads. v2/sim/awg/core.py is NOT in git on any branch: .gitignore's 'core.*' (core dumps) ignores it, so it was taken from the v2-layout-wip worktree. The vendor macro and the behavioural model are not here: tests/golden/v2-awg-scope-924e035/run_old.sh builds them into the throw-away tree (models/tph2501 from tools/fetch_models.py, models-open/tph2502-beh).",
+ "files": {
+  "v2/jlc-basic.csv": "e956eb8cdeac23083133c3090a4e535b4cdbee3ace598b9d003eb28b83cc854c",
+  "v2/sim/awg/core.py": "ae44ece7f21a3bf92743c6ca4374e56b62d1affd0d50f61577ad58bad3e3a2b0",
+  "v2/sim/awg/design.py": "f5a820a442ef934cbb8d7bf82a2167fa223a499459211667e5a160d6274041f1",
+  "v2/sim/awg/models/tph2502.inc": "50d7d6476b1947eb9b9fc0a375c59336ae85ddb605098c79ab5e9bf1c6574c4f",
+  "v2/sim/awg/run.py": "3f696935957192e65eb968f3dfa5292aa9ed2870d88ccb08d2818df4563cb044",
+  "v2/sim/awg/table.py": "a6bb2b498e35c9e724128350ab247cc43b358edd955f5f324bf0ff611605e945",
+  "v2/sim/scope/beh_check.py": "c2248faa87f8a2e43e0fa101a9b607ed024dd36b942b0a3230d04fde26b53037",
+  "v2/sim/scope/models/VENDOR_MODEL.sha256": "f4d7731c77219427c0fca06e1c6c7ea04839e4bd99bd8732dc95d548597762f4",
+  "v2/sim/scope/netlib.py": "3d0b89dd8d58ee212d1ace33e168d55663ef6ab539c6951bbd8b760f86f1085d",
+  "v2/sim/scope/report.py": "b43d47554e1486658ea29064b72338997ad9ec18c15328c0e46e1d260cbde279",
+  "v2/sim/scope/run.py": "9bd56dda4f0776e95d7958c52d83ad16789baca08e5c0d923aa2c8615f4c339f"
+ }
+}

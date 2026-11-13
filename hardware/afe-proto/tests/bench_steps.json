@@ -690,6 +690,49 @@
         "-c",
         "import subprocess,shutil,sys,tempfile,pathlib\nr=pathlib.Path('hardware/afe-proto/v2');t=pathlib.Path(tempfile.mkdtemp())/'v2';shutil.copytree(r,t,ignore=shutil.ignore_patterns('__pycache__','raw*'))\nfor s in ['power','refladder','sense','sc7','coupling','wires','parts','report']:\n    subprocess.run([sys.executable,'-I',s+'.py'],cwd=t/'sim'/'powercal',check=True,capture_output=True)"
       ]
+    },
+    {
+      "tool": "old-v2-awg",
+      "board": "-",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v2-awg-scope-924e035/run_old.sh",
+        "awg",
+        "/tmp/bench-old-v2awg"
+      ]
+    },
+    {
+      "tool": "new-v2-awg",
+      "board": "-",
+      "argv": [
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/v2/sim/awg/run.py",
+        "--out",
+        "/tmp/bench-new-v2awg",
+        "--work",
+        "/tmp/bench-new-v2awg-w"
+      ]
+    },
+    {
+      "tool": "old-v2-scope",
+      "board": "-",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v2-awg-scope-924e035/run_old.sh",
+        "scope",
+        "/tmp/bench-old-v2scope"
+      ]
+    },
+    {
+      "tool": "new-v2-scope",
+      "board": "-",
+      "argv": [
+        "bash",
+        "-c",
+        "cd hardware/afe-proto/v2/sim/scope && for s in netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards; do python3 -I -B run.py --out /tmp/bench-new-v2scope --work /tmp/bench-new-v2scope-w/$s $s > /dev/null || exit 1; done && python3 -I -B report.py /tmp/bench-new-v2scope"
+      ]
     }
   ],
   "_note_v2": "old-v2-* steps are the frozen v2 tools (tests/fixtures/v2-8a1f7ac/tools), new-v2-* the pcbtools replacements, one pair per tool and board so the table reads before and after. Exit 0 and 1 are both a finished run (1 = a rule FAILed on the board, which these frozen boards do) unless the output holds a Traceback (an exit 1 from an exception must not pass for a verdict); >1 is a crash. new-v2-fence has no CLI: bench_tools.py fence reads BASE and the block board and runs fence.check_fence. Old vs new cap in the image (3 runs, median): old 26.2 s / 312 MB; new first measured 97.2 s / 551 MB because numpy/scipy started 12 BLAS threads under the container's 2-CPU quota (spinning against it); pcbtools/__init__.py now pins them to one: new 15.3 s / 522 MB, i.e. about 1.7x faster for about 1.7x the memory (CSR operator); budget from the image run. Select only these with --only -v2-",
@@ -725,8 +768,17 @@
     [
       "old-v1-lr_check-mutate",
       "new-v1-check-mutate"
+    ],
+    [
+      "old-v2-awg",
+      "new-v2-awg"
+    ],
+    [
+      "old-v2-scope",
+      "new-v2-scope"
     ]
   ],
   "_pairs_doc": "[old, new] tool names measured interleaved (old, new, old, new, ...) on every board both are defined for, so machine load hits both arms alike; only the ratio is quotable",
-  "_note_v2_schematic": "old-v2-schematic-* are the frozen v2 schematic tools (tests/fixtures/v2-kicad-276a116, run by tests/golden/v2-kicad-276a116/run_old.sh), new-v2-schematic-* the pcbtools replacements (pcbtools.boards.v2_checks). Both checks run the rows and the 24 mutation arms on the frozen committed project; exit 1 is the finished run of both (S1 fails on the committed project: its afe-v2.kicad_pro exclusion is stale), anything else is a crash. The old check regenerates 25 variants in a scratch folder and the new one the same 25, so the pair is like for like. No budget exists for these rows yet: measure with --pairs in the image first."
+  "_note_v2_schematic": "old-v2-schematic-* are the frozen v2 schematic tools (tests/fixtures/v2-kicad-276a116, run by tests/golden/v2-kicad-276a116/run_old.sh), new-v2-schematic-* the pcbtools replacements (pcbtools.boards.v2_checks). Both checks run the rows and the 24 mutation arms on the frozen committed project; exit 1 is the finished run of both (S1 fails on the committed project: its afe-v2.kicad_pro exclusion is stale), anything else is a crash. The old check regenerates 25 variants in a scratch folder and the new one the same 25, so the pair is like for like. No budget exists for these rows yet: measure with --pairs in the image first.",
+  "_note_v2_sim": "old-v2-awg / old-v2-scope are the frozen v2 simulation studies (tests/fixtures/v2-awg-scope-924e035, run by tests/golden/v2-awg-scope-924e035/run_old.sh on a throw-away copy), new-v2-* the ported studies (v2/sim/awg, v2/sim/scope on simtools). The scope studies run one section per process, as the golden was taken. Both need ngspice and the fetched vendor models (models/tph2501) and run in the PCB image; no budget exists for these rows yet: measure with the bench of record. The old arm of each pair has no cap-killed run to report (peak figures are the container's cgroup)."
 }

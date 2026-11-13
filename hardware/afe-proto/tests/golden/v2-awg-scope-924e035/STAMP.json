@@ -1,0 +1,46 @@
+{
+ "what": "the OLD v2 AWG study (run.py with core.py, design.py, table.py) and the OLD v2 scope study (run.py one section per process, then report.py), frozen at 924e035 in tests/fixtures/v2-awg-scope-924e035 and run on throw-away copies in the PCB image",
+ "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+ "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+ "ngspice": "45.2",
+ "taken": "2026-11-12",
+ "code": "awg: the tree of 924e035 plus v2/sim/awg/core.py, which is NOT in git (.gitignore's 'core.*' core-dump pattern ignores it; taken from the v2-layout-wip worktree, sha256 ae44ece7f21a3bf92743c6ca4374e56b62d1affd0d50f61577ad58bad3e3a2b0). scope: run.py and report.py as of 924e035, netlib.py of a5d0a0c^ (before the shared plumbing: its own run_ng, no cap, no .save)",
+ "models": "macro = models/tph2501/Spice_Model_TPH2501/TPH2501.mdl (tools/fetch_models.py) through sed 's/ tc1=0.001//', sha256 256eeb242fe2d960625eb2c8b8d94d71a3e982730a617f01eb8cfcf90322fae1; behavioural = models-open/tph2502-beh/tph2502_beh.lib sha256 e5d30338104d9389b942d8c1b708f02e8850c0f4a7a8caba0815ce47856e8d4e. The Samsung page is not read by either study (the v2 studies use C0G parts and an ideal ESR), so no stand-in was needed",
+ "how": "docker/pcb/run.sh -m 3G -t 3000 bash hardware/afe-proto/tests/golden/v2-awg-scope-924e035/run_old.sh TOOL OUTDIR   (TOOL: awg | scope; the tree is rebuilt under the fixed path /tmp/v2-old-TOOL because the awg header records the macro's path)",
+ "old_code_defect_worked_around": "the old scope section `netlist` writes netlists/scope_v2.cir without creating netlists/ (the repository's copy exists but is gitignored): run_old.sh creates it, which is why a first attempt exited 1 at that section",
+ "reproduced": "awg: run twice, every output byte-identical (results.json, awg.cir, parts.csv, report_table.md, stdout.txt). scope: run twice, every result file, scope_v2.cir, report.md and stdout byte-identical; only timing.txt (wall time per section, not kept as a golden) differs",
+ "against_committed_results": "awg results.json: 54 values differ from the committed raw/results.json (rtol 1e-9), at 1e-5 relative and below in startup rows, plus header; scope: 42 values in prot, tran, static, guards, meta. The committed ones were taken with ngspice 47, this image carries 45.2 (the same 1e-4 effect the v1 stamp records)",
+ "verdict_of_record": "awg: 99 rows, 0 FAIL. scope: report.md 19 rows, fails: []",
+ "single_run_figures": {
+  "awg": {
+   "wall_s": 15.24,
+   "peak_rss_kb": 95488,
+   "cap": "3G",
+   "second_run_wall_s": 13.99
+  },
+  "scope": {
+   "wall_s": 60.26,
+   "peak_rss_kb": 273616,
+   "cap": "3G",
+   "second_run_wall_s": 60.19,
+   "per_section_s": {
+    "netlist": 0.09,
+    "cscan": 7.61,
+    "dc": 0.18,
+    "ac": 0.53,
+    "bw": 0.14,
+    "noise": 0.09,
+    "d17": 0.76,
+    "tran": 36.66,
+    "stab": 0.85,
+    "beh": 0.67,
+    "prot": 10.2,
+    "xtalk": 0.75,
+    "static": 0.31,
+    "mc": 0.37,
+    "guards": 0.88
+   },
+   "note": "the container cgroup peak of the whole run; per-section seconds from run 1 (timing.txt)"
+  }
+ }
+}
