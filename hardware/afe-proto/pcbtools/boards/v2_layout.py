@@ -101,3 +101,8 @@ BOARD_SETUP = {
     'board': {'design_settings': {'rules': {"max_error": 0.005, "min_clearance": 0.15, "min_connection": 0.0, "min_copper_edge_clearance": 0.45, "min_groove_width": 0.0, "min_hole_clearance": 0.25, "min_hole_to_hole": 0.25, "min_microvia_diameter": 0.2, "min_microvia_drill": 0.1, "min_resolved_spokes": 2, "min_silk_clearance": 0.0, "min_text_height": 1.0, "min_text_thickness": 0.12, "min_through_hole_diameter": 0.3, "min_track_width": 0.15, "min_via_annular_width": 0.15, "min_via_diameter": 0.5, "solder_mask_to_copper_clearance": 0.0, "use_height_for_length_calcs": True}}},
     'net_settings': {'classes': [{"bus_width": 12, "clearance": 0.15, "diff_pair_gap": 0.25, "diff_pair_via_gap": 0.25, "diff_pair_width": 0.15, "line_style": 0, "microvia_diameter": 0.3, "microvia_drill": 0.1, "name": "Default", "pcb_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647, "schematic_color": "rgba(0, 0, 0, 0.000)", "track_width": 0.15, "tuning_profile": "", "via_diameter": 0.6, "via_drill": 0.3, "wire_width": 6}], 'meta': {'version': 5}, 'net_colors': {}, 'netclass_assignments': {}, 'netclass_patterns': []},
 }
+
+# LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
+# comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
+IDENTITY_CHECK = True
+SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)

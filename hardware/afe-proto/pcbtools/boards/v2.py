@@ -109,7 +109,7 @@ LR_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', 
 TEST_BLOCKS = ('CH1', 'CH2', 'AWG', 'POWER', 'REFCAL')
 TP_NETS = {'TP101': '/A1', 'TP201': '/A0', 'TP301': '/AWG_VO', 'TP401': '/+3V3A', 'TP402': '/VNEG', 'TP403': '/+5V_F',
            'TP404': '/GND', 'TP501': '/VREF'}
-SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON', NAME, ID_LINE, SN_LABEL)     # the last three: the identity block on the top silk (the bottom marker is held by identity.findings; boardio reads F.SilkS texts only)
+SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON')       # the frozen set: the old tool's boards and fixtures carry no identity (v2_layout adds it)
 # Arrows. v2 had four signal-flow arrows on the silk (two in CH1, one in CH2, one at POWER); the owner had them removed on 2026-11-13. On a board an
 # arrow conventionally means polarity, pin 1 or the direction of insertion, so a flow arrow reads as one of those; the direction of a signal is
 # already given by the "CH1 IN", "CH2 IN" and "AWG OUT" labels. Board silk carries designators, pin-1 and polarity marks, connector and test-point

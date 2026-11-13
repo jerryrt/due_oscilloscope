@@ -57,10 +57,11 @@ def apply(text):
             return '' if w in words or re.search(r'\bREV [A-Z]\b', w) else b
         return '' if '(fill yes)' in b and '(layer "F.SilkS")' in b else b
     text = re.sub(r'\n\t\((?:gr_text|gr_rect)\n?[^\n]*(?:\n\t\t[^\n]*)*\n\t\)', drop, text)
-    i = text.rfind('\n\t(embedded_fonts')                  # inside the file's last items, before the trailer, as KiCad writes graphics
+    # before the first board-level text: pinlabels.apply_labels inserts its labels after the last one, so the two splices keep each other's bytes
+    i = text.find('\n\t(gr_text ')
     if i < 0:
-        i = text.rindex(')')
-    return text[:i].rstrip('\n') + '\n' + ''.join(items()).rstrip('\n') + '\n' + text[i:].lstrip('\n') if i == text.rindex(')') else text[:i] + '\n' + ''.join(items()).rstrip('\n') + text[i:]
+        i = text.rfind('\n\t(embedded_fonts')
+    return text[:i] + '\n' + ''.join(items()).rstrip('\n') + text[i:]
 
 
 if __name__ == '__main__':

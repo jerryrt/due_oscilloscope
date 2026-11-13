@@ -22957,6 +22957,62 @@
 		(layer "User.1")
 		(uuid "7598fc3b-18ac-4d1b-9a2f-6c944f5d3867")
 	)
+	(gr_text "COPPIA"
+		(at 73.7 104.7 0)
+		(layer "F.SilkS")
+		(uuid "e8ec3454-c0f6-58a7-bc63-1e310db9b0aa")
+		(effects
+			(font
+				(size 2 2)
+				(thickness 0.3)
+			)
+		)
+	)
+	(gr_text "AFE-2  REV A"
+		(at 74.84 107.62 0)
+		(layer "F.SilkS")
+		(uuid "54b6b1ef-d117-5043-b491-f57154085328")
+		(effects
+			(font
+				(size 1.2 1.2)
+				(thickness 0.18)
+			)
+		)
+	)
+	(gr_text "S/N"
+		(at 69.43 110.84 0)
+		(layer "F.SilkS")
+		(uuid "d3eb908c-0613-5609-a2c9-61186703702a")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_rect
+		(start 71.85 109.34)
+		(end 81.85 112.34)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill yes)
+		(layer "F.SilkS")
+		(uuid "73863730-86b9-5726-9095-4d3c2081bf68")
+	)
+	(gr_text "JLCJLCJLCJLC"
+		(at 79.7 122.4 0)
+		(layer "B.SilkS")
+		(uuid "e20ac901-fca7-5cb8-8681-5fb58bcc8129")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify mirror)
+		)
+	)
 	(gr_text "AWG"
 		(at 121.2 132.4 0)
 		(layer "F.SilkS")
@@ -31380,62 +31436,6 @@
 				(xy 67.4505 99.113385) (xy 67.4505 92.7095) (xy 67.469407 92.651309) (xy 67.518907 92.615345) (xy 67.5495 92.6105)
 				(xy 166.4505 92.6105)
 			)
-		)
-	)
-	(gr_text "COPPIA"
-		(at 73.7 104.7 0)
-		(layer "F.SilkS")
-		(uuid "e8ec3454-c0f6-58a7-bc63-1e310db9b0aa")
-		(effects
-			(font
-				(size 2 2)
-				(thickness 0.3)
-			)
-		)
-	)
-	(gr_text "AFE-2  REV A"
-		(at 74.84 107.62 0)
-		(layer "F.SilkS")
-		(uuid "54b6b1ef-d117-5043-b491-f57154085328")
-		(effects
-			(font
-				(size 1.2 1.2)
-				(thickness 0.18)
-			)
-		)
-	)
-	(gr_text "S/N"
-		(at 69.43 110.84 0)
-		(layer "F.SilkS")
-		(uuid "d3eb908c-0613-5609-a2c9-61186703702a")
-		(effects
-			(font
-				(size 1 1)
-				(thickness 0.15)
-			)
-		)
-	)
-	(gr_rect
-		(start 71.85 109.34)
-		(end 81.85 112.34)
-		(stroke
-			(width 0.15)
-			(type solid)
-		)
-		(fill yes)
-		(layer "F.SilkS")
-		(uuid "73863730-86b9-5726-9095-4d3c2081bf68")
-	)
-	(gr_text "JLCJLCJLCJLC"
-		(at 79.7 122.4 0)
-		(layer "B.SilkS")
-		(uuid "e20ac901-fca7-5cb8-8681-5fb58bcc8129")
-		(effects
-			(font
-				(size 1 1)
-				(thickness 0.15)
-			)
-			(justify mirror)
 		)
 	)
 	(embedded_fonts no)

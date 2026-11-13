@@ -15,7 +15,7 @@ to prove a rebuild is the same file).
 Options are those of `docs/jlcpcb.md` section 1: Gerber with Protel extensions, 4.6 format, extended X2 and netlist attributes, no drill marks, scale 1:1;
 Excellon in mm, absolute origin, decimal zeros, PTH and NPTH in separate files, alternate mode for ovals. That page cites a KiCad 9 article; no KiCad 10 article
 was found *(check)*. The plot time that kicad-cli writes into the headers is replaced by 2000-01-01, entries are sorted and carry a fixed date and mode, so
-the zip is byte-identical between runs (tested). The names come from the board configuration (`PRODUCT_NAME`, `MODEL`, `REV`), so a new revision letter renames every file; the zip is flat; JLC takes the BOM and CPL in a separate upload step, so leave those two out of the Gerber upload.
+the zip is byte-identical between runs (tested). The names come from the board configuration (`NAME`, `MODEL`, `REV`), so a new revision letter renames every file; the zip is flat; JLC takes the BOM and CPL in a separate upload step, so leave those two out of the Gerber upload.
 
 | member | size |
 |---|---|

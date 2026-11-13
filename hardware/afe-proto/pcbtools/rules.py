@@ -990,7 +990,7 @@ def lr11(b, cfg):
         npin = len(_pl)
         pinsize = f' ({_pl[0].h} x {_pl[0].w} mm, overhang {cfg.OVERHANG} mm)' if _pl else ''
     nid = ''
-    if hasattr(cfg, 'IDENT'):                              # the name / model / revision / serial box / order-number text (pcbtools/identity.py), and no arrow heads
+    if getattr(cfg, 'IDENTITY_CHECK', False):                              # the name / model / revision / serial box / order-number text (pcbtools/identity.py), and no arrow heads
         from . import identity, silkarrows
         _path = getattr(b, 'path', '')
         if _path and str(_path).endswith('.kicad_pcb') and os.path.isfile(_path):

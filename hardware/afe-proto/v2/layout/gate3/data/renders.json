@@ -4,31 +4,31 @@
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-F.Cu-silk.png",
   "link": "../integrated/render/afe-v2-integrated-F.Cu-silk.png",
   "exists": true,
-  "newer_than_board": true,
-  "delta_s": 57.5
+  "newer_than_board": false,
+  "delta_s": -1306.2
  },
  {
   "view": "bottom (B.Cu)",
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-B.Cu.png",
   "link": "../integrated/render/afe-v2-integrated-B.Cu.png",
   "exists": true,
-  "newer_than_board": true,
-  "delta_s": 57.6
+  "newer_than_board": false,
+  "delta_s": -1306.1
  },
  {
   "view": "3D top",
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d.png",
   "link": "../integrated/render/afe-v2-integrated-3d.png",
   "exists": true,
-  "newer_than_board": true,
-  "delta_s": 61.4
+  "newer_than_board": false,
+  "delta_s": -1302.3
  },
  {
   "view": "3D bottom",
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d-bottom.png",
   "link": "../integrated/render/afe-v2-integrated-3d-bottom.png",
   "exists": true,
-  "newer_than_board": true,
-  "delta_s": 64.2
+  "newer_than_board": false,
+  "delta_s": -1299.5
  }
 ]

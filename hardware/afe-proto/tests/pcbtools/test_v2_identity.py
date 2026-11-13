@@ -39,3 +39,9 @@ def test_the_placer_is_idempotent_on_the_board():
     sys.path.insert(0, str(BOARD.parents[1]))
     import place_identity
     assert place_identity.apply(TXT) == TXT
+
+
+def test_the_layout_config_switches_the_identity_rule_on_and_the_frozen_one_does_not():
+    from pcbtools.boards import v2_layout
+    assert v2_layout.IDENTITY_CHECK is True and not getattr(v2, 'IDENTITY_CHECK', False)
+    assert {v2.NAME, v2.ID_LINE, v2.SN_LABEL} <= set(v2_layout.SILK_WORDS) and v2.NAME not in v2.SILK_WORDS
