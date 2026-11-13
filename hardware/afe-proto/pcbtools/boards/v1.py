@@ -7,6 +7,7 @@ will switch to the live v1 files when v1's layout reaches main through review. T
 fence_check.py are written here, each with its origin.
 """
 import importlib.util
+import json
 import os
 import sys
 
@@ -115,6 +116,15 @@ def _erc_exclusions(pin_at, uid, root):
              f"|/{root}|/{root}|/{root}", 'PGOOD unused, tied to GND per SNVSAF7C; GND carries the PWR_FLAG']]
 
 
+# The board setup the project file carries (DRC and the router read it): the values the layout has been judged against, written once here.
+# Everything else KiCad takes from its defaults. min_copper_edge_clearance 0.45 mm: spec team's ruling 2026-11-13 (the fabricator's minimum is 0.2 mm *(check)*
+# and the outline tolerance +-0.2 mm, so 0.45 leaves 0.25 mm worst case; v2's lanes were already ruled at >= 0.45 mm to the outline).
+BOARD_SETUP = {
+    'board': {'design_settings': {'rules': {"max_error": 0.005, "min_clearance": 0.0, "min_connection": 0.0, "min_copper_edge_clearance": 0.45, "min_groove_width": 0.0, "min_hole_clearance": 0.25, "min_hole_to_hole": 0.25, "min_microvia_diameter": 0.2, "min_microvia_drill": 0.1, "min_resolved_spokes": 2, "min_silk_clearance": 0.0, "min_text_height": 0.8, "min_text_thickness": 0.08, "min_through_hole_diameter": 0.3, "min_track_width": 0.2, "min_via_annular_width": 0.1, "min_via_diameter": 0.5, "solder_mask_to_copper_clearance": 0.0, "use_height_for_length_calcs": True}}},
+    'net_settings': {'classes': [{"bus_width": 12, "clearance": 0.2, "diff_pair_gap": 0.25, "diff_pair_via_gap": 0.25, "diff_pair_width": 0.2, "line_style": 0, "microvia_diameter": 0.3, "microvia_drill": 0.1, "name": "Default", "pcb_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647, "schematic_color": "rgba(0, 0, 0, 0.000)", "track_width": 0.2, "tuning_profile": "", "via_diameter": 0.6, "via_drill": 0.3, "wire_width": 6}], 'meta': {'version': 5}, 'net_colors': {}, 'netclass_assignments': {}, 'netclass_patterns': []},
+}
+
+
 def sch_cfg(**over):
     """the namespace schematic.write_all(PARTS, cfg, out_dir) takes; keyword arguments replace a field (the check's mutation arms)"""
     import types
@@ -126,7 +136,7 @@ def sch_cfg(**over):
     cfg = types.SimpleNamespace(
         PROJECT=PROJECT, NS=NS, BLOCK_ORDER=list(BLOCK_ORDER), BLOCK_TITLE=dict(BLOCK_TITLE), PWR_FLAG_NETS=list(PWR_FLAG_NETS),
         TITLE=TITLE + ': AFE shield for the Arduino Due', REV=REV, COMMENTS=list(SCH_COMMENTS), PROJECT_SYMBOLS=[tmux],
-        ERC_EXCLUSIONS=_erc_exclusions, SYMBOL_DIR=SYMBOL_DIR)
+        ERC_EXCLUSIONS=_erc_exclusions, SYMBOL_DIR=SYMBOL_DIR, BOARD_SETUP=BOARD_SETUP)
     for k, v in over.items():
         setattr(cfg, k, v)
     return cfg

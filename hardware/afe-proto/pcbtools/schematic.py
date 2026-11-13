@@ -326,10 +326,14 @@ FP_LIB_TABLE = ('(fp_lib_table\n\t(version 7)\n\t(lib (name "afe")(type "KiCad")
 
 def project_json(cfg, info):
     uid = lambda *k: make_uid(cfg.NS, *k)      # noqa: E731
-    return {'meta': {'filename': cfg.PROJECT + '.kicad_pro', 'version': 3},
-            'erc': {'erc_exclusions': cfg.ERC_EXCLUSIONS(info['pin_at'], uid, info['root'])},
-            'schematic': {'legacy_lib_dir': '', 'legacy_lib_list': []},
-            'sheets': [[info['root'], 'Root']]}
+    pro = {'meta': {'filename': cfg.PROJECT + '.kicad_pro', 'version': 3},
+           'erc': {'erc_exclusions': cfg.ERC_EXCLUSIONS(info['pin_at'], uid, info['root'])},
+           'schematic': {'legacy_lib_dir': '', 'legacy_lib_list': []},
+           'sheets': [[info['root'], 'Root']]}
+    setup = getattr(cfg, 'BOARD_SETUP', None)              # the board's design rules (cfg.BOARD_SETUP: {'board': ..., 'net_settings': ...})
+    if setup:
+        pro.update(copy.deepcopy(setup))
+    return pro
 
 
 def write_all(parts, cfg, out_dir):

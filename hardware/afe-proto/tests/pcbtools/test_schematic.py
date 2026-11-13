@@ -107,4 +107,9 @@ def test_byte_identical_to_the_old_builder_on_the_v1_design(tmp_path):
     new_dir = tmp_path / 'new'
     sch.write_all(parts, cfg, str(new_dir))
     for f in ('afe-proto.kicad_sch', 'afe-proto.kicad_pro', 'sym-lib-table', 'fp-lib-table', 'lib/afe.kicad_sym'):
+        if f.endswith('.kicad_pro'):        # identical except the board-setup sections the generator now adds (v1.BOARD_SETUP)
+            import json
+            new = {k: v for k, v in json.loads((new_dir / f).read_text()).items() if k not in v1.BOARD_SETUP}
+            assert new == json.loads((old_dir / f).read_text()), f
+            continue
         assert (new_dir / f).read_bytes() == (old_dir / f).read_bytes(), f
