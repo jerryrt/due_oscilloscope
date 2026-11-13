@@ -18,6 +18,7 @@ Cost model = whatif/bom.md's domestic Economic model (it was reconciled against 
   piece (10 CNY for 1-10, 5 for 11-50), PCB 20 CNY + 370 CNY/m2; owner-fitted parts at the tier for (boards x quantity).
 A part with no domestic ladder is priced as the international USD ladder x CNY_PER_USD_PART and is marked D."""
 import argparse, csv, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FX = 6.6912                      # CNY per USD, Bank of China spot selling rate 2026-11-12 05:30 Beijing (whatif/bom.md)
@@ -26,7 +27,7 @@ SETUP, LOAD, LOAD_CAP, JOINT = 50.0, 20.0, 800.0, 0.01
 XRAY = [(10, 10.0), (50, 5.0), (200, 3.0), (500, 2.0), (1000, 1.5), (3000, 1.0), (10 ** 9, 0.5)]   # up to n pieces: CNY each
 PCB_ENG, PCB_RATE = 20.0, 410.0  # CNY per order, CNY per m2: 2-layer 1.6 mm. 410 = jlc.com news notice of 2026-09-21 (read 2026-11-12 15:56 UTC)
 PCB_RATE_V1 = 370.0              # version 1 (whatif/bom.md) used the price after the 2026-09-14 cut; the 2026-09-21 notice raised it by 40
-BOARD_MM = (100.0, 53.34)        # MC-1 outline
+BOARD_MM = (100.0, 58.34)        # MC-1 outline as amended (was 100 x 53.34)
 PER_ORDER_MAX = 50               # Economic PCBA takes 2-50 boards per order
 BLOCKS = [("opamps", "Op-amps (ICs)"), ("precres", "Precision resistors"), ("switches", "Switches"),
           ("adc_ref", "Precision ADC and reference (ICs)"), ("ladder", "Calibration ladder"), ("rails", "Rails (LM27762, with its X-ray)"),
@@ -460,14 +461,25 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", default=None, help="write the report here")
     ap.add_argument("--root", default=HERE)
+    ap.add_argument("--order", action="store_true", help="write the purchasable order tables at 5 and 100 boards for v2 (order-5-100.md/.csv here) and v1 (../../bom/v1/order-5-100.md/.csv)")
+    ap.add_argument("--refresh-v1-design", metavar="DIR", help="rewrite v1-input/design-parts.csv from DIR/design.py (a version 1 kicad/ folder; read-only)")
     ap.add_argument("--path", action="append", default=[], help="override an input: name=path (catalog, intl, basic, blocks, extra, v1, scope, awg, powercal)")
     a = ap.parse_args(argv)
     paths = dict(p.split("=", 1) for p in a.path)
+    if a.refresh_v1_design:
+        import order
+        print("wrote", order.refresh_v1_design(a.refresh_v1_design)); return None, []
     data = Data(a.root, paths)
     L, res, deltas, flags = run(data)
     summary(res, flags, res[20]["lo"]["unpriced"])
     if a.md:
         open(a.md, "w").write(report(data, L, res, deltas, flags, a))
+    if a.order:
+        import order
+        o = order.write_all(data)
+        for d in ("v2", "v1"):
+            print("%s order: 5 boards $%.2f per board ($%.2f the order), 100 boards $%.2f per board ($%.2f the order)" % (
+                d, usd(o[d][5]["grand"] / 5), usd(o[d][5]["grand"]), usd(o[d][100]["grand"] / 100), usd(o[d][100]["grand"])))
     return res, flags
 
 

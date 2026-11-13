@@ -10,17 +10,17 @@ What is still a placeholder: the owner-fitted header set ($2.50 *(check)*, versi
 
 ## Cost summary
 
-Exchange rate **6.6912 CNY per USD** (Bank of China spot selling rate, 2026-11-12 05:30 Beijing, the rate `whatif/bom.md` used; it moves daily *(check)*). Fees per order: setup 50 CNY, 20 CNY per distinct Extended type (cap 800), 0.01 CNY per SMT joint, X-ray 10 CNY per leadless piece for 1-10 pieces and 5 CNY for 11-50; PCB 20 CNY + 410 CNY/m2 over 100 x 53.34 mm. 100 boards are two orders of 50. Where two figures are given the X-ray is priced wholly at its tier / tier by tier (neither price page says which *(check)*).
+Exchange rate **6.6912 CNY per USD** (Bank of China spot selling rate, 2026-11-12 05:30 Beijing, the rate `whatif/bom.md` used; it moves daily *(check)*). Fees per order: setup 50 CNY, 20 CNY per distinct Extended type (cap 800), 0.01 CNY per SMT joint, X-ray 10 CNY per leadless piece for 1-10 pieces and 5 CNY for 11-50; PCB 20 CNY + 410 CNY/m2 over 100 x 58.34 mm. 100 boards are two orders of 50. Where two figures are given the X-ray is priced wholly at its tier / tier by tier (neither price page says which *(check)*).
 
 | per board | 20 boards (1 order) | 100 boards (2 x 50) |
 |---|---|---|
 | parts | 24.69 CNY = $3.69 | 21.69 CNY = $3.24 |
 | JLC fees per order | 267.60 / 317.60 CNY | 474.00 / 524.00 CNY |
-| PCB per order | 63.74 CNY | 129.35 CNY |
-| **JLC + PCB per board** | **$6.17 / $6.54** | **$5.05 / $5.19** |
+| PCB per order | 67.84 CNY | 139.60 CNY |
+| **JLC + PCB per board** | **$6.20 / $6.57** | **$5.08 / $5.23** |
 | owner-fitted per board (BNC, standoff, screws, $2.50 header placeholder *(check)*) | $3.50 | $3.26 |
-| **TOTAL per board, PCB and owner-fitted included** | **$9.67 / $10.04** | **$8.31 / $8.46** |
-| total per batch | $193.35 / $200.83 | $830.92 / $845.87 |
+| **TOTAL per board, PCB and owner-fitted included** | **$9.70 / $10.07** | **$8.34 / $8.49** |
+| total per batch | $193.97 / $201.44 | $833.99 / $848.93 |
 | JLC placements / SMT joints per board | 77 / 188 | same |
 | distinct Extended types (loading fee each) | 4 | same |
 
@@ -49,10 +49,10 @@ Derived (D) parts: .
 
 | | 20 boards | 100 boards (2 x 50) |
 |---|---|---|
-| per order | 63.74 CNY = $9.53 | 129.35 CNY = $19.33 each |
-| per board | $0.48 | $0.39 |
+| per order | 67.84 CNY = $10.14 | 139.60 CNY = $20.86 each |
+| per board | $0.51 | $0.42 |
 
-**A published rule, not a quote.** Engineering fee 20 CNY + 410 CNY/m2 over 100 x 53.34 mm (53.34 cm2 a board), 2-layer, 1.6 mm. The 410 CNY/m2 is the jlc.com news notice of 2026-09-21 (<https://www.jlc.com/portal/q33i63612.html>, its "latest news" column: single and double-sided boards raised 40 CNY/m2 to 410 CNY/m2, A1 board, 1.6 mm, "final price per the system's live quote"), read 2026-11-12 15:56 UTC; the page loaded normally, no bot challenge. The 20 CNY engineering fee is `whatif/bom.md`'s reading of `server_guide_4114` (2026-11-11) and was not re-read. The live quote page computes in the browser and was not read.
+**A published rule, not a quote.** Engineering fee 20 CNY + 410 CNY/m2 over 100 x 58.34 mm (58.34 cm2 a board), 2-layer, 1.6 mm. The 410 CNY/m2 is the jlc.com news notice of 2026-09-21 (<https://www.jlc.com/portal/q33i63612.html>, its "latest news" column: single and double-sided boards raised 40 CNY/m2 to 410 CNY/m2, A1 board, 1.6 mm, "final price per the system's live quote"), read 2026-11-12 15:56 UTC; the page loaded normally, no bot challenge. The 20 CNY engineering fee is `whatif/bom.md`'s reading of `server_guide_4114` (2026-11-11) and was not re-read. The live quote page computes in the browser and was not read.
 
 ## Hand-soldered parts, as their own line
 
@@ -87,7 +87,7 @@ All three streams' `parts.csv` are the final committed lists when this file is g
 
 ## Cost target (D-V2-1)
 
-The target is the owner's and is left blank here. Version 2 is **$9.67 / $10.04 at 20 boards and $8.31 / $8.46 at 100**.
+The target is the owner's and is left blank here. Version 2 is **$9.70 / $10.07 at 20 boards and $8.34 / $8.49 at 100**.
 
 | D-V2-1 | owner's per-board target | _owner to set_ |
 |---|---|---|
