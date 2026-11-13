@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 """v2 AWG output stage: every number in design.md and report_table.md.
 
-    cd hardware/afe-proto/v2/sim/awg && python3 -I run.py          # about 3-6 minutes; writes raw/results.json,
-                                                                    # netlists/*.cir, raw/*.log, report_table.md
-    python3 -I run.py guards                                        # only the checks-broken-on-purpose rows
+    python3 -I run.py [--out DIR] [--work DIR] [case ...]       about 15 s; case names as in SECTIONS below, default all
+    python3 -I run.py guards                                    only the checks-broken-on-purpose rows
 
-Needs ngspice-47 and numpy.  The vendor op-amp model is read from ../../../whatif/tph2502/models (local, never copied or
-committed); core.py checks its sha256.  Models/tph2502.inc is the only file that has to change to swap the op-amp.
+Writes DIR/raw/results.json, DIR/awg.cir, DIR/parts.csv (DIR defaults to this folder: the committed copies) and, through
+table.py, DIR/report_table.md; netlists, wrdata files and logs go to --work (a temporary directory by default), never
+beside the code. Needs ngspice and numpy, and runs in the PCB image (docker/pcb/run.sh).
+
+Every deck runs through simtools.netlib_common.run_ng: under the memory cap, with a .save of the vectors its .control block
+reads. The op-amp macro is simtools.vendor's derived copy of 3PEAK's TPH2501 (fetched by tools/fetch_models.py, hash-checked),
+the behavioural TPH2502 is models-open/tph2502-beh/. models/tph2502.inc is the only file that has to change to swap the op-amp.
+Constants are in params.py, the netlist builders and the runner in netlist.py.
 """
 import json, os, subprocess, sys, itertools
 import numpy as np
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import core, design
-from core import D, RAILS
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, '..', '..', '..')))        # hardware/afe-proto, for simtools
+import netlist as core
+import design
+from params import D, RAILS
 
 ROWS = []
 OUT = {}
@@ -40,7 +48,7 @@ def case_model():
     # the model's supply current does not follow the load current: 0 mA and 30 mA of load
     cur = []
     for load in ('open', 'r50'):
-        txt = (f"* model supply current vs load\n{core.model_text().replace('@VENDOR@', os.path.relpath(core.VENDOR, core.NETDIR))}\n"
+        txt = (f"* model supply current vs load\n{core.model_include()}\n"
                f"Vp vcc 0 3.3\nVn vee 0 -2.073\nVi in 0 1.0\nXA in vo vcc vee vo TPH2502\nRl vo 0 {'1G' if load == 'open' else '33'}\n")
         h, d, log = core.wr('m_iq', txt, 'op', ['i(Vp)', 'v(vo)'])
         cur.append((-d[0, 1] * 1e3, d[0, 2]))
@@ -48,7 +56,7 @@ def case_model():
          f'{cur[0][0]:.2f} mA at {cur[0][1]:.2f} V out, {cur[1][0]:.2f} mA at {cur[1][1]:.2f} V out ({cur[1][1]/33*1e3:.0f} mA load)',
          'the macromodel draws no supply current for its output current; supply-pin current is therefore added analytically (IQ + I out)')
     # closed-loop G=1 bandwidth, RF 25 ohm, VS 5 V, as the datasheet table and whatif smoke/g1.cir
-    txt = (f"* G=1 RF 25\n{core.model_text().replace('@VENDOR@', os.path.relpath(core.VENDOR, core.NETDIR))}\n"
+    txt = (f"* G=1 RF 25\n{core.model_include()}\n"
            "Vp vp 0 5\nVm vm 0 2.5\nVin in vm dc 0 ac 1\nXU in fb vp 0 out TPH2502\nRF out fb 25\nRL out vm 1k\n")
     h, d, log = core.wr('m_g1', txt, 'ac dec 60 1e4 2e9', ['v(out)'])
     f = d[:, 0]; g = np.abs(d[:, 1] + 1j * d[:, 2]); g /= g[0]
@@ -405,7 +413,7 @@ def noise_case():
     txt = core.build(dict(), analysis='', ac=('dac',))
     # ideal op-amp: swap the model include for a subckt with the same pins
     ideal = (".subckt TPH2502 inp inn vp vn out\nEg a 0 inp inn 1e5\nRp1 a b 1k\nCp1 b 0 1.33u\nEb c 0 b 0 1\nRo c out 1\n.ends TPH2502\n")
-    txt = txt.replace(core.model_text().replace('@VENDOR@', os.path.relpath(core.VENDOR, core.NETDIR)), ideal)
+    txt = txt.replace(core.model_include(), ideal)
     ctl = ".control\nset wr_vecnames\nset wr_singlescale\nnoise v(bnc) Vdac dec 25 10 1G 1\nsetplot noise1\nwrdata @OUT@ onoise_spectrum\n.endc\n"
     t2 = txt.replace('.end\n', '') + ctl + '.end\n'
     out, log = core.run('nz_res', t2, None)
@@ -730,9 +738,9 @@ def run_guards():
     guard('supply-pin current, simulated', 'ngspice short with the stage commanded to +3.0 V must fail 60 mA; commanded to the 2.2275 V window top end it passes', g_short_sim, dict(cmd=3.0), dict(cmd=lim - 0.015))
 
 
-def write_outputs():
+def write_outputs(out_dir):
     # the reference netlist (nominal, hi-Z load) and the parts list generated from the same dictionary
-    open(os.path.join(core.HERE, 'awg.cir'), 'w').write(core.build(dict(load='hiz'), analysis='.op'))
+    open(os.path.join(out_dir, 'awg.cir'), 'w').write(core.build(dict(load='hiz', macro_name='TPH2501_ngspice.mdl'), analysis='.op'))
     q = D
     parts = [
         ('R1,R2 (parallel)', '100 ohm 1 % 1206', 'C17901', 'AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)', 2),
@@ -747,29 +755,51 @@ def write_outputs():
         ('C5,C6', '100 nF X7R 10 % 0603', 'C14663', 'supply decoupling at the op-amp, one per supply pin', 2),
         ('U1', 'TPH2502-SR dual op-amp SOP-8', 'C118223', 'both halves paralleled as one gain stage', 1),
     ]
-    with open(os.path.join(core.HERE, 'parts.csv'), 'w') as f:
+    with open(os.path.join(out_dir, 'parts.csv'), 'w') as f:
         f.write('refs,value,lcsc,role,qty\n')
         for p in parts:
             f.write(','.join(f'"{x}"' for x in p) + '\n')
 
 
-def main():
-    only = [a for a in sys.argv[1:]]
-    if only == ['guards']:
-        run_guards(); return
-    ver = subprocess.run(['ngspice', '-v'], capture_output=True, text=True).stdout.split('\n')[1].strip() if True else ''
-    OUT['header'] = dict(ngspice=ver, vendor=core.VENDOR, vendor_sha=core.VENDOR_SHA)
-    for fn in (case_model, case_dc, case_mc, case_swing, case_short, case_ac, case_pm, case_tran, noise_case, case_startup, case_forced, case_pins, case_power, case_ref):
+SECTIONS = (case_model, case_dc, case_mc, case_swing, case_short, case_ac, case_pm, case_tran, noise_case, case_startup, case_forced, case_pins, case_power, case_ref)
+
+
+def run_study(out_dir, work_dir=None, only=()):
+    """Run the named cases (all when empty) and the guards; write the outputs into out_dir; return the results dict."""
+    ROWS.clear(); OUT.clear(); GUARDS.clear()
+    core.set_workdir(work_dir or os.path.join(out_dir, 'work'))
+    ver = subprocess.run(['ngspice', '-v'], capture_output=True, text=True).stdout.split('\n')[1].strip()
+    OUT['header'] = dict(ngspice=ver, vendor='TPH2501_ngspice.mdl (simtools.vendor: models/tph2501 with tc1 removed)', vendor_sha=core.VENDOR_SHA)
+    for fn in SECTIONS:
         if only and fn.__name__ not in only and fn.__name__.replace('case_', '') not in only:
             continue
         fn()
     run_guards()
-    OUT['rows'] = ROWS; OUT['guards'] = GUARDS
-    write_outputs()
-    json.dump(OUT, open(os.path.join(core.RAWDIR, 'results.json'), 'w'), indent=1, default=float)
+    OUT['rows'] = list(ROWS); OUT['guards'] = list(GUARDS)
+    os.makedirs(os.path.join(out_dir, 'raw'), exist_ok=True)
+    write_outputs(out_dir)
+    with open(os.path.join(out_dir, 'raw', 'results.json'), 'w') as f:
+        json.dump(OUT, f, indent=1, default=float)
+    return OUT
+
+
+def main(argv):
+    out_dir, work_dir, only = HERE, None, []
+    it = iter(argv)
+    for a in it:
+        if a == '--out': out_dir = os.path.abspath(next(it))
+        elif a == '--work': work_dir = os.path.abspath(next(it))
+        else: only.append(a)
+    if only == ['guards']:
+        core.set_workdir(work_dir or os.path.join(out_dir, 'work'))
+        run_guards(); return 0
+    res = run_study(out_dir, work_dir, only)
     nfail = sum(1 for r in ROWS if not r['ok'])
     print(f'\n{len(ROWS)} rows, {nfail} FAIL')
+    import table
+    table.write(out_dir)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main(sys.argv[1:]))

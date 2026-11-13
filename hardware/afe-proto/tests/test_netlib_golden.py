@@ -4,7 +4,7 @@ import pytest
 from netlib_snapshot import GOLDEN, v1_text, v2_text
 
 
-@pytest.mark.parametrize("name, fn", [("netlib_v1", v1_text), ("netlib_v2", v2_text)])
+@pytest.mark.parametrize("name, fn", [("netlib_v1", v1_text), pytest.param("netlib_v2", v2_text, marks=pytest.mark.vendor)])
 def test_builders_reproduce_the_golden_netlists(name, fn):
     want = (GOLDEN / f"{name}.txt").read_text()
     got = fn()

@@ -15,6 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))              # hardware/afe-proto
 SCR = os.path.join(ROOT, 'pcbtools', '.scratch', 'mutc')
 RESULT = os.path.join(ROOT, 'tests', 'golden', 'cap_mutation_result.txt')
 
+CONVERGE_ONLY = False
 C = 'cap.py'
 MUTANTS = [
     # boundary conditions
@@ -53,6 +54,17 @@ MUTANTS = [
     (C, 'ground treated as any other net', "code[b.net_id(gnd)] = len(nets) + 1", "code[b.net_id(gnd)] = len(nets)"),
     (C, 'keep-back wraps round the window (np.roll)', "return ndi.binary_dilation(occupied, structure=(xx * xx + yy * yy <= k * k)) if k else occupied.copy()",
      "return ndi.binary_dilation(occupied, structure=(xx * xx + yy * yy <= k * k), border_value=1) if k else occupied.copy()"),
+    # the grid-convergence step: the extrapolation and the window guard
+    (C, 'extrapolation: order fixed at 1', "    p = math.log(d1 / d2) / math.log(r)\n", "    p = 1.0\n"),
+    (C, 'extrapolation: order from the wrong log base', "    p = math.log(d1 / d2) / math.log(r)\n", "    p = math.log(d1 / d2) / math.log(3)\n"),
+    (C, 'extrapolation: cell ratio fixed at 2', "    c0 = v[2] - d2 / (r ** p - 1)", "    c0 = v[2] - d2 / (2 ** p - 1)"),
+    (C, 'extrapolation: the denominator forgets the -1', "    c0 = v[2] - d2 / (r ** p - 1)", "    c0 = v[2] - d2 / (r ** p)"),
+    (C, 'extrapolation: wrong sign', "    c0 = v[2] - d2 / (r ** p - 1)", "    c0 = v[2] + d2 / (r ** p - 1)"),
+    (C, 'extrapolation: the fallback has no spread', "extrapolated=v[2], uncertainty=spread, spread=spread", "extrapolated=v[2], uncertainty=0.0, spread=spread"),
+    (C, 'extrapolation: non-monotone sequences are extrapolated', "    if d1 * d2 <= 0:\n", "    if False:\n"),
+    (C, 'extrapolation: any order is believed', "    if not (ORDER_RANGE[0] - 1e-9 <= p <= ORDER_RANGE[1] + 1e-9):", "    if False:"),
+    (C, 'window pad is never lowered', "        if n <= lim:\n            return p\n", "        if True:\n            return p\n"),
+    (C, 'window pad at 0 is accepted although it does not fit', "        if p <= 0:\n            raise GridTooLarge(", "        if p <= 0:\n            return p\n        if False:\n            raise GridTooLarge("),
     # the config entry (stage 4b): the report must use every CAP_SELF entry
     ('boards/v2.py', 'CAP_SELF without the divider nodes', "CAP_SELF = (('/AWG_FB', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))", "CAP_SELF = (('/AWG_FB', 3.0, 0.1),)"),
     ('boards/v2.py', 'CAP_SELF /CH2_N dropped', "('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))", "('/CH1_N', 3.0, 0.1))"),
@@ -77,7 +89,7 @@ def run(tag, edit):
         import resource
         resource.setrlimit(resource.RLIMIT_AS, (3 << 30, 3 << 30))
     p = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-x', '-p', 'no:cacheprovider', '-c', os.path.join(ROOT, 'tests', 'pytest.ini'),
-                        os.path.join(HERE, 'test_cap.py')], capture_output=True, text=True, cwd=ROOT, timeout=300, preexec_fn=limit,
+                        os.path.join(HERE, 'test_cap.py')] + (['-k', 'extrapolate or plate or fit_pad or converge'] if CONVERGE_ONLY else []), capture_output=True, text=True, cwd=ROOT, timeout=300, preexec_fn=limit,
                        env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d))
     lines = p.stdout.strip().splitlines()
     first = next((ln for ln in lines if ln.startswith('FAILED')), '')
@@ -87,6 +99,10 @@ def run(tag, edit):
 
 def main(argv):
     out, bad = [], []
+    if '--converge-only' in argv:                                                # the convergence step's mutants only
+        global MUTANTS, CONVERGE_ONLY
+        CONVERGE_ONLY = True
+        MUTANTS = [m for m in MUTANTS if m[1].startswith(('extrapolation', 'window pad'))]
     r = run('clean', None)
     out.append('unmutated copy: ' + r)
     print(out[-1], flush=True)

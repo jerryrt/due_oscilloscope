@@ -1,0 +1,7 @@
+{
+ "ngspice": "ngspice-45.2 : Circuit level simulation program",
+ "model_sha256": "256eeb242fe2d960625eb2c8b8d94d71a3e982730a617f01eb8cfcf90322fae1",
+ "model": "../../../whatif/tph2502/models/TPH2501_ngspice.mdl",
+ "beh_lib_sha256": "e5d30338104d9389b942d8c1b708f02e8850c0f4a7a8caba0815ce47856e8d4e",
+ "beh_lib": "beh/tph2502_beh.lib (whatif/tph2502, read-only)"
+}

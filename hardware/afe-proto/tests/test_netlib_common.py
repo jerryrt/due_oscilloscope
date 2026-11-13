@@ -9,7 +9,8 @@ from simtools import netlib_common as C
 
 pytestmark = pytest.mark.ngspice
 
-NETLISTS = [("sim/scope/netlib.py", "nl_v1"), ("v2/sim/scope/netlib.py", "nl_v2")]
+NETLISTS = [("sim/scope/netlib.py", "nl_v1"),
+            pytest.param("v2/sim/scope/netlib.py", "nl_v2", marks=pytest.mark.vendor)]   # the v2 deck includes the TPH2501 macro
 
 
 def deck(nl, name):
