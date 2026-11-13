@@ -82,8 +82,12 @@ records/issue35-reflash-transcripts.log
 # `*.core` matches. Three 39 MB dumps then made the tree dirty in the
 # middle of a container run, on a bench where `FW_GIT_REV` picks the
 # dirt up and bakes it into the image.
+#
+# The pid form is `core.[0-9]*`, not `core.*`: the broader pattern
+# silently ignored a source file named core.py, so a committed study
+# could not run from git.
 core
-core.*
+core.[0-9]*
 *.core
 
 # The issue #5 report page. Generated from records/ by
