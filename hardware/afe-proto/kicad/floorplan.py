@@ -80,7 +80,7 @@ BRIDGES = [  # ref, nets, at (x, y), crosses
     ('BR2 (R516)', 'VREF_M / VREF_P', (68.58, 24.5), 'the A0 line (x 68.58)'),
     ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.58, 21.1), 'the A0 line (x 68.58)'),
     ('BR4 (R309)', 'AWG_S / AWG_I', (66.04, 19.5), 'the A1 line (x 66.04)'),
-    ('BR5 (R109)', '+3V3A / P33_S', (62.8, 35.7), 'the quiet VREF trunk (x 62.8)'),
+    ('BR5 (R109)', 'P33_SC / P33_S', (62.8, 36.7), 'the quiet VREF trunk (x 62.8)'),
     ('BR6 (R110)', 'P33_S / P33_U', (66.04, 35.7), 'the A1 column (x 66.04)'),
 ]
 

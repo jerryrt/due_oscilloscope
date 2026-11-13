@@ -1,0 +1,16 @@
+[FAIL] LR-1: 12 SMD ground pads without a via of their own: ['C501.2', 'C502.2', 'C503.2', 'C504.2', 'C505.2', 'D501.1']
+[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)
+[PASS] LR-3: 8 divider nets: no via, short, no track beside
+[PASS] LR-4: A0/A1 top only, no via (45/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it
+[PASS] LR-4 INV_MAX: AWG_INV 4.4 mm (<= 5.0)
+[PASS] LR-12 DECOUP_MAX: 5 caps within 3.0 mm: C103>U101.8 2.1, C302>U301.8 2.1, C303>U301.4 2.3, C502>U502.8 2.0, C501>U501.1 1.9
+[FAIL] LR-5: /SNS_B pad R520.1 8.2 mm; /SNS_B_N pad R520.2 9.9 mm
+[FAIL] LR-6: /+3V3A: consumer group REF/ADS is not connected to the star: C501.1, C505.1, R517.1, U501.1 unreachable by copper
+[PASS] LR-7: DAC0 4.3 mm; back-termination at the BNC; shell pads on ground
+[FAIL] LR-8: VREF: branch 0 (J602.1, R508.2) is not connected to the source C504.1, U501.2 by copper; VREF: branch 1 (C503.1, U502.4) is not connected to the source C504.1, U501.2 by copper; VREF: branch 2 (R307.1) is not connected to the source C504.1, U501.2 by copper; VREF: branch 3 (R512.2, R515.1) is not connected to the source C504.1, U501.2 by copper
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-11: R503: designator not on silk at 0.8 mm or more; J607: designator not on silk at 0.8 mm or more; R305: designator not on silk at 0.8 mm or more; C505: designator not on silk at 0.8 mm or more; R306: designator not on silk at 0.8 mm or more; J501: designator not on silk at 0.8 mm or more
+[FAIL] LR-10: DRC {'courtyards_overlap': 2, 'lib_footprint_issues': 4, 'silk_edge_clearance': 2, 'track_dangling': 13}; unconnected 62
+FAIL: LR-1, LR-5, LR-6, LR-8, LR-11, LR-10
+[FAILED AS REQUIRED] LR-10 (a 0.1 mm track added): DRC {'track_width': 1, 'courtyards_overlap': 2, 'clearance': 1, 'lib_footprint_issues': 4, 'silk_edge_clearance': 2, 'track_dangling': 14}; unconnected 63
+every arm caught

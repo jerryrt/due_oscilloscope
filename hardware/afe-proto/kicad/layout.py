@@ -184,7 +184,7 @@ put('R515', 66.04, 22.8, 0)
 put('R516', 68.58, 24.5, 0)
 put('R309', 66.04, 19.5, 0)
 put('R310', 68.58, 21.1, 0)
-put('R109', 62.8, 35.7, 0)
+put('R109', 62.8, 36.7, 0)                    # north of REFCAL's fence top (y 36.0): pads y 36.225..37.175, 0.2 mm clear of the fence (spec team, 2026-11-13)
 put('R110', 66.04, 35.7, 0)
 
 # test points on the three nodes that had none (LR-11): A1 and A0 on their own columns, AWG_OUT before R304/R306
