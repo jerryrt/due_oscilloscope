@@ -41,11 +41,21 @@
  ],
  "zones": [
   {
+   "name": "far edge band",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "analog edge band",
    "net": "",
    "layers": [
-    "F.Cu",
-    "B.Cu"
+    "F.Cu"
    ],
    "keepout": true,
    "priority": 0,

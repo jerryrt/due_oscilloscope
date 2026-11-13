@@ -1,12 +1,12 @@
 {
- "overhang": 5.0,
+ "overhang": 2.5,
  "w": 100.0,
  "h": 58.34,
  "max": [
   100.0,
   58.34
  ],
- "band": "analog edge band, y -5.0 to 0.0 Due mm",
+ "band": "analog edge band, y -2.5 to 0.0 Due mm; far edge band, y 53.34 to 55.84 Due mm",
  "commit_found": null,
  "edge_rule": 0.45,
  "edge_cfg": 0.45

@@ -49,16 +49,22 @@ DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('C20
 # pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
 # label - and none could be improved by any silk-only move (each label sits at its best admissible place with the others fixed).
 
-# The board outline and the analog-edge band (owner's ruling 2026-11-13, MC-1 amended; v1 does the same in boards/v1.py). The shield's
-# rectangle in Due mm (y up). It overhangs the Due by 5 mm on the analog-header edge only (the south edge, y 0, the strip with the
-# J601/J602/J603 sockets), and that band is a copper keep-out (one rule area: no tracks, vias or pour, on every copper layer). The other
-# edges keep the Due's outline, so the board is 100 x 58.34 mm, and the strip lanes (VNEG, +3V3A, VREF-C at y 0.55 / 0.95 / 1.35) stay
-# where they are and are 5.55 mm or more from the cut. v2/layout/outline_overhang.py applies it to the board file.
-OVERHANG = 5.0
-BOARD_RECT = (17.0, -OVERHANG, 117.0, 53.34)
+# The board outline and the two edge bands (owner's ruling 2026-11-13, MC-1 amended; v1 does the same in boards/v1.py). The shield's
+# rectangle in Due mm (y up) overhangs the Due by OVERHANG = 2.5 mm on each long edge: the analog-header edge (the south edge, y 0, the strip
+# with the J601/J602/J603 sockets) and the opposite one (north, y 53.34), so the board is 100 x 58.34 mm, centred over the Due. Each band is a
+# TOP-layer keep-out only (one rule area per band: no tracks, vias or pour on KEEPOUT_LAYERS); the bottom ground plane fills both bands back
+# to the copper-to-edge clearance, and its zone outline is the board rectangle grown by ZONE_MARGIN. The strip lanes (VNEG, +3V3A, VREF-C at
+# y 0.55 / 0.95 / 1.35) stay where they are, 3.05 mm or more from the cut. v2/layout/outline_overhang.py applies it to the board file.
+DUE_RECT = (17.0, 0.0, 117.0, 53.34)                            # the Due's own outline in Due mm, where the shield sits over it
+OVERHANG = 2.5
+BOARD_RECT = (DUE_RECT[0], DUE_RECT[1] - OVERHANG, DUE_RECT[2], DUE_RECT[3] + OVERHANG)
 BOARD_MAX_MM = (100.0, 58.34)                                   # MC-1: the board fits in this
-KEEPOUTS = [('analog edge band', (17.0, -OVERHANG, 117.0, 0.0))]
-BAND_NAME = 'analog edge band'
+BAND_NAME = 'analog edge band'                                  # the first band (the second is FAR_BAND_NAME)
+FAR_BAND_NAME = 'far edge band'
+KEEPOUTS = [(BAND_NAME, (DUE_RECT[0], BOARD_RECT[1], DUE_RECT[2], DUE_RECT[1])),
+            (FAR_BAND_NAME, (DUE_RECT[0], DUE_RECT[3], DUE_RECT[2], BOARD_RECT[3]))]
+KEEPOUT_LAYERS = ('F.Cu',)                                      # top only: the bottom ground plane fills the bands
+ZONE_MARGIN = 0.05                                              # the bottom GND zone outline is BOARD_RECT grown by this; its fill is held back by the edge clearance
 # The design rules the project file carries and DRC judges the board against (v2/layout/v2-integration build RULES: clearance 0.15,
 # track 0.15, via 0.6 / 0.3, hole-to-hole 0.25). min_copper_edge_clearance 0.45 mm: the fabricator's minimum is 0.2 mm *(check)* and the
 # outline tolerance +-0.2 mm, so 0.45 leaves 0.25 mm worst case (spec team's ruling, as v1).
