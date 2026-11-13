@@ -43,7 +43,10 @@ _PADS = None
 def _pads():
     global _PADS
     if _PADS is None:
-        b = boardio.read_board(FIX / 'afe-proto.kicad_pcb')
+        import tempfile
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix='merge-pads-')) / 'b.kicad_pcb'
+        shutil.copy(FIX / 'afe-proto.kicad_pcb', tmp)        # pcbnew writes a .kicad_prl next to a board it loads: never in a fixture
+        b = boardio.read_board(tmp)
         _PADS = np.column_stack([b.p_x, b.p_y])
     return _PADS
 

@@ -40,3 +40,8 @@ def test_bytecode_in_a_fixture_does_not_count(tmp_path):
 
 def test_no_test_leaves_bytecode_in_a_fixture():
     assert not [p for p in FIX.rglob('*.pyc')]
+
+
+def test_no_test_leaves_kicad_local_settings_in_a_fixture():
+    """pcbnew writes <board>.kicad_prl beside any board it loads: a test must load a COPY, never the fixture itself"""
+    assert not [p for p in FIX.rglob('*.kicad_prl')]
