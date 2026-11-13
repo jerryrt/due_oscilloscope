@@ -26,13 +26,33 @@ def drc_time():
     return _LAST['s']
 
 
+def _work_copy(path, d):
+    """kicad-cli writes <board>.kicad_prl and lock files beside the board it opens, so DRC never runs on the caller's file: it runs
+    on a copy in the scratch folder d together with what DRC reads from beside the board (the project file, the footprint library
+    table and the lib/ folder, linked not copied). Returns the copy's path."""
+    src = os.path.abspath(str(path))
+    here = os.path.dirname(src)
+    stem = os.path.splitext(os.path.basename(src))[0]
+    w = os.path.join(d, 'work')
+    os.makedirs(w, exist_ok=True)
+    dst = os.path.join(w, os.path.basename(src))
+    shutil.copyfile(src, dst)
+    for name in (stem + '.kicad_pro', 'fp-lib-table', 'sym-lib-table'):
+        if os.path.exists(os.path.join(here, name)):
+            shutil.copyfile(os.path.join(here, name), os.path.join(w, name))
+    if os.path.isdir(os.path.join(here, 'lib')):
+        os.symlink(os.path.join(here, 'lib'), os.path.join(w, 'lib'))
+    return dst
+
+
 def lr10_path(path, outdir=None, cli='kicad-cli', timeout=300):
     own = outdir is None
     d = tempfile.mkdtemp(prefix='pcbtools-drc-') if own else outdir
     try:
         out = os.path.join(d, 'drc.json')
+        work = _work_copy(path, d)
         t = time.perf_counter()
-        p = subprocess.run([cli, 'pcb', 'drc', '--format', 'json', '--severity-all', '-o', out, str(path)], capture_output=True,
+        p = subprocess.run([cli, 'pcb', 'drc', '--format', 'json', '--severity-all', '-o', out, work], capture_output=True,
                            text=True, timeout=timeout)
         _LAST['s'] = time.perf_counter() - t
         if not os.path.exists(out):

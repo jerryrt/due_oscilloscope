@@ -3,6 +3,7 @@ nothing outside the fixture folder, and still print what the committed goldens h
 (tests/golden_capture/run_old_tools.py) runs these same files."""
 import json
 import os
+import shutil
 import pathlib
 import re
 import subprocess
@@ -50,29 +51,50 @@ def _run(args, tmo=300):
     return p
 
 
+def _copy(tmp, *names):
+    """the old tools (and kicad-cli under them) write .kicad_prl and lock files beside the board they open: run them on a copy of the
+    board, its project file and the library table in tmp, never on the frozen fixture itself. Returns the copies' paths."""
+    out = []
+    for n in names:
+        shutil.copyfile(FX / n, tmp / n)
+        pro = FX / (n.rsplit('.', 1)[0] + '.kicad_pro')
+        if pro.exists():
+            shutil.copyfile(pro, tmp / pro.name)
+        out.append(tmp / n)
+    for extra in ('fp-lib-table', 'sym-lib-table'):
+        if (FX / extra).exists():
+            shutil.copyfile(FX / extra, tmp / extra)
+    if (FX / 'lib').is_dir() and not (tmp / 'lib').exists():
+        os.symlink(FX / 'lib', tmp / 'lib')
+    return out
+
+
 def _raw(name, tool):
     return json.loads((GOLD / f'{name}.{tool}.json').read_text())['raw']
 
 
 @pytest.mark.pcbnew
-def test_frozen_lr_check_prints_the_golden_text(pcbnew_required):
+def test_frozen_lr_check_prints_the_golden_text(pcbnew_required, tmp_path):
     name = 'v2-integrated-990d4b03'
-    p = _run([TOOLS / 'lr_check.py', FX / f'{name}.kicad_pcb'])
+    (b,) = _copy(tmp_path, f'{name}.kicad_pcb')
+    p = _run([TOOLS / 'lr_check.py', b])
     assert p.stdout == _raw(name, 'lr_check')
 
 
 @pytest.mark.pcbnew
 @pytest.mark.parametrize('name,block', [('v2-refcal-326f141b', 'REFCAL'), ('v2-power3-7c838703', 'POWER')])
-def test_frozen_fence_check_prints_the_golden_text(pcbnew_required, name, block):
-    p = _run([TOOLS / 'fence_check.py', block, FX / f'{name}.kicad_pcb', FX / 'v2-BASE-056e1d03.kicad_pcb'])
+def test_frozen_fence_check_prints_the_golden_text(pcbnew_required, name, block, tmp_path):
+    b, base = _copy(tmp_path, f'{name}.kicad_pcb', 'v2-BASE-056e1d03.kicad_pcb')
+    p = _run([TOOLS / 'fence_check.py', block, b, base])
     assert p.stdout == _raw(name, 'fence_check')
 
 
 @pytest.mark.pcbnew
 @pytest.mark.slow
-def test_frozen_cap_prints_the_golden_text(pcbnew_required):
+def test_frozen_cap_prints_the_golden_text(pcbnew_required, tmp_path):
     name = 'v2-integrated-990d4b03'
-    p = _run([TOOLS / 'cap.py', FX / f'{name}.kicad_pcb'], tmo=600)
+    (b,) = _copy(tmp_path, f'{name}.kicad_pcb')
+    p = _run([TOOLS / 'cap.py', b], tmo=600)
     assert p.stdout == _raw(name, 'cap')
 
 
