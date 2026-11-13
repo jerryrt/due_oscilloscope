@@ -103,20 +103,57 @@ def _segment(x0, y0, x1, y1, w, layer, net, key):
             % (fmt(x0), fmt(y0), fmt(x1), fmt(y1), w, layer, net, uuid.uuid5(uuid.NAMESPACE_URL, key)))
 
 
+_SEG = re.compile(r'\n\t\(segment\n\t\t\(start ([-\d.]+) ([-\d.]+)\)\n\t\t\(end ([-\d.]+) ([-\d.]+)\)\n\t\t\(width ([\d.]+)\)\n\t\t\(layer "([^"]*)"\)\n\t\t\(net "%s"\)\n\t\t\(uuid "[^"]*"\)\n\t\)')
+
+
 def reroute(text, ref, y_old, y_new, fence_x0):
-    """replace the straight run from pin 1 (at x = BNC_X) on pin 1's net by pad -> east -> diagonal -> old y -> old far end"""
+    """rebuild the lead from pin 1 (x = BNC_X, y_old) on pin 1's net: pad -> [east stub] -> jog -> the corridor, which keeps its own y and far
+    end. The run as found is either the old straight corridor from the pad (one segment) or a lead this function made (a stub, a jog and the
+    corridor); the corridor is the last segment, horizontal, starting at the west edge of the BNC fence. The jog runs at 45 degrees from
+    x = fence edge + |dy| when that is no further east than the pad's centre, else from the pad's centre at the steeper angle that reaches the
+    fence edge."""
     net = pin1_net(text, ref)
-    pat = re.compile(r'\n\t\(segment\n\t\t\(start %s %s\)\n\t\t\(end ([-\d.]+) %s\)\n\t\t\(width ([\d.]+)\)\n\t\t\(layer "([^"]*)"\)\n\t\t\(net "%s"\)\n\t\t\(uuid "[^"]*"\)\n\t\)'
-                     % (re.escape(fmt(cfg.BNC_X + SX)), re.escape(fmt(SY - y_old)), re.escape(fmt(SY - y_old)), re.escape(net)))
-    ms = pat.findall(text)
-    assert len(ms) == 1, (ref, net, len(ms))
-    xe, w, layer = ms[0]
-    d = abs(y_new - y_old)
-    x_a, x_b = fence_x0 + d + SX, fence_x0 + SX                      # diagonal from (x_a, y_new) to (x_b, y_old), 45 degrees
-    key = f'place_bncs {ref} {net}'
-    segs = [(cfg.BNC_X + SX, SY - y_new, x_a, SY - y_new), (x_a, SY - y_new, x_b, SY - y_old), (x_b, SY - y_old, float(xe), SY - y_old)]
-    new = ''.join(_segment(*s, w, layer, net, f'{key} {i}') for i, s in enumerate(segs))
-    return pat.sub(lambda m: new, text), segs
+    segs = [(m, tuple(float(m.group(i)) for i in (1, 2, 3, 4)), m.group(5), m.group(6)) for m in re.finditer(_SEG.pattern % re.escape(net), text)]
+    key = lambda v: (round(v[0], 3), round(v[1], 3))
+    cur = (round(cfg.BNC_X + SX, 3), round(SY - y_old, 3))
+    chain = []
+    while True:
+        nxt = [s for s in segs if key(s[1][:2]) == cur and s not in chain]
+        if not nxt:
+            break
+        chain.append(nxt[0])
+        if nxt[0][1][0] <= fence_x0 + SX + 1e-3 and abs(nxt[0][1][1] - nxt[0][1][3]) < 1e-6:
+            break                                                        # the corridor: it starts at the fence edge and is horizontal
+        cur = key(nxt[0][1][2:])
+    assert chain and len(chain) in (1, 3), (ref, net, len(chain))
+    corridor = chain[-1]
+    cx0, cy0, cx1, cy1 = corridor[1]
+    w, layer = corridor[2], corridor[3]
+    x_b, y_b = cx0, cy0                                                  # the corridor's west end: the fence edge, the corridor's own y
+    assert abs(x_b - (fence_x0 + SX)) < 1e-3 or len(chain) == 1, (x_b, fence_x0)
+    d = abs((SY - y_new) - y_b)
+    x_a = min(x_b + d, cfg.BNC_X + SX)
+    keyb = f'place_bncs {ref} {net}'
+    pad_xy = (cfg.BNC_X + SX, SY - y_new)
+    segs_new = []
+    if len(chain) == 1:                                                  # old straight run: split it at the fence edge
+        x_b = fence_x0 + SX
+        corridor_new = (x_b, y_b, cx1, cy1)
+    else:
+        corridor_new = None
+    if x_a < pad_xy[0] - 1e-6:
+        segs_new.append((pad_xy[0], pad_xy[1], x_a, pad_xy[1]))
+    segs_new.append((x_a, pad_xy[1], x_b, y_b))
+    if corridor_new:
+        segs_new.append(corridor_new)
+    first = chain[0][0].start()
+    last = chain[-1][0].end()
+    body = ''.join(_segment(*s, w, layer, net, f'{keyb} {i}') for i, s in enumerate(segs_new))
+    if len(chain) == 3:                                                  # keep the corridor segment byte for byte
+        assert chain[1][0].start() == chain[0][0].end() and chain[1][0].end() == chain[2][0].start(), 'the lead is not three adjacent segments'
+        last = chain[1][0].end()
+    text = text[:first] + body + text[last:]
+    return text, segs_new
 
 
 def fence_x0_for(ref_y_old):

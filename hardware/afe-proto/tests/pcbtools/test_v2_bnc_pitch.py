@@ -1,5 +1,5 @@
-"""The three BNCs of the v2 layout of record: one x, CH1 to CH2 at SCOPE_PITCH, AWG to CH2 at least SCOPE_PITCH (owner's ruling
-2026-11-13), and each scope input run leaving its BNC at the BNC's own y. Every figure is the config's (boards/v2_layout.py BNC_X,
+"""The three BNCs of the v2 layout of record: one x, CH1 to CH2 at SCOPE_PITCH, AWG to CH2 at least SCOPE_PITCH + AWG_EXTRA_GAP (owner's
+ruling 2026-11-13, spec lead's second ruling: the scope pair is closer to each other than to the AWG), and each scope input run leaving its BNC at the BNC's own y. Every figure is the config's (boards/v2_layout.py BNC_X,
 BNC_Y, SCOPE_PITCH); nothing is typed here. Pure text on the board file: no pcbnew. Broken once on purpose, as the suite requires."""
 import pathlib
 import re
@@ -34,8 +34,8 @@ def problems(text, tol=0.01):
         bad.append(f'x not shared / not the config\'s: {x}')
     if abs((y['J101'] - y['J201']) - CFG.SCOPE_PITCH) > tol:
         bad.append(f'CH1-CH2 pitch {y["J101"] - y["J201"]:.3f} != SCOPE_PITCH {CFG.SCOPE_PITCH}')
-    if (y['J201'] - y['J301']) < CFG.SCOPE_PITCH - tol:
-        bad.append(f'AWG-CH2 {y["J201"] - y["J301"]:.3f} < SCOPE_PITCH {CFG.SCOPE_PITCH}')
+    if (y['J201'] - y['J301']) < CFG.SCOPE_PITCH + CFG.AWG_EXTRA_GAP - tol:
+        bad.append(f'AWG-CH2 {y["J201"] - y["J301"]:.3f} < SCOPE_PITCH + AWG_EXTRA_GAP {CFG.SCOPE_PITCH + CFG.AWG_EXTRA_GAP}')
     for r, v in CFG.BNC_Y.items():
         if abs(y[r] - v) > tol:
             bad.append(f'{r} at y {y[r]:.3f}, config {v}')
@@ -44,7 +44,7 @@ def problems(text, tol=0.01):
 
 def test_config_pitches_hold_on_their_own():
     assert abs((CFG.BNC_Y['J101'] - CFG.BNC_Y['J201']) - CFG.SCOPE_PITCH) < 0.01
-    assert CFG.BNC_Y['J201'] - CFG.BNC_Y['J301'] >= CFG.SCOPE_PITCH - 0.01
+    assert CFG.BNC_Y['J201'] - CFG.BNC_Y['J301'] >= CFG.SCOPE_PITCH + CFG.AWG_EXTRA_GAP - 0.01
 
 
 def test_the_board_has_the_bncs_where_the_config_says():
@@ -79,3 +79,14 @@ def test_placing_again_changes_nothing_and_the_j605_label_is_where_the_config_sa
     fx, fy = (float(v) for v in re.search(r'\n\t\t\(at ([-\d.]+) ([-\d.]+)', text[s:e]).groups())
     lx, ly = (float(v) for v in re.search(r'\(property "Reference" "J605"\n\t\t\t\(at ([-\d.]+) ([-\d.]+)', text[s:e]).groups())
     assert (fx + lx - P.SX, P.SY - (fy + ly)) == pytest.approx(CFG.DESIGNATOR_AT['J605'], abs=1e-3)
+
+
+def test_broken_once_the_equal_pitch_layout_fails_the_awg_condition():
+    """the first move's layout (J101 44.45, J201 26.67, J301 8.89: 17.78 both ways) is a pair no closer to each other than to the AWG"""
+    text = BOARD.read_text()
+    for ref, y in (('J101', 44.45), ('J201', 26.67), ('J301', 8.89)):
+        text = P.move_footprint(text, ref, y)
+    got = problems(text)
+    print(got)
+    assert any(g.startswith('AWG-CH2 17.780 < SCOPE_PITCH + AWG_EXTRA_GAP 18.78') for g in got)
+    assert not any('pitch' in g and 'CH1-CH2' in g for g in got)                # the pair's own pitch is fine there; only the AWG condition fails
