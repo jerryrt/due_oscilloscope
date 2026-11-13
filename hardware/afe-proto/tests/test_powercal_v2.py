@@ -12,7 +12,7 @@ from pathlib import Path
 from simtools.compare import compare_trees
 
 AFE = Path(__file__).resolve().parents[1]
-STEPS = ["power", "refladder", "sense", "sc7", "coupling", "wires", "parts"]
+STEPS = ["power", "refladder", "sense", "sc7", "coupling", "wires", "parts", "pw1_awg"]
 
 
 def test_v2_powercal_regenerates_its_committed_results(tmp_path):

@@ -1,0 +1,111 @@
+{
+ "what": "the range-5v study's sensitivity to the extracted stray at N, as ../sensitivity_n_stray.json defines it (A: 4.31 pF at N, extraction added; B: 0.81 pF, extraction replacing the assumption; Cx N-to-N 0.05 fF in both)",
+ "results": {
+  "5 V, C1 12 / Cn 30": {
+   "baseline": {
+    "f3dB_MHz": 33.5590552,
+    "droop_10MHz_dB": -0.28133399502592576,
+    "nominal_shelf_pct": -7.167190309156879,
+    "pin_f3dB_MHz_worst": 38.3780292,
+    "sc9_shared_rail_10MHz_lsb": 6.277177776790088e-06,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.448158640012195,
+    "N_to_N_fF_per_lsb": 34.54245786506628,
+    "pad_to_pad_fF_per_lsb": 21.420276909327526,
+    "in_to_in_fF_per_lsb": 198.37959031164183,
+    "step_spread_pp": 0.0036929319306331365,
+    "nominal_pm_deg": {
+     "vendor": 69.85492,
+     "BEH21": 60.121582000000004,
+     "BEH60": 60.097722000000005
+    }
+   },
+   "A_N_stray_plus_0p81pF": {
+    "f3dB_MHz": 33.5590552,
+    "droop_10MHz_dB": -0.2858893078012717,
+    "nominal_shelf_pct": -8.456711670554673,
+    "pin_f3dB_MHz_worst": 38.3780292,
+    "sc9_shared_rail_10MHz_lsb": 0.0014149371881420143,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.4149909648712524,
+    "N_to_N_fF_per_lsb": 35.525583984244584,
+    "pad_to_pad_fF_per_lsb": 21.773170689330556,
+    "in_to_in_fF_per_lsb": 201.5055702111538,
+    "step_spread_pp": 0.0035928513042229326,
+    "nominal_pm_deg": {
+     "vendor": 69.853345,
+     "BEH21": 60.117031,
+     "BEH60": 60.091359999999995
+    }
+   },
+   "B_N_stray_replaced_by_0p81pF": {
+    "f3dB_MHz": 39.8858666,
+    "droop_10MHz_dB": -0.2649398202540634,
+    "nominal_shelf_pct": -2.6150385213266514,
+    "pin_f3dB_MHz_worst": 39.8797163,
+    "sc9_shared_rail_10MHz_lsb": 0.0016087258251752938,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.569072039586293,
+    "N_to_N_fF_per_lsb": 31.241743995460794,
+    "pad_to_pad_fF_per_lsb": 20.11185331265475,
+    "in_to_in_fF_per_lsb": 188.9622165304154,
+    "step_spread_pp": 0.0040553683922306405,
+    "nominal_pm_deg": {
+     "vendor": 69.860639,
+     "BEH21": 60.138054,
+     "BEH60": 60.120682
+    }
+   }
+  },
+  "5 V, C1 18 / Cn 47": {
+   "baseline": {
+    "f3dB_MHz": 35.547808200000006,
+    "droop_10MHz_dB": -0.30640997430642375,
+    "nominal_shelf_pct": -1.6843528139231512,
+    "pin_f3dB_MHz_worst": 35.542165600000004,
+    "sc9_shared_rail_10MHz_lsb": 6.5823184929342725e-06,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.2828719402850335,
+    "N_to_N_fF_per_lsb": 46.23292003658883,
+    "pad_to_pad_fF_per_lsb": 21.28486434128662,
+    "in_to_in_fF_per_lsb": 187.99558405318732,
+    "step_spread_pp": 0.0028217139205866104,
+    "nominal_pm_deg": {
+     "vendor": 69.831423,
+     "BEH21": 60.049913000000004,
+     "BEH60": 59.993044
+    }
+   },
+   "A_N_stray_plus_0p81pF": {
+    "f3dB_MHz": 35.547808200000006,
+    "droop_10MHz_dB": -0.30834634871752137,
+    "nominal_shelf_pct": -2.668645989106988,
+    "pin_f3dB_MHz_worst": 35.542165600000004,
+    "sc9_shared_rail_10MHz_lsb": 0.0010662402733511939,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.2641122665060545,
+    "N_to_N_fF_per_lsb": 47.16610015111174,
+    "pad_to_pad_fF_per_lsb": 21.503361631267623,
+    "in_to_in_fF_per_lsb": 190.0784695654441,
+    "step_spread_pp": 0.0027662526734029136,
+    "nominal_pm_deg": {
+     "vendor": 69.830662,
+     "BEH21": 60.047741,
+     "BEH60": 59.99002900000001
+    }
+   },
+   "B_N_stray_replaced_by_0p81pF": {
+    "f3dB_MHz": 39.8858666,
+    "droop_10MHz_dB": -0.2996183894430253,
+    "nominal_shelf_pct": 1.7312717488161544,
+    "pin_f3dB_MHz_worst": 36.9328887,
+    "sc9_shared_rail_10MHz_lsb": 0.0011669480255793855,
+    "sc9_budget_0p02_0p02_10MHz_lsb": 1.349210632838427,
+    "N_to_N_fF_per_lsb": 43.08852853224519,
+    "pad_to_pad_fF_per_lsb": 20.46293678132506,
+    "in_to_in_fF_per_lsb": 181.6732970166671,
+    "step_spread_pp": 0.0030183499728497765,
+    "nominal_pm_deg": {
+     "vendor": 69.83411,
+     "BEH21": 60.05756100000001,
+     "BEH60": 60.003643999999994
+    }
+   }
+  }
+ }
+}

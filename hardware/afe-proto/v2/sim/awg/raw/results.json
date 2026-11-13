@@ -2928,7 +2928,7 @@
    "result": "-1.946 V / -1.835 V",
    "margin": "",
    "ok": true,
-   "note": "commanded -1.6 V needs 1.60 V: +0.23 V to spare into 50 ohm; the power stream's -1.69 V into 50 ohm figure used 22 mA and no macro offset",
+   "note": "commanded -1.6 V needs 1.6 V: +0.23 V to spare into 50 ohm; the power stream's -1.69 V into 50 ohm figure used 22 mA and no macro offset",
    "info": true
   },
   {

@@ -1,6 +1,6 @@
 # AFE version 2: power, reference and calibration block (generated from results/ by report.py)
 
-AWG inputs read at run time: `../awg/design.py` sha256 `6b9fbba15dad1fee`, `../awg/report_table.md` sha256 `688a222a18aea79f`; AWG values {"Rbin": 2700.0, "Rbpl": 27000.0, "Rf": 3000.0, "Rg1": Infinity, "Rg2": 3000.0, "Rvr": 100.0}.
+AWG inputs read at run time: `../awg/design.py` sha256 `6b9fbba15dad1fee`, `../awg/report_table.md` sha256 `5e7428343edc6095`; AWG values {"Rbin": 2700.0, "Rbpl": 27000.0, "Rf": 3000.0, "Rg1": Infinity, "Rg2": 3000.0, "Rvr": 100.0}.
 
 Status: PASS / FAIL / info against the stated limit; every FAIL is also in design.md. A check was trusted only after it failed on purpose (Guards table at the end).
 

@@ -1,0 +1,152 @@
+{
+ "rows": [
+  {
+   "vout": 1.6,
+   "rl": null,
+   "i_load": 0.0,
+   "i_o": -0.00023098360655737711,
+   "Ip": 0.035537343698449866,
+   "In": 0.015230983606557377,
+   "Iin": 0.05268142566566299,
+   "terms_p": {
+    "awg_iq": 15.0,
+    "awg_offset_path": 0.231,
+    "awg_output_src": 0.0,
+    "scope_iq": 15.0,
+    "ads": 0.3,
+    "ref_iq": 0.037,
+    "ladder": 1.535,
+    "sense_tie": 0.07,
+    "centres": 0.011,
+    "i2c": 1.454,
+    "bleed": 1.899
+   },
+   "terms_n": {
+    "awg_iq": 15.0,
+    "awg_output_snk": 0.231
+   },
+   "name": "hi-Z, +1.6 V"
+  },
+  {
+   "vout": -1.6,
+   "rl": null,
+   "i_load": 0.0,
+   "i_o": -0.0007555737704918032,
+   "Ip": 0.036221933862384294,
+   "In": 0.015755573770491804,
+   "Iin": 0.05394306500992528,
+   "terms_p": {
+    "awg_iq": 15.0,
+    "awg_offset_path": 0.756,
+    "awg_output_src": 0.0,
+    "scope_iq": 15.0,
+    "ads": 0.3,
+    "ref_iq": 0.037,
+    "ladder": 1.535,
+    "sense_tie": 0.23,
+    "centres": 0.011,
+    "i2c": 1.454,
+    "bleed": 1.899
+   },
+   "terms_n": {
+    "awg_iq": 15.0,
+    "awg_output_snk": 0.756
+   },
+   "name": "hi-Z, -1.6 V"
+  },
+  {
+   "vout": 1.6,
+   "rl": 50.0,
+   "i_load": 0.016080402010050253,
+   "i_o": 0.015849418403492875,
+   "Ip": 0.05142676210194274,
+   "In": 0.015,
+   "Iin": 0.06831676210194274,
+   "terms_p": {
+    "awg_iq": 15.0,
+    "awg_offset_path": 0.231,
+    "awg_output_src": 15.849,
+    "scope_iq": 15.0,
+    "ads": 0.3,
+    "ref_iq": 0.037,
+    "ladder": 1.535,
+    "sense_tie": 0.11,
+    "centres": 0.011,
+    "i2c": 1.454,
+    "bleed": 1.899
+   },
+   "terms_n": {
+    "awg_iq": 15.0,
+    "awg_output_snk": 0.0
+   },
+   "name": "50 ohm, +1.6 V (op-amp output 16 mA)"
+  },
+  {
+   "vout": -1.6,
+   "rl": 50.0,
+   "i_load": -0.016080402010050253,
+   "i_o": -0.016835975780542058,
+   "Ip": 0.036181933862384295,
+   "In": 0.03183597578054206,
+   "Iin": 0.07159150722098057,
+   "terms_p": {
+    "awg_iq": 15.0,
+    "awg_offset_path": 0.756,
+    "awg_output_src": 0.0,
+    "scope_iq": 15.0,
+    "ads": 0.3,
+    "ref_iq": 0.037,
+    "ladder": 1.535,
+    "sense_tie": 0.19,
+    "centres": 0.011,
+    "i2c": 1.454,
+    "bleed": 1.899
+   },
+   "terms_n": {
+    "awg_iq": 15.0,
+    "awg_output_snk": 16.836
+   },
+   "name": "50 ohm, -1.6 V (op-amp output 16 mA)"
+  },
+  {
+   "vout": 0.0,
+   "rl": 50.0,
+   "i_load": 0.0,
+   "i_o": -0.0004932786885245901,
+   "Ip": 0.03587963878041708,
+   "In": 0.015493278688524589,
+   "Iin": 0.05331224533779413,
+   "terms_p": {
+    "awg_iq": 15.0,
+    "awg_offset_path": 0.493,
+    "awg_output_src": 0.0,
+    "scope_iq": 15.0,
+    "ads": 0.3,
+    "ref_iq": 0.037,
+    "ladder": 1.535,
+    "sense_tie": 0.15,
+    "centres": 0.011,
+    "i2c": 1.454,
+    "bleed": 1.899
+   },
+   "terms_n": {
+    "awg_iq": 15.0,
+    "awg_output_snk": 0.493
+   },
+   "name": "50 ohm, 0 V"
+  }
+ ],
+ "worst_normal_mA": 71.59150722098056,
+ "margin_100_mA": 28.40849277901944,
+ "awg_load_alone_mA": 16.080402010050253,
+ "awg_load_on_5V_pin_mA": 16.88442211055277,
+ "shorts_mA": {
+  "short, DAC at the window top (2.197 V AC top end)": 96.55236367775107,
+  "short, DAC at the window bottom (-1.73 V, weak-rail clip)": 92.43876355273038,
+  "short, DAC at the 3.3 V reset level (stage output about 3.0 V, accepted transient D-V2-12)": 112.7324206979531
+ },
+ "worst_fault_mA": 112.7324206979531,
+ "total_with_due_mA": 412.7324206979531,
+ "margin_450_mA": 37.2675793020469,
+ "extra_opamp_halves_within_100mA": 3.7877990372025923
+}
