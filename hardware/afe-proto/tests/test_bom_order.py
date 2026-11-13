@@ -184,3 +184,12 @@ def test_bom_md_is_regenerated_from_the_same_board_lines_and_agrees_with_the_ord
     assert placements == len(board_smt_refs())
     text = (BOMDIR / "bom.md").read_text()
     assert "%d / %d" % (placements, res[20]["lo"]["joints"]) in text and "$%.2f" % (o["grand"] / 100 / bom.FX) in text
+
+
+def test_report_wording_follows_the_name_option(tmp_path):
+    out = tmp_path / "n.md"
+    bom.main(["--model", "streams", "--name", "v1", "--md", str(out)])
+    t = out.read_text()
+    assert t.startswith("# AFE version 1 ") and "version 1 only" in t and "D-V2-1" not in t and "version 2" not in t.replace("`v2/bom", "")
+    assert "$2.50" not in t and "priced:" in t
+    assert bom.BOARD_MM == (100.0, 58.34) and bom.PCB_RATE == 410.0
