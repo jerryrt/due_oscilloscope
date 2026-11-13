@@ -14,12 +14,12 @@ IN_IMAGE = bool(os.environ.get('DUE_PCB_IMAGE_CONTENT'))
 
 
 def _cpus():
-    """the container's CPU allowance from the cgroup (cpu.max: '<quota> <period>' or 'max <period>'), or None when unlimited"""
+    """the container's CPU allowance from the cgroup (cpu.max: '<quota> <period>' or 'max <period>'), or None when unlimited; floor, minimum 1, as docker/pcb/run.sh exports it (a 1.5 CPU allowance gives 1 thread)"""
     p = pathlib.Path('/sys/fs/cgroup/cpu.max')
     if not p.exists():
         return None
     quota, period = p.read_text().split()[:2]
-    return None if quota == 'max' else math.ceil(int(quota) / int(period))
+    return None if quota == 'max' else max(1, math.floor(int(quota) / int(period)))
 
 
 needs_image = pytest.mark.skipif(not IN_IMAGE, reason='the thread allowance is a property of the container: runs in the image (docker/pcb/run.sh)')
