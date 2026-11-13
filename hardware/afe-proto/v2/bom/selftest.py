@@ -84,14 +84,15 @@ assert n0 >= 20
 SC = os.path.join(HERE, "../sim/scope/parts.csv"); AW = os.path.join(HERE, "../sim/awg/parts.csv")
 CAT = os.path.join(HERE, "catalog.csv")
 
-# 1. a duplicated line: scope R1a (C23192, qty 2, derived 0.002 USD x 6.118 below the 1000-piece tier, 2 joints each)
+# 1. a duplicated line: scope R1a (qty 2, derived USD ladder x 6.118 below the 1000-piece tier, 2 joints each; its LCSC read from the file)
 p = copy(SC, "scope_dup.csv")
 edit_csv(p, lambda rows: rows + [dict(next(r for r in rows if r["refdes_per_channel"] == "R1a"))])
 a, b, f, _ = quiet({"scope": p})
-n0 = sum(int(r["qty_per_board"]) for r in csv.DictReader(open(SC)) if r["lcsc"] == "C23192")
-want20 = (n0 + 2) * price("C23192", 20 * (n0 + 2)) - n0 * price("C23192", 20 * n0) + 2 * 2 * 0.01
-check("duplicated scope line R1a (+2 x 510k)", a - t20, want20, True, "DUPLICATE LINE", f)
-want100 = (n0 + 2) * price("C23192", 50 * (n0 + 2)) - n0 * price("C23192", 50 * n0) + 2 * 2 * 0.01
+LC1 = next(r["lcsc"] for r in csv.DictReader(open(SC)) if r["refdes_per_channel"] == "R1a")
+n0 = sum(int(r["qty_per_board"]) for r in csv.DictReader(open(SC)) if r["lcsc"] == LC1)
+want20 = (n0 + 2) * price(LC1, 20 * (n0 + 2)) - n0 * price(LC1, 20 * n0) + 2 * 2 * 0.01
+check("duplicated scope line R1a (+2 x its part)", a - t20, want20, True, "DUPLICATE LINE", f)
+want100 = (n0 + 2) * price(LC1, 50 * (n0 + 2)) - n0 * price(LC1, 50 * n0) + 2 * 2 * 0.01
 check("  ... at 100 boards", b - t100, want100, True, "DUPLICATE LINE", f)
 
 # 2. a wrong quantity: AWG R4 (510 ohm, C23193) 1 -> 10; 0.0015 USD x 6.118, tier 1 at 200 pieces

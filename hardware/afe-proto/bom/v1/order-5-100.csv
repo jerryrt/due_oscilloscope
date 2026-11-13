@@ -38,7 +38,7 @@ v1,5,fee,Extended-part loading fee,,,,,,,,80.0000,4 Extended type(s) x 20 CNY x 
 v1,5,fee,SMT joints,,,,,,,,11.7000,234 joints per board x 5 boards x 0.01 CNY
 v1,5,fee,"X-ray, leadless parts (whole tier)",,,,,,,,50.0000,"5 pieces per order in 1 order(s); 10 CNY each for 1-10 pieces, 5 CNY for 11-50"
 v1,5,fee,X-ray if charged tier by tier (extra over whole tier),,,,,,,,0.0000,alternative; not in the total
-v1,5,pcb,PCB fabrication,,,100 x 58.34 mm 2-layer,,,,,31.9597,1 order(s) x (20 CNY + 410 CNY/m2 x 58.34 cm2 x 5 boards) *(check against the live quote)*
+v1,5,pcb,PCB fabrication,,,100 x 62.34 mm 2-layer,,,,,32.7797,1 order(s) x (20 CNY + 410 CNY/m2 x 62.34 cm2 x 5 boards) *(check against the live quote)*
 v1,5,owner-fitted,"J101,J201,J301",3,BNC 50 ohm right-angle THT KH-BNC50-3511,THT,C2837587,owner-fitted,15,4.820000,72.3000,"whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11)"
 v1,5,owner-fitted,"J601,J602,J603,J604,J605",5,1x8 stacking female header 2.54 mm,THT,,owner-fitted,,1.075008,26.8752,"opencircuit.shop price EUR 0.1450 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*"
 v1,5,owner-fitted,J606,1,1x10 stacking female header 2.54 mm,THT,,owner-fitted,,0.556039,2.7802,"opencircuit.shop price EUR 0.0750 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*"
@@ -48,11 +48,11 @@ v1,5,owner-fitted,"MH601,MH602",2,M2.5 standoff (no M2.5 part priced *(check)*),
 v1,5,owner-fitted,"MH601,MH602",2,M2.5 screw (DIN 912; no M2.5 part priced *(check)*),THT,,owner-fitted,,,,UNPRICED *(check)*: UNPRICED: the repo has no M2.5 screw LCSC part; v1's M3 x 5 C357542 was removed
 v1,5,total,JLC parts,,,,,,,,145.4500,
 v1,5,total,JLC fees,,,,,,,,191.7000,
-v1,5,total,PCB,,,,,,,,31.9597,
-v1,5,total,JLC order total (parts + fees + PCB),,,,,,,,369.1097,
+v1,5,total,PCB,,,,,,,,32.7797,
+v1,5,total,JLC order total (parts + fees + PCB),,,,,,,,369.9297,
 v1,5,total,owner-fitted (priced lines only),,,,,,,,129.7580,
-v1,5,total,ORDER TOTAL,,,,,,,,498.8677,
-v1,5,total,PER BOARD,,,,,,,,99.7735,
+v1,5,total,ORDER TOTAL,,,,,,,,499.6877,
+v1,5,total,PER BOARD,,,,,,,,99.9375,
 v1,100,jlc-part,"R108,R408",2,1 1%,0603,C22936,Basic,100,0.018600,3.7200,"whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11)"
 v1,100,jlc-part,"R110,R111,R112,R113,R309,R310,R410,R411,R412,R413,R515,R516,R517,R518,R519,R520",16,0R 1%,0603,C21189,Basic,800,0.012400,19.8400,https://www.jlc-smt.com/lcsc/detail/C21189.html read 2026-11-13 13:14 UTC
 v1,100,jlc-part,"C104,C305,C306,C403,C404,C405,C406,C407,C408,C409,C410",11,10u X5R 25V,0805,C15850,Basic,550,0.144000,158.4000,"whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11)"
@@ -92,7 +92,7 @@ v1,100,fee,Extended-part loading fee,,,,,,,,160.0000,4 Extended type(s) x 20 CNY
 v1,100,fee,SMT joints,,,,,,,,234.0000,234 joints per board x 100 boards x 0.01 CNY
 v1,100,fee,"X-ray, leadless parts (whole tier)",,,,,,,,500.0000,"50 pieces per order in 2 order(s); 10 CNY each for 1-10 pieces, 5 CNY for 11-50"
 v1,100,fee,X-ray if charged tier by tier (extra over whole tier),,,,,,,,100.0000,alternative; not in the total
-v1,100,pcb,PCB fabrication,,,100 x 58.34 mm 2-layer,,,,,279.1940,2 order(s) x (20 CNY + 410 CNY/m2 x 58.34 cm2 x 50 boards) *(check against the live quote)*
+v1,100,pcb,PCB fabrication,,,100 x 62.34 mm 2-layer,,,,,295.5940,2 order(s) x (20 CNY + 410 CNY/m2 x 62.34 cm2 x 50 boards) *(check against the live quote)*
 v1,100,owner-fitted,"J101,J201,J301",3,BNC 50 ohm right-angle THT KH-BNC50-3511,THT,C2837587,owner-fitted,300,3.450000,1035.0000,"whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11)"
 v1,100,owner-fitted,"J601,J602,J603,J604,J605",5,1x8 stacking female header 2.54 mm,THT,,owner-fitted,,1.075008,537.5041,"opencircuit.shop price EUR 0.1450 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*"
 v1,100,owner-fitted,J606,1,1x10 stacking female header 2.54 mm,THT,,owner-fitted,,0.556039,55.6039,"opencircuit.shop price EUR 0.0750 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*"
@@ -102,8 +102,8 @@ v1,100,owner-fitted,"MH601,MH602",2,M2.5 standoff (no M2.5 part priced *(check)*
 v1,100,owner-fitted,"MH601,MH602",2,M2.5 screw (DIN 912; no M2.5 part priced *(check)*),THT,,owner-fitted,,,,UNPRICED *(check)*: UNPRICED: the repo has no M2.5 screw LCSC part; v1's M3 x 5 C357542 was removed
 v1,100,total,JLC parts,,,,,,,,2236.2000,
 v1,100,total,JLC fees,,,,,,,,994.0000,
-v1,100,total,PCB,,,,,,,,279.1940,
-v1,100,total,JLC order total (parts + fees + PCB),,,,,,,,3509.3940,
+v1,100,total,PCB,,,,,,,,295.5940,
+v1,100,total,JLC order total (parts + fees + PCB),,,,,,,,3525.7940,
 v1,100,total,owner-fitted (priced lines only),,,,,,,,2184.1601,
-v1,100,total,ORDER TOTAL,,,,,,,,5693.5541,
-v1,100,total,PER BOARD,,,,,,,,56.9355,
+v1,100,total,ORDER TOTAL,,,,,,,,5709.9541,
+v1,100,total,PER BOARD,,,,,,,,57.0995,

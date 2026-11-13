@@ -270,6 +270,7 @@ def money(c): return "%.2f CNY ($%.2f)" % (c, usd(c))
 
 
 def csv_rows(name, o):
+    import bom
     rows = []
     B = o["B"]
     for j in o["jlc"]:
@@ -278,7 +279,7 @@ def csv_rows(name, o):
     for lab, basis, v in o["fees"]:
         rows.append([name, B, "fee", lab, "", "", "", "", "", "", "", "%.4f" % v, basis])
     rows.append([name, B, "fee", "X-ray if charged tier by tier (extra over whole tier)", "", "", "", "", "", "", "", "%.4f" % o["xray_grad_extra"], "alternative; not in the total"])
-    rows.append([name, B, "pcb", "PCB fabrication", "", "", "100 x 58.34 mm 2-layer", "", "", "", "", "%.4f" % o["pcb_total"],
+    rows.append([name, B, "pcb", "PCB fabrication", "", "", "%g x %g mm 2-layer" % bom.BOARD_MM, "", "", "", "", "%.4f" % o["pcb_total"],
                  "%d order(s) x (20 CNY + %g CNY/m2 x %.2f cm2 x %d boards) *(check against the live quote)*" % (o["orders"], o["pcb_rate"], o["area_cm2"], o["per"])])
     for p in o["owner"]:
         rows.append([name, B, "owner-fitted", p["refs"], p["qty"], p["value"], p["pkg"], p["lcsc"], p["cls"], p.get("pieces", ""),
@@ -304,7 +305,7 @@ def render(name, title, data, outs, extra_notes, dis=None):
     a("**Model.** One order takes at most %d boards (Economic PCBA), so 100 boards are two orders of 50. Parts are priced at the ladder tier holding (boards in one order) x "
       "(pieces per board); owner-fitted parts at the tier for (boards x pieces). Per order: setup %g CNY, stencil free, %g CNY loading per distinct Extended type (cap %g), "
       "%g CNY per SMT joint, X-ray per leadless piece (10 CNY each for 1-10 pieces, 5 CNY for 11-50), PCB %g CNY + %g CNY/m2 x board area. Board outline **%g x %g mm** "
-      "(MC-1 as amended). The fees are the engine's published-rule model (`bom.py`, `whatif/bom.md`), not a live JLC quote *(check in the live calculator before ordering)*.\n" % (
+      "(the board as built, `bom.BOARD_MM`). The fees are the engine's published-rule model (`bom.py`, `whatif/bom.md`), not a live JLC quote *(check in the live calculator before ordering)*.\n" % (
           bom.PER_ORDER_MAX, bom.SETUP, bom.LOAD, bom.LOAD_CAP, bom.JOINT, bom.PCB_ENG, outs[5]["pcb_rate"], bom.BOARD_MM[0], bom.BOARD_MM[1]))
     a("## Headline\n")
     a("| | 5 boards (1 order of 5) | 100 boards (2 orders of 50) |\n|---|---|---|")
@@ -331,8 +332,8 @@ def render(name, title, data, outs, extra_notes, dis=None):
         a("| item | basis | CNY |\n|---|---|---|")
         for lab, basis, v in o["fees"]: a("| %s | %s | %.2f |" % (lab, basis, v))
         a("| **fees total** | | **%.2f** |" % o["fees_total"])
-        a("| PCB fabrication (100 x 58.34 mm, 2-layer 1.6 mm) | %d order(s) x (%g CNY + %g CNY/m2 x %.2f cm2 x %d boards) = %.2f CNY per order; a published rule, not a quote *(check)* | %.2f |" % (
-            o["orders"], bom.PCB_ENG, o["pcb_rate"], o["area_cm2"], o["per"], o["pcb_order"], o["pcb_total"]))
+        a("| PCB fabrication (%g x %g mm, 2-layer 1.6 mm) | %d order(s) x (%g CNY + %g CNY/m2 x %.2f cm2 x %d boards) = %.2f CNY per order; a published rule, not a quote *(check)* | %.2f |" % (
+            bom.BOARD_MM[0], bom.BOARD_MM[1], o["orders"], bom.PCB_ENG, o["pcb_rate"], o["area_cm2"], o["per"], o["pcb_order"], o["pcb_total"]))
         a("| **JLC order total (parts + fees + PCB)** | | **%.2f** |\n" % o["jlc_total"])
         a("### Owner-fitted parts (not assembled by JLC; no loading or joint fee)\n")
         a("| refs | qty/board | part | LCSC | unit CNY | extended CNY | price basis |\n|---|---|---|---|---|---|---|")
@@ -408,7 +409,7 @@ def write_all(data, out_v2=None, out_v1=None, board=None):
               "Prices and fees are the engine's (ladders in `catalog.csv` / `intl.csv`, fee model in `bom.py`); only the part list changed.",
               "Owner-fitted headers are a retail listing (EUR, no quantity break, shipping excluded), the BNC a domestic ladder; the M2.5 standoffs and screws, and J501 (CAL pin strip), "
               "have no priced part in the repo and are unpriced.",
-              "PCB at 410 CNY/m2 (jlc.com notice of 2026-09-21, read 2026-11-12) + 20 CNY engineering fee over the 100 x 58.34 mm outline. A special 20 CNY prototype order "
+              "PCB at 410 CNY/m2 (jlc.com notice of 2026-09-21, read 2026-11-12) + 20 CNY engineering fee over the board outline (`bom.BOARD_MM`, the board as built). A special 20 CNY prototype order "
               "(<= 10 cm, 5-10 boards, `server_guide_4114`) was read for v1 but its fit with an SMT order is not stated, so it is not used *(check)*.",
               "**JLC upload files** from the same board: `jlc-bom.csv` (Comment, Designator, Footprint, LCSC Part #) and `jlc-cpl.csv` (Designator, Mid X, Mid Y, Layer, Rotation); owner-fitted, "
               "DNP and test-point footprints are in neither. CPL: positions in mm with Y negated and the board's absolute origin (KiCad position-file / Fabrication Toolkit convention), rotation KiCad's "

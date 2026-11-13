@@ -10,25 +10,25 @@ What is still a placeholder: the owner-fitted header set ($2.50 *(check)*, versi
 
 ## Cost summary
 
-Exchange rate **6.6912 CNY per USD** (Bank of China spot selling rate, 2026-11-12 05:30 Beijing, the rate `whatif/bom.md` used; it moves daily *(check)*). Fees per order: setup 50 CNY, 20 CNY per distinct Extended type (cap 800), 0.01 CNY per SMT joint, X-ray 10 CNY per leadless piece for 1-10 pieces and 5 CNY for 11-50; PCB 20 CNY + 410 CNY/m2 over 100 x 58.34 mm. 100 boards are two orders of 50. Where two figures are given the X-ray is priced wholly at its tier / tier by tier (neither price page says which *(check)*).
+Exchange rate **6.6912 CNY per USD** (Bank of China spot selling rate, 2026-11-12 05:30 Beijing, the rate `whatif/bom.md` used; it moves daily *(check)*). Fees per order: setup 50 CNY, 20 CNY per distinct Extended type (cap 800), 0.01 CNY per SMT joint, X-ray 10 CNY per leadless piece for 1-10 pieces and 5 CNY for 11-50; PCB 20 CNY + 410 CNY/m2 over 100 x 62.34 mm. 100 boards are two orders of 50. Where two figures are given the X-ray is priced wholly at its tier / tier by tier (neither price page says which *(check)*).
 
 | per board | 20 boards (1 order) | 100 boards (2 x 50) |
 |---|---|---|
-| parts | 24.69 CNY = $3.69 | 21.69 CNY = $3.24 |
+| parts | 24.76 CNY = $3.70 | 21.76 CNY = $3.25 |
 | JLC fees per order | 267.60 / 317.60 CNY | 474.00 / 524.00 CNY |
-| PCB per order | 67.84 CNY | 139.60 CNY |
-| **JLC + PCB per board** | **$6.20 / $6.57** | **$5.08 / $5.23** |
+| PCB per order | 71.12 CNY | 147.80 CNY |
+| **JLC + PCB per board** | **$6.23 / $6.60** | **$5.11 / $5.26** |
 | owner-fitted per board (BNC, standoff, screws, $2.50 header placeholder *(check)*) | $3.50 | $3.26 |
-| **TOTAL per board, PCB and owner-fitted included** | **$9.70 / $10.07** | **$8.34 / $8.49** |
-| total per batch | $193.97 / $201.44 | $833.99 / $848.93 |
+| **TOTAL per board, PCB and owner-fitted included** | **$9.73 / $10.11** | **$8.37 / $8.52** |
+| total per batch | $194.65 / $202.13 | $837.42 / $852.36 |
 | JLC placements / SMT joints per board | 77 / 188 | same |
 | distinct Extended types (loading fee each) | 4 | same |
 
 Unpriced lines are NOT in these totals: J_RAT 1x3 male header, 2.54 mm, plated holes + pins (calibration jumper header J_RAT, pin 1 = the 2/3 l); SH_RAT 2.54 mm shunt (jumper cap) (the calibration shunt, fitted across pins 2-3 (B a); MH-so25 M2.5 standoff (no M2.5 part priced *(check)*) (M2.5 standoff at the board's mounting holes MH601 ); MH-sc25 M2.5 screw (DIN 912; no M2.5 part priced *(check)*) (M2.5 screws for MH601 and the optional MH602 (the ); J-cal calibration jumper header pins (labelled pads or pins beside the Due pins for V2-5).
 
-Prices marked **D** have no domestic ladder read, so they are the international USD ladder times 6.118 (0 part(s) this run). All other JLC-assembled parts use a domestic ladder read from `jlc-smt.com` (`read_dom.py`; dates in the sources table).
+Prices marked **D** have no domestic ladder read, so they are the international USD ladder times 6.118 (3 part(s) this run). All other JLC-assembled parts use a domestic ladder read from `jlc-smt.com` (`read_dom.py`; dates in the sources table).
 
-Parts cost per board at 20 boards resting on D prices: 0.00 CNY of 24.69 CNY (0 %).
+Parts cost per board at 20 boards resting on D prices: 0.25 CNY of 24.76 CNY (1 %).
 
 ## Price basis: domestic-read against international-based (parts bought by JLC, per board)
 
@@ -36,23 +36,23 @@ Parts cost per board at 20 boards resting on D prices: 0.00 CNY of 24.69 CNY (0 
 
 | per board | 20 boards | 100 boards |
 |---|---|---|
-| parts, domestic ladder read | 24.69 CNY = $3.69 | 21.69 CNY = $3.24 |
-| parts, derived (international x 6.118) | 0.00 CNY = $0.00 | 0.00 CNY = $0.00 |
-| **parts, total (what the totals use)** | **24.69 CNY = $3.69** | **21.69 CNY = $3.24** |
-| the same parts at international USD prices | $3.99 | $3.50 |
+| parts, domestic ladder read | 24.50 CNY = $3.66 | 21.50 CNY = $3.21 |
+| parts, derived (international x 6.118) | 0.25 CNY = $0.04 | 0.25 CNY = $0.04 |
+| **parts, total (what the totals use)** | **24.76 CNY = $3.70** | **21.76 CNY = $3.25** |
+| the same parts at international USD prices | $4.00 | $3.51 |
 
-Domestic-read parts: C118223, C13167, C14663, C15849, C15850, C1634, C1653, C17901, C21190, C22775, C22809, C22935, C22936, C22967, C22984, C23018, C23138, C23162, C23178, C23179, C23192, C23206, C23231, C23345, C2500, C25803, C25804, C25808, C25811, C25981, C37593, C38523, C4177, C4211, C473398, C54120492.
+Domestic-read parts: C118223, C14663, C15849, C15850, C1634, C17901, C21189, C21190, C22809, C22936, C22967, C23018, C23024, C23137, C23138, C23162, C23178, C23179, C23206, C23231, C23345, C2500, C25803, C25804, C25808, C25981, C37593, C4177, C4211, C473398, C54120492.
 
-Derived (D) parts: .
+Derived (D) parts: C1647, C1671, C22808.
 
 ## PCB, as its own line
 
 | | 20 boards | 100 boards (2 x 50) |
 |---|---|---|
-| per order | 67.84 CNY = $10.14 | 139.60 CNY = $20.86 each |
-| per board | $0.51 | $0.42 |
+| per order | 71.12 CNY = $10.63 | 147.80 CNY = $22.09 each |
+| per board | $0.53 | $0.44 |
 
-**A published rule, not a quote.** Engineering fee 20 CNY + 410 CNY/m2 over 100 x 58.34 mm (58.34 cm2 a board), 2-layer, 1.6 mm. The 410 CNY/m2 is the jlc.com news notice of 2026-09-21 (<https://www.jlc.com/portal/q33i63612.html>, its "latest news" column: single and double-sided boards raised 40 CNY/m2 to 410 CNY/m2, A1 board, 1.6 mm, "final price per the system's live quote"), read 2026-11-12 15:56 UTC; the page loaded normally, no bot challenge. The 20 CNY engineering fee is `whatif/bom.md`'s reading of `server_guide_4114` (2026-11-11) and was not re-read. The live quote page computes in the browser and was not read.
+**A published rule, not a quote.** Engineering fee 20 CNY + 410 CNY/m2 over 100 x 62.34 mm (62.34 cm2 a board), 2-layer, 1.6 mm. The 410 CNY/m2 is the jlc.com news notice of 2026-09-21 (<https://www.jlc.com/portal/q33i63612.html>, its "latest news" column: single and double-sided boards raised 40 CNY/m2 to 410 CNY/m2, A1 board, 1.6 mm, "final price per the system's live quote"), read 2026-11-12 15:56 UTC; the page loaded normally, no bot challenge. The 20 CNY engineering fee is `whatif/bom.md`'s reading of `server_guide_4114` (2026-11-11) and was not re-read. The live quote page computes in the browser and was not read.
 
 ## Hand-soldered parts, as their own line
 
@@ -73,7 +73,7 @@ Not assembled by JLC: no loading fee, no joint fee. Bought as loose parts; tier 
 
 ## Part-type count and loading fees
 
-JLC-assembled part types: **36** (4 Extended, 32 Basic). Hand-fitted types: 1. Each Extended type costs 20 CNY per order (cap 800):
+JLC-assembled part types: **34** (4 Extended, 30 Basic). Hand-fitted types: 1. Each Extended type costs 20 CNY per order (cap 800):
 
 | LCSC | part | package | n | fee per order | per board @20 | per board @100 |
 |---|---|---|---|---|---|---|
@@ -87,7 +87,7 @@ All three streams' `parts.csv` are the final committed lists when this file is g
 
 ## Cost target (D-V2-1)
 
-The target is the owner's and is left blank here. Version 2 is **$9.70 / $10.07 at 20 boards and $8.34 / $8.49 at 100**.
+The target is the owner's and is left blank here. Version 2 is **$9.73 / $10.11 at 20 boards and $8.37 / $8.52 at 100**.
 
 | D-V2-1 | owner's per-board target | _owner to set_ |
 |---|---|---|
@@ -102,34 +102,32 @@ The target is the owner's and is left blank here. Version 2 is **$9.70 / $10.07 
 | C14663 | CC0603KRX7R9BB104 | 0603 | B | 5 | 2 | scope C (shared) x1; awg C5,C6 x2; powercal C_REFI x1; powercal C_ADS x1 | 0.1000 | 0.1000 | 0.5000 | 0.5000 | 36456651 |
 | C15849 | CL10A105KB8NNNC | 0603 | B | 3 | 2 | scope C (shared) x1; powercal C_FLY x1; powercal C_REFO x1 | 0.0685 | 0.0685 | 0.2055 | 0.2055 | 14206381 |
 | C1634 | CL10C100JB8NNNC | 0603 | B | 3 | 2 | scope Cpx x2; awg C1 x1 | 0.0600 | 0.0600 | 0.1800 | 0.1800 | 1774478 |
+| C1647 | CL10C180JB8NNNC | 0603 | B | 2 | 2 | scope C1 x2 | 0.0838 D | 0.0838 D | 0.1676 | 0.1676 | 379864 |
 | C2500 | BAV99,215 | SOT-23 | B | 2 | 3 | scope Dp x2 | 0.0673 | 0.0673 | 0.1346 | 0.1346 | 1913797 |
-| C1653 | CL10C220JB8NNNC | 0603 | B | 2 | 2 | scope C1 x2 | 0.0539 | 0.0539 | 0.1078 | 0.1078 | 2311698 |
-| C38523 | CL10C120JB8NNNC | 0603 | B | 2 | 2 | scope Cn x2 | 0.0416 | 0.0416 | 0.0832 | 0.0832 | 539529 |
+| C1671 | CL10C470JB8NNNC | 0603 | B | 2 | 2 | scope Cn x2 | 0.0385 D | 0.0385 D | 0.0771 | 0.0771 | 767353 |
 | C23138 | 0603WAF3300T5E | 0603 | B | 6 | 2 | powercal R_L1..R_L6 x6 | 0.0122 | 0.0122 | 0.0732 | 0.0732 | 2410568 |
+| C23178 | 0603WAF4703T5E | 0603 | B | 4 | 2 | scope R1a x2; scope R2a x2 | 0.0181 | 0.0181 | 0.0724 | 0.0724 | 863438 |
 | C17901 | 1206W4F1000T5E | 1206 | B | 2 | 2 | awg R1,R2 (parallel) x2 | 0.0359 | 0.0359 | 0.0718 | 0.0718 | 2048063 |
 | C22936 | 0603WAF100KT5E | 0603 | B | 3 | 2 | awg R8,R9 x2; powercal R_SENSE x1 | 0.0186 | 0.0186 | 0.0558 | 0.0558 | 484232 |
-| C23192 | 0603WAF5103T5E | 0603 | B | 4 | 2 | scope R1a x2; scope R2b x2 | 0.0121 | 0.0121 | 0.0484 | 0.0484 | 766968 |
-| C23178 | 0603WAF4703T5E | 0603 | B | 2 | 2 | scope R3a x2 | 0.0181 | 0.0181 | 0.0362 | 0.0362 | 863438 |
+| C23024 | 0603WAF3003T5E | 0603 | B | 2 | 2 | scope R1b x2 | 0.0229 | 0.0229 | 0.0458 | 0.0458 | 403640 |
+| C4211 | 0603WAF3001T5E | 0603 | B | 3 | 2 | awg R3 x1; awg R4 x1; awg R6 x1 | 0.0141 | 0.0141 | 0.0423 | 0.0423 | 6320189 |
+| C23137 | 0603WAF3303T5E | 0603 | B | 4 | 2 | scope R2b x2; scope R3a x2 | 0.0093 | 0.0093 | 0.0372 | 0.0372 | 627752 |
 | C23162 | 0603WAF4701T5E | 0603 | B | 2 | 2 | extra R-i2c x2 | 0.0169 | 0.0169 | 0.0338 | 0.0338 | 14573647 |
-| C22984 | 0603WAF3002T5E | 0603 | B | 2 | 2 | scope R1b x2 | 0.0145 | 0.0145 | 0.0290 | 0.0290 | 1628924 |
-| C4211 | 0603WAF3001T5E | 0603 | B | 2 | 2 | awg R3 x1; awg R4 x1 | 0.0141 | 0.0141 | 0.0282 | 0.0282 | 6320189 |
 | C23179 | 0603WAF4700T5E | 0603 | B | 2 | 2 | scope Rnp x2 | 0.0139 | 0.0139 | 0.0278 | 0.0278 | 3642882 |
 | C25804 | 0603WAF1002T5E | 0603 | B | 2 | 2 | powercal R_SRB x1; powercal R_SRM x1 | 0.0133 | 0.0133 | 0.0266 | 0.0266 | 42784358 |
-| C25811 | 0603WAF2003T5E | 0603 | B | 2 | 2 | scope R3b x2 | 0.0123 | 0.0123 | 0.0246 | 0.0246 | 1734326 |
-| C22935 | 0603WAF1004T5E | 0603 | B | 2 | 2 | scope R2a x2 | 0.0108 | 0.0108 | 0.0216 | 0.0216 | 3896119 |
+| C21189 | 0603WAF0000T5E | 0603 | B | 2 | 2 | scope R3b x2 | 0.0124 | 0.0124 | 0.0248 | 0.0248 | 17559264 |
 | C25981 | 0603WAF8201T5E | 0603 | B | 1 | 2 | powercal R_FB3b x1 | 0.0210 | 0.0210 | 0.0210 | 0.0210 | 675780 |
 | C23345 | 0603WAF220JT5E | 0603 | B | 2 | 2 | scope Riso x2 | 0.0101 | 0.0101 | 0.0202 | 0.0202 | 5472853 |
-| C13167 | 0603WAF2701T5E | 0603 | B | 1 | 2 | awg R6 x1 | 0.0195 | 0.0195 | 0.0195 | 0.0195 | 879280 |
 | C25803 | 0603WAF1003T5E | 0603 | B | 1 | 2 | powercal R_FB4 x1 | 0.0176 | 0.0176 | 0.0176 | 0.0176 | 15152825 |
 | C22809 | 0603WAF1502T5E | 0603 | B | 1 | 2 | powercal R_SRT x1 | 0.0174 | 0.0174 | 0.0174 | 0.0174 | 3202479 |
 | C22967 | 0603WAF2702T5E | 0603 | B | 1 | 2 | awg R7 x1 | 0.0167 | 0.0167 | 0.0167 | 0.0167 | 562906 |
 | C23206 | 0603WAF5602T5E | 0603 | B | 1 | 2 | powercal R_FB3a x1 | 0.0164 | 0.0164 | 0.0164 | 0.0164 | 706719 |
 | C4177 | 0603WAF1801T5E | 0603 | B | 1 | 2 | powercal R_BLEED x1 | 0.0125 | 0.0125 | 0.0125 | 0.0125 | 565050 |
-| C22775 | 0603WAF1000T5E | 0603 | B | 1 | 2 | awg R5 x1 | 0.0122 | 0.0122 | 0.0122 | 0.0122 | 9930538 |
 | C21190 | 0603WAF1001T5E | 0603 | B | 1 | 2 | powercal R_SRD x1 | 0.0100 | 0.0100 | 0.0100 | 0.0100 | 28780441 |
 | C23018 | 0603WAF3901T5E | 0603 | B | 1 | 2 | powercal R_SRS x1 | 0.0099 | 0.0099 | 0.0099 | 0.0099 | 820991 |
 | C25808 | 0603WAF1203T5E | 0603 | B | 1 | 2 | powercal R_FB1 x1 | 0.0094 | 0.0094 | 0.0094 | 0.0094 | 1074110 |
 | C23231 | 0603WAF6802T5E | 0603 | B | 1 | 2 | powercal R_FB2 x1 | 0.0093 | 0.0093 | 0.0093 | 0.0093 | 786500 |
+| C22808 | 0603WAF1500T5E | 0603 | B | 1 | 2 | awg R5 x1 | 0.0092 D | 0.0092 D | 0.0092 | 0.0092 | 1204934 |
 | C2837587 | KH-BNC50-3511 | THT | E | 3 | 0 | extra J-bnc x3 | 3.9800 | 3.4500 | 11.9400 | 10.3500 | 12520 |
 | C37593 | ADS1115IDGSR | VSSOP-10 | E | 1 | 10 | powercal U3 x1 | 6.9100 | 6.0400 | 6.9100 | 6.0400 | 16673 |
 | C54120492 | REF3030EAIDBZR | SOT-23 | E | 1 | 3 | powercal U2 x1 | 4.9400 | 4.3300 | 4.9400 | 4.3300 | 975 |
@@ -178,38 +176,36 @@ Version 1 parts the version 2 lists do not carry, and an alternative; switching 
 | LCSC | part | domestic price | read from | international ladder read (UTC) from |
 |---|---|---|---|---|
 | C1634 | CL10C100JB8NNNC | read | https://www.jlc-smt.com/lcsc/detail/C1634.html read 2026-11-12 16:05 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/1986-CL10C100JB8NNNC/C1634 |
-| C1653 | CL10C220JB8NNNC | read | https://www.jlc-smt.com/lcsc/detail/C1653.html read 2026-11-12 16:05 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/2005-CL10C220JB8NNNC/C1653 |
+| C1647 | CL10C180JB8NNNC | derived | **D**: international ladder x 6.118, no domestic ladder read | 2026-11-13 14:34 https://jlcpcb.com/partdetail/1999-CL10C180JB8NNNC/C1647 |
+| C1671 | CL10C470JB8NNNC | derived | **D**: international ladder x 6.118, no domestic ladder read | 2026-11-13 14:34 https://jlcpcb.com/partdetail/2023-CL10C470JB8NNNC/C1671 |
 | C2500 | BAV99,215 | read | https://www.jlc-smt.com/lcsc/detail/C2500.html read 2026-11-12 16:04 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/Nexperia-BAV99215/C2500 |
 | C4177 | 0603WAF1801T5E | read | https://www.jlc-smt.com/lcsc/detail/C4177.html read 2026-11-12 16:10 UTC | 2026-11-12 16:10 https://jlcpcb.com/partdetail/4584-0603WAF1801T5E/C4177 |
 | C4211 | 0603WAF3001T5E | read | https://www.jlc-smt.com/lcsc/detail/C4211.html read 2026-11-12 16:10 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/4618-0603WAF3001T5E/C4211 |
-| C13167 | 0603WAF2701T5E | read | https://www.jlc-smt.com/lcsc/detail/C13167.html read 2026-11-12 16:10 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/13814-0603WAF2701T5E/C13167 |
 | C14663 | CC0603KRX7R9BB104 | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:07 https://jlcpcb.com/partdetail/YAGEO-CC0603KRX7R9BB104/C14663 |
 | C15849 | CL10A105KB8NNNC | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:07 https://jlcpcb.com/partdetail/16531-CL10A105KB8NNNC/C15849 |
 | C15850 | CL21A106KAYNNNE | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:07 https://jlcpcb.com/partdetail/16532-CL21A106KAYNNNE/C15850 |
 | C17901 | 1206W4F1000T5E | read | https://www.jlc-smt.com/lcsc/detail/C17901.html read 2026-11-12 16:06 UTC | 2026-11-12 16:07 https://jlcpcb.com/partdetail/18589-1206W4F1000T5E/C17901 |
+| C21189 | 0603WAF0000T5E | read | https://www.jlc-smt.com/lcsc/detail/C21189.html read 2026-11-13 13:14 UTC | 2026-11-13 07:56 https://jlcpcb.com/partdetail/21903-0603WAF0000T5E/C21189 |
 | C21190 | 0603WAF1001T5E | read | https://www.jlc-smt.com/lcsc/detail/C21190.html read 2026-11-12 16:06 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/21904-0603WAF1001T5E/C21190 |
-| C22775 | 0603WAF1000T5E | read | https://www.jlc-smt.com/lcsc/detail/C22775.html read 2026-11-12 16:10 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23502-0603WAF1000T5E/C22775 |
+| C22808 | 0603WAF1500T5E | derived | **D**: international ladder x 6.118, no domestic ladder read | 2026-11-13 14:34 https://jlcpcb.com/partdetail/23535-0603WAF1500T5E/C22808 |
 | C22809 | 0603WAF1502T5E | read | https://www.jlc-smt.com/lcsc/detail/C22809.html read 2026-11-12 16:07 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23536-0603WAF1502T5E/C22809 |
-| C22935 | 0603WAF1004T5E | read | https://www.jlc-smt.com/lcsc/detail/C22935.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23662-0603WAF1004T5E/C22935 |
 | C22936 | 0603WAF100KT5E | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23663-0603WAF100KT5E/C22936 |
 | C22967 | 0603WAF2702T5E | read | https://www.jlc-smt.com/lcsc/detail/C22967.html read 2026-11-12 16:06 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23694-0603WAF2702T5E/C22967 |
-| C22984 | 0603WAF3002T5E | read | https://www.jlc-smt.com/lcsc/detail/C22984.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23711-0603WAF3002T5E/C22984 |
 | C23018 | 0603WAF3901T5E | read | https://www.jlc-smt.com/lcsc/detail/C23018.html read 2026-11-12 16:07 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23745-0603WAF3901T5E/C23018 |
+| C23024 | 0603WAF3003T5E | read | AFE v1 bom/v1/bom.md (kvm_01 v1-landing 42601e3): https://www.jlc-smt.com/lcsc/detail/C23024.html read 2026-11-12; not re-read here (bot challenge on re-read 2026-11-13 *(check)*) | 2026-11-13 14:34 https://jlcpcb.com/partdetail/23751-0603WAF3003T5E/C23024 |
+| C23137 | 0603WAF3303T5E | read | https://www.jlc-smt.com/lcsc/detail/C23137.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23864-0603WAF3303T5E/C23137 |
 | C23138 | 0603WAF3300T5E | read | https://www.jlc-smt.com/lcsc/detail/C23138.html read 2026-11-12 16:07 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23865-0603WAF3300T5E/C23138 |
 | C23162 | 0603WAF4701T5E | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23889-0603WAF4701T5E/C23162 |
 | C23178 | 0603WAF4703T5E | read | https://www.jlc-smt.com/lcsc/detail/C23178.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23905-0603WAF4703T5E/C23178 |
 | C23179 | 0603WAF4700T5E | read | https://www.jlc-smt.com/lcsc/detail/C23179.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23906-0603WAF4700T5E/C23179 |
-| C23192 | 0603WAF5103T5E | read | https://www.jlc-smt.com/lcsc/detail/C23192.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23919-0603WAF5103T5E/C23192 |
 | C23206 | 0603WAF5602T5E | read | https://www.jlc-smt.com/lcsc/detail/C23206.html read 2026-11-12 16:06 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23933-0603WAF5602T5E/C23206 |
 | C23231 | 0603WAF6802T5E | read | https://www.jlc-smt.com/lcsc/detail/C23231.html read 2026-11-12 16:06 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/23958-0603WAF6802T5E/C23231 |
 | C23345 | 0603WAF220JT5E | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:08 https://jlcpcb.com/partdetail/24078-0603WAF220JT5E/C23345 |
 | C25803 | 0603WAF1003T5E | read | https://www.jlc-smt.com/lcsc/detail/C25803.html read 2026-11-12 16:04 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/26546-0603WAF1003T5E/C25803 |
 | C25804 | 0603WAF1002T5E | read | https://www.jlc-smt.com/lcsc/detail/C25804.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/26547-0603WAF1002T5E/C25804 |
 | C25808 | 0603WAF1203T5E | read | https://www.jlc-smt.com/lcsc/detail/C25808.html read 2026-11-12 16:06 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/26551-0603WAF1203T5E/C25808 |
-| C25811 | 0603WAF2003T5E | read | https://www.jlc-smt.com/lcsc/detail/C25811.html read 2026-11-12 16:05 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/26554-0603WAF2003T5E/C25811 |
 | C25981 | 0603WAF8201T5E | read | https://www.jlc-smt.com/lcsc/detail/C25981.html read 2026-11-12 16:07 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/26724-0603WAF8201T5E/C25981 |
 | C37593 | ADS1115IDGSR | read | https://www.jlc-smt.com/lcsc/detail/C37593.html read 2026-11-12 16:04 UTC | 2026-11-12 16:08 https://jlcpcb.com/partdetail/TexasInstruments-ADS1115IDGSR/C37593 |
-| C38523 | CL10C120JB8NNNC | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:09 https://jlcpcb.com/partdetail/39506-CL10C120JB8NNNC/C38523 |
 | C118223 | TPH2502-SR | read | https://www.jlc-smt.com/lcsc/detail/C118223.html read 2026-11-12 16:04 UTC | 2026-11-12 16:09 https://jlcpcb.com/partdetail/3PEAK-TPH2502SR/C118223 |
 | C473398 | LM27762DSSR | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:09 https://jlcpcb.com/partdetail/TexasInstruments-LM27762DSSR/C473398 |
 | C2837587 | KH-BNC50-3511 | read | whatif/bom.md domestic table (jlc-smt.com/lcsc/detail/<C>.html, read 2026-11-11) | 2026-11-12 16:09 https://jlcpcb.com/partdetail/Shenzhen_KinghelmElec-KH_BNC503511/C2837587 |

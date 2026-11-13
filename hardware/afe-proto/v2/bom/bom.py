@@ -27,7 +27,7 @@ SETUP, LOAD, LOAD_CAP, JOINT = 50.0, 20.0, 800.0, 0.01
 XRAY = [(10, 10.0), (50, 5.0), (200, 3.0), (500, 2.0), (1000, 1.5), (3000, 1.0), (10 ** 9, 0.5)]   # up to n pieces: CNY each
 PCB_ENG, PCB_RATE = 20.0, 410.0  # CNY per order, CNY per m2: 2-layer 1.6 mm. 410 = jlc.com news notice of 2026-09-21 (read 2026-11-12 15:56 UTC)
 PCB_RATE_V1 = 370.0              # version 1 (whatif/bom.md) used the price after the 2026-09-14 cut; the 2026-09-21 notice raised it by 40
-BOARD_MM = (100.0, 58.34)        # MC-1 outline as amended (was 100 x 53.34)
+BOARD_MM = (100.0, 62.34)        # the outline as built: the overhang is 4.5 mm on both long edges (was 100 x 58.34, 100 x 53.34 before)
 PER_ORDER_MAX = 50               # Economic PCBA takes 2-50 boards per order
 BLOCKS = [("opamps", "Op-amps (ICs)"), ("precres", "Precision resistors"), ("switches", "Switches"),
           ("adc_ref", "Precision ADC and reference (ICs)"), ("ladder", "Calibration ladder"), ("rails", "Rails (LM27762, with its X-ray)"),

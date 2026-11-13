@@ -93,7 +93,7 @@ def test_v1_adapter_reports_design_and_bom_txt_equal_and_the_current_design():
     assert sum(x["qty"] for x in j) == 99 and len(j) == 33
     r0 = next(x for x in j if x["lcsc"] == "C21189")
     assert r0["qty"] == 16 and "R109" not in r0["ref"].split(",")
-    assert bom.BOARD_MM == (100.0, 58.34)
+    assert bom.BOARD_MM == (100.0, 62.34)
 
 
 def test_regeneration_detects_a_price_change(tmp_path):
