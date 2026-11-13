@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
-import networkx as nx
+try:
+    import networkx as nx
+except ImportError:      # the networkx marker skips every test here with a reason, or fails it under --require-tool=networkx (conftest)
+    nx = None
 
 pytestmark = pytest.mark.networkx
 
