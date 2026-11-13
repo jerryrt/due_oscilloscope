@@ -153,3 +153,47 @@ def test_the_default_run_uses_the_pinned_digest_and_reports_it(main_image):
 def test_a_digest_that_is_not_the_pinned_image_is_refused(main_image):
     r = _run_default("python3", "-c", "print('ran')", digest="sha256:" + "0" * 64)
     assert r.returncode == 2 and "ran" not in r.stdout, (r.returncode, r.stderr[-300:])
+
+
+TOUCH = REPO / "hardware" / "afe-proto" / "tests" / "test_zz_touch_fixture.py"
+TOUCH_SRC = '''
+import pathlib
+
+def test_touches_a_fixture():
+    here = pathlib.Path(__file__).resolve().parent
+    (here / "fixtures" / "zz-touched.txt").write_text("x")
+'''
+
+
+def _gate_with_a_test_that_touches_a_fixture(env_extra):
+    import os
+    TOUCH.write_text(TOUCH_SRC)
+    try:
+        env = dict(os.environ, DUE_PCB_IMAGE=MAIN, **env_extra)
+        return subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "200", "docker/pcb/run-gate.sh",
+                               "-k", "test_touches_a_fixture"], capture_output=True, text=True, env=env, timeout=400)
+    finally:
+        TOUCH.unlink(missing_ok=True)
+        (REPO / "hardware/afe-proto/tests/fixtures/zz-touched.txt").unlink(missing_ok=True)
+
+
+def test_a_test_that_writes_a_fixture_fails_the_gate_and_names_the_file(main_image):
+    r = _gate_with_a_test_that_touches_a_fixture({})
+    assert r.returncode == 3, (r.returncode, r.stdout[-300:], r.stderr[-300:])
+    assert "new: hardware/afe-proto/tests/fixtures/zz-touched.txt" in r.stderr
+
+
+def test_the_same_write_fails_at_the_writing_test_under_a_read_only_mount(main_image):
+    r = _gate_with_a_test_that_touches_a_fixture({"DUE_PCB_RO_FIXTURES": "1"})
+    assert r.returncode != 0 and ("Read-only file system" in r.stdout or "PermissionError" in r.stdout), r.stdout[-400:]
+    assert "test_touches_a_fixture" in r.stdout
+
+
+def test_the_gate_refuses_to_start_over_leftovers_of_an_earlier_run(main_image):
+    stray = REPO / "hardware/afe-proto/tests/fixtures/zz-stray.kicad_prl"
+    stray.write_text("x")
+    try:
+        r = run_in(main_image, "docker/pcb/run-gate.sh", "-k", "test_nothing_matches_this")
+    finally:
+        stray.unlink(missing_ok=True)
+    assert r.returncode == 4 and "leftover: hardware/afe-proto/tests/fixtures/zz-stray.kicad_prl" in r.stderr, (r.returncode, r.stderr[-300:])

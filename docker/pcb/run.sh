@@ -101,6 +101,15 @@ flags=(
     --env "DUE_PCB_CAP=$M"
     --cidfile "$cidfile"
 )
+# THE COMMITTED FIXTURES AND GOLDENS ARE INPUTS. With DUE_PCB_RO_FIXTURES=1 they are mounted read-only, so
+# a write into them (bytecode, a .kicad_prl, a lock file) fails at the writing test and names it, instead of
+# poisoning the next run. It is opt-in until every test copies what it opens: today tests/pcbtools'
+# golden-manifest and golden-capture tests write into golden/ on purpose and fail under it (12 of 460).
+# docker/pcb/run-gate.sh checks the same directories after every run whether or not this is set.
+if [ "${DUE_PCB_RO_FIXTURES:-0}" = 1 ]; then
+    flags+=(--volume "$repo/hardware/afe-proto/tests/fixtures:/work/hardware/afe-proto/tests/fixtures:ro"
+            --volume "$repo/hardware/afe-proto/tests/golden:/work/hardware/afe-proto/tests/golden:ro")
+fi
 cleanup() {
     if [ -f "$cidfile" ]; then
         cid=$(cat "$cidfile" 2>/dev/null || true)
