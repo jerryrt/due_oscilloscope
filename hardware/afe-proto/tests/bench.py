@@ -97,7 +97,8 @@ def budgets(meta, rows, margin):
             continue
         b.setdefault(r["board"], {})[r["tool"]] = {
             "peak_rss_kb": int(math.ceil(r["peak_rss_kb"]["median"] * margin)),
-            "wall_s": round(r["wall_s"]["median"] * margin, 2)}
+            "wall_s": round(r["wall_s"]["median"] * margin, 2),
+            "machine": meta["machine"]}
     return {"meta": {k: meta[k] for k in ("image", "installed", "machine", "versions", "runs")} | {"margin": margin,
             "rule": "median of the measured runs times margin"}, "budgets": b}
 

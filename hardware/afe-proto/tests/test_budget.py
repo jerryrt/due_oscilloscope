@@ -10,10 +10,11 @@ from simtools import capped
 pytestmark = [pytest.mark.hostcap, pytest.mark.skipif(not capped.available(), reason="needs the capped runner")]
 
 PY = sys.executable
-BIG = {"peak_rss_kb": 2_000_000, "wall_s": 30}
+BIG = {"peak_rss_kb": 2_000_000, "wall_s": 30, "machine": "here"}
 
 
 def step(code, budget=BIG, **kw):
+    kw.setdefault("machine", "here")
     return B.run_step("t", [PY, "-c", code], budget=budget, mem=kw.pop("mem", "1G"), **kw)
 
 
@@ -22,14 +23,14 @@ def test_a_step_inside_its_budget_is_ok():
 
 
 def test_a_budget_shrunk_below_the_measurement_is_over_budget_on_peak():
-    out = step("x = bytearray(100_000_000)", budget={"peak_rss_kb": 20_000, "wall_s": 30})
+    out = step("x = bytearray(100_000_000)", budget={"peak_rss_kb": 20_000, "wall_s": 30, "machine": "here"})
     assert out.kind == "OVER_BUDGET" and "peak" in out.detail
     with pytest.raises(B.BudgetExceeded):
         B.assert_ok(out)
 
 
 def test_wall_over_budget_is_over_budget_on_wall():
-    out = step("import time; time.sleep(1.5)", budget={"peak_rss_kb": 2_000_000, "wall_s": 1.0}, timeout=20)
+    out = step("import time; time.sleep(1.5)", budget={"peak_rss_kb": 2_000_000, "wall_s": 1.0, "machine": "here"}, timeout=20)
     assert out.kind == "OVER_BUDGET" and "wall" in out.detail
 
 
@@ -74,3 +75,44 @@ def test_the_four_error_classes_are_distinct():
 @pytest.mark.parametrize("rc, kind", [(0, "OK"), (1, "FAIL"), (124, "TIMEOUT"), (137, "OOM"), (139, "CRASH"), (134, "CRASH")])
 def test_classify_table(rc, kind):
     assert B.classify(rc) == kind
+
+
+SLOW = "import time; time.sleep(1.5)"
+TIGHT = {"peak_rss_kb": 2_000_000, "wall_s": 1.0, "machine": "x1"}
+
+
+def test_wall_budget_is_enforced_on_the_machine_it_was_measured_on():
+    out = step(SLOW, budget=TIGHT, machine="x1", timeout=20)
+    assert out.kind == "OVER_BUDGET" and out.wall_enforced and out.wall_ratio > 1.0
+
+
+def test_wall_budget_is_only_reported_on_another_machine():
+    out = step(SLOW, budget=TIGHT, machine="somewhere-else", timeout=20)
+    assert out.kind == "OK" and not out.wall_enforced
+    assert out.wall_ratio == pytest.approx(out.wall_s / 1.0) and out.wall_ratio > 1.0     # the ratio is still reported
+
+
+def test_peak_budget_is_enforced_on_every_machine():
+    small = {"peak_rss_kb": 20_000, "wall_s": 60, "machine": "x1"}
+    for machine in ("x1", "somewhere-else"):
+        out = step("x = bytearray(100_000_000)", budget=small, machine=machine)
+        assert out.kind == "OVER_BUDGET" and "peak" in out.detail, (machine, out.kind)
+
+
+def test_a_budget_with_no_machine_enforces_no_wall_time():
+    out = step(SLOW, budget={"peak_rss_kb": 2_000_000, "wall_s": 1.0}, machine="x1", timeout=20)
+    assert out.kind == "OK" and not out.wall_enforced
+
+
+def test_the_time_limit_is_not_tightened_to_a_budget_on_another_machine():
+    """A slower machine must not be killed at the budget's wall time: the limit stays the default there."""
+    out = B.run_step("t", [PY, "-c", SLOW], budget=TIGHT, mem="1G", machine="somewhere-else")
+    assert out.kind == "OK"          # with the limit at wall_s + 1 = 2 s it would be near the edge; 300 s is not
+
+
+def test_the_committed_budgets_carry_their_machine():
+    import json
+    import pathlib
+    d = json.loads((pathlib.Path(__file__).resolve().parent / "budgets.json").read_text())
+    rows = [t for b in d["budgets"].values() for t in b.values()]
+    assert len(rows) >= 30 and all(r.get("machine") == d["meta"]["machine"] for r in rows)
