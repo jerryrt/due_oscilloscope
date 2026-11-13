@@ -1,6 +1,6 @@
 {
  "meta": {
-  "image": "c3fcbf1aeb95fe273df80066e9625336394b1a5ad06c58daa7092db0b0293657",
+  "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
   "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
   "machine": "jerry-x1gen7",
   "versions": {
@@ -12,167 +12,230 @@
   },
   "runs": 5,
   "margin": 1.5,
-  "rule": "median of the measured runs times margin",
-  "provisional": "measured in the locally built r3 image (content c3fcbf1a\u2026), not the pulled digest; retake from the pulled image for the figures of record"
+  "rule": "median of the measured runs times margin"
  },
  "budgets": {
   "v1": {
    "pcbnew-load": {
-    "peak_rss_kb": 229974,
+    "peak_rss_kb": 228714,
     "wall_s": 0.43
    },
    "boardio-read": {
-    "peak_rss_kb": 258726,
-    "wall_s": 0.78
+    "peak_rss_kb": 258768,
+    "wall_s": 0.8
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 312474,
-    "wall_s": 3.82
+    "peak_rss_kb": 312756,
+    "wall_s": 3.84
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 528210,
+    "peak_rss_kb": 528150,
     "wall_s": 2.59
    },
+   "sexpr-parse": {
+    "peak_rss_kb": 29850,
+    "wall_s": 0.14
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 275256,
+    "wall_s": 0.92
+   },
    "erc-v1-schematic": {
-    "peak_rss_kb": 2048178,
-    "wall_s": 10.12
+    "peak_rss_kb": 2046516,
+    "wall_s": 9.87
    }
   },
   "v2-BASE": {
    "pcbnew-load": {
-    "peak_rss_kb": 239556,
-    "wall_s": 0.52
+    "peak_rss_kb": 239334,
+    "wall_s": 0.51
    },
    "boardio-read": {
-    "peak_rss_kb": 269046,
-    "wall_s": 0.92
+    "peak_rss_kb": 270054,
+    "wall_s": 0.89
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 323166,
-    "wall_s": 3.92
+    "peak_rss_kb": 323172,
+    "wall_s": 3.94
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558990,
-    "wall_s": 3.65
+    "peak_rss_kb": 559230,
+    "wall_s": 3.68
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 38166,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 295314,
+    "wall_s": 1.16
    }
   },
   "v2-awg": {
    "pcbnew-load": {
-    "peak_rss_kb": 239070,
-    "wall_s": 0.49
+    "peak_rss_kb": 239430,
+    "wall_s": 0.51
    },
    "boardio-read": {
-    "peak_rss_kb": 269052,
-    "wall_s": 0.9
+    "peak_rss_kb": 268890,
+    "wall_s": 0.89
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322560,
-    "wall_s": 3.96
+    "peak_rss_kb": 320922,
+    "wall_s": 3.92
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558690,
-    "wall_s": 3.65
+    "peak_rss_kb": 557046,
+    "wall_s": 3.66
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 37614,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 294372,
+    "wall_s": 1.17
    }
   },
   "v2-integrated": {
    "pcbnew-load": {
-    "peak_rss_kb": 238818,
+    "peak_rss_kb": 237930,
     "wall_s": 0.49
    },
    "boardio-read": {
-    "peak_rss_kb": 270300,
-    "wall_s": 0.89
+    "peak_rss_kb": 271722,
+    "wall_s": 0.87
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 320982,
-    "wall_s": 3.9
+    "peak_rss_kb": 320682,
+    "wall_s": 4.0
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558138,
+    "peak_rss_kb": 558660,
     "wall_s": 3.6
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 37446,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 294216,
+    "wall_s": 1.11
    }
   },
   "v2-power": {
    "pcbnew-load": {
-    "peak_rss_kb": 238986,
+    "peak_rss_kb": 239280,
     "wall_s": 0.51
    },
    "boardio-read": {
-    "peak_rss_kb": 270432,
-    "wall_s": 0.89
+    "peak_rss_kb": 268836,
+    "wall_s": 0.9
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 321822,
-    "wall_s": 3.96
+    "peak_rss_kb": 323370,
+    "wall_s": 4.0
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558510,
-    "wall_s": 3.71
+    "peak_rss_kb": 557610,
+    "wall_s": 3.65
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 38100,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 292446,
+    "wall_s": 1.14
    }
   },
   "v2-power3": {
    "pcbnew-load": {
-    "peak_rss_kb": 239976,
-    "wall_s": 0.52
+    "peak_rss_kb": 239694,
+    "wall_s": 0.51
    },
    "boardio-read": {
-    "peak_rss_kb": 270342,
+    "peak_rss_kb": 268962,
     "wall_s": 0.9
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322560,
+    "peak_rss_kb": 323580,
     "wall_s": 3.96
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558000,
-    "wall_s": 3.65
+    "peak_rss_kb": 559464,
+    "wall_s": 3.71
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 38226,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 294168,
+    "wall_s": 1.2
    }
   },
   "v2-refcal": {
    "pcbnew-load": {
-    "peak_rss_kb": 239532,
-    "wall_s": 0.51
+    "peak_rss_kb": 240486,
+    "wall_s": 0.49
    },
    "boardio-read": {
-    "peak_rss_kb": 270918,
-    "wall_s": 0.89
+    "peak_rss_kb": 268842,
+    "wall_s": 0.87
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322206,
-    "wall_s": 3.94
+    "peak_rss_kb": 323358,
+    "wall_s": 4.05
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 559590,
-    "wall_s": 3.63
+    "peak_rss_kb": 561648,
+    "wall_s": 3.68
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 38580,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 296154,
+    "wall_s": 1.19
    }
   },
   "v2-scope2east": {
    "pcbnew-load": {
-    "peak_rss_kb": 239190,
-    "wall_s": 0.51
+    "peak_rss_kb": 240504,
+    "wall_s": 0.49
    },
    "boardio-read": {
-    "peak_rss_kb": 267288,
+    "peak_rss_kb": 270498,
     "wall_s": 0.89
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322794,
-    "wall_s": 4.0
+    "peak_rss_kb": 322182,
+    "wall_s": 3.96
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558024,
+    "peak_rss_kb": 558180,
     "wall_s": 3.71
+   },
+   "sexpr-parse": {
+    "peak_rss_kb": 37980,
+    "wall_s": 0.2
+   },
+   "editor-roundtrip": {
+    "peak_rss_kb": 294090,
+    "wall_s": 1.17
    }
   },
   "-": {
    "ngspice-rc-ladder": {
-    "peak_rss_kb": 48552,
-    "wall_s": 0.43
+    "peak_rss_kb": 48486,
+    "wall_s": 0.45
    }
   },
   "v1+v2": {
    "netlib-text-v1v2": {
-    "peak_rss_kb": 53796,
+    "peak_rss_kb": 53928,
     "wall_s": 0.41
    }
   }
