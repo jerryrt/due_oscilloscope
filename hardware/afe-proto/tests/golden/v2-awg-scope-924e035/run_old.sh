@@ -11,7 +11,7 @@
 #   models-open/tph2502-beh/tph2502_beh.lib
 set -u
 tool=$1
-W=${AFE_ROOT:-/work/hardware/afe-proto}      # the repository checkout; the container mounts it at /work
+W=${AFE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}      # hardware/afe-proto of the checkout this script sits in (the container mounts it at /work; the bench runs it on the host)
 OUT=${2:-$W/tests/golden/v2-awg-scope-924e035}
 mkdir -p "$OUT"
 R=/tmp/v2-old-$tool/afe-proto
