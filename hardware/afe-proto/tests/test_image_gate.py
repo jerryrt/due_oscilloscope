@@ -197,3 +197,18 @@ def test_the_gate_refuses_to_start_over_leftovers_of_an_earlier_run(main_image):
     finally:
         stray.unlink(missing_ok=True)
     assert r.returncode == 4 and "leftover: hardware/afe-proto/tests/fixtures/zz-stray.kicad_prl" in r.stderr, (r.returncode, r.stderr[-300:])
+
+
+THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS")
+
+
+@pytest.mark.parametrize("cpus, want", [("2", "2"), ("3", "3"), ("1.5", "1"), ("0.5", "1")])
+def test_the_container_sees_thread_counts_equal_to_floor_of_the_cpu_quota(main_image, cpus, want):
+    import os
+    code = "import os; print(' '.join(os.environ.get(v, 'unset') for v in %r))" % (THREAD_VARS,)
+    env = dict(os.environ, DUE_PCB_IMAGE=main_image)
+    for v in THREAD_VARS:
+        env.pop(v, None)
+    r = subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "60", "-c", cpus, "python3", "-c", code],
+                       capture_output=True, text=True, env=env, timeout=120)
+    assert r.returncode == 0 and r.stdout.split() == [want] * 4, (cpus, r.stdout, r.stderr[-200:])

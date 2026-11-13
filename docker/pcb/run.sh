@@ -88,6 +88,11 @@ fi
 ident=$content
 [ "$pinned" = 1 ] && ident=$digest
 
+# THREAD COUNTS FOLLOW THE CPU QUOTA. numpy/scipy start one BLAS/OpenMP thread per CPU they can SEE (12 here),
+# while --cpus is a quota of C CPUs of time, so the threads spin against it: cap.py took 98 s instead of 15.5 s.
+# This is the one place the counts are set - floor(--cpus), minimum 1 - so it covers every program in the
+# image whatever its import order. tests/test_image_gate.py and tests/pcbtools/test_threads.py hold it.
+threads=$(awk -v c="$C" 'BEGIN { t = int(c); if (t < 1) t = 1; print t }')
 cidfile="${TMPDIR:-/tmp}/due-pcb-$$-${RANDOM}.cid"
 errlog=$(mktemp)
 flags=(
@@ -99,6 +104,8 @@ flags=(
     --env "DUE_PCB_IMAGE_INSTALLED=$installed"
     --env "DUE_PCB_MACHINE=${DUE_PCB_MACHINE:-$(hostname)}"
     --env "DUE_PCB_CAP=$M"
+    --env "OMP_NUM_THREADS=$threads" --env "OPENBLAS_NUM_THREADS=$threads"
+    --env "MKL_NUM_THREADS=$threads" --env "NUMEXPR_NUM_THREADS=$threads"
     --cidfile "$cidfile"
 )
 # THE COMMITTED FIXTURES AND GOLDENS ARE INPUTS. With DUE_PCB_RO_FIXTURES=1 they are mounted read-only, so
