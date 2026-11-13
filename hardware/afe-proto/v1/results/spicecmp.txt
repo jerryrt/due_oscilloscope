@@ -1,0 +1,6 @@
+scope: 28 SPICE elements after reduction, 28 schematic elements: SAME CIRCUIT
+awg: 14 SPICE elements after reduction, 14 schematic elements: SAME CIRCUIT
+mutant scope (R1aa 470k -> 480k): FAILS as it must
+mutant awg (C304 10p -> 20p): FAILS as it must
+mutant awg (C304 removed from the netlist): FAILS as it must
+mutant scope (Rnp of CH1 wired to the other channel): FAILS as it must

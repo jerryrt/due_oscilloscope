@@ -1,0 +1,25 @@
+IN-IN                pour=False converge  0.8 mm: 0.0000  0.4 mm: 0.0000  0.2 mm: 0.0000 pF  order 1.16  extrapolated 0.0000 +- 0.0000 pF  [converging, observed order 1.16]
+IN-IN                pour=True  converge  0.8 mm: 0.0000  0.4 mm: 0.0000  0.2 mm: 0.0000 pF  order 1.88  extrapolated -0.0000 +- 0.0000 pF  [converging, observed order 1.88]
+/CH1_IN              pour=False converge  0.4 mm: 1.0033  0.2 mm: 1.4527  0.1 mm: 1.4022 pF  order n/a  extrapolated 1.4022 +- 0.4494 pF  [not converging monotonically]  [not validated against a field solver]
+/CH1_IN              pour=True  converge  0.4 mm: 1.2097  0.2 mm: 2.0040  0.1 mm: 1.7807 pF  order n/a  extrapolated 1.7807 +- 0.7942 pF  [not converging monotonically]  [not validated against a field solver]
+/CH2_IN              pour=False converge  0.4 mm: 0.9163  0.2 mm: 1.4165  0.1 mm: 1.4817 pF  order 2.94  extrapolated 1.4817 +- 0.5654 pF  [not converging monotonically (observed order 2.94 outside 0.5 to 2.5)]  [not validated against a field solver]
+/CH2_IN              pour=True  converge  0.4 mm: 1.0440  0.2 mm: 1.9592  0.1 mm: 1.8665 pF  order n/a  extrapolated 1.8665 +- 0.9152 pF  [not converging monotonically]  [not validated against a field solver]
+N-N h=0.2 pour=True pad 0.75: 0.0000 fF
+N-N h=0.2 pour=True pad 0.75: 0.0000 fF
+N-N h=0.1 pour=True pad 0.75: 0.0000 fF
+N-N h=0.1 pour=True pad 0.75: 0.0000 fF
+NP-NP h=0.1 pour=False pad 0.75: 0.6217 fF
+NP-NP h=0.1 pour=True pad 0.75: 0.1040 fF
+capped: peak_rss_kb=1015196 wall_s=32.85 exit=0 cap=3G limit_s=570 image=sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293 installed=0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6
+
+# the IN nets were re-run 2026-11-13 on the board with J201 at Due y 26.67 (the owner's 17.78 mm scope pitch): only /CH2_IN moved (1.7819 -> 1.8665 pF with the pour, +- 0.9152)
+# /AWG_BIN, /AWG_BPL: PYTHONPATH=. PCBTOOLS_V1_SOURCE=/work/hardware/afe-proto/kicad python3 v1/sim/cap_awg_bin.py kicad/afe-proto.kicad_pcb (docker/pcb/run.sh -m 3G -c 2)
+/AWG_BIN pour=False converge 0.2 mm: 0.6499 0.1 mm: 0.6675 0.05 mm: 0.6657 pF order n/a extrapolated 0.6657 +- 0.0177 pF [not converging monotonically] [window pad 0 of 3 mm: the finest level does not fit; pad effect +0.1937 pF at 0.2 mm] [not validated against a field solver]
+ padcorrected 0.8593922724467605 uncertainty 0.017654517428181693
+/AWG_BIN pour=True converge 0.2 mm: 0.9146 0.1 mm: 0.8282 0.05 mm: 0.8327 pF order n/a extrapolated 0.8327 +- 0.0864 pF [not converging monotonically] [window pad 0 of 3 mm: the finest level does not fit; pad effect +0.2220 pF at 0.2 mm] [not validated against a field solver]
+ padcorrected 1.0546815851041655 uncertainty 0.0864022486469257
+/AWG_BPL pour=False converge 0.2 mm: 0.1993 0.1 mm: 0.2110 0.05 mm: 0.2112 pF order 6.51 extrapolated 0.2112 +- 0.0119 pF [not converging monotonically (observed order 6.51 outside 0.5 to 2.5)] [not validated against a field solver]
+ padcorrected None uncertainty 0.011902361431778197
+/AWG_BPL pour=True converge 0.2 mm: 0.2674 0.1 mm: 0.2613 0.05 mm: 0.2619 pF order n/a extrapolated 0.2619 +- 0.0061 pF [not converging monotonically] [not validated against a field solver]
+ padcorrected None uncertainty 0.006104178998231791
+capped: peak_rss_kb=1569080 wall_s=64.83 exit=0 cap=3G limit_s=570 image=sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293 installed=0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6

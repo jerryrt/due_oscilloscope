@@ -1,0 +1,11 @@
+{
+ "what": "v1 scope + AWG study with the extracted strays (v1/sim/run_study.py: v2's harnesses with the v1 board's values), every case and the AWG section",
+ "code": "hardware/afe-proto/v1/sim (gate 3, 2026-11-13), on v2/sim/scope and v2/sim/awg as committed in this tree",
+ "image": "sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293 (docker/pcb/run.sh)",
+ "command": "docker/pcb/run.sh -m 3G -c 2 -t 580 bash -c 'cd /work/hardware/afe-proto/v1/sim && python3 -I run_study.py --out OUT --work WORK'",
+ "taken": "2026-11-13",
+ "repeatability": "run twice, diff -r of the four JSON files: byte-identical (sha256 in README.md)",
+ "vendor_model": "models/tph2501/TPH2501.mdl, local only (MC-6); its derived sha256 is pinned by simtools/vendor.py",
+ "tolerance": "rtol 1e-12 in tests/test_v1_sim_study.py",
+ "retaken": "2026-11-13 with the AWG_BIN / AWG_BPL strays and the AW-3 bisection, and again after J201 moved to Due y 26.67 (IN_top 2.78 pF: scope_A and scope_B changed, scope_baseline and awg did not); each run twice, byte-identical"
+}
