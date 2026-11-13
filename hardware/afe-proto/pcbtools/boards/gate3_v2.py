@@ -88,13 +88,14 @@ DEV_FOREIGN_EMPTY = ' (the table is empty in `v2_layout.py` as read now)'
 DEV_GAP = ('LR-11 designators', '{n} label pairs under the {gap_min} mm gap, each held to a floor: {pairs}',
            'DESIGNATOR_GAP_WAIVED (floors in mm; same-baseline pairs under {one_label} mm are never waivable)')
 DEV_OUTLINE = ('MC-1 board outline',
-               'the board overhangs the Due by {overhang} mm on the analog-header edge: {w:.2f} x {h:.2f} mm against the {max0} x {max1} mm bound; the band is a copper keep-out ({band})',
+               'the board overhangs the Due by {overhang} mm on each long edge: {w:.2f} x {h:.2f} mm against the {max0} x {max1} mm bound; each band is a top-layer keep-out and the bottom ground plane fills it ({band})',
                None)                                       # the authority text is MC1_FOUND or MC1_MISSING
-MC1_COMMIT = 'caba9c8'
-MC1_PATTERN = r'Amended by the owner, 2026-11-13[^|]*overhangs the Due by 5 mm'
-MC1_FOUND = ('owner ruling 2026-11-13, in `docs/afe.md` row MC-1 ("Amended by the owner, 2026-11-13 ... the outline overhangs the Due by 5 mm", '
-             'read from the file at run time; amendment commit caba9c8, not named in the document)')
-MC1_MISSING = 'owner ruling 2026-11-13, MC-1 amended on main (`caba9c8`); `docs/afe.md` in this tree does not carry the wording *(check)*'
+MC1_COMMIT = '9489582'
+from . import v2_layout as _layout  # noqa: E402  the overhang in the quoted wording is the config's computed one, not a typed figure
+MC1_PATTERN = r'Amended by the owner, 2026-11-13[^|]*overhangs the Due by %g mm on each long edge' % _layout.OVERHANG
+MC1_FOUND = ('owner ruling 2026-11-13, in `docs/afe.md` row MC-1 ("Amended by the owner, 2026-11-13 ... the outline overhangs the Due by %g mm on each long edge", ' % _layout.OVERHANG +
+             'read from the file at run time; amendment commit 9489582, not named in the document)')
+MC1_MISSING = 'owner ruling 2026-11-13, MC-1 amended on main (`9489582`); `docs/afe.md` in this tree does not carry the wording *(check)*'
 DEV_EDGE = ('copper-to-edge', 'min_copper_edge_clearance {edge_rule} mm in the project file (config says {edge_cfg} mm)',
             'fabricator minimum 0.2 mm *(check)*, outline tolerance 0.2 mm, so 0.45 leaves 0.25 mm worst case (spec team ruling, `boards/v2_layout.py`)')
 DEV_PROOF = ('+5V_F feed (information, not a deviation)', '+5V_F: {tracks} tracks, {length:.1f} mm, {vias} vias, {zones} zone fills, pads {pads}: {result}',

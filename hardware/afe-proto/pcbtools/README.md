@@ -304,3 +304,7 @@ Pad shapes, track width and clearance (whether a gap passes a 0.2 mm track is `p
 layer (a bottom hop is a crossing); keep-outs and courtyards; the extent of a body beyond its pads; the **mirror** of a part (a
 planar embedding fixes pin order up to reflection, so handedness is not checked: the verdict is necessary, never sufficient); a fence
 of several rectangles is one star-shaped ring; and routability, as above.
+
+## Pin labels on the overhang bands
+
+`pinlabels.py` builds, places and checks the Due's pin names printed in a board's overhang bands (LR-11): `python3 -m pcbtools.pinlabels BOARD --config v2_layout [--write [OUT]] [--check] [--list]`. Names are parsed from `docs/due-header-table.md` (never typed), the edge-row sockets and the layout numbers are config fields (`EDGE_SOCKETS`, `PIN_TABLE`, `PIN_LABEL_*` in `boards/v2_layout.py`), the placement and the check live in the module, and `rules.lr11` runs the check for a config that has `EDGE_SOCKETS`. Module docstring has the placement rules.

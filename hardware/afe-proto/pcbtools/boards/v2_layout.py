@@ -49,16 +49,51 @@ DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('C20
 # pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
 # label - and none could be improved by any silk-only move (each label sits at its best admissible place with the others fixed).
 
-# The board outline and the analog-edge band (owner's ruling 2026-11-13, MC-1 amended; v1 does the same in boards/v1.py). The shield's
-# rectangle in Due mm (y up). It overhangs the Due by 5 mm on the analog-header edge only (the south edge, y 0, the strip with the
-# J601/J602/J603 sockets), and that band is a copper keep-out (one rule area: no tracks, vias or pour, on every copper layer). The other
-# edges keep the Due's outline, so the board is 100 x 58.34 mm, and the strip lanes (VNEG, +3V3A, VREF-C at y 0.55 / 0.95 / 1.35) stay
-# where they are and are 5.55 mm or more from the cut. v2/layout/outline_overhang.py applies it to the board file.
-OVERHANG = 5.0
-BOARD_RECT = (17.0, -OVERHANG, 117.0, 53.34)
-BOARD_MAX_MM = (100.0, 58.34)                                   # MC-1: the board fits in this
-KEEPOUTS = [('analog edge band', (17.0, -OVERHANG, 117.0, 0.0))]
-BAND_NAME = 'analog edge band'
+# The Due's own pin names, printed on top silk in the bands beside each edge-row socket (LR-11, owner 2026-11-13: the shield covers the
+# Due's silkscreen). pcbtools/pinlabels.py builds them from this config and the table; no name is typed here. EDGE_SOCKETS: which sockets
+# are edge rows -> the Due header whose table gives their pins (J605, the XIO socket, is on the short edge and is not one).
+EDGE_SOCKETS = {'J601': 'POWER0', 'J602': 'ADCL0', 'J603': 'ADCH0', 'J604': 'PWMH0', 'J606': 'PWML0', 'J607': 'COMMUNICATION0'}
+PIN_TABLE = 'hardware/afe-proto/docs/due-header-table.md'     # repo relative; names are its "Arduino" / "Due label" column
+PIN_LABEL_ALIASES = {'3.3 V': '3V3', '5 V': '5V'}             # a whole table cell -> the name the Due prints (the cells spell them with a space)
+PIN_LABEL_FUNCTION_HEADERS = ('COMMUNICATION0',)              # the Due prints the function there (TX3, RX3 ... SDA, SCL): the table cell's word that is not the Dnn number
+# Every label is exactly this high and this wide (the stroke font's default width at that height), turned 90 degrees, on both bands. Nothing is
+# narrowed or shrunk: the OVERHANG is sized to fit the longest name.
+PIN_LABEL_H = 1.0                # the board house's minimum silk text height (docs/jlcpcb.md)
+PIN_LABEL_W = 1.0
+PIN_LABEL_THICK = 0.15           # stroke
+PIN_LABEL_EDGE_MARGIN = 0.35     # the ink starts this far inside the board edge
+PIN_LABEL_PAD_GAP = 0.7          # and ends at least this far from a socket pad box: the socket footprint's silk outline sits 0.4 mm outside its pads (it is
+                                 # not in the board arrays), so the label stops 0.3 mm short of that line *(check against DRC silk_overlap)*
+PIN_LABEL_POS_TOL = 0.05         # the checker finds a label within this of its planned place
+OVERHANG_STEP = 0.5              # the overhang is rounded UP to this
+from .. import pinlabels as _pl  # noqa: E402
+_ink = _pl.load_ink()            # measured in the PCB image by `python3 -m pcbtools.pinlabels --measure` (a test re-measures it)
+assert (_ink['h'], _ink['w'], _ink['thick']) == (PIN_LABEL_H, PIN_LABEL_W, PIN_LABEL_THICK), 'pinlabel_ink.json was measured at another size: re-measure'
+PIN_LABEL_INK = dict(_ink['ink'])                               # {name: ink length along the baseline, mm}
+PIN_LABEL_INK_H = _ink['ink_h']                                 # ink across the baseline
+PIN_PAD_EDGE = _ink['pad_edge']                                 # socket pad box to the Due's own edge, mm
+PIN_LABEL_NAMES = _pl.label_names(os.path.join(_pl.REPO, PIN_TABLE), sorted(set(EDGE_SOCKETS.values())), PIN_LABEL_ALIASES, PIN_LABEL_FUNCTION_HEADERS)
+PIN_LABEL_LONGEST = max(PIN_LABEL_NAMES, key=lambda n: PIN_LABEL_INK[n])
+
+# The board outline and the two edge bands (owner's ruling 2026-11-13, MC-1 amended; v1 does the same in boards/v1.py). The shield's
+# rectangle in Due mm (y up) overhangs the Due by OVERHANG on each long edge: the analog-header edge (the south edge, y 0, the strip with the
+# J601/J602/J603 sockets) and the opposite one (north, y 53.34), so the board is centred over the Due. OVERHANG is COMPUTED: the longest pin
+# name's measured ink at PIN_LABEL_H, after the pad edge and PIN_LABEL_PAD_GAP and before PIN_LABEL_EDGE_MARGIN, rounded up to OVERHANG_STEP
+# (pinlabels.required_overhang); nothing here is a typed figure. Each band is a TOP-layer keep-out only (one rule area per band: no tracks,
+# vias or pour on KEEPOUT_LAYERS); the bottom ground plane fills both bands back to the copper-to-edge clearance, and its zone outline is
+# the board rectangle grown by ZONE_MARGIN. The strip lanes (VNEG, +3V3A, VREF-C at y 0.55 / 0.95 / 1.35) stay where they are.
+# v2/layout/outline_overhang.py applies it to the board file.
+DUE_RECT = (17.0, 0.0, 117.0, 53.34)                            # the Due's own outline in Due mm, where the shield sits over it
+OVERHANG = _pl.required_overhang(PIN_LABEL_INK[PIN_LABEL_LONGEST], PIN_PAD_EDGE, PIN_LABEL_PAD_GAP, PIN_LABEL_EDGE_MARGIN, OVERHANG_STEP)
+BOARD_RECT = (DUE_RECT[0], DUE_RECT[1] - OVERHANG, DUE_RECT[2], DUE_RECT[3] + OVERHANG)
+BOARD_MAX_MM = (100.0, 100.0)                                   # MC-1: the board fits the board house's 100 x 100 mm price tier
+BAND_NAME = 'analog edge band'                                  # the first band (the second is FAR_BAND_NAME)
+FAR_BAND_NAME = 'far edge band'
+KEEPOUTS = [(BAND_NAME, (DUE_RECT[0], BOARD_RECT[1], DUE_RECT[2], DUE_RECT[1])),
+            (FAR_BAND_NAME, (DUE_RECT[0], DUE_RECT[3], DUE_RECT[2], BOARD_RECT[3]))]
+KEEPOUT_LAYERS = ('F.Cu',)                                      # top only: the bottom ground plane fills the bands
+ZONE_MARGIN = 0.05                                              # the bottom GND zone outline is BOARD_RECT grown by this; its fill is held back by the edge clearance
+
 # The design rules the project file carries and DRC judges the board against (v2/layout/v2-integration build RULES: clearance 0.15,
 # track 0.15, via 0.6 / 0.3, hole-to-hole 0.25). min_copper_edge_clearance 0.45 mm: the fabricator's minimum is 0.2 mm *(check)* and the
 # outline tolerance +-0.2 mm, so 0.45 leaves 0.25 mm worst case (spec team's ruling, as v1).

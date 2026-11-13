@@ -147,7 +147,7 @@
   "rule": "LR-11",
   "checker_row": "LR-11",
   "ok": true,
-  "detail": "5 outlines hold exactly their parts, 112 designators, 8 test points, 8 designator pairs under the gap on their recorded floors",
+  "detail": "5 outlines hold exactly their parts, 112 designators, 8 test points, 8 designator pairs under the gap on their recorded floors, 50 pin labels (1.0 x 1.0 mm, overhang 4.5 mm)",
   "figures": {
    "outlines": 5.0,
    "designators": 112.0,

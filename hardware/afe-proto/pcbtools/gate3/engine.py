@@ -946,7 +946,7 @@ def generate(cfg, T, out_dir, config_name, stamp=None, mtimes=None):
         g = sh(['git', '-c', 'safe.directory=*', '-C', REPO, 'log', '--all', '--oneline', '-1', T.MC1_COMMIT])
         commit_found = None if g.startswith('unavailable') else (T.MC1_COMMIT in g)
         D['outline'] = dict(overhang=cfg.OVERHANG, w=float(o[:, 0].max() - o[:, 0].min()), h=float(o[:, 1].max() - o[:, 1].min()), max=list(cfg.BOARD_MAX_MM),
-                            band=f'{cfg.BAND_NAME}, y {cfg.KEEPOUTS[0][1][1]} to {cfg.KEEPOUTS[0][1][3]} Due mm', commit_found=commit_found,
+                            band='; '.join(f'{n}, y {r[1]} to {r[3]} Due mm' for n, r in cfg.KEEPOUTS), commit_found=commit_found,
                             edge_rule=pro['board']['design_settings']['rules']['min_copper_edge_clearance'],
                             edge_cfg=cfg.BOARD_SETUP['board']['design_settings']['rules']['min_copper_edge_clearance'])
         f = {r['checker_row']: r['figures'] for r in D['lr']}

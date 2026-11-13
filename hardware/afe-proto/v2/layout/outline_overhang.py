@@ -1,13 +1,16 @@
-"""Apply the owner's board-outline ruling to a v2 board: the outline overhangs the Due by 5 mm on the analog-header edge only (the
-south edge, y 0), and that band is a copper keep-out. MC-1 amended, 2026-11-13; boards/v1.py does the same for v1.
+"""Apply the owner's board-outline ruling to a v2 board: the outline overhangs the Due by 2.5 mm on each long edge (the analog-header
+edge, y 0, and the opposite edge, y 53.34), each band is a TOP-layer keep-out, and the bottom ground plane fills both bands. MC-1
+amended, 2026-11-13; boards/v1.py does the same for v1.
 
     python3 v2/layout/outline_overhang.py BOARD.kicad_pcb [--pro BOARD.kicad_pro] [--write OUT.kicad_pcb] [--check]
 
-The numbers are pcbtools/boards/v2_layout.py's (BOARD_RECT, KEEPOUTS, BOARD_SETUP), the one place they live. Pure text editing, no
-KiCad needed, and only what the ruling touches is edited: the Edge.Cuts rectangle's south side moves 5 mm out and its two side
-edges are extended with it (nothing else is moved: footprints, tracks, vias and zone fills stay byte for byte, so the pours are not
-refilled); one rule area (no tracks, no vias, no pour, on F.Cu and B.Cu) is added over the band; and the project file takes the
-board setup (min_copper_edge_clearance 0.45 ...). Idempotent: a board that already has all of it is written back unchanged.
+The numbers are pcbtools/boards/v2_layout.py's (DUE_RECT, BOARD_RECT, KEEPOUTS, KEEPOUT_LAYERS, ZONE_MARGIN, BOARD_SETUP), the one place
+they live. Pure text editing, no KiCad needed, and only what the ruling touches is edited: the two long sides of the Edge.Cuts rectangle
+move to BOARD_RECT and the short sides are extended with them; one rule area per band (no tracks, no vias, no pour, on KEEPOUT_LAYERS
+only) is written, replacing a band zone of the same name that has other layers; the outline of the bottom (B.Cu) ground zone becomes
+BOARD_RECT grown by ZONE_MARGIN; and the project file takes the board setup (min_copper_edge_clearance 0.45 ...) and is written only
+when that changes it. Footprints, tracks, vias and the zones' fills stay byte for byte, so the fills are stale until refill_zones.py
+(in the image) is run. Idempotent: a board that already has all of it is written back unchanged.
 Exit 0 on success; --check writes nothing and exits 1 when the board still needs the change.
 """
 import json
@@ -61,13 +64,14 @@ def _pts(blk):
     return (float(s[1]), float(s[2])), (float(e[1]), float(e[2]))
 
 
-def zone_text(name, rect):
+def zone_text(name, rect, layers=None):
+    layers = layers or cfg.KEEPOUT_LAYERS
     x0, y0, x1, y1 = rect
     a, b = sheet(x0, y0), sheet(x1, y1)
     pts = ' '.join('(xy %s %s)' % (fmt(x), fmt(y)) for x, y in ((a[0], a[1]), (b[0], a[1]), (b[0], b[1]), (a[0], b[1])))
     u = uuid.uuid5(uuid.NAMESPACE_URL, 'afe-v2-integrated/rule-area/' + name)
     return f'''	(zone
-		(layers "F.Cu" "B.Cu")
+		({'layers' if len(layers) > 1 else 'layer'} {' '.join('"%s"' % l for l in layers)})
 		(uuid "{u}")
 		(name "{name}")
 		(hatch edge 0.5)
@@ -100,25 +104,49 @@ def zone_text(name, rect):
 '''
 
 
+def _zone_blocks(text):
+    """[(start, end, text)] of the top-level zone blocks (start at the newline before the tab)"""
+    import re
+    return [(m.start(), m.end(), m.group(0)) for m in re.finditer(r'\n\t\(zone\n.*?\n\t\)(?=\n)', text, re.S)]
+
+
 def apply_outline(text):
-    """the board text with the overhang outline and the band's rule area; unchanged when it already has both"""
+    """the board text with the 2.5 mm per long edge outline, the two top-layer band rule areas and the bottom ground zone's outline
+    grown to the board; unchanged when it already has all of it"""
+    import re
     x0, y0, x1, y1 = cfg.BOARD_RECT
-    (ax, ay), (bx, by) = sheet(x0, y1), sheet(x1, y0)          # sheet: west x, north y / east x, south y
+    dx0, dy0, dx1, dy1 = cfg.DUE_RECT
+    south, north = sheet(0, y0)[1], sheet(0, y1)[1]            # the new south and north sides in sheet y
+    olds = [sheet(0, y)[1] for y in (dy0, dy1)]                # the Due's own sides, where an unmodified board has them
     blocks = _edge_blocks(text)
     if len(blocks) != 4:
         raise SystemExit(f'expected the four Edge.Cuts lines of a rectangle, found {len(blocks)}')
+
+    def fix(pt):                                               # a point on a long side moves to that side's new place (south = larger sheet y)
+        mid = (olds[0] + olds[1]) / 2
+        return (pt[0], south if pt[1] > mid else north)
     new = []
-    for s, e, blk in blocks:
+    for s_, e_, blk in blocks:
         p, q = _pts(blk)
-        fix = lambda pt: (pt[0], by) if abs(pt[1] - by) < 1e-6 or abs(pt[1] - (SHEET_Y - 0.0)) < 1e-6 else pt  # noqa: E731
-        nb = _set_pts(blk, fix(p), fix(q))
-        new.append((s, e, nb))
-    for (s, e, nb), (_, _, blk) in zip(reversed(new), reversed(blocks)):
-        text = text[:s] + nb + text[e:]
+        new.append((s_, e_, _set_pts(blk, fix(p), fix(q))))
+    for s_, e_, nb in reversed(new):
+        text = text[:s_] + nb + text[e_:]
     for kname, rect in cfg.KEEPOUTS:
-        if f'(name "{kname}")' not in text:
+        want = zone_text(kname, rect)
+        have = [(s_, e_) for s_, e_, z in _zone_blocks(text) if f'(name "{kname}")' in z]
+        if have:
+            s_, e_ = have[0]
+            text = text[:s_ + 1] + want.rstrip('\n') + text[e_:]      # the block's own newline before and after are kept
+        else:
             at = text.index('\n\t(zone\n') + 1
-            text = text[:at] + zone_text(kname, rect) + text[at:]
+            text = text[:at] + want + text[at:]
+    pts = [sheet(x0 - cfg.ZONE_MARGIN, y1 + cfg.ZONE_MARGIN), sheet(x1 + cfg.ZONE_MARGIN, y1 + cfg.ZONE_MARGIN),
+           sheet(x1 + cfg.ZONE_MARGIN, y0 - cfg.ZONE_MARGIN), sheet(x0 - cfg.ZONE_MARGIN, y0 - cfg.ZONE_MARGIN)]
+    poly = ' '.join('(xy %s %s)' % (fmt(x), fmt(y)) for x, y in pts)
+    for s_, e_, z in reversed(_zone_blocks(text)):
+        if '(net "/GND")' in z and '(layer "B.Cu")' in z and '(keepout' not in z:
+            nz = re.sub(r'(\(pts\n\t+)\(xy[^\n]*', lambda m: m.group(1) + poly, z, count=1)
+            text = text[:s_] + nz + text[e_:]
     return text
 
 
@@ -158,7 +186,7 @@ def main(argv):
     if '--check' in args:
         return 1 if todo else 0
     open(out, 'w').write(new)
-    if newpro is not None:
+    if newpro is not None and newpro != pro:
         outpro = os.path.splitext(out)[0] + '.kicad_pro'
         if outpro == pro_path or '--write' not in args:
             open(pro_path, 'w').write(json.dumps(newpro, indent=2, ensure_ascii=False))
