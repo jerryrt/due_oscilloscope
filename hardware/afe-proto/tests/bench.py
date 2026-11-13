@@ -12,6 +12,10 @@ With --write the results go to tests/bench-results.json and bench-results.md, an
 tests/budgets.json: each budget is the measured median times the margin (a stated number, default
 1.5), keyed by board and tool, with the image and machine it was measured on. A budget is only
 ever set from a run that was clean; tests/test_budget_file.py checks the file against its steps.
+
+One step before a full run: `--list` prints the steps as BOARD/NAME, `--step NAME` (or BOARD/NAME) measures exactly
+that one (`--only` is the substring form). Neither writes anything without --write. The ratio table's header
+carries the machine and the 1-minute load average read before and after the run.
 """
 import argparse
 import json
@@ -124,10 +128,26 @@ def measure_pair(board, old, new, runs, mem, timeout):
     return ro, rn, pair
 
 
-def md_pairs(pairs):
+def loadavg():
+    """The 1-minute load average, or None where the host has no /proc/loadavg."""
+    try:
+        return float(Path("/proc/loadavg").read_text().split()[0])
+    except (OSError, ValueError):
+        return None
+
+
+def load_note(meta):
+    ld = meta.get("load")
+    if not ld or ld.get("before") is None or ld.get("after") is None:
+        return "machine load was not measured"
+    return (f"1-minute load average {ld['before']:.2f} before and {ld['after']:.2f} after the last run "
+            f"on {ld['cpus']} CPUs ({meta['machine']})")
+
+
+def md_pairs(pairs, meta):
     out = ["", "## Old / new, interleaved", "",
            "Measured alternately (old, new, old, new, ...) in one run so machine load hits both arms alike: **quote the ratios, not the "
-           "absolute wall times** (those are from a loaded machine). Ratio = old / new, so above 1 the new tool is faster or smaller.", "",
+           f"absolute wall times**. Load, as measured: {load_note(meta)}. Ratio = old / new, so above 1 the new tool is faster or smaller.", "",
            "| board | old | new | wall ratio median (min–max) | peak RSS ratio |", "|---|---|---|---|---|"]
     for p in pairs:
         if p["status"] != "OK":
@@ -164,7 +184,7 @@ def budgets(meta, rows, margin):
             "peak_rss_kb": int(math.ceil(r["peak_rss_kb"]["median"] * margin)),
             "wall_s": round(r["wall_s"]["median"] * margin, 2),
             "machine": meta["machine"]}
-    return {"meta": {k: meta[k] for k in ("image", "installed", "machine", "versions", "runs", "remeasured_later") if k in meta} | {"margin": margin,
+    return {"meta": {k: meta[k] for k in ("image", "installed", "machine", "versions", "runs", "remeasured_later", "load") if k in meta} | {"margin": margin,
             "rule": "median of the measured runs times margin"}, "budgets": b}
 
 
@@ -175,6 +195,9 @@ def main():
     ap.add_argument("--mem", default="3G")
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--only", help="substring of tool name")
+    ap.add_argument("--step", help="exactly one step: NAME (every board) or BOARD/NAME; run it in the image before a full run, "
+                                   "e.g. docker/pcb/run.sh python3 hardware/afe-proto/tests/bench.py --step cap")
+    ap.add_argument("--list", action="store_true", help="print the step names (BOARD/NAME) and exit")
     ap.add_argument("--pairs", action="store_true",
                     help="measure the old/new pairs of bench_steps.json interleaved; replaces those tools' rows and "
                          "adds the ratio table (implies --merge)")
@@ -190,6 +213,13 @@ def main():
     rows = []
     pair_rows = []
     stage = stage_fixtures()
+    if a.list:
+        for board, tool, _, _ in expand(cfg, stage):
+            print(f"{board}/{tool}")
+        import shutil
+        shutil.rmtree(stage, ignore_errors=True)
+        return
+    meta["load"] = {"before": loadavg(), "cpus": os.cpu_count()}
     if a.pairs:
         a.merge = True
         by = {(b, t): (t, argv, exp) for b, t, argv, exp in expand(cfg, stage)}
@@ -206,11 +236,14 @@ def main():
     for board, tool, argv, expect in expanded:
         if a.only and a.only not in tool:
             continue
+        if a.step and a.step not in (tool, f"{board}/{tool}"):
+            continue
         r = measure(board, tool, argv, a.runs, a.mem, a.timeout, expect)
         print(json.dumps(r), flush=True)
         rows.append(r)
     import shutil
     shutil.rmtree(stage, ignore_errors=True)
+    meta["load"]["after"] = loadavg()
     if not rows and not a.pairs:
         sys.exit("bench: no step selected")                    # a bench that measured nothing is not a pass
     if a.merge:
@@ -232,7 +265,7 @@ def main():
                  "(run through docker/pcb/run.sh with no DUE_PCB_IMAGE)")
     if a.write:
         (HERE / "bench-results.json").write_text(json.dumps({"meta": meta, "rows": rows, "pairs": pair_rows}, indent=1) + "\n")
-        (HERE / "bench-results.md").write_text(md(meta, rows) + (md_pairs(pair_rows) if pair_rows else ""))
+        (HERE / "bench-results.md").write_text(md(meta, rows) + (md_pairs(pair_rows, meta) if pair_rows else ""))
         (HERE / "budgets.json").write_text(json.dumps(budgets(meta, rows, a.margin), indent=1) + "\n")
     bad = [r for r in rows if r["status"] != "OK"] + [p for p in pair_rows if p["status"] != "OK"]
     sys.exit(1 if bad else 0)
