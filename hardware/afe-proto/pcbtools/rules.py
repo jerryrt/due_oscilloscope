@@ -22,6 +22,8 @@ import dataclasses
 import math
 import weakref
 
+import os
+
 import numpy as np
 from scipy.spatial import cKDTree
 
@@ -987,12 +989,23 @@ def lr11(b, cfg):
         _pl = pinlabels.plan_labels(b, cfg)
         npin = len(_pl)
         pinsize = f' ({_pl[0].h} x {_pl[0].w} mm, overhang {cfg.OVERHANG} mm)' if _pl else ''
+    nid = ''
+    if hasattr(cfg, 'IDENT'):                              # the name / model / revision / serial box / order-number text (pcbtools/identity.py), and no arrow heads
+        from . import identity, silkarrows
+        _path = getattr(b, 'path', '')
+        if _path and str(_path).endswith('.kicad_pcb') and os.path.isfile(_path):
+            _txt = open(_path).read()
+            bad += identity.findings(_txt, cfg)
+            bad += [f'silk arrow head: {h}' for h in silkarrows.arrowheads(silkarrows.silk_segments(_txt))[:4]]
+        if getattr(cfg, 'ARROWS', None):
+            bad.append(f'{len(cfg.ARROWS)} arrows in the config: board silk carries no arrows')
+        nid = ', identity silk'
     names = set(b.t_text)
     for w in cfg.SILK_WORDS:
         if w not in names:
             bad.append(f'silk word {w!r} missing')
     note = f', {nwaived} designator pairs under the gap on their recorded floors' if nwaived else ''
-    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}' + (f', {npin} pin labels{pinsize}' if npin else ''),
+    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}' + (f', {npin} pin labels{pinsize}' if npin else '') + nid,
                   dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad)), waived_pairs=float(nwaived)))
 
 

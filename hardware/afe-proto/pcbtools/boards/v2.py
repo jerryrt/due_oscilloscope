@@ -10,7 +10,21 @@ import importlib.util
 import os
 import sys
 
-NAME = 'v2'
+# the board's identity: the one source of the silk, the package title and the fabrication and assembly file names (docs/afe-v2.md D-V2-18; same
+# fields as boards/v1.py, so pcbtools/identity.py holds either board to its config). The revision letter steps on any change to fabrication data;
+# ASSY_REV marks a BOM- or value-only change and is '' for the first assembly of a revision.
+NAME = 'COPPIA'
+MODEL = 'AFE-2'
+REV = 'A'                                       # skips I O Q S X Z (ASME Y14.35)
+ASSY_REV = ''                                   # 'A.1', 'A.2' ... after a BOM- or value-only change
+ID_LINE = f'{MODEL}  REV {REV}'
+FILE_STEM = f'{NAME}-{MODEL}-REV{REV}'
+SN_LABEL = 'S/N'
+JLC_ORDER_TEXT = 'JLCJLCJLCJLC'                 # the board house replaces it with the order number (bottom silk)
+# top silk, Due mm, text centres (h in mm): the free area north of the POWER block, outside the block outlines and the bands; the S/N box is
+# (x0, y0, x1, y1). The bottom text sits behind the POWER block's north edge, clear of every pad. Placed by v2/layout/place_identity.py.
+IDENT = dict(name=(23.7, 45.3, 2.0), line=(24.84, 42.38, 1.2), sn_label=(19.43, 39.16, 1.0), sn_box=(21.85, 37.66, 31.85, 40.66),
+             jlc=(29.7, 27.6, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
 SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v2-8a1f7ac'))
@@ -95,7 +109,13 @@ LR_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', 
 TEST_BLOCKS = ('CH1', 'CH2', 'AWG', 'POWER', 'REFCAL')
 TP_NETS = {'TP101': '/A1', 'TP201': '/A0', 'TP301': '/AWG_VO', 'TP401': '/+3V3A', 'TP402': '/VNEG', 'TP403': '/+5V_F',
            'TP404': '/GND', 'TP501': '/VREF'}
-SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON')
+SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON', NAME, ID_LINE, SN_LABEL)     # the last three: the identity block on the top silk (the bottom marker is held by identity.findings; boardio reads F.SilkS texts only)
+# Arrows. v2 had four signal-flow arrows on the silk (two in CH1, one in CH2, one at POWER); the owner had them removed on 2026-11-13. On a board an
+# arrow conventionally means polarity, pin 1 or the direction of insertion, so a flow arrow reads as one of those; the direction of a signal is
+# already given by the "CH1 IN", "CH2 IN" and "AWG OUT" labels. Board silk carries designators, pin-1 and polarity marks, connector and test-point
+# labels, block names and the identity block, and nothing else. The list (v2_layout re-exports it) stays, empty, as the one place an arrow could be added again, and
+# pcbtools/silkarrows.arrowheads (LR-11) finds a head on the board whatever the list says.
+ARROWS = []
 DESIGNATOR_MIN_H = 0.79
 # LR-2 / LR-7 constants of the old tool
 GND = '/GND'                                   # the one ground net
