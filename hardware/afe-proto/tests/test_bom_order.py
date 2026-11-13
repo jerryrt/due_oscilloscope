@@ -169,3 +169,18 @@ def test_v1_bom_upload_is_the_designs_jlc_list():
     rows = list(csv.reader(open(AFE / "bom" / "v1" / "jlc-bom.csv", newline="")))
     refs = [r for row in rows[1:] for r in row[1].split(",")]
     assert len(refs) == 99 and "R109" not in refs and "R510" not in refs and len([r for r in refs if r in ("R110", "R520", "R410")]) == 3
+
+
+def test_bom_md_is_regenerated_from_the_same_board_lines_and_agrees_with_the_order(tmp_path):
+    """bom.md (the engine report) must carry no second set of lines or totals: same board, same engine, same 100-board per-board total as the order."""
+    out = tmp_path / "bom.md"
+    bom.main(["--md", str(out)])
+    assert out.read_bytes() == (BOMDIR / "bom.md").read_bytes(), "rerun `python3 -I hardware/afe-proto/v2/bom/bom.py --md hardware/afe-proto/v2/bom/bom.md`"
+    data = bom.Data(bom.HERE, {})
+    L, res, _d, _f = bom.run_board(data)
+    o = order.build(data, L, 100, bom.PCB_RATE)
+    assert abs(res[100]["lo"]["total"] - o["grand"] / 100) < 1e-6
+    placements = res[20]["lo"]["placements"]
+    assert placements == len(board_smt_refs())
+    text = (BOMDIR / "bom.md").read_text()
+    assert "%d / %d" % (placements, res[20]["lo"]["joints"]) in text and "$%.2f" % (o["grand"] / 100 / bom.FX) in text

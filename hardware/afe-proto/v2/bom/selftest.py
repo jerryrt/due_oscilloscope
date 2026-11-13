@@ -15,7 +15,7 @@ ok = True
 
 
 def totals(paths=None):
-    res, flags = bom.main(["--path=" + k + "=" + v for k, v in (paths or {}).items()]) if paths else bom.main([])
+    res, flags = bom.main(["--model=streams"] + ["--path=" + k + "=" + v for k, v in (paths or {}).items()])
     return res[20]["lo"]["total"], res[100]["lo"]["total"], flags, res
 
 

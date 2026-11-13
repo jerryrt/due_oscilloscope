@@ -878,7 +878,7 @@ def build_doc(D, T, config_name):
                [[l['lcsc'], l['cls'], ','.join(l['refs']) if len(l['refs']) <= 6 else ','.join(l['refs'][:5]) + f',... ({len(l["refs"])})', l['qty'], l['value'], l['footprint'].split(':')[-1],
                  *[('no price in repo' if l[f'unit_cny_{k}'] is None else fnum(l[f'unit_cny_{k}'], 4)) for k in counts],
                  'no price in repo' if l[f'line_usd_{rep}'] is None else fnum(l[f'line_usd_{rep}'], 4)] for l in M['lines']]))
-    w('\n' + T.BOM_UNIT_NOTE + f"Derived-from-international prices (marked D in bom.md): {', '.join(l['lcsc'] for l in M['lines'] if l['derived']) or 'none'}.\n")
+    w('\n' + T.BOM_UNIT_NOTE + f"Derived-from-international prices (marked D in bom.md and order-5-100.md): {', '.join(l['lcsc'] for l in M['lines'] if l['derived']) or 'none'}.\n")
     w('**Parts on the board with no LCSC number** (not JLC-assembled; test-point pads, owner-fitted sockets and headers, mounting holes):\n')
     w(md_table(['value', 'footprint', 'refs'], [[n['value'], n['footprint'].split(':')[-1], ','.join(n['refs'])] for n in M['nolcsc']]))
     w('\n**Owner-fitted lines priced by the engine** (`' + T.BOM_EXTRA_CSV + '`, block owner):\n')
@@ -888,7 +888,7 @@ def build_doc(D, T, config_name):
     w('\n' + T.BOM_RECONCILE_NOTE + '\n')
     rs = M['results']
     hdr = ['boards', 'orders', 'per-board total USD (X-ray wholly at its tier / tier by tier)', 'JLC parts CNY/board', 'fees+joints+X-ray CNY/board', 'setup CNY/board', 'PCB CNY/board', 'owner-fitted CNY/board', 'placements']
-    for tag, title in (('board', 'Board-adjusted (the bridges and any other excess over the engine lists included)'), ('engine', 'Engine lists as published in bom.md (no bridges)')):
+    for tag, title in (('board', 'Board-adjusted (the bridges and any other excess over the engine lists included)'), ('engine', 'Engine stream lists (schematic-era, no bridges; bom.md now reads the board)')):
         w(f'\n**{title}**\n')
         w(md_table(hdr, [[k.split('_')[1], rs[k]['orders'], f"${rs[k]['total_usd_lo']:.2f} / ${rs[k]['total_usd_hi']:.2f}", fnum(rs[k]['parts_cny'], 4), fnum(rs[k]['fees_cny'], 4), fnum(rs[k]['setup_cny'], 4), fnum(rs[k]['pcb_cny'], 4), fnum(rs[k]['owner_cny'], 4), rs[k]['placements']] for k in sorted((k for k in rs if k.startswith(tag)), key=lambda k: int(k.split('_')[1]))]))
     bp = M['bridge_part']
