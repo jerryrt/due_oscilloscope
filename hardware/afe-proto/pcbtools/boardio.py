@@ -360,6 +360,7 @@ def read_board_retry(path, tries=3, timeout=120):
     Retries on a signal death up to `tries` times; raises RuntimeError with the child's stderr otherwise."""
     import tempfile
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.abspath(path)          # the child runs in `here`: a path relative to the caller's cwd would not be found there
     last = ''
     for attempt in range(tries):
         with tempfile.TemporaryDirectory(dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '.scratch')

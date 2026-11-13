@@ -1,18 +1,19 @@
 {
  "attempts": 1,
- "cmd": "-B /home/jerry/EE.Projects/due_oscilloscope_v2/hardware/afe-proto/v2/kicad/cap.py /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb",
+ "cmd": "-B /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/cap.py /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb",
  "env": {
-  "image_id": null,
-  "interpreter": "/home/jerry/EE.Projects/due_oscilloscope_pcbtools/.venv-pcb/bin/python",
+  "image_id": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+  "interpreter": "/opt/venv/bin/python3",
   "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
-  "label": "working reference, host .venv-pcb",
+  "label": "container",
   "numpy": "2.3.5",
   "python": "3.14.4"
  },
  "exit_code": 0,
  "figures_reparsed": true,
  "fixture": "v2-integrated-990d4b03",
- "peak_rss_kb": 323452,
+ "peak_rss_kb": 319464,
  "raw": "N-N                  pour=False window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)\nN-N                  pour=True  window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)\nNP-NP (+IN pads)     pour=False window 7x24 mm  C = 0.15 fF (reverse 0.15 fF)\nNP-NP (+IN pads)     pour=True  window 7x24 mm  C = 0.04 fF (reverse 0.04 fF)\n/AWG_FB self capacitance to everything else (tracks and pads, no package): no pour 0.730 pF, with the top pour (kept 0.3 mm off) 0.856 pF\n",
  "rows": [
   {
@@ -117,5 +118,5 @@
   }
  ],
  "tool": "cap",
- "wall_s": 25.94
+ "wall_s": 25.93
 }

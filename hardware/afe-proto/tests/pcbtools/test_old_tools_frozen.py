@@ -74,6 +74,7 @@ def _raw(name, tool):
 
 
 @pytest.mark.pcbnew
+@pytest.mark.slow
 def test_frozen_lr_check_prints_the_golden_text(pcbnew_required, tmp_path):
     name = 'v2-integrated-990d4b03'
     (b,) = _copy(tmp_path, f'{name}.kicad_pcb')

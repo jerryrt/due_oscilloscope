@@ -1,19 +1,20 @@
 {
  "attempts": 1,
- "cmd": "-B /home/jerry/EE.Projects/due_oscilloscope_v2/hardware/afe-proto/v2/kicad/lr_check.py /home/jerry/EE.Projects/due_oscilloscope_pcbtools/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+ "cmd": "-B /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py /work/hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
  "env": {
-  "image_id": null,
-  "interpreter": "/home/jerry/EE.Projects/due_oscilloscope_pcbtools/.venv-pcb/bin/python",
+  "image_id": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+  "interpreter": "/opt/venv/bin/python3",
   "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
-  "label": "working reference, host .venv-pcb",
+  "label": "container",
   "numpy": "2.3.5",
   "python": "3.14.4"
  },
  "exit_code": 1,
  "figures_reparsed": true,
  "fixture": "v2-awg-bc96e334",
- "peak_rss_kb": 1603712,
- "raw": "[PASS] LR-1: 2 layers, one bottom plane, 0 bottom runs, 37 GND pads each with its own via\n[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)\n[PASS] LR-3: 10 divider nets: no via, short, no track beside\n[PASS] LR-4: A0/A1 top only, no via (41/49 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it\n[PASS] LR-4 INV_MAX: AWG_FB 4.9 mm, CH1_OUT 1.3 mm, CH2_OUT 1.5 mm (<= 5.0)\n[FAIL] LR-12 DECOUP_MAX: C104 is 4.1 mm from U101 pin 8 (limit 3.0); C503 is 5.2 mm from U502 pin 8 (limit 3.0)\n[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409\n[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads\n[PASS] LR-7: DAC0 1.8 mm; back-termination at the BNC; shell pads on ground\n[FAIL] LR-8: VREF: branches [0, 1, 5] share copper (['BR503', 'J602', 'R106', 'R506', 'R509', 'U502'])\n[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts\n[FAIL] LR-10: DRC {'silk_overlap': 31, 'silk_over_copper': 13, 'silk_edge_clearance': 1, 'courtyards_overlap': 2, 'tracks_crossing': 2, 'shorting_items': 3, 'track_dangling': 11}; unconnected 6\n[FAIL] LR-11: REFCAL: outline holds [] extra, lacks ['BR508', 'BR509', 'BR510', 'BR511']\nFAIL: LR-12 DECOUP_MAX, LR-8, LR-10, LR-11\n",
+ "peak_rss_kb": 1592368,
+ "raw": "[PASS] LR-1: 2 layers, one bottom plane, 0 bottom runs, 37 GND pads each with its own via\n[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)\n[PASS] LR-3: 10 divider nets: no via, short, no track beside\n[PASS] LR-4: A0/A1 top only, no via (41/49 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it\n[PASS] LR-4 INV_MAX: AWG_FB 4.9 mm, CH1_OUT 1.3 mm, CH2_OUT 1.5 mm (<= 5.0)\n[FAIL] LR-12 DECOUP_MAX: C104 is 4.1 mm from U101 pin 8 (limit 3.0); C503 is 5.2 mm from U502 pin 8 (limit 3.0)\n[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409\n[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads\n[PASS] LR-7: DAC0 1.8 mm; back-termination at the BNC; shell pads on ground\n[FAIL] LR-8: VREF: branches [0, 1, 5] share copper (['BR503', 'J602', 'R106', 'R506', 'R509', 'U502'])\n[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts\n[FAIL] LR-10: DRC {'silk_overlap': 31, 'silk_over_copper': 13, 'silk_edge_clearance': 1, 'courtyards_overlap': 2, 'shorting_items': 3, 'tracks_crossing': 2, 'track_dangling': 11}; unconnected 6\n[FAIL] LR-11: REFCAL: outline holds [] extra, lacks ['BR508', 'BR509', 'BR510', 'BR511']\nFAIL: LR-12 DECOUP_MAX, LR-8, LR-10, LR-11\n",
  "rows": [
   {
    "clean_board": null,
@@ -160,7 +161,7 @@
   },
   {
    "clean_board": null,
-   "detail": "DRC {'silk_overlap': 31, 'silk_over_copper': 13, 'silk_edge_clearance': 1, 'courtyards_overlap': 2, 'tracks_crossing': 2, 'shorting_items': 3, 'track_dangling': 11}; unconnected 6",
+   "detail": "DRC {'silk_overlap': 31, 'silk_over_copper': 13, 'silk_edge_clearance': 1, 'courtyards_overlap': 2, 'shorting_items': 3, 'tracks_crossing': 2, 'track_dangling': 11}; unconnected 6",
    "figures": [],
    "name": "LR-10",
    "verdict": "FAIL"
@@ -174,5 +175,5 @@
   }
  ],
  "tool": "lr_check",
- "wall_s": 2.11
+ "wall_s": 4.35
 }

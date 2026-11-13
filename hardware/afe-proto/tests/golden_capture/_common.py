@@ -19,7 +19,9 @@ FX = os.path.join(TESTS, 'fixtures', 'v2-8a1f7ac')
 FROZEN_TOOLS = os.path.join(FX, 'tools')                         # the old tools, frozen with the fixtures
 DEFAULT_OUT = os.path.join(ROOT, 'pcbtools', '.scratch', 'golden_out')
 CAPPED = os.environ.get('CAPPED', '')                            # capped.sh path; empty = uncapped (the container caps itself)
-IMAGE_ID = os.environ.get('PCB_IMAGE_ID')                        # null until the pinned container exists
+# the pinned image's sha256 digest: PCB_IMAGE_ID when given, else what docker/pcb/run.sh puts in the container's env; None on a host
+IMAGE_ID = os.environ.get('PCB_IMAGE_ID') or os.environ.get('DUE_PCB_IMAGE_CONTENT')
+INSTALLED = os.environ.get('DUE_PCB_IMAGE_INSTALLED')
 PY = sys.executable
 REMINDER = ('\nthe golden folder was written: its hashes are now stale. Update tests/golden/MANIFEST.sha256 in the same commit:\n'
             '    python tests/golden/update_manifest.py --i-changed-a-golden\n')
@@ -62,7 +64,8 @@ def env_record():
     import numpy
     import pcbnew
     return dict(label='working reference, host .venv-pcb' if not IMAGE_ID else 'container', image_id=IMAGE_ID, interpreter=PY,
-                python=sys.version.split()[0], numpy=numpy.__version__, kicad=pcbnew.GetBuildVersion())
+                python=sys.version.split()[0], numpy=numpy.__version__, kicad=pcbnew.GetBuildVersion(),
+                **(dict(installed=INSTALLED) if INSTALLED else {}))
 
 
 def _wall(s):

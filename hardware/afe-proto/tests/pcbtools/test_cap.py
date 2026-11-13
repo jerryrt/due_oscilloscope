@@ -53,11 +53,19 @@ def test_plates_scale_with_the_cell_size_as_area_over_gap():
     assert b / a == pytest.approx(2.0, rel=1e-5)
 
 
+def test_plates_on_a_50k_cell_grid_equal_the_series_answer():
+    """the small-window known answer of the regular tier: 52 x 32 x 32 = 53 k cells, two dielectrics, the series of face
+    conductances to solver tolerance (the full-size windows are the slow tier's)"""
+    fd, disc, _ = cap.plates(((25, 1.0), (25, 4.5)), nxy=32)
+    assert fd == pytest.approx(disc, rel=1e-5)
+
+
 @pytest.fixture(scope='module')
 def micro():
     return cap.microstrip()
 
 
+@pytest.mark.slow
 def test_single_microstrip_against_hammerstad_jensen(micro):
     """the old tool's -1.5 %: a lid 4 mm up and Neumann sides, so the open-space formula is approached, not met"""
     assert micro['c11_dev'] * 100 == pytest.approx(-1.5, abs=0.05)
@@ -65,6 +73,7 @@ def test_single_microstrip_against_hammerstad_jensen(micro):
     assert micro['hj'] == pytest.approx(85.25, abs=0.01) and micro['c11'] == pytest.approx(83.96, abs=0.01)
 
 
+@pytest.mark.slow
 def test_coupled_strips_against_garg_bahl_keep_the_documented_deviation(micro):
     """the old tool's -14.6 % (Garg-Bahl from memory, *(check)*; the FD mutual is the lower one): same here"""
     assert micro['c21_dev'] * 100 == pytest.approx(-14.6, abs=0.05)
@@ -72,11 +81,13 @@ def test_coupled_strips_against_garg_bahl_keep_the_documented_deviation(micro):
     assert micro['gb_even'] < micro['gb_odd']
 
 
+@pytest.mark.slow
 def test_microstrip_does_not_depend_on_the_solver_tolerance_beyond_it():
     a, b = cap.microstrip(tol=1e-6), cap.microstrip(tol=1e-9)
     assert a['c11'] == pytest.approx(b['c11'], rel=1e-6) and a['c21'] == pytest.approx(b['c21'], rel=2e-5)
 
 
+@pytest.mark.slow
 def test_the_selftest_command_passes(capsys):
     assert cap.main(['selftest']) == 0
     out = capsys.readouterr().out
@@ -101,12 +112,14 @@ def two_tracks(gap=0.4, w=0.4, **extra):
     return s.build()
 
 
+@pytest.mark.slow
 def test_mutual_capacitance_is_symmetric_and_positive():
     b = two_tracks()
     r = cap.pair_caps(b, ['/A', '/B'], cap.window(b, ['/A', '/B'], 2.0), False, 0.2, cap.Stack(t_air=2.0))
     assert r[('/A', '/B')] > 0 and r[('/A', '/B')] == pytest.approx(r[('/B', '/A')], rel=1e-5)
 
 
+@pytest.mark.slow
 def test_a_closer_track_couples_more_and_a_wider_gap_less():
     st = cap.Stack(t_air=2.0)
     vals = []
@@ -116,6 +129,7 @@ def test_a_closer_track_couples_more_and_a_wider_gap_less():
     assert vals[0] > vals[1] > vals[2] > 0
 
 
+@pytest.mark.slow
 def test_grid_convergence_one_halving_0p2_to_0p1():
     """mutual of two 0.4 mm tracks 0.4 mm apart, edges on grid lines at every size: each halving raises it by about 5 %
     (0.1400 -> 0.1471 -> 0.1547 pF at 0.2 / 0.1 / 0.05 mm). It is not converged at these sizes, which is why the old
@@ -137,6 +151,7 @@ def test_grid_convergence_second_halving_0p1_to_0p05():
     assert v[0.05] == pytest.approx(0.1547, abs=0.002)
 
 
+@pytest.mark.slow
 def test_self_capacitance_with_the_pour_exceeds_the_one_without_for_a_lone_track():
     b = synth.Synth('/A', '/GND').s('/A', 'F', 20, 20, 26, 20, 0.4).build()
     r = cap.self_cap(b, '/A', pad=2.0, h=0.2, stack=cap.Stack(t_air=2.0))
@@ -283,6 +298,7 @@ def test_figures_have_the_physical_ordering(rep):
         assert d['c'] == pytest.approx(d['reverse'], rel=1e-3, abs=1e-7)   # N-N is 1e-5 fF: noise
 
 
+@pytest.mark.slow
 def test_self_capacitance_of_awg_fb_changes_by_the_stated_amount_when_the_cell_is_halved(integrated):
     """0.2 -> 0.1 mm: no pour 0.699 -> 0.730 pF (+4.5 %), pour 0.934 -> 0.856 pF (-8.3 %); neither is converged"""
     a = cap.self_cap(integrated, '/AWG_FB', 3.0, 0.2)

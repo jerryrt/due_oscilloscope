@@ -171,6 +171,410 @@
         "hardware/afe-proto/tests/pcbtools/bench_tools.py",
         "board"
       ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-awg",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-awg",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-integrated",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-integrated",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-power",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power-a5605a04.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-power",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power-a5605a04.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-power3",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power3-7c838703.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-power3",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power3-7c838703.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-refcal",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-refcal-326f141b.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-refcal",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-refcal-326f141b.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check",
+      "board": "v2-scope2east",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check",
+      "board": "v2-scope2east",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb",
+        "--config",
+        "v2"
+      ]
+    },
+    {
+      "tool": "old-v2-lr_check-mutate",
+      "board": "v2-integrated",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/lr_check.py",
+        "--mutate",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-check-mutate",
+      "board": "v2-integrated",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb",
+        "--config",
+        "v2",
+        "--mutate"
+      ]
+    },
+    {
+      "tool": "old-v2-fence_check",
+      "board": "v2-power3",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py",
+        "POWER",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power3-7c838703.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-fence",
+      "board": "v2-power3",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "fence",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power3-7c838703.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+        "POWER"
+      ]
+    },
+    {
+      "tool": "old-v2-fence_check",
+      "board": "v2-power",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py",
+        "POWER",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power-a5605a04.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-fence",
+      "board": "v2-power",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "fence",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-power-a5605a04.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+        "POWER"
+      ]
+    },
+    {
+      "tool": "old-v2-fence_check",
+      "board": "v2-refcal",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py",
+        "REFCAL",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-refcal-326f141b.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-fence",
+      "board": "v2-refcal",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "fence",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-refcal-326f141b.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+        "REFCAL"
+      ]
+    },
+    {
+      "tool": "old-v2-fence_check",
+      "board": "v2-awg",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py",
+        "AWG",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-fence",
+      "board": "v2-awg",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "fence",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+        "AWG"
+      ]
+    },
+    {
+      "tool": "old-v2-fence_check",
+      "board": "v2-scope2east",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/fence_check.py",
+        "SCOPE",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-fence",
+      "board": "v2-scope2east",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "fence",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-BASE-056e1d03.kicad_pcb",
+        "SCOPE"
+      ]
+    },
+    {
+      "tool": "old-v2-cap",
+      "board": "v2-integrated",
+      "argv": [
+        "python3",
+        "-I",
+        "-B",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/tools/cap.py",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb"
+      ]
+    },
+    {
+      "tool": "new-v2-cap",
+      "board": "v2-integrated",
+      "argv": [
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import cap; sys.exit(cap.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-integrated-990d4b03.kicad_pcb",
+        "--config",
+        "v2"
+      ]
     }
-  ]
+  ],
+  "_note_v2": "old-v2-* steps are the frozen v2 tools (tests/fixtures/v2-8a1f7ac/tools), new-v2-* the pcbtools replacements, one pair per tool and board so the table reads before and after. Exit 0 and 1 are both a finished run (1 = a rule FAILed on the board, which these frozen boards do) unless the output holds a Traceback (an exit 1 from an exception must not pass for a verdict); >1 is a crash. new-v2-fence has no CLI: bench_tools.py fence reads BASE and the block board and runs fence.check_fence. Old vs new cap, first image run (3 runs, median): old 26.2 s / 312 MB, new 97.2 s / 551 MB, i.e. new is 1.8x the memory and 3.7x the wall time on this board, NOT the faster one the CSR-operator note expected; budget from the image run. Select only these with --only -v2-"
 }

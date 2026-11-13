@@ -33,6 +33,14 @@ def test_cli_reads_a_kicad_pcb(pcbnew_required, capsys):
     assert rc == 0 and out.count('[PASS]') == 2 and 'ALL PASS' in out
 
 
+def _drc_parts(detail):
+    """'DRC {a: 1, b: 2}; unconnected 6' -> ({'a': 1, 'b': 2}, 'unconnected 6'): the dict's key order follows kicad-cli's report
+    order, which flips between runs and hosts (tests/fixtures/v2-8a1f7ac/SOURCE.md), so it is compared as a dict"""
+    import ast
+    head, tail = detail.rsplit('; ', 1)
+    return ast.literal_eval(head[len('DRC '):]), tail
+
+
 def _golden_lr10(name):
     with open(os.path.join(GOLD, f'{name}.lr_check.json')) as f:
         return next(r for r in json.load(f)['rows'] if r['name'] == 'LR-10')
@@ -47,7 +55,7 @@ def test_lr10_matches_the_old_drc_row(pcbnew_required, tmp_path, name):
     r = drc.lr10(b, v2, outdir=str(tmp_path))
     old = _golden_lr10(name)
     assert ('PASS' if r.ok else 'FAIL') == old['verdict']
-    assert r.detail == old['detail']
+    assert _drc_parts(r.detail) == _drc_parts(old['detail'])
     assert r.figures['unconnected'] == float(old['detail'].rsplit(' ', 1)[1])
     assert drc.drc_time() > 0
 
@@ -63,4 +71,13 @@ def test_lr10_arm_is_caught(pcbnew_required, tmp_path):
     old = json.load(open(os.path.join(GOLD, f'{name}.lr_check_mutate.json')))['raw']
     old_line = next(l for l in old.splitlines() if 'LR-10' in l)
     assert not r.ok and 'track_width' in r.detail
-    assert old_line.endswith(r.detail), (old_line, r.detail)
+    assert _drc_parts(old_line[old_line.index('DRC '):]) == _drc_parts(r.detail), (old_line, r.detail)
+
+
+@pytest.mark.pcbnew
+def test_read_board_retry_accepts_a_path_relative_to_the_callers_cwd(pcbnew_required, monkeypatch):
+    """the child process runs in the package's parent folder, so a relative path used to be 'cannot load' (the CLI and the bench
+    steps pass one); it is made absolute first"""
+    monkeypatch.chdir(FX)
+    b = boardio.read_board_retry('v2-refcal-326f141b.kicad_pcb')
+    assert len(b.fp_ref) > 10

@@ -1,0 +1,5 @@
+FAIL copper outside the SCOPE fence removed or changed: ('trk', '/CH1_IN', 0, (87.95, 41.9), (101.2, 41.9), 0.2)
+FAIL copper outside the SCOPE fence removed or changed: ('trk', '/CH2_IN', 0, (87.95, 24.15), (101.2, 24.15), 0.2)
+FAIL copper outside the SCOPE fence added or changed: ('trk', '/CH1_IN', 0, (91.36, 41.91), (102.0, 41.91), 0.2)
+FAIL copper outside the SCOPE fence added or changed: ('trk', '/CH2_IN', 0, (91.36, 24.13), (102.0, 24.13), 0.2)
+SCOPE: 4 violation(s)

@@ -4,6 +4,7 @@
     python3 hardware/afe-proto/tests/pcbtools/bench_tools.py editor BOARD.kicad_pcb      edit() it: move one part, add a via, save a copy
     python3 hardware/afe-proto/tests/pcbtools/bench_tools.py schematic                   write the v1 schematic project from design.py
     python3 hardware/afe-proto/tests/pcbtools/bench_tools.py board                       build the v1 placement board from design.py
+    python3 hardware/afe-proto/tests/pcbtools/bench_tools.py fence  BOARD BASE BLOCK     fence.check_fence of a block board against BASE
 
 The bench measures wall time and peak memory of the whole process, so each step is the smallest honest unit of work.
 """
@@ -35,7 +36,7 @@ def _work():
     return tempfile.mkdtemp(prefix='pcbtools-bench-')
 
 
-def schematic(_):
+def schematic(_=None):
     from pcbtools import schematic as sch
     from pcbtools.boards import v1_build as v1b
     w = _work()
@@ -43,7 +44,7 @@ def schematic(_):
     sch.write_all(parts, cfg, os.path.join(w, 'new'))
 
 
-def board(_):
+def board(_=None):
     from pcbtools import build as bd
     from pcbtools.boards import v1_build as v1b
     w = _work()
@@ -54,5 +55,11 @@ def board(_):
                    legalise_overlaps=True, anchors=inp['anchors'])
 
 
+def fence(path, base, block):
+    from pcbtools import boardio, fence as F
+    from pcbtools.boards import v2
+    F.check_fence(boardio.read_board(base), boardio.read_board(path), block, v2)
+
+
 if __name__ == '__main__':
-    {'sexpr': sexpr, 'editor': editor, 'schematic': schematic, 'board': board}[sys.argv[1]](sys.argv[2] if len(sys.argv) > 2 else None)
+    {'sexpr': sexpr, 'editor': editor, 'schematic': schematic, 'board': board, 'fence': fence}[sys.argv[1]](*sys.argv[2:])

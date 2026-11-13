@@ -1,0 +1,5 @@
+N-N                  pour=False window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)
+N-N                  pour=True  window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)
+NP-NP (+IN pads)     pour=False window 7x24 mm  C = 0.15 fF (reverse 0.15 fF)
+NP-NP (+IN pads)     pour=True  window 7x24 mm  C = 0.04 fF (reverse 0.04 fF)
+/AWG_FB self capacitance to everything else (tracks and pads, no package): no pour 0.730 pF, with the top pour (kept 0.3 mm off) 0.856 pF
