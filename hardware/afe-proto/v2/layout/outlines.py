@@ -7,11 +7,29 @@ nothing else holds a copy:
     drawn by the block scripts; v2/layout/outlines_from_silk.py recovers them from the board and the test compares);
   - pcbtools/boards/v2_layout.py takes OUTLINE (and the analog fence, LR-1) and SHARED_PARTS from it.
 """
+# The three BNCs, Due mm. One x for all three; y is the centre of pin 1 (the footprint origin). The pitches are the owner's ruling of
+# 2026-11-13: CH1 to CH2 is SCOPE_PITCH (a multiple of the Due's 2.54 mm grid, so each input run leaves its BNC between two rows of the
+# XIO socket J605 and crosses it at the same y as before), and AWG to CH2 is at least SCOPE_PITCH. The AWG BNC did not move.
+BNC_X = 102.0
+SCOPE_PITCH = 17.78
+BNC_Y = {'J101': 44.45, 'J201': 26.67, 'J301': 8.89}
+# the silk box of a BNC, as offsets of its y: (below, above). The two scope boxes keep the offsets they had; the AWG box is its own table
+# entry below and its top edge is the line CH2's box used to share.
+BNC_BOX = {'CH1': (-7.91, 8.09), 'CH2': (-7.63, 7.87)}
+_BNC_OF = {'CH1': 'J101', 'CH2': 'J201'}
+
+
+def _box(block):
+    lo, hi = BNC_BOX[block]
+    y = BNC_Y[_BNC_OF[block]]
+    return (98.5, round(y + lo, 3), 116.4, round(y + hi, 3))
+
+
 RECTS = {
     'POWER': [(17.9, 4.6, 43.6, 26.0)],
     'REFCAL': [(44.2, 4.6, 64.4, 27.8), (64.6, 18.6, 70.2, 26.0)],
-    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), (98.5, 34.0, 116.4, 50.0)],
-    'CH2': [(69.0, 19.75, 93.0, 32.9), (98.5, 16.5, 116.4, 32.0)],
+    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), _box('CH1')],
+    'CH2': [(69.0, 19.75, 93.0, 32.9), _box('CH2')],
     'AWG': [(70.4, 4.55, 92.3, 19.25), (98.55, 0.75, 116.4, 16.5)],
 }
 

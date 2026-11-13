@@ -16,6 +16,13 @@ _t = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_t)
 
 OUTLINE = {k: list(v) for k, v in _t.RECTS.items()}                                  # LR-11, and LR-1's fence below
+BNC_X = _t.BNC_X                                                                     # the three BNCs share one x (Due mm)
+BNC_Y = dict(_t.BNC_Y)                                                               # {ref: y of pin 1, Due mm}: the owner's ruling of 2026-11-13
+SCOPE_PITCH = _t.SCOPE_PITCH                                                         # CH1 to CH2; AWG to CH2 is at least this
+# J605's designator sat at (100.0, 51.75), where CH1's BNC box and the BNC's own silk now reach (the BNC moved north 2.54 mm). It moves above the
+# socket, into the strip between the socket's own silk (top edge 52.13) and the Due's edge, beside the owner's pin labels' band and not in it
+# (silk only; v2/layout/place_bncs.py). {ref: (x, y) Due mm, centre of the label}
+DESIGNATOR_AT = {'J605': (96.2, 53.0)}
 SHARED_PARTS = dict(_t.SHARED_PARTS)
 SHARED_MARGIN = _t.SHARED_MARGIN
 # the designator legibility check of LR-11 (rules.py): thresholds, all mm
