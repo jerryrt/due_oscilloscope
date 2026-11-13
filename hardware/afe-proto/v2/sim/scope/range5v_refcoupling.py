@@ -37,7 +37,66 @@ wrdata {NL.wr('refc', 'x')} v(apin) v(bpin)
     return float(abs(d[0, 1] + 1j * d[0, 2])), float(abs(d[0, 4] + 1j * d[0, 5]))
 
 
+ZREF = [(10, 1), (100, 4), (200, 6), (300, 9), (500, 17), (700, 26), (1000, 45), (1300, 65), (1600, 95), (1900, 115), (2300, 100), (2700, 70), (3200, 40), (4000, 20), (6000, 8), (10000, 3)]
+
+
+def ref_move(Rvr, C=14e-6, Rg2=3000.0, Rf=3000.0, dv=3.2):
+    """../awg/run.py ref_move, 'graph' mode, copied (that file is not imported: it runs the AWG study): peak-to-peak REF movement (V) and its frequency
+    for the full commanded +-1.6 V swing.  Checked against the committed raw/results.json at the Rvr it holds."""
+    import numpy as np
+    f = np.logspace(1, 4, 800)
+    Zc = 1 / (2j * np.pi * f * C)
+    Zn = Rvr * Zc / (Rvr + Zc)
+    i = (dv / (1 + Rf / Rg2)) / np.abs(Rg2 + Zn)
+    share = np.abs(Zc / (Rvr + Zc))
+    z = np.exp(np.interp(np.log(f), np.log([a for a, b in ZREF]), np.log([b for a, b in ZREF])))
+    z = np.interp(np.log(f), np.log([a for a, b in ZREF]), [b for a, b in ZREF])
+    m = i * share * z
+    k = int(np.argmax(m))
+    return float(m[k]), float(f[k])
+
+
+def rvr_cases(argv):
+    """The scope network at the AWG's REF swing for Rvr 100 / 120 / 130 / 140 / 150, cases baseline, A and B (stray at N, as ../sensitivity_n_stray.json)."""
+    committed = json.load(open(AWG))["ref"]["move"]["chosen, graph"]
+    m130, f130 = ref_move(130.0)
+    print(f"check of the copied formula against the AWG results file (Rvr 130 committed): {committed[0]*1e3:.4f} mV at {committed[1]:.0f} Hz vs {m130*1e3:.4f} mV at {f130:.0f} Hz")
+    assert abs(committed[0] - m130) < 1e-6 and abs(committed[1] - f130) < 1, "formula differs from the AWG study's"
+    out = {}
+    for case, (cnp, cx) in {"baseline": (None, None), "A": (4.31e-12, 5e-17), "B": (0.81e-12, 5e-17)}.items():
+        for rvr in (100.0, 120.0, 130.0, 140.0, 150.0):
+            m, f = ref_move(rvr)
+            R.set_range("5vc")
+            if cnp is not None:
+                NL.P0["Cn_par"], NL.P0["Cx"] = cnp, cx
+            ga, gb = gain_here(f)
+            out.setdefault(case, {})[f"{rvr:g}"] = dict(m_mV=m * 1e3, f_Hz=f, gain=ga, pin_mV=m * ga * 1e3, lsb=m * ga / LSB_PIN)
+    return out
+
+
+def gain_here(f):
+    p = R.pp(Rsrc=50.0)
+    rails = NL.rails(p).replace("Vr vr0 0 dc 3.0", "Vr vr0 0 dc 3.0 ac 1")
+    t = (NL.header("refc") + rails + "Vsa asrc 0 dc 0\nVsb bsrc 0 dc 0\n" + NL.chan(p, "a") + NL.chan(p, "b") + NL.coupling(p) + f"""
+.control
+ac lin 1 {f} {f}
+wrdata {NL.wr('refc', 'x')} v(apin) v(bpin)
+.endc
+.end
+""")
+    NL.run_ng("refc", t)
+    d = NL.load("refc", "x")
+    return float(abs(d[0, 1] + 1j * d[0, 2])), float(abs(d[0, 4] + 1j * d[0, 5]))
+
+
 def main(argv):
+    if "--rvr" in argv:
+        out = rvr_cases(argv)
+        for case, rows in out.items():
+            print(f"case {case}: " + "  ".join(f"Rvr {k}: {v['m_mV']:.3f} mV -> {v['lsb']:.3f} LSB" for k, v in rows.items()))
+        if "--out" in argv:
+            json.dump(out, open(argv[argv.index("--out") + 1], "w"), indent=1)
+        return 0
     mv = json.load(open(AWG))["ref"]["move"]
     out = {"awg_rows": {}}
     for prof in ("v2", "5v", "5vc"):

@@ -93,7 +93,7 @@ and the 128 corners; `range5v.py` reproduces them in closed form (margins 167.3 
 | SC-8 gain match of the two channels (200,000 draws) | 3 % (afe-v2.md 3.1; D19: 5.5 %) | 1.78 % | **2.45 %** (128 corners 3.12 %, information) | same | PASS (0.55 % margin) |
 | SC-9 scope to scope, 10 MHz, full-scale input, budget 0.02 pF N-N + 0.02 pF pad-pad | <= 2 LSB | 1.72 LSB at 6 Vpp | **1.45 LSB at 12 Vpp** (1.21 at the rated 10 Vpp) | 1.28 LSB at 12 Vpp | PASS |
 | SC-9 shared REF alone (no layout stray), 10 MHz | <= 2 LSB | 7e-6 | 6e-6 | 7e-6 | PASS |
-| **SC-9 AWG into scope through the REF, 1.9 kHz, +-1.6 V swing (simulated, section 3 below)** | <= 2 LSB | 1.68 LSB | 2.45 LSB | **2.44 LSB** | **FAIL (over by 0.44 LSB)** |
+| **SC-9 AWG into scope through the REF, 1.9 kHz, +-1.6 V swing (simulated, below)** | <= 2 LSB | 1.68 LSB | 2.45 LSB at Rvr 100 | 2.44 at Rvr 100; **1.87 at Rvr 130** | fails at Rvr 100; **PASS at 130 (+0.13)** |
 | SC-10 settle in the 667 ns window, +6 V / -6 V through the derived ADC input; pin impedance | 0.5 LSB; <= 5 kohm | 203 ns; 22.2 ohm | **205 ns, 0.04 LSB at the end; 22.2 ohm** | 205 ns, 0.03 LSB | PASS |
 | SC-12 slew, 12 Vpp at 10 MHz at the input (pin slew) | not slew-limited (datasheet 160 V/us) | 84 V/us | **79 V/us**, THD 0.0013 % at 5 MHz | 83 V/us | PASS |
 | AN-1 phase margin (BEH60 / BEH21 / vendor), nominal; worst of the Riso x load grid | >= 45 deg | 60.2 / 60.2 / 69.9; 49.4 | **60.1 / 60.1 / 69.9; 49.0** | 60.0 / 60.0 / 69.8; 48.3 | PASS |
@@ -147,7 +147,7 @@ sum, with **0.047 % of margin, thin** (v2's old range: +0.149). The independent 
 the usable +-6 V the fit reads 7.4 mV (0.123 %), information. Gain drift EN-1 over 20 K goes 0.215 -> **0.307 %**, inside afe.md's relaxed 0.34 % (D19) and the
 design's computed worst case of afe-v2.md D-V2-3. VT-23 measures the residual on the board.
 
-### AWG into scope coupling through the REF, in the simulator (`range5v_refcoupling.py`, `range5v/refcoupling_5v.json`): **FAILS 2 LSB**
+### AWG into scope coupling through the REF, in the simulator (`range5v_refcoupling.py`, `range5v/refcoupling_5v.json`): fails 2 LSB at Rvr 100, passes at 130 (resolution below)
 
 How the AWG study gets its figure (`../awg/run.py` `case_ref`): the AWG's offset current moves the REF3030E output by m volts peak to peak (3.662 mV at
 1885 Hz for the full commanded +-1.6 V swing, the output impedance read from the datasheet's Fig. 6-14, peak 115 ohm *(check)*), and that reaches the pin
@@ -168,6 +168,24 @@ offset filter, 1 / (Rvr C) above its corner, so (the AWG study's own formula `re
 design) **Rvr 100 -> 120 ohm gives 2.03 LSB, 130 gives 1.88, 150 gives 1.63, 200 gives 1.22**; or a larger capacitor at the REF output pin (10 uF:
 1.24 LSB on the graph read as a resistive magnitude *(check: Fig. 6-14 states no output capacitance)*). Rvr is in the AWG's window arithmetic (offset
 current through Rg2 + Rvr), so it belongs to that study. Not relaxed here.
+
+#### Resolution: Rvr 130 ohm (spec lead, 2026-11-13), simulated (`range5v_refcoupling.py --rvr`, `range5v/refcoupling_rvr_5vc.json`)
+
+The scope network is the adopted one (18p / 47p), both channels, ngspice at each case's peak frequency; the stimulus is the AWG study's REF swing at each Rvr
+(`ref_move` of `../awg/run.py`, copied and checked against the committed `awg/raw/results.json`: 2.8192 mV at 1885 Hz at Rvr 130, equal to the digit).
+Cases A and B are the stray cases of `../sensitivity_n_stray.json` (4.31 pF / 0.81 pF at N).
+
+| Rvr | REF swing at 1.9 kHz | LSB baseline | LSB case A | LSB case B | Against 2 LSB |
+|---|---|---|---|---|---|
+| 100 (before) | 3.662 mV | 2.435 | 2.434 | 2.437 | fails |
+| 120 (C22787) | 3.054 mV | 2.030 | 2.030 | 2.032 | **fails by 0.03 (no margin; the AWG accepts it)** |
+| **130 (120 C22787 + 10 C22859)** | **2.819 mV** | **1.874** | **1.874** | **1.876** | **PASS, +0.126 LSB** |
+| 140 | 2.618 mV | 1.741 | 1.740 | 1.742 | pass, +0.26 |
+| 150 | 2.444 mV | 1.625 | 1.624 | 1.626 | pass, +0.38, but the AWG refuses it (AC top 2.234 V, supply pin 60.1 mA) |
+
+The stray cases move the figure by 0.002 LSB: the transfer is the resistive Rp / R3 at 1.9 kHz. **At Rvr 130 the SC-9 AWG-to-scope row passes at 1.88 LSB, 0.13
+LSB of margin (thin, and resting on a graph read by eye, *(check)*, VT-10).** The AWG study's own figure at 130 is 1.30 LSB at its 0.3725 factor; the 1.88 is the
+same swing through the new network.
 
 ### The pin at 3.03 V against a 3.21 .. 3.39 V rail: the TPH2502's common-mode range and CMRR (`models/tph2502/tph2502.pdf`, Rev. A)
 
