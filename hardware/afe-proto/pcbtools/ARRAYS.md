@@ -10,6 +10,9 @@ editor, so the checking side (kvm_02) and the building side (kvm_01) can work in
    tools need into plain numpy arrays and then **releases pcbnew** (the `BOARD` object is deleted inside the call; nothing
    in `BoardArrays` refers to pcbnew). Peak memory of a read is about one board load (160 MB measured on the v2 integrated
    board) and the returned arrays are a few MB.
+   Deleting the `BOARD` frees the Python wrapper, not pcbnew's C++ memory: in the gate the pytest process kept about 1.3 GB
+   after the pcbnew tests (`gc.collect()` and `malloc_trim` returned nothing), so a long-lived process that loads many boards
+   must be split into processes (`docker/pcb/run-gate.sh` does).
 2. **Every check works on `BoardArrays`**, vectorised. No per-segment Python loops. A computation that a numpy
    expression reproduces replaces the loop it came from (the loop is deleted, not kept as a fallback).
 3. **Edits go through one write path** (`pcbtools.boardio.edit(path)`: a context manager that loads, yields a thin

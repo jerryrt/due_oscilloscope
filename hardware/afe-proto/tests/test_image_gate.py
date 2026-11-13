@@ -115,16 +115,17 @@ print(hs[0] == hs[1], hs[0])
 
 def test_the_gate_run_twice_passes_twice(main_image):
     """The gate must leave the tree as it found it. The first version wrote __pycache__ into a
-    fixture directory and the second run failed on the first one's leavings."""
+    fixture directory and the second run failed on the first one's leavings. This is about state leaking between runs, not about
+    timing the full gate (28 min), so it runs the quick tier (-m "not slow", about 4.5 min) twice, each in a fresh container."""
     before = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
                             capture_output=True, text=True).stdout
-    sel = ["docker/pcb/run-gate.sh"]     # no -m: the guard counts a deselected pcbnew test as one that did not run
-    first = run_in(main_image, *sel, m="4G", t=3000)   # the gate's own cap and limit (gate-host.sh)
-    second = run_in(main_image, *sel, m="4G", t=3000)
+    sel = ["docker/pcb/run-gate.sh", "-m", "not slow"]
+    for n in ("first", "second"):
+        r = run_in(main_image, *sel, m="4G", t=1200)
+        assert r.returncode == 0, f"{n} run: " + r.stdout[-600:] + r.stderr[-300:]
+        assert "gate guard: fixtures and goldens unchanged" in r.stderr, f"{n} run: the guard did not report" + r.stderr[-300:]
     after = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
                            capture_output=True, text=True).stdout
-    assert first.returncode == 0, first.stdout[-600:]
-    assert second.returncode == 0, second.stdout[-600:]
     new = set(after.splitlines()) - set(before.splitlines())
     assert not [l for l in new if "__pycache__" in l or ".pyc" in l], new
 
