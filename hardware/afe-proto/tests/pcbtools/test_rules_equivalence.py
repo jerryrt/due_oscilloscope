@@ -88,8 +88,8 @@ def test_verdict_and_detail_match_the_old_tool(board, row):
 
 def test_known_improvements_are_listed_for_real_cells_only():
     cells = {(b, r) for b in LR_BOARDS for r in ROWS}
-    assert set(KI.KNOWN) <= cells and len(KI.KNOWN) >= 15                          # a floor: the data was not emptied
-    assert {k['finding'] for k in KI.KNOWN.values()} == {1, 2, 9}
+    assert set(KI.KNOWN) <= cells and len(KI.KNOWN) >= 10                          # a floor: the data was not emptied
+    assert {k['finding'] for k in KI.KNOWN.values()} == {1, 2}
 
 
 FIG = re.compile(r'(\d+(?:\.\d+)?)')
@@ -147,11 +147,7 @@ def test_the_old_arms_are_all_ported():
 
 def _clean_board(rule):
     """a board on which the rule PASSES, which an arm needs to show a flip. The integrated board, except: LR-11 fails on it before any
-    arm (its arms run on the refcal block board), and LR-4 fails on it since the exact pour gap (finding 9: the /CH1_N and /CH2_N
-    pours are 0.16 mm off) - its arms run on the integrated board with its top GND pours removed"""
-    if rule is R.lr4:
-        b = arrays('v2-integrated-990d4b03')
-        return M.drop_zones(b, (b.z_layer == 0) & (b.z_net == b.net_id('/GND')))
+    arm (its arms run on the refcal block board)"""
     return arrays('v2-refcal-326f141b' if rule is R.lr11 else 'v2-integrated-990d4b03')
 
 
@@ -241,9 +237,9 @@ def test_cli_prints_the_old_lines(capsys):
     want = [l for l in old if 'LR-10' not in l and not l.startswith('FAIL:')]
     assert len(body) == len(want)
     for a, b in zip(body, want):
-        assert a == b or (a.startswith('[FAIL] LR-4:') and b.startswith('[PASS] LR-4:'))
+        assert a == b
     assert any(l.startswith('[NOT RUN] LR-10') for l in out)
-    assert out[-1] == 'FAIL: LR-4, LR-11; LR-10 NOT RUN'
+    assert out[-1] == 'FAIL: LR-11; LR-10 NOT RUN'
 
 
 def test_cli_all_pass_and_rows_and_exit_codes(capsys):

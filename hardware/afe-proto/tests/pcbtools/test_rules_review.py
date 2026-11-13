@@ -248,12 +248,13 @@ def lr4_board_(**kw):
     return lr4_board(fb=(0.0, 0.0), **kw)
 
 
-def test_lr4_judges_the_ch1_n_node_and_reports_the_follower_output_node():
+def test_lr4_judges_only_the_awg_node_and_reports_the_follower_output_node():
+    """/CH1_N is a divider node (LR-3 wants pour near it) and /CH1_OUT a low-impedance output: neither is judged by the keep-back"""
     def extra(s):
         s.part('R107', 0, 0).p('R107', '1', 60, 60, '/CH1_N').part('R109', 0, 0).p('R109', '1', 70, 60, '/CH1_OUT')
     ring = lambda x: [(SQ(x, 50, x + 6, 70), False)]
-    r = R.lr4(lr4_board_(extra=extra, pour=ring(60.3 + 0.4)), cfg())
-    assert not r.ok and "['top pour CH1_N']" in r.detail and r.figures['pour_gap_CH1_N_mm'] == pytest.approx(0.4)
+    r = R.lr4(lr4_board_(extra=extra, pour=ring(60.3 + 0.4)), cfg())               # 0.4 mm from the divider node: wanted, not a fault
+    assert r.ok and 'pour_gap_CH1_N_mm' not in r.figures
     assert r.figures['pour_gap_CH1_OUT_mm'] > 2                                      # not near the pour
     r = R.lr4(lr4_board_(extra=extra, pour=ring(70.3 + 0.4)), cfg())               # the output node has the 0.4 gap: REPORTED, not judged
     assert r.ok and r.figures['pour_gap_CH1_OUT_mm'] == pytest.approx(0.4)
@@ -261,7 +262,7 @@ def test_lr4_judges_the_ch1_n_node_and_reports_the_follower_output_node():
 
 def test_lr4_gap_is_inf_when_there_is_no_pour_or_no_node_copper():
     r = R.lr4(lr4_board_(), cfg())
-    assert r.ok and np.isinf(r.figures['pour_gap_AWG_FB_mm']) and np.isinf(r.figures['pour_gap_CH2_N_mm'])
+    assert r.ok and np.isinf(r.figures['pour_gap_AWG_FB_mm']) and np.isinf(r.figures['pour_gap_CH2_OUT_mm'])
 
 
 def test_lr5_the_limit_itself_passes_and_a_hair_inside_fails():
@@ -306,10 +307,10 @@ def test_an_arm_on_a_rule_that_already_fails_is_not_testable_and_the_run_is_not_
 
 
 def test_cli_mutate_exits_nonzero_when_an_arm_is_not_testable(capsys):
-    rc = CK.main([board_npz(), '--mutate', '--rows', 'LR-4', '--no-drc'])           # LR-4 fails on the integrated board
+    rc = CK.main([board_npz(), '--mutate', '--rows', 'LR-11', '--no-drc'])          # LR-11 fails on the integrated board
     out = capsys.readouterr().out
     assert rc == 1 and 'NOT TESTABLE on this board' in out and 'every arm caught' not in out
-    rc = CK.main([board_npz(), '--mutate', '--rows', 'LR-6', '--no-drc'])           # LR-6 passes there: its arms are evidence
+    rc = CK.main([board_npz(), '--mutate', '--rows', 'LR-4', '--no-drc'])           # LR-4 passes there: its arms are evidence
     out = capsys.readouterr().out
     assert rc == 0 and out.strip().endswith('every arm caught (LR-10 arm skipped by request)')
 
@@ -323,8 +324,8 @@ def test_lr10_not_run_is_not_all_pass(capsys):
     assert rc == 0 and out[-1] == 'ALL PASS (LR-10 skipped by request)' and out[-2].startswith('[SKIP] LR-10')
     rc = CK.main([board_npz(), '--rows', 'LR-1', 'LR-5'])                            # LR-10 not asked for
     assert rc == 0 and capsys.readouterr().out.strip().splitlines()[-1] == 'ALL PASS'
-    rc = CK.main([board_npz(), '--rows', 'LR-1', 'LR-4', 'LR-10'])                   # a failing row and no DRC: both are said
-    assert rc == 1 and capsys.readouterr().out.strip().splitlines()[-1] == 'FAIL: LR-4; LR-10 NOT RUN'
+    rc = CK.main([board_npz(), '--rows', 'LR-1', 'LR-11', 'LR-10'])                   # a failing row and no DRC: both are said
+    assert rc == 1 and capsys.readouterr().out.strip().splitlines()[-1] == 'FAIL: LR-11; LR-10 NOT RUN'
 
 
 def test_lr10_is_not_all_pass_when_drc_was_asked_for_and_cannot_run(capsys):

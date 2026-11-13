@@ -12,16 +12,12 @@ The finding numbers:
   3  connectivity covers B.Cu and zone fills as well as F.Cu (not visible on these boards' verdicts: the integrated board's bottom
      hop turns 8 pieces into 7, in a figure; and the family joins add refs to the 'share copper' text)
   6  an arm on a rule that already fails on the clean board is 'NOT TESTABLE', not 'caught'
-  9  LR-4's pour keep-back is the exact copper-edge to pour-edge distance, not four axial probes from a pad centre
+  9  LR-4's pour keep-back is the exact copper-edge to pour-edge distance, not four axial probes from a pad centre (and it judges
+     /AWG_FB only: the divider nodes /CHn_N want pour near them under LR-3, and /CHn_OUT is covered by the capacitance budget;
+     so the verdicts on the six boards are the old tool's, and nothing is listed for it above)
 """
 
 KNOWN = {
-    # LR-4: the pour edge is 0.16-0.17 mm from the pads of /CH1_N and /CH2_N (the zone's own 0.25 mm clearance, measured to the
-    # circumscribed rectangle of a rounded pad); the old probes started 0.5 mm from a pad CENTRE and never reached it
-    **{(b, 'LR-4'): dict(old='PASS', new='FAIL', finding=9, contains='top pour CH1_N',
-                         why='the pour edge is 0.16 mm from the /CH1_N and /CH2_N pads; only the AWG_FB node has a keep-back')
-       for b in ('v2-awg-bc96e334', 'v2-integrated-990d4b03', 'v2-power-a5605a04', 'v2-power3-7c838703', 'v2-refcal-326f141b',
-                 'v2-scope2east-05ee441f')},
     # LR-6: these boards place the consumers' parts and route no supply copper to them
     ('v2-awg-bc96e334', 'LR-6'): dict(old='PASS', new='FAIL', finding=2, contains='consumer group awg is not connected to the star',
                                        why='AWG, ADC and VNEG_G consumers are placed and unrouted'),
@@ -44,11 +40,10 @@ KNOWN = {
 }
 
 # --mutate lines of the integrated board whose text changes: the old tool printed '[FAILED AS REQUIRED] ... (clean board: fail)'
-# for an arm on a rule that fails before the arm (finding 6), and LR-4 now fails on the integrated board (finding 9)
+# for an arm on a rule that fails before the arm (finding 6)
 ARM_NOT_TESTABLE = {
     'LR-11 part out of its outline': 6, 'LR-11 missing designator': 6, 'LR-11 missing test point': 6,
     'LR-11 wrong-numbered designator': 6, 'LR-11 block without a TP': 6,
-    'LR-4 via on AWG FB': 9, 'LR-4 bottom copper on CH1_N': 9, 'LR-4 via in A0': 9, 'LR-4 pour near FB': 9,
 }
 
 # --mutate lines that are still 'FAILED AS REQUIRED' but whose text changed: two crossing bottom segments of one net are ONE run now

@@ -17,8 +17,16 @@ Fields marked NEW were added (or reshaped) when the hard-coded literals left `ru
 | `DIGITAL` | tuple of net | `('/SDA', '/SCL')` | LR-9 |
 | `INV_NODES` | tuple of net | `('/AWG_FB', '/CH1_N', '/CH2_N')` | LR-4 no via / no bottom copper |
 | `INV_LEN_NODES` | tuple of net | `('/AWG_FB', '/CH1_OUT', '/CH2_OUT')` | LR-4 INV_MAX |
-| `POUR_NODES` / `POUR_INFO_NODES` | tuple of net | `INV_NODES` / `('/CH1_OUT', '/CH2_OUT')` | LR-4 pour keep-back: judged / reported only |
+| `POUR_NODES` / `POUR_INFO_NODES` | tuple of net | `('/AWG_FB',)` / `('/CH1_OUT', '/CH2_OUT')` | LR-4 pour keep-back: judged / reported only. See the reading below |
 | `HIZ` CHANGED | tuple of net (now with the `/`) | `('/CH1_N', '/CH1_M1', ...)` | LR-3 (it was names without the `/`) |
+
+`POUR_NODES` reading (LR-4): the rule keeps the top ground pour back (at least 0.5 mm) from the stage's inverting node, the shortest
+trace of the stage. That is an inverting input with gain resistors, which on v2 is `/AWG_FB` only, so `POUR_NODES = ('/AWG_FB',)`.
+The first port judged `INV_NODES` (`/AWG_FB`, `/CH1_N`, `/CH2_N`), the set the old no-via / no-bottom-copper rule used, which was
+the wrong set for the pour rule: `/CHn_N` are divider nodes governed by LR-3, which asks the high-impedance sides to be guarded by
+grounded copper (pour near them is wanted; LR-3's test is the extracted capacitance, `CAP_SELF` and `CAP_PAIRS`), and a follower's
+inverting pin is tied to its output `/CHn_OUT`, the low-impedance node LR-4 covers through the total capacitance behind it (Riso /
+stability budget), not by a keep-back. `POUR_INFO_NODES` (`/CHn_OUT`) keeps reporting its gaps and is not judged.
 
 ## Scope channels: `CHANNELS` (CHANGED: a tuple of dicts, one per channel)
 
@@ -90,5 +98,6 @@ a test point), `EDGE_BLOCK` (`'EDGE'`: the block with no outline of its own), `T
 ## Thresholds and the rest
 
 `HOP_MAX`, `HOP_MAX_VIAS`, `KEEPOUT`, `FB_MAX`, `INV_MAX`, `DIVIDER_X_MAX` (mm / counts, as v2). `CAP_PAIRS`, `CAP_SELF`: the
-capacitance windows `(label, nets, pad, cell)` / `(net, pad, cell)`. NEW `DRC_ARM` (dict): where the LR-10 mutation arm puts its
+capacitance windows `(label, nets, pad, cell)` / `(net, pad, cell)`; v2's `CAP_SELF` holds `/AWG_FB` and the divider nodes `/CH1_N`,
+`/CH2_N` (LR-3's N-to-everything stray, no pour and with pour), all at 0.1 mm: their windows are about 7.6 x 9 mm and 2.5 s each, far under `cap.MAX_CELLS`, so 0.2 mm was not needed. NEW `DRC_ARM` (dict): where the LR-10 mutation arm puts its
 0.1 mm track, `{'ref': 'R101', 'pin': '1', 'net': '/CH1_N'}`.

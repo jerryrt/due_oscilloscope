@@ -79,10 +79,12 @@ the board is "absent", not unreachable. A pad is identified by (ref, pin) and th
 loader. LR-4's top-pour test is the exact distance from the pour's polygon edges (outline and hole rings) to the node's copper:
 tracks as capsules, pads by size and rotation (`pcbtools.shapes`; a rounded-rectangle pad is its circumscribed rectangle, which
 overstates the pad by at most its corner radius: conservative), 0 where the node's copper lies on the fill; the figure
-`pour_gap_<node>_mm` is that distance. **Which nodes** LR-4's pour sentence covers is a decision recorded in `boards/v2.py`: it names
-"each op-amp's inverting node", the config's `INV_NODES` (`/AWG_FB`, `/CH1_N`, `/CH2_N`) are judged; `/CH1_N` and `/CH2_N` are the
-high-impedance attenuator nodes and a follower's inverting PIN is on its output net, so `/CH1_OUT` and `/CH2_OUT` (`POUR_INFO_NODES`)
-are reported in the figures and not judged. LR-5 is measured from the copper EDGE (a track's half width, a pad's extent) to the
+`pour_gap_<node>_mm` is that distance. **Which nodes** LR-4's pour sentence covers is a decision recorded in `boards/v2.py` and `CONFIG_FIELDS.md`: the inverting node is the
+shortest trace of the stage and the top ground pour is kept back from it, which is an inverting input with gain resistors, `/AWG_FB`
+(`POUR_NODES`). The first port judged `INV_NODES` (`/CH1_N`, `/CH2_N` too), the set of the old no-via rule, and that was wrong for the
+pour rule: those are divider nodes, governed by LR-3 (guarded by grounded copper, so pour near them is wanted; LR-3's test is the
+extracted capacitance, `cap.report`'s N self lines and N-N), and a follower's inverting pin is on its output `/CH1_OUT`, `/CH2_OUT`
+(`POUR_INFO_NODES`), covered by the capacitance budget behind it: reported in the figures, not judged. LR-5 is measured from the copper EDGE (a track's half width, a pad's extent) to the
 generator's courtyard.
 
 LR-8 needs `route.KELVIN['VREF']`, which lives in a module that imports pcbnew; its two lists are in `boards/v2.py`
@@ -151,7 +153,7 @@ only in the order of two keys of the LR-10 dict, which the old tool does not fix
 
 3-D finite-difference capacitance on a window of the board, numpy/scipy only (arrays in, floats out; see the module docstring for
 the model). `pair_caps`, `self_cap`, `report(b, cfg)` (the old tool's whole output; `cfg.CAP_PAIRS`, `cfg.CAP_SELF` in
-`boards/v2.py`), `python -m pcbtools.cap BOARD|NPZ|selftest`. Rasterisation is ragged vectorised arithmetic, the operator is one CSR
+`boards/v2.py`; the report's first five lines are the old tool's, followed by one self-capacitance line per further `CAP_SELF` net), `python -m pcbtools.cap BOARD|NPZ|selftest`. Rasterisation is ragged vectorised arithmetic, the operator is one CSR
 matrix per scenario, solved by scipy CG with a Jacobi preconditioner (relative residual 1e-6, the old tool's). Chosen by measurement (host,
 scratch scripts): Jacobi halves the iterations (557 -> 278 on the 1 M-cell NP window, 6 s -> 3-4 s per solve); on the N-N window a
 direct solve (SuperLU) took 0.48 s at 19 k unknowns against 0.1 s for plain CG and had not finished after the 100 s cap at 158 k

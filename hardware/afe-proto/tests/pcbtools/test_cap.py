@@ -265,7 +265,7 @@ NUM = re.compile(r'-?\d+\.\d+')
 @pytest.mark.slow
 def test_report_has_the_old_tools_rows_and_windows(rep):
     assert [k for k in rep.pairs] == [('N-N', False), ('N-N', True), ('NP-NP (+IN pads)', False), ('NP-NP (+IN pads)', True)]
-    assert list(rep.selfs) == ['/AWG_FB']
+    assert list(rep.selfs) == ['/AWG_FB', '/CH1_N', '/CH2_N']
     assert [tuple(round(v) for v in d['window']) for d in rep.pairs.values()] == [(8, 30), (8, 30), (7, 24), (7, 24)]
     assert [d['cell'] for d in rep.pairs.values()] == [0.2, 0.2, 0.1, 0.1]
 
@@ -276,7 +276,8 @@ def test_figures_equal_the_old_tools_golden_within_two_percent(rep):
     last digit. The unrounded figures agree to 1e-15 (no pour) and 4e-7 (pour) in test_live_*: 2 % is the grid, not the solver:
     a flipped cell at a 0.2 mm edge moves a figure by several percent, and the rasters are identical cell for cell."""
     new, old = rep.lines(), golden_lines()
-    assert len(new) == len(old) == 5
+    assert len(old) == 5 and len(new) == 7                                         # the old five lines, then the two divider-node lines
+    new = new[:5]
     for n, o in zip(new, old):
         nn, oo = [float(x) for x in NUM.findall(n)], [float(x) for x in NUM.findall(o)]
         assert len(nn) == len(oo)
@@ -287,7 +288,39 @@ def test_figures_equal_the_old_tools_golden_within_two_percent(rep):
 
 @pytest.mark.slow
 def test_printed_text_is_the_golden_text(rep):
-    assert rep.lines() == golden_lines()
+    """the old tool's five lines are the first five of the report; CAP_SELF's divider-node entries add lines after them"""
+    assert rep.lines()[:5] == golden_lines()
+    assert [l.split(' ')[0] for l in rep.lines()[5:]] == ['/CH1_N', '/CH2_N']
+
+
+# the self capacitance of the divider nodes (LR-3's test: the extracted capacitance of the high-impedance node to everything else).
+# 0.1 mm cells, computed with this code on the integrated board; the SCOPE block's agent measured /CH1_N 0.529 pF no pour and 0.700
+# pF with the pour on the east board, and the integrated board gives the same to the printed digit (the divider copper is identical
+# there). Neither cell size is converged: see the AWG_FB test below for the size of the step from 0.2 to 0.1 mm.
+N_SELF = {'/CH1_N': (0.52906, 0.69953), '/CH2_N': (0.53550, 0.69273)}
+
+
+@pytest.mark.slow
+def test_divider_node_self_capacitance_figures(rep):
+    for n, (no, yes) in N_SELF.items():
+        assert rep.selfs[n][False] == pytest.approx(no, rel=2e-3), n
+        assert rep.selfs[n][True] == pytest.approx(yes, rel=2e-3), n
+        assert rep.selfs[n][True] > rep.selfs[n][False]
+    assert any(l.startswith('/CH1_N self capacitance') and 'no pour 0.529 pF' in l and 'pour (kept 0.3 mm off) 0.700 pF' in l
+               for l in rep.lines())
+
+
+def test_cap_self_entries_are_what_the_report_uses(integrated, monkeypatch):
+    """dropping an entry of cfg.CAP_SELF drops its line from the report, and its cell size is the one used"""
+    from types import SimpleNamespace
+    calls = []
+    monkeypatch.setattr(cap, 'self_cap', lambda b, net, pad, h, stack, tol, gnd: calls.append((net, pad, h)) or {False: 1.0, True: 2.0})
+    cfg = SimpleNamespace(CAP_PAIRS=(), CAP_SELF=v2.CAP_SELF[:2] + (('/CH2_N', 3.0, 0.2),), GND='/GND')
+    r = cap.report(integrated, cfg)
+    assert list(r.selfs) == ['/AWG_FB', '/CH1_N', '/CH2_N'] and calls[-1] == ('/CH2_N', 3.0, 0.2) and len(r.lines()) == 3
+    cfg = SimpleNamespace(CAP_PAIRS=(), CAP_SELF=v2.CAP_SELF[:1], GND='/GND')
+    assert list(cap.report(integrated, cfg).selfs) == ['/AWG_FB']
+    assert [e[0] for e in v2.CAP_SELF] == ['/AWG_FB', '/CH1_N', '/CH2_N'] and all(e[2] == 0.1 for e in v2.CAP_SELF)
 
 
 @pytest.mark.slow
@@ -324,7 +357,7 @@ o = old.main(sys.argv[3])
 b = boardio.load_npz(sys.argv[4])
 r = new.report(b, v2)
 out = {'pairs': {f'{k[0]}|{k[1]}': [float(o[k]), float(d['c'])] for k, d in r.pairs.items()},
-       'selfs': {f'{n}|{p}': [float(o[(n, 'self')][p]), float(d[p])] for n, d in r.selfs.items() for p in (False, True)}}
+       'selfs': {f'{n}|{p}': [float(o[(n, 'self')][p]), float(d[p])] for n, d in r.selfs.items() if (n, 'self') in o for p in (False, True)}}
 # the rasters, cell for cell: AWG_FB window at 0.1 and the N pair window at 0.2
 board = pcbnew.LoadBoard(sys.argv[3])
 same = {}

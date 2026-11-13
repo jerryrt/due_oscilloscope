@@ -110,3 +110,28 @@ mutants 60..101 of 102: every mutant caught
 cap.py (tests/pcbtools/mutate_cap.py, the two new mutants only, each against test_cap.py; the 24 older cap mutants are in tests/golden/cap_mutation_result.txt):
 caught   grid guard never refuses  [FAILED | 1 failed, 36 passed | first test_a_grid_over_the_cell_limit_is_refused_before_anything_is_built]
 caught   grid guard after the allocation  [FAILED | 1 failed, 36 passed | first test_a_grid_over_the_cell_limit_is_refused_before_anything_is_built]
+
+stage 4b (LR-4 pour rule judges /AWG_FB only; POUR_NODES = ('/AWG_FB',); mutants 25..44 of 103, the LR-4 and shapes ones; the divider-node and no-node mutants are new, the 'only the AWG node judged' one is gone: it became equivalent to the config)
+  unmutated copy: PASSED | 226 passed in 5.80s
+  caught   LR-4 output resistor: > becomes >=  [FAILED | 1 failed, 19 passed in 0.36s]
+  caught   LR-4 decoupling: > becomes >=  [FAILED | 1 failed, 21 passed in 0.35s]
+  caught   LR-4 FB length: > becomes >=  [FAILED | 1 failed, 17 passed in 0.36s]
+  caught   LR-4 keep-back: < becomes <= (pour)  [FAILED | 1 failed, 80 passed in 1.49s]
+  caught   LR-4 keep-back distance halved (pour)  [FAILED | 1 failed, 25 passed in 0.35s]
+  caught   LR-4 keep-back distance halved (GND track)  [FAILED | 1 failed, 24 passed in 0.57s]
+  caught   LR-4 GND track half width dropped (finding 9)  [FAILED | 1 failed, 23 passed in 0.60s]
+  caught   LR-4 node copper radius dropped (finding 9)  [FAILED | 1 failed, 81 passed in 1.29s]
+  caught   LR-4 divider nodes judged by the pour rule too (stage 4b)  [FAILED | 1 failed, 71 passed in 0.49s]
+  caught   LR-4 no node judged by the pour rule (stage 4b)  [FAILED | 1 failed, 18 passed in 0.35s]
+  caught   LR-4 reported nodes judged too (finding 9)  [FAILED | 1 failed, 71 passed in 0.47s]
+  caught   shapes: pour holes ignored (finding 9)  [FAILED | 1 failed, 29 passed in 0.36s]
+  caught   shapes: copper on the fill is not distance 0 (finding 9)  [FAILED | 1 failed, 29 passed in 0.36s]
+  caught   shapes: pad rotation ignored (finding 9, 10)  [FAILED | 1 failed, 69 passed in 0.47s]
+  caught   shapes: oval axis ignores rotation (finding 9, 10)  [FAILED | 1 failed, 82 passed in 1.38s]
+  caught   shapes: circle radius halved (finding 9, 10)  [FAILED | 1 failed, 69 passed in 0.48s]
+  caught   shapes: track half width dropped (finding 10)  [FAILED | 1 failed, 25 passed in 0.36s]
+  caught   shapes: copper inside a box is not distance 0  [FAILED | 1 failed, 33 passed in 0.48s]
+  caught   LR-4 INV_MAX: > becomes >=  [FAILED | 1 failed, 31 passed in 0.46s]
+  caught   LR-4 INV_MAX counts top copper only  [FAILED | 1 failed, 31 passed in 0.38s]
+  mutants 25..44 of 103: every mutant caught
+  cap.py (tests/pcbtools/mutate_cap.py, 30 mutants incl. two CAP_SELF config mutants; the 'ground treated as any other net' pattern was refreshed to the current cap.py text): all caught (that one re-run alone: FAILED | 1 failed, 20 passed in 25.85s)

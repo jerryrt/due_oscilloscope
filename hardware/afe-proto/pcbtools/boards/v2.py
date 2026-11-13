@@ -68,12 +68,14 @@ XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/AREF', '/
          '/CH1_N', '/CH2_N', '/CH1_M', '/CH2_M', '/CH1_IN', '/CH2_IN')               # LR-1: bottom copper forbidden under
 INV_NODES = ('/AWG_FB', '/CH1_N', '/CH2_N')   # LR-4: no via, no bottom copper
 INV_LEN_NODES = ('/AWG_FB', '/CH1_OUT', '/CH2_OUT')   # LR-4 INV_MAX
-# LR-4 pour keep-back: the nodes the row calls the op-amps' inverting nodes, which is INV_NODES - the set the row's no-via /
-# no-bottom-copper prohibitions already use, so the row has one definition. NOTE the naming: /CH1_N and /CH2_N are the
-# high-impedance attenuator nodes, and a scope stage is a follower whose inverting PIN is tied to its output, so physically that
-# node is /CHn_OUT (the nets INV_MAX measures). The tables say CHn_N and the check follows the tables; the gap of /CHn_OUT is
-# reported in the figures (POUR_INFO_NODES) and not judged, so the owner can decide whether the rule means it: a one-line change.
-POUR_NODES = INV_NODES
+# LR-4 pour keep-back. The rule's text: the inverting node is the shortest trace of the stage and the top ground pour is kept
+# back from it (at least 0.5 mm). That is about an inverting input with gain resistors, which on this board is /AWG_FB only.
+# The first port judged INV_NODES (/AWG_FB, /CH1_N, /CH2_N), the set the old no-via / no-bottom-copper rule used: the wrong set
+# for the pour rule. /CH1_N and /CH2_N are divider nodes governed by LR-3, which asks the high-impedance sides to be guarded by
+# grounded copper, so pour near them is wanted, not a fault (LR-3's test is the extracted capacitance, see CAP_SELF). A
+# follower's inverting pin is tied to its output (/CHn_OUT), the low-impedance output node, which LR-4 covers through the total
+# capacitance behind it (Riso / stability budget) and not by a keep-back: its gaps are reported (POUR_INFO_NODES), not judged.
+POUR_NODES = ('/AWG_FB',)
 POUR_INFO_NODES = ('/CH1_OUT', '/CH2_OUT')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')   # LR-5
 HIZ = ('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP', '/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')   # LR-3
@@ -124,4 +126,4 @@ TOL_MM = 0.001
 # cap (the old cap.py main()): pairs are (label, nets, window pad mm, cell mm), the window is the pair's pads and tracks
 # grown by the pad; self capacitances are (net, window pad mm, cell mm). 0.2 mm cells for the long N-N window, 0.1 mm for NP.
 CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
-CAP_SELF = (('/AWG_FB', 3.0, 0.1),)
+CAP_SELF = (('/AWG_FB', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))

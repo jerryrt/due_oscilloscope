@@ -50,9 +50,12 @@ MUTANTS = [
     (C, 'no pour keep-back radius', "    k = int(round(clear / h))\n", "    k = 0\n"),
     (C, 'pour case without the pour', "            g = g | ~keep_back(m | other, stack.pour_clear, h)", "            g = g"),
     (C, 'other nets float instead of 0 V (pair)', "    cond[nzb] = gnd | other\n", "    cond[nzb] = gnd\n"),
-    (C, 'ground treated as any other net', "code[b.net_id('/GND')] = len(nets) + 1", "code[b.net_id('/GND')] = len(nets)"),
+    (C, 'ground treated as any other net', "code[b.net_id(gnd)] = len(nets) + 1", "code[b.net_id(gnd)] = len(nets)"),
     (C, 'keep-back wraps round the window (np.roll)', "return ndi.binary_dilation(occupied, structure=(xx * xx + yy * yy <= k * k)) if k else occupied.copy()",
      "return ndi.binary_dilation(occupied, structure=(xx * xx + yy * yy <= k * k), border_value=1) if k else occupied.copy()"),
+    # the config entry (stage 4b): the report must use every CAP_SELF entry
+    ('boards/v2.py', 'CAP_SELF without the divider nodes', "CAP_SELF = (('/AWG_FB', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))", "CAP_SELF = (('/AWG_FB', 3.0, 0.1),)"),
+    ('boards/v2.py', 'CAP_SELF /CH2_N dropped', "('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))", "('/CH1_N', 3.0, 0.1))"),
 ]
 
 
