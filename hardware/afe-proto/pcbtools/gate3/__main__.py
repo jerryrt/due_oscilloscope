@@ -10,7 +10,6 @@ def main(argv=None):
     ap.add_argument('--table', required=True, help='gate-3 table (pcbtools/boards/<name>.py), e.g. gate3_v2, or a path to a .py file')
     ap.add_argument('--out', required=True, help='output folder: GATE3.md and data/ are written there')
     ap.add_argument('--stamp', default=os.environ.get('GATE3_STAMP'), help='text of the generated-at time (default: now; env GATE3_STAMP)')
-    ap.add_argument('--mtimes', help='JSON {path relative to the repo: epoch seconds or local ISO time} replacing the file times read')
     ap.add_argument('--check-table', action='store_true', help='only check the table (missing and TODO fields) and exit')
     a = ap.parse_args(argv)
     from . import table
@@ -32,7 +31,7 @@ def main(argv=None):
             print('  ' + p, file=sys.stderr)
         return 2
     from . import engine
-    doc = engine.generate(cfg, T, os.path.abspath(a.out), a.config, stamp=a.stamp, mtimes=table.read_mtimes(a.mtimes) if a.mtimes else None)
+    doc = engine.generate(cfg, T, os.path.abspath(a.out), a.config, stamp=a.stamp)
     print('wrote', os.path.join(a.out, 'GATE3.md'), len(doc), 'bytes')
     return 0
 

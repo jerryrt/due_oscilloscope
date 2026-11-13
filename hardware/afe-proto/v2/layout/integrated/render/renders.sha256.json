@@ -1,0 +1,11 @@
+{
+ "board_sha256": "44976ab90027354595c0ed433d60e45b8f20ba1a3319e26a35ade1f8e3b111bb",
+ "files": {
+  "afe-v2-integrated-3d-bottom.png": "c20f5667ed28af70417583884929c57a7ab6ae8ca10754f068914cc5d470c731",
+  "afe-v2-integrated-3d.png": "8585246b76a1a49aa0a2df08843afd7f03c409d0cb7d5d0828365cfd2630c650",
+  "afe-v2-integrated-B.Cu.png": "48de47370f1d6cd45d5728a6e84aa970ea87aedde0aa7cf89f418d50309d8522",
+  "afe-v2-integrated-F.Cu-silk.png": "635bb3383d39a5c744b8bec33ac694f8a5ee3b4561548f867b3617880f84775a",
+  "afe-v2-integrated-band-north.png": "e1172fd82b905fa17c0f5cc78a87de48d90cce8924416a458ea6949822f8c250",
+  "afe-v2-integrated-band-south.png": "d726db5ac366d5f78626744fc822f64221cc7797ffd8ebf586b954bb99d7b358"
+ }
+}

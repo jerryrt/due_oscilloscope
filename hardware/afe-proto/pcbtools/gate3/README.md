@@ -16,10 +16,11 @@ v2 names filled in. `--check-table` only checks the table; the CLI exits 2 and p
 | `--table NAME` | gate-3 table, `pcbtools/boards/NAME.py`, or a path |
 | `--out DIR` | `GATE3.md` and `data/` are written here and nowhere else |
 | `--stamp TEXT` / `GATE3_STAMP` | text of the generated-at time (default: now, to the minute) |
-| `--mtimes FILE` | JSON `{path relative to the repo: epoch seconds or local ISO time}` replacing the file times read (the board's, and the renders' against it) |
 
-The two time inputs are injectable so a run can be reproduced. `tests/pcbtools/test_gate3_equivalence.py` runs the v2 table against the
-committed `v2/layout/gate3` with both injected from that package and requires every file to match to the byte (it also breaks a table
+The generated-at line is the only clock input and is injectable, so a run can be reproduced; no file modification time is read (a checkout
+does not keep them). The renders' freshness is by content: `pcbtools/gate3/rendersum.py` (run last by `render.sh`) writes `renders.sha256.json`
+beside the images, holding the board hash they were made from and each image's hash. `tests/pcbtools/test_gate3_equivalence.py` runs the v2
+table against the committed `v2/layout/gate3` with the stamp injected from that package and requires every file to match to the byte (it also breaks a table
 entry and an engine rule once each and requires the comparison to fail).
 
 ## The two inputs

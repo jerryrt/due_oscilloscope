@@ -78,13 +78,6 @@ def load_module(spec, package='pcbtools.boards'):
     return importlib.import_module(f'{package}.{spec}')
 
 
-def read_mtimes(path):
-    """{path relative to the repo: epoch seconds} from a JSON file whose values are epoch numbers or local ISO times"""
-    with open(path) as fh:
-        raw = json.load(fh)
-    return {k: (float(v) if isinstance(v, (int, float)) else datetime.datetime.fromisoformat(v).timestamp()) for k, v in raw.items()}
-
-
 # config fields the engine reads whatever the table says (the rest follow from the table: margin limits, renamed rows, classes, quoted fields)
 CONFIG_FIXED = ('GND', 'BOARD_SETUP', 'OVERHANG', 'BOARD_MAX_MM', 'BAND_NAME', 'KEEPOUTS')
 

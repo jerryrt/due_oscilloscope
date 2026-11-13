@@ -23,7 +23,7 @@ DUE_ORIGIN = (50.0, 150.0)                                # KiCad x = 50 + x, Ki
 RULE_DOC = 'docs/afe.md'                                  # the rule table (`| LR-n | text |` rows) and the cited D24 / MC-1 rows
 
 SECTION_SOURCES = (
-    ('1 Renders', 'PNGs in `v2/layout/integrated/render` (not regenerated here; checked for existence and age against the board)'),
+    ('1 Renders', 'PNGs in `v2/layout/integrated/render` (not regenerated here; checked for existence and, by content hash, that they were made from this board)'),
     ('2 LR table', '`pcbtools.rules.ROWS` on the board with `boards/v2_layout.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
     ('3 DRC', 'kicad-cli `pcb drc --severity-all` on a work copy of the board and its project file'),
     ('4 Bridges and hops', 'board arrays (pads, tracks, vias) via `gate3.bridge_table` / `hop_table`; justifications from `v2/kicad/design.py` `BRIDGES`'),

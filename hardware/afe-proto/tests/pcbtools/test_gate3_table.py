@@ -8,7 +8,7 @@ import pytest
 
 from pcbtools.gate3 import REQUIRED, check_config, check_table
 from pcbtools.gate3 import __main__ as cli
-from pcbtools.gate3.table import TODO_MARK, config_fields, read_mtimes
+from pcbtools.gate3.table import TODO_MARK, config_fields
 from pcbtools.boards import gate3_v1 as V1
 from pcbtools.boards import gate3_v2 as V2
 
@@ -88,10 +88,3 @@ def test_cli_names_a_config_field_the_table_makes_it_read(capsys, monkeypatch):
 def test_config_fields_follow_the_table():
     assert {'GND', 'KEEPOUT', 'HOP_MAX', 'DECOUP_MAX', 'CHANNELS', 'VREF_NET', 'DESIGNATOR_GAP_MIN'} <= set(config_fields(V2))
     assert 'DESIGNATOR_GAP_MIN' not in config_fields(V1)                              # v1's table quotes only the hop limits
-
-
-def test_mtimes_file_takes_epoch_or_local_iso(tmp_path):
-    p = tmp_path / 'm.json'
-    p.write_text('{"a": 12.5, "b": "2026-01-02T03:04:05"}')
-    m = read_mtimes(str(p))
-    assert m['a'] == 12.5 and m['b'] == pytest.approx(__import__('datetime').datetime(2026, 1, 2, 3, 4, 5).timestamp())

@@ -1,10 +1,10 @@
 """The generic gate-3 tool reproduces the committed v2 package byte for byte.
 
 `python3 -B -m pcbtools.gate3 --config v2_layout --table gate3_v2` on the integrated board must give GATE3.md and every file of data/ that
-v2/layout/gate3 holds, identical to the byte. Two inputs of a run depend on the clock and are injected from the committed package itself,
-so the comparison is exact everywhere else: the generated-at text (read off the committed GATE3.md's third line) and the file modification
-times (the board's, and the renders' offsets from it, from the committed info.json and renders.json: a checkout rewrites them). Nothing is
-filtered out of the comparison and no line is skipped.
+v2/layout/gate3 holds, identical to the byte. One input of a run depends on the clock and is injected from the committed package itself,
+so the comparison is exact everywhere else: the generated-at text (read off the committed GATE3.md). No file modification time is read
+by the generator (renders are judged by content hash), so the result does not depend on what order a checkout wrote the files in; a test
+below touches them in both orders. Nothing is filtered out of the comparison and no line is skipped.
 
 Broken once on purpose, as the suite requires of a new guard: a changed table entry and a broken engine rule must each make the same
 comparison fail, so it is known to be able to. The mutated runs reuse the DRC reports of the faithful run (a DRC run is most of the 18 s),
@@ -12,11 +12,11 @@ which is sound because neither mutation touches what DRC reads.
 
 pcbnew tier: needs KiCad 10.x's pcbnew and kicad-cli (both in the PCB image); under --require-tool=pcbnew a missing one fails, never skips.
 """
-import datetime
 import hashlib
 import json
 import pathlib
 import re
+import os
 import shutil
 import subprocess
 import sys
@@ -33,16 +33,9 @@ EXPECT_PCBNEW = __import__('os').environ.get('PCBTOOLS_EXPECT_PCBNEW') == '1'
 
 
 def injected():
-    """(stamp, mtimes) read off the committed package"""
+    """the generated-at text, read off the committed package"""
     doc = (PKG / 'GATE3.md').read_text()
-    stamp = re.search(r' at (\S+)\. \*\*Every number below', doc).group(1)
-    info = json.loads((PKG / 'data' / 'info.json').read_text())
-    bm = datetime.datetime.fromisoformat(info['mtime']).timestamp()
-    mt = {info['board']: bm}
-    for r in json.loads((PKG / 'data' / 'renders.json').read_text()):
-        if r['exists']:
-            mt[r['file']] = bm + r['delta_s']
-    return stamp, mt
+    return re.search(r' at (\S+)\. \*\*Every number below', doc).group(1)
 
 
 def package_files(root):
@@ -87,8 +80,7 @@ def memo_drc(monkeypatch, drc_reports):
 
 def run(tmp_path, table=TABLE):
     import pcbtools.gate3.engine as eng
-    stamp, mt = injected()
-    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=stamp, mtimes=mt)
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
     return tmp_path
 
 
@@ -119,11 +111,55 @@ def test_broken_once_an_engine_rule_is_caught(pcbnew_required, tools, memo_drc, 
 @pytest.mark.slow
 def test_command_line_reproduces_the_package_and_the_stamp_is_injectable(pcbnew_required, tools, tmp_path):
     """the real entry point in a child process, as build_gate3.sh runs it, with the clock inputs injected through its flags"""
-    stamp, mt = injected()
-    mtf = tmp_path / 'mtimes.json'
-    mtf.write_text(json.dumps(mt))
+    stamp = injected()
     out = tmp_path / 'out'
     r = subprocess.run([sys.executable, '-B', '-m', 'pcbtools.gate3', '--config', 'v2_layout', '--table', 'gate3_v2', '--out', str(out),
-                        '--stamp', stamp, '--mtimes', str(mtf)], capture_output=True, text=True, cwd=str(AFE), timeout=600)
+                        '--stamp', stamp], capture_output=True, text=True, cwd=str(AFE), timeout=600)
     assert r.returncode == 0, r.stderr[-500:]
     assert differences(out) == []
+
+
+def _touch_in_order(paths, base):
+    for i, p in enumerate(paths):
+        os.utime(p, (base + i * 10, base + i * 10))
+
+
+@pytest.mark.pcbnew
+def test_the_package_does_not_depend_on_file_times(pcbnew_required, tools, memo_drc, tmp_path):
+    """the board newer than the renders, and the renders newer than the board: the same bytes either way (the defect this guards: the
+    render rows were keyed to modification times, and a fresh checkout failed the equivalence until the renders were touched)"""
+    board = pathlib.Path(__import__('os').path.join(AFE, '..', '..', TABLE.BOARD)).resolve()
+    renders = [pathlib.Path(__import__('os').path.join(AFE, '..', '..', TABLE.RENDER_DIR, n)).resolve() for _, n in TABLE.RENDERS]
+    saved = {p: (p.stat().st_atime, p.stat().st_mtime) for p in [board] + renders}
+    try:
+        for order in ([board] + renders, renders + [board]):
+            _touch_in_order(order, 1_700_000_000)
+            assert differences(run(tmp_path / f'o{order[0].name[:3]}')) == []
+    finally:
+        for p, t in saved.items():
+            os.utime(p, t)
+
+
+@pytest.mark.pcbnew
+def test_broken_once_a_render_altered_after_the_manifest_is_stale_by_hash(pcbnew_required, tools, memo_drc, tmp_path):
+    """one byte changed in a render copy: its row must read STALE (the freshness row can fail), and the package must differ"""
+    import pcbtools.gate3.engine as eng
+    real = eng.sec_renders
+
+    def altered(T):
+        rows = real(T)
+        t = types.SimpleNamespace(**{k: v for k, v in vars(T).items() if not k.startswith('_')})
+        d = tmp_path / 'r'
+        shutil.copytree(os.path.join(eng.REPO, T.RENDER_DIR), d)
+        f = d / T.RENDERS[0][1]
+        b = bytearray(f.read_bytes())
+        b[-1] ^= 1
+        f.write_bytes(bytes(b))
+        t.RENDER_DIR = str(d)
+        return real(t)
+    import unittest.mock as mock
+    with mock.patch.object(eng, 'sec_renders', altered):
+        out = run(tmp_path / 'out')
+    rows = json.loads((out / 'data' / 'renders.json').read_text())
+    assert rows[0]['current'] is False and rows[0]['why'] == 'image differs from the one recorded'
+    assert 'GATE3.md' in differences(out)
