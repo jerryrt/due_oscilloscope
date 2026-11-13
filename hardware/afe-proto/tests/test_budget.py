@@ -124,3 +124,11 @@ def test_a_step_that_reports_findings_by_exiting_1_is_ok_at_1_and_a_failure_othe
     assert step("raise SystemExit(2)", expect_exit=1).kind == "FAIL"
     assert step("raise SystemExit(1)").kind == "FAIL"                 # the default is still 0
     assert B.classify(139, expect_exit=1) == "CRASH" and B.classify(124, expect_exit=1) == "TIMEOUT"
+
+
+def test_a_step_slightly_over_its_wall_budget_is_over_budget_not_a_timeout():
+    """The hard limit is far above the budget (max(300 s, 3 x budget)), so a step a little over it finishes and is
+    reported as OVER_BUDGET; only a runaway is a TIMEOUT. With the old limit of budget + 1 s this was a TIMEOUT."""
+    out = B.run_step("t", [PY, "-c", "import time; time.sleep(2.5)"], mem="1G", machine="x1",
+                     budget={"peak_rss_kb": 2_000_000, "wall_s": 1.0, "machine": "x1"})
+    assert out.kind == "OVER_BUDGET" and out.returncode == 0 and out.wall_enforced, (out.kind, out.returncode)

@@ -63,20 +63,23 @@ def tool_versions():
 
 @lru_cache(maxsize=None)
 def pcb_image_tag():
-    """The image-revisions.json tag if docker can see it, else None. The `docker` marker's tool."""
+    """The pinned image reference (registry@digest from image-revisions.json, the same source run.sh uses),
+    if docker has it, pulling it when it is absent. The `docker` marker's tool. None when it cannot be had."""
     import json
     if shutil.which("docker") is None:
         return None
     cfg = json.loads((Path(__file__).resolve().parents[3] / "docker" / "pcb" / "image-revisions.json").read_text())
-    tag = f"pcb-tools:{cfg['kicad']}-r{cfg['current']}"
-    r = subprocess.run(["docker", "image", "inspect", tag], capture_output=True)
-    return tag if r.returncode == 0 else None
+    ref = f"{cfg['registry']}@{cfg['digest']}"
+    if subprocess.run(["docker", "image", "inspect", ref], capture_output=True).returncode == 0:
+        return ref
+    pulled = subprocess.run(["docker", "pull", "--quiet", ref], capture_output=True, timeout=1800)
+    return ref if pulled.returncode == 0 else None
 
 
 _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".")[0]) == 10,
                       "KiCad 10.x pcbnew importable in this interpreter"),
            "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH"),
-           "docker": (pcb_image_tag, lambda v: v is not None, "docker and the built docker/pcb image (docker/pcb/build-image.sh)")}
+           "docker": (pcb_image_tag, lambda v: v is not None, "docker and the pinned docker/pcb image (pulled by digest from image-revisions.json; docker login first)")}
 
 
 # pcbtools additions: run the guard test after every other test, count pcbnew-marked passes for it, and a fixture that fails
@@ -146,3 +149,9 @@ def _fail_with(msg):
 @pytest.fixture(scope="session")
 def versions():
     return tool_versions()
+
+
+@pytest.fixture(scope="session")
+def pcb_image_ref():
+    """The pinned reference the `docker` probe found (registry@digest); for tests of the probe itself."""
+    return pcb_image_tag()

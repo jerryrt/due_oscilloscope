@@ -84,8 +84,9 @@ if [ "$pinned" = 1 ] && [ "$installed" != "$(manifest installed)" ]; then
     echo "  file:  $(manifest installed)" >&2
     exit 2
 fi
-# what the summary line calls the image: the pinned digest, or the content hash for an override
-ident=$content
+# What the summary line calls the image: the pinned digest, or UNPINNED:<tag> for an override, so a row taken
+# in a local build can never be mistaken for one of record (bench.py refuses to write budgets from one).
+ident="UNPINNED:$image"
 [ "$pinned" = 1 ] && ident=$digest
 
 # THREAD COUNTS FOLLOW THE CPU QUOTA. numpy/scipy start one BLAS/OpenMP thread per CPU they can SEE (12 here),
@@ -108,12 +109,12 @@ flags=(
     --env "MKL_NUM_THREADS=$threads" --env "NUMEXPR_NUM_THREADS=$threads"
     --cidfile "$cidfile"
 )
-# THE COMMITTED FIXTURES AND GOLDENS ARE INPUTS. With DUE_PCB_RO_FIXTURES=1 they are mounted read-only, so
-# a write into them (bytecode, a .kicad_prl, a lock file) fails at the writing test and names it, instead of
-# poisoning the next run. It is opt-in until every test copies what it opens: today tests/pcbtools'
-# golden-manifest and golden-capture tests write into golden/ on purpose and fail under it (12 of 460).
-# docker/pcb/run-gate.sh checks the same directories after every run whether or not this is set.
-if [ "${DUE_PCB_RO_FIXTURES:-0}" = 1 ]; then
+# THE COMMITTED FIXTURES AND GOLDENS ARE INPUTS. They are mounted read-only by default, so a write into
+# them (bytecode, a .kicad_prl, a lock file) fails at the writing test and names it, instead of poisoning the
+# next run; a test that must write copies what it opens. DUE_PCB_RO_FIXTURES=0 is the explicit opt-out, for
+# regenerating a golden on purpose (netlib_snapshot.py --write, update_manifest.py). docker/pcb/run-gate.sh
+# checks the same directories after every run whether or not the mount is read-only.
+if [ "${DUE_PCB_RO_FIXTURES:-1}" = 1 ]; then
     flags+=(--volume "$repo/hardware/afe-proto/tests/fixtures:/work/hardware/afe-proto/tests/fixtures:ro"
             --volume "$repo/hardware/afe-proto/tests/golden:/work/hardware/afe-proto/tests/golden:ro")
 fi

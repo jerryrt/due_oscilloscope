@@ -59,14 +59,15 @@ def available():
     return r.returncode == 0
 
 
-def run(cmd, *, mem="2G", timeout=300, cwd=None, env=None):
+def run(cmd, *, mem="2G", timeout=300, cwd=None, env=None, cpus=None):
     """Run `cmd` (an argv list) under the cap. Never raises on the job's own failure,
     but raises RuntimeError if capped.sh gave no summary line (it did not run)."""
     if isinstance(cmd, str):
         raise TypeError("cmd must be an argv list, not a shell string")
     if in_container():
         return _run_in_container(cmd, timeout, cwd, env)
-    r = subprocess.run(["bash", str(CAPPED_SH), "-m", str(mem), "-t", str(timeout), *cmd],
+    extra = ["-c", str(cpus)] if cpus is not None else []
+    r = subprocess.run(["bash", str(CAPPED_SH), "-m", str(mem), "-t", str(timeout), *extra, *cmd],
                        cwd=cwd, env=env, capture_output=True, text=True)
     m = _SUMMARY.search(r.stderr)
     if m is None:

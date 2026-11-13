@@ -4,5 +4,6 @@
   "registry": "dcr.ca2324.servep2p.com:8443/due-scope/pcb-tools",
   "digest": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
   "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
-  "recipe": "f76136c849c054f5dd31e5642ada6062ac92e7164466afb5a876c94603de19df"
+  "recipe": "f76136c849c054f5dd31e5642ada6062ac92e7164466afb5a876c94603de19df",
+  "if_the_registry_is_unreachable": "docker/pcb/build-image.sh rebuilds the image from the recipe (all inputs are pinned); then `docker/pcb/image-id.sh installed pcb-tools:<kicad>-r<current>` must print the installed-set hash above and the recipe must equal the recipe above. The layer content hash will differ, so use DUE_PCB_IMAGE=pcb-tools:<kicad>-r<current>: run.sh then labels every row image=UNPINNED:<tag> and bench.py will not write budgets from it. The installed-set equality is the claim; do not take a figure of record from an unpinned image."
 }

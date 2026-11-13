@@ -16,8 +16,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 RUN = REPO / "docker" / "pcb" / "run.sh"
 KICAD = "10.0.8"
-MAIN = f"pcb-tools:{KICAD}-r3"
-CONTROL = MAIN + "-no-ngspice"
+import json as _json
+CFG = _json.loads((REPO / "docker" / "pcb" / "image-revisions.json").read_text())
+PINNED = f"{CFG['registry']}@{CFG['digest']}"                      # what run.sh runs by default
+CONTROL = f"pcb-tools:{CFG['kicad']}-r{CFG['current']}-no-ngspice"   # the gate's own control, built by the test
 SUMMARY = re.compile(r"^capped: peak_rss_kb=(\S+) wall_s=(\S+) exit=(\d+) cap=(\S+) limit_s=(\d+)(?: image=(\S+))?(?: installed=(\S+))?$", re.M)
 
 pytestmark = [pytest.mark.docker, pytest.mark.slow]
@@ -30,7 +32,9 @@ def have_image(tag):
 
 def run_in(image, *cmd, m="1G", t=120):
     import os
-    env = dict(os.environ, DUE_PCB_IMAGE=image)
+    env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"}
+    if image is not None:                       # None = the pinned default, exactly as a user runs it
+        env["DUE_PCB_IMAGE"] = image
     r = subprocess.run(["bash", str(RUN), "-m", m, "-t", str(t), *cmd], capture_output=True, text=True,
                        env=env, timeout=t + 60)
     return r
@@ -39,8 +43,9 @@ def run_in(image, *cmd, m="1G", t=120):
 @pytest.fixture(scope="module")
 def main_image():
     # absence is handled by the `docker` probe in conftest: a skip by default, a failure under
-    # --require-tool=docker, so a missing image is an error only where the image is required
-    return MAIN
+    # --require-tool=docker, so a missing image is an error only where the image is required.
+    # None means "no override": run.sh pulls and checks the pinned digest, the path a user takes.
+    return None
 
 
 def test_gate_fails_in_an_image_without_ngspice(main_image):
@@ -73,7 +78,7 @@ def test_the_timeout_gives_124_and_is_bounded(main_image):
 def test_the_summary_line_carries_peak_cap_and_image_id(main_image):
     r = run_in(main_image, "python3", "-c", "b = bytearray(150_000_000)", m="1G", t=60)
     m = SUMMARY.search(r.stderr)
-    assert r.returncode == 0 and m and m.group(4) == "1G" and re.fullmatch(r"[0-9a-f]{64}", m.group(6))
+    assert r.returncode == 0 and m and m.group(4) == "1G" and m.group(6) == CFG["digest"]
     assert 140_000 < int(m.group(1)) < 600_000                       # KB, the cgroup peak
 
 
@@ -126,8 +131,8 @@ def test_the_gate_run_twice_passes_twice(main_image):
 
 def test_the_installed_set_hash_is_stable_across_two_asks(main_image):
     ids = REPO / "docker" / "pcb" / "image-id.sh"
-    a = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
-    b = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
+    a = subprocess.run(["bash", str(ids), "installed", PINNED], capture_output=True, text=True).stdout.strip()
+    b = subprocess.run(["bash", str(ids), "installed", PINNED], capture_output=True, text=True).stdout.strip()
     assert re.fullmatch(r"[0-9a-f]{64}", a) and a == b
 
 
@@ -169,7 +174,7 @@ def _gate_with_a_test_that_touches_a_fixture(env_extra):
     import os
     TOUCH.write_text(TOUCH_SRC)
     try:
-        env = dict(os.environ, DUE_PCB_IMAGE=MAIN, **env_extra)
+        env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"} | env_extra
         return subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "200", "docker/pcb/run-gate.sh",
                                "-k", "test_touches_a_fixture"], capture_output=True, text=True, env=env, timeout=400)
     finally:
@@ -206,9 +211,50 @@ THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NU
 def test_the_container_sees_thread_counts_equal_to_floor_of_the_cpu_quota(main_image, cpus, want):
     import os
     code = "import os; print(' '.join(os.environ.get(v, 'unset') for v in %r))" % (THREAD_VARS,)
-    env = dict(os.environ, DUE_PCB_IMAGE=main_image)
+    env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"}
     for v in THREAD_VARS:
         env.pop(v, None)
     r = subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "60", "-c", cpus, "python3", "-c", code],
                        capture_output=True, text=True, env=env, timeout=120)
     assert r.returncode == 0 and r.stdout.split() == [want] * 4, (cpus, r.stdout, r.stderr[-200:])
+
+
+def test_an_image_override_is_labelled_unpinned_in_the_summary_line(main_image):
+    r = run_in(PINNED, "python3", "-c", "print('x')")          # an explicit override, even of the pinned ref itself
+    m = SUMMARY.search(r.stderr)
+    assert r.returncode == 0 and m.group(6) == "UNPINNED:" + PINNED, m.groups()
+
+
+def test_bench_refuses_to_write_budgets_from_an_unpinned_run(main_image):
+    import hashlib
+    files = [REPO / "hardware/afe-proto/tests" / n for n in ("bench-results.json", "bench-results.md", "budgets.json")]
+    before = [hashlib.sha256(f.read_bytes()).hexdigest() for f in files]
+    r = run_in(PINNED, "python3", "hardware/afe-proto/tests/bench.py", "--runs", "1", "--only", "ngspice-rc", "--write", t=120)
+    assert r.returncode != 0 and "not a pinned digest" in r.stderr + r.stdout, (r.returncode, r.stderr[-300:])
+    assert [hashlib.sha256(f.read_bytes()).hexdigest() for f in files] == before          # and wrote nothing
+
+
+def test_the_ro_mount_is_the_default_and_due_pcb_ro_fixtures_0_opts_out(main_image):
+    fx = REPO / "hardware/afe-proto/tests/fixtures/zz-ro-probe.txt"
+    try:
+        code = "open('hardware/afe-proto/tests/fixtures/zz-ro-probe.txt','w').write('x'); print('WROTE')"
+        default = run_in(None, "python3", "-c", code)
+        assert "WROTE" not in default.stdout and default.returncode != 0, default.stdout + default.stderr[-200:]
+        import os
+        env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"} | {"DUE_PCB_RO_FIXTURES": "0"}
+        out = subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "60", "python3", "-c", code], capture_output=True,
+                             text=True, env=env, timeout=120)
+        assert "WROTE" in out.stdout, out.stdout + out.stderr[-200:]
+    finally:
+        fx.unlink(missing_ok=True)
+
+
+def test_two_gate_runs_do_not_share_a_guard_file():
+    src = (REPO / "docker/pcb/run-gate.sh").read_text()
+    assert "mktemp" in src and "/tmp/gate-guard.txt" not in src
+
+
+def test_the_docker_probe_looks_for_the_pinned_digest_not_a_local_tag(pcb_image_ref):
+    """A bench that only pulled by digest has no pcb-tools:<ver> tag; the probe must use image-revisions.json
+    exactly as run.sh does."""
+    assert pcb_image_ref == PINNED

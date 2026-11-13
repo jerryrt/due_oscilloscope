@@ -15,12 +15,15 @@
 # for that and so does this script.
 #
 # THE FIXTURES AND GOLDENS ARE NOT WRITTEN BY A RUN, and that is checked twice. run.sh mounts them
-# read-only, so a write fails at the writing test; and this script snapshots them (path, size, sha256)
+# read-only by default, so a write fails at the writing test; and this script snapshots them (path, size, sha256)
 # before and after and fails the gate, naming the files, if anything differs - which also catches a run
 # where the mount is not read-only (a bench using the gate outside run.sh). Bytecode, a .kicad_prl and a
 # lock file have each poisoned the next run once; this guards the class.
 set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 2
+GUARD_FILE=$(mktemp /tmp/gate-guard.XXXXXX) || exit 2
+trap 'rm -f "$GUARD_FILE"' EXIT
+export GUARD_FILE
 guard() {
     python3 - "$@" <<'PY'
 import hashlib, os, sys
@@ -38,10 +41,10 @@ if sys.argv[1] == "save":
         for p in junk:
             print(f"  leftover: {p}", file=sys.stderr)
         sys.exit(4)
-    open("/tmp/gate-guard.txt", "w").write("\n".join(f"{h} {p}" for p, h in sorted(snap.items())))
+    open(os.environ["GUARD_FILE"], "w").write("\n".join(f"{h} {p}" for p, h in sorted(snap.items())))
     print(f"gate guard: {len(snap)} fixture/golden files recorded", file=sys.stderr)
     sys.exit(0 if snap else 2)          # a guard that looked at nothing is not a guard
-before = dict(l.split(" ", 1)[::-1] for l in open("/tmp/gate-guard.txt").read().splitlines())
+before = dict(l.split(" ", 1)[::-1] for l in open(os.environ["GUARD_FILE"]).read().splitlines())
 new = sorted(set(snap) - set(before)); gone = sorted(set(before) - set(snap))
 changed = sorted(p for p in snap if p in before and snap[p] != before[p])
 if new or gone or changed:

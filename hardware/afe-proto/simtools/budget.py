@@ -93,12 +93,12 @@ def signal_name(rc):
 
 
 def run_step(name, argv, *, budget=None, mem="2G", timeout=None, cwd=None, env=None, machine=None, expect_exit=0):
-    """Run once under the cap. Where the wall budget is enforced (same machine) the time limit is the
-    budget's wall time unless `timeout` is given, with no slack added: a step over it is OVER_BUDGET if it
-    finished within the limit and TIMEOUT if it did not. Elsewhere the limit is 300 s."""
+    """Run once under the cap. The wall budget is the recorded figure (median x margin) and is what the assertion
+    compares against; the hard time limit is far above it, max(300 s, 3 x the budget), so a step slightly over
+    budget is reported as OVER_BUDGET and only a runaway is a TIMEOUT. `timeout` overrides the hard limit."""
     machine = machine or current_machine()
     enforce_wall = bool(budget and budget.get("machine") and budget["machine"] == machine)
-    limit = timeout if timeout is not None else (max(int(budget["wall_s"]) + 1, 2) if enforce_wall else 300)
+    limit = timeout if timeout is not None else (max(300, int(3 * budget["wall_s"]) + 1) if budget else 300)
     res = capped.run(argv, mem=mem, timeout=limit, cwd=cwd, env=env)
     kind = classify(res.returncode, expect_exit)
     peak = None if res.peak_rss_bytes is None else res.peak_rss_bytes // 1024
