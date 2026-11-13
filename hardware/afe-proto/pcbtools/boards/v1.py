@@ -13,7 +13,10 @@ import sys
 NAME = 'v1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
-SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v1-34b2e51', 'kicad'))
+FIXTURE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v1-34b2e51', 'kicad'))
+# The frozen fixture is the default: the equivalence tests and the goldens are about 34b2e51. PCBTOOLS_V1_SOURCE names the folder of
+# the LIVE v1 data (design.py, floorplan.py, layout.py: hardware/afe-proto/kicad) for the layout restart, where the design has moved on
+SOURCE_DIR = os.path.normpath(os.environ.get('PCBTOOLS_V1_SOURCE') or FIXTURE_DIR)
 
 
 def _load_sources():
@@ -247,10 +250,10 @@ GROUPS = {}
 for _rail in RAILS:
     GROUPS[_rail] = {}
     for _p in PARTS:
-        if _rail[1:] in _p['pins'].values() and BLOCK[_p['ref']] in _CONSUMER:
+        if (_rail[1:] in _p['pins'].values() or _rail[1:] + '_O' in _p['pins'].values()) and BLOCK[_p['ref']] in _CONSUMER:
             GROUPS[_rail].setdefault(_CONSUMER[BLOCK[_p['ref']]], set()).add(_p['ref'])
 STAR = {'/+3V3A': [('U401', '11'), ('C407', '1'), ('C408', '1')], '/VNEG': [('U401', '6'), ('C409', '1'), ('C410', '1')]}
-BRIDGES = []
+BRIDGES = [('R410', '/VNEG', '/VNEG_O')] if any(q['ref'] == 'R410' and len(set(q['pins'].values())) == 2 for q in PARTS) else []
 BRIDGE_PADS = []
 RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'
