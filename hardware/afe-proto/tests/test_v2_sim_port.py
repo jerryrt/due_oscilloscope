@@ -66,9 +66,12 @@ def mutant_tree(tmp, edits=()):
 # The golden is the OLD study at its old guaranteed range, -1.5 V to +1.63 V. The owner's ruling of 2026-11-13 made the range +-1.6 V (design.OUT_LO,
 # OUT_HI, and four texts in run.py that name the range or the broken-on-purpose level), which changes the numbers on purpose and is not a porting
 # difference. The equivalence is therefore taken with the range put back to the old one in a copy of the code: these edits are the whole of the
-# difference between the golden and the tree, and a port that drifts anywhere else still fails.
+# difference between the golden and the tree (and the filter resistor Rvr, below), and a port that drifts anywhere else still fails.
 OLD_RANGE_EDITS = [
     ("v2/sim/awg/design.py", "OUT_LO, OUT_HI = -1.6, 1.6 ", "OUT_LO, OUT_HI = -1.5, 1.63 "),
+    # the offset-filter resistor Rvr is 130 ohm now (SC-9 through the reference at the scope's +-5 V range); the golden has 100 ohm
+    ("v2/sim/awg/design.py", "Rg2=3000.0, Rvr=130.0,", "Rg2=3000.0, Rvr=100.0,"),
+    ("v2/sim/awg/params.py", "Rvr=130.0, Cvr=14e-6", "Rvr=100.0, Cvr=14e-6"),
     ("v2/sim/awg/run.py", "'commanding +1.75 V (the refused +-1.75 V request) must fail the position-aware 92 % at the hard corners; the guaranteed +1.6 V passes', g_range, dict(th=1.75), dict(th=design.OUT_HI))",
      "'commanding +1.71 V (the earlier guarantee, before the offset filter) must fail the position-aware 92 %; the guaranteed +1.63 V passes', g_range, dict(th=1.71), dict(th=1.63))"),
     ("v2/sim/awg/run.py", "'a negative rail that does not reach the commanded bottom into 50 ohm (-1.5 V: clips at -1.4 V) must fail",

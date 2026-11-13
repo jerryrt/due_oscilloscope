@@ -644,7 +644,7 @@ def case_ref():
         m, fpk, ipk = ref_move(dV_, Rg2_, Rflt_, C_, mode)
         res[lab] = (m, fpk, ipk, m * SCOPE_REF_TO_INPUT, m * SCOPE_REF_TO_INPUT / LSB_IN)
     r = res['chosen, graph']
-    add('SC-9', 'AWG-to-scope coupling through the reference, 1-3 kHz, the full commanded swing (%.2f V pp at the inverting node), REF3030E output impedance as the graph (peak 115 ohm), with the offset filter (100 ohm + %.0f uF effective)' % (dV, D['Cvr'] * 1e6), '<= 2 LSB at the scope input (%.2f mV)' % (2 * LSB_IN * 1e3),
+    add('SC-9', 'AWG-to-scope coupling through the reference, 1-3 kHz, the full commanded swing (%.2f V pp at the inverting node), REF3030E output impedance as the graph (peak 115 ohm), with the offset filter (%g ohm + %.0f uF effective)' % (dV, D['Rvr'], D['Cvr'] * 1e6), '<= 2 LSB at the scope input (%.2f mV)' % (2 * LSB_IN * 1e3),
         f'{r[0]*1e3:.2f} mV on the reference at {r[1]:.0f} Hz, {r[3]*1e3:.2f} mV at the scope input = {r[4]:.2f} LSB', f'{2-r[4]:+.2f} LSB', r[4] <= 2.0, 'Fig. 6-14 is read by eye and is for the 1.25 V and 5 V parts, load and output capacitance unstated *(check)*; the scope input factor is 0.806 (sim/scope/design.md)')
     for lab in ('chosen, 110 ohm bound', 'chosen, 28 ohm loaded', 'no filter, graph', 'no filter, 110 ohm bound', 'filter alone (Rf 470, Rg2 390, 7 uF), graph', 'filter alone, 110 ohm bound', 'one 10 uF (7 uF), chosen resistors, graph'):
         q = res[lab]
@@ -715,7 +715,7 @@ def run_guards():
     def g_sc9(Rflt, C):
         m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / V['Rg2']), V['Rg2'], Rflt, C)[0]
         return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
-    guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); 100 ohm + 14 uF passes', g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
+    guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); %g ohm + 14 uF passes' % V['Rvr'], g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
 
     def g_sc9b(Rg2):
         m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / Rg2), Rg2, V['Rvr'], D['Cvr'])[0]
@@ -738,6 +738,17 @@ def run_guards():
     guard('supply-pin current, simulated', 'ngspice short with the stage commanded to +3.0 V must fail 60 mA; commanded to the 2.2275 V window top end it passes', g_short_sim, dict(cmd=3.0), dict(cmd=lim - 0.015))
 
 
+# Rvr per value: a single Basic 0603 part where there is one (../../jlc-basic.csv has 100, 120, 150 ohm and no 130), else two in series.
+_R5_NOTE = 'offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = %.0f Hz at 10 uF)'
+R5_ROWS = {
+    100.0: [('R5', '100 ohm 1 % 0603', 'C22775', 'Rvr: ' + _R5_NOTE % 160, 1)],
+    150.0: [('R5', '150 ohm 1 % 0603', 'C22808', 'Rvr: ' + _R5_NOTE % 110, 1)],
+    120.0: [('R5', '120 ohm 1 % 0603', 'C22787', 'Rvr: ' + _R5_NOTE % 130, 1)],
+    130.0: [('R5', '120 ohm 1 % 0603', 'C22787', 'Rvr = R5 + R5b = 130 ohm: ' + _R5_NOTE % 120 + '; there is no single 130 ohm Basic part', 1),
+            ('R5b', '10 ohm 1 % 0603', 'C22859', 'Rvr, in series with R5 (the same footprint size; one extra placement)', 1)],
+}
+
+
 def write_outputs(out_dir):
     # the reference netlist (nominal, hi-Z load) and the parts list generated from the same dictionary
     open(os.path.join(out_dir, 'awg.cir'), 'w').write(core.build(dict(load='hiz', macro_name='TPH2501_ngspice.mdl'), analysis='.op'))
@@ -746,7 +757,7 @@ def write_outputs(out_dir):
         ('R1,R2 (parallel)', '100 ohm 1 % 1206', 'C17901', 'AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)', 2),
         ('R3', f'{q["Rf"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rf, feedback', 1),
         ('R4', f'{q["Rg2"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rg2, inverting node to the offset filter node (D-V2-12)', 1),
-        ('R5', f'{q["Rvr"]:g} ohm 1 % 0603', 'C22775', 'Rvr: offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = 160 Hz at 10 uF)', 1),
+        *R5_ROWS[q['Rvr']],
         ('C3,C4', '10 uF X5R 10 % 0805 25 V', 'C15850', 'offset filter capacitor, filter node to ground, two in parallel (about 14 uF effective at 3 V bias *(check)*): they keep the AWG current out of the reference at 1-3 kHz where its output impedance peaks', 2),
         ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', 'C13167', 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
         ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by 0.909 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground', 1),

@@ -37,6 +37,22 @@ on the reference's output impedance (1-3 kHz) the coupling is 2.99 LSB; against 
 
 **The swing at the weak rail, with the datasheet.** `../../models/tph2502/tph2502.pdf` (3PEAK TPH2501/2/3/4, Rev. A, 18 pages; manifest entry, `models/SOURCES.md`). **Rev. A cites "Output Voltage Swing vs Output Current" on p. 9 (Output Drive Capability: continuous +-100 mA with approximately 2.7 V of swing on a 5 V supply) and does not contain the curve**: none of the typical-characteristic figures on pp. 5-8 is a swing curve, and the table on p. 4 gives only 2 mV typ / 30 mV max from the rail at 100 kohm. So the 11.5 ohm per rail (1.15 V at 100 mA) stays derived, linear in current *(check: the real curve, a later revision or a bench measurement)*. At +-0.8 V into 50 ohm the op-amp output current is 16 mA (+-1.6 V over the 100 ohm of back-termination plus load), the model's 16.8 mA sunk at -1.6 V (with the feedback). Two bounds on the bottom reach at the weak -1.9549 V rail (the macro stops 0.0323 V short): the two halves sharing the current, as the model does, -1.835 V (+0.235 V of margin); **one half carrying all of it** (R8/R9 are 1 ohm against 11.5 ohm, so sharing is close, but unmatched halves are not excluded), -1.9549 + 0.0323 + 11.5 ohm x 17 mA = **-1.727 V, +0.127 V of margin**. Into high impedance only the 0.3 mA through Rf flows and the reach is the -1.946 V of the model.
 
+### Rvr 130 ohm (2026-11-13): SC-9 through the reference at the scope's +-5 V
+
+With the scope at +-5 V its own REF-coupling figure is 2.44 LSB against 2 (scope stream). The AWG's lever is the offset filter's resistor Rvr (R5): a larger Rvr moves less of the AWG's signal current into the reference. Only a resistor value changes (same capacitors); the DC drop across it is a fixed offset the AWG calibration removes. The price is top-end headroom: the filter shelf `Rf Rvr / (Rg2 (Rg2 + Rvr))` grows with Rvr and the supply-pin rule judges the AC top end. Everything below is at +-1.6 V, Rf = Rg2 = 3 kohm, Rbin/Rbpl 2.7k/27k, hard corners (`design.corner_stats`), with the reference coupling from `run.ref_move`. That function uses the AWG study's own scope constants (0.806 and 1.743 mV per LSB), so its LSB figures are not the +-5 V scope's; the "x vs 100" column is the scale to apply to the scope's own 2.44 LSB.
+
+| Rvr | Basic part | AC top end (<= 2.2275 V) | supply pin (<= 60 mA) | position-aware use, hard corners (<= 92 %) | REF swing at 1.9 kHz | x vs 100 | scope 2.44 LSB becomes |
+|---|---|---|---|---|---|---|---|
+| 100 (was) | C22775 | 2.197 V (+0.030) | 59.4 mA (+0.6) | 90.4 % | 3.66 mV | 1.000 | 2.44 |
+| 120 | C22787 | 2.212 V (+0.015) | 59.7 mA (+0.3) | 90.8 % | 3.05 mV | 0.834 | 2.04 *(still over 2 by 0.04)* |
+| **130** | none: 120 + 10 ohm in series (C22787 + C22859) | **2.219 V (+0.008)** | **59.8 mA (+0.2)** | **91.2 % (+0.8)** | **2.82 mV** | **0.770** | **1.88** |
+| 140 | none | 2.227 V (+0.0007) | 60.0 mA (0.0) | 91.6 % | 2.62 mV | 0.715 | 1.74 *(no top-end margin)* |
+| 150 | C22808 | **2.234 V (-0.007) FAILS** | **60.1 mA (-0.1) FAILS** | 91.9 % | 2.44 mV | 0.667 | 1.63 |
+
+**150 ohm fails**: the AC top end by 7 mV and the supply-pin peak by 0.1 mA (the sim's AW-1 AC row and PW-3 row fail, and the window-top guard stops discriminating). The only 150 ohm set that keeps the top end is Rbin/Rbpl 3.3k/30k, with hard-corner position-aware use 0.91997 against 0.92 (+0.00003, no margin). **120 ohm** is a single Basic part and passes every AWG row, but leaves the scope at about 2.04 LSB. **130 ohm is chosen.** It is not a single Basic part (`../../jlc-basic.csv` has 100, 120, 150 and 200 ohm in 0603), so R5 becomes **R5 120 ohm C22787 plus R5b 10 ohm C22859 in series**: one extra 0603 placement and a second pad pair in the R5 position *(the board edit belongs to the layout stream)*.
+
+At 130 ohm, old (Rvr 100) -> new: AW-1 position-aware use, MC A / B 90.1 / 89.7 % -> 89.8 / 90.8 %; hard corners 90.4 % -> 91.2 % (+0.8 %); width 84.8 % -> 85.2 %; commanded bottom inside the window, A / B +0.064 / +0.044 V -> +0.042 / +0.023 V; AC top end 2.197 -> 2.219 V (+30 -> +8 mV); PW-3 AC peak 59.4 -> 59.8 mA (+0.6 -> +0.2 mA); AW-2 0.978 -> 0.973 mV; PR-4 +0.17 -> +0.19 V (37 mA, +8 mA); PA-2 2.72 -> 2.71 mA; filter corner 114 -> 87 Hz at 14 uF; AW-7 gain shelf +1.64 -> +2.12 %. AW-3 (8.99 MHz), AN-1 (47.8 deg), AW-5 (94.3 uA), AW-6 (213.0 uV; the reference's noise is counted unfiltered, so the larger Rvr earns no credit), AW-8 and the swing at the weak rail (-1.835 V into 50 ohm, +0.23 V) are unchanged to the printed digits. SC-9 in this study (its constants): 3.66 -> 2.82 mV on the reference, 1.69 -> 1.30 LSB. 99 rows, 0 FAIL, 15 guards.
+
 ### The +-1.75 V request, refused (D-V2 record)
 
 +-1.75 V was asked for first and fails by arithmetic that no choice of values escapes. The same hard-corner machinery with `OUT_LO, OUT_HI = -1.75, +1.75`:
@@ -74,7 +90,7 @@ Transfer (design.py): DC `Vout = Gs0 * kin * Vdac - K * Vref`, `Gs0 = 1 + Rf/(Rg
 | R1, R2 | 100 ohm 1 % 1206, in parallel | C17901 | AW-4 50 ohm back-termination; 110 mW each at the 44 mA short top, rated 250 mW |
 | R3 (Rf) | 3 kohm 1 % 0603 | C4211 | feedback |
 | R4 (Rg2) | 3 kohm 1 % 0603 | C4211 | inverting node to the filter node; no Rg1 |
-| R5 (Rvr) | 100 ohm 1 % 0603 | C22775 | offset filter resistor, REF3030E output to the filter node |
+| R5 (Rvr) | 100 ohm 1 % 0603; **now R5 120 ohm C22787 + R5b 10 ohm C22859 in series = 130 ohm** (section Rvr 130 ohm) | C22775 | offset filter resistor, REF3030E output to the filter node |
 | C3, C4 | 10 uF X5R 0805 25 V, in parallel | C15850 | offset filter capacitor (about 14 uF effective at 3 V bias *(check)*) |
 | R6 (Rbin) | 2.7 kohm 1 % 0603 | C13167 | DAC0 series resistor and the divider's upper arm |
 | R7 (Rbpl) | 27 kohm 1 % 0603 | C22967 | divider lower arm; an undriven DAC0 commands ground |

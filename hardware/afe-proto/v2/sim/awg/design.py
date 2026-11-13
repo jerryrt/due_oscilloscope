@@ -38,7 +38,7 @@ RAIL_REACH_LO = -1.9226                 # ngspice (run.py): where the stage clip
 USE_LIM, LSB_LIM = 0.92, 1.5e-3
 VOS_MAX = 0.5e-3          # TPH2502 VOS max (datasheet p3)
 
-VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=100.0, Rbin=2700.0, Rbpl=27e3)   # the design (design.md)
+VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=130.0, Rbin=2700.0, Rbpl=27e3)   # the design (design.md)
 
 
 def catalogue(kind='resistor'):

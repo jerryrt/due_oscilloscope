@@ -1,6 +1,6 @@
 # AFE version 2: power, reference and calibration block (generated from results/ by report.py)
 
-AWG inputs read at run time: `../awg/design.py` sha256 `6b9fbba15dad1fee`, `../awg/report_table.md` sha256 `5e7428343edc6095`; AWG values {"Rbin": 2700.0, "Rbpl": 27000.0, "Rf": 3000.0, "Rg1": Infinity, "Rg2": 3000.0, "Rvr": 100.0}.
+AWG inputs read at run time: `../awg/design.py` sha256 `401498a549db95ed`, `../awg/report_table.md` sha256 `d993ad56d8973436`; AWG values {"Rbin": 2700.0, "Rbpl": 27000.0, "Rf": 3000.0, "Rg1": Infinity, "Rg2": 3000.0, "Rvr": 130.0}.
 
 Status: PASS / FAIL / info against the stated limit; every FAIL is also in design.md. A check was trusted only after it failed on purpose (Guards table at the end).
 
@@ -47,9 +47,9 @@ Status: PASS / FAIL / info against the stated limit; every FAIL is also in desig
 
 | | ID | req | case | limit | result | margin | note |
 |---|---|---|---|---|---|---|---|
-| PASS | REF/src | PA-2, D-V2-10 | REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 + Rvr, computed from ../awg/design.py: 0.98 mA worst) | <= 10 mA (6.3) | 2.715 mA | +7.28 mA |  |
+| PASS | REF/src | PA-2, D-V2-10 | REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 + Rvr, computed from ../awg/design.py: 0.98 mA worst) | <= 10 mA (6.3) | 2.706 mA | +7.29 mA |  |
 | PASS | REF/snk | PA-2, D-V2-10 | REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4) | <= 10 mA | 80 uA | +9.92 mA | the sink load regulation 150 ppm/mA is 10x the source figure but at this current moves the output by 0.01 ppm |
-| PASS | REF/lreg | SC-7 | the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA | <= 3.0 mV (0.1 % fit share of 3 V) | 0.808 mA -> 36.3 uV | +2964 uV | the host reads the reference with every tap reading; this is the movement between two readings |
+| PASS | REF/lreg | SC-7 | the ladder's top tap (= the reference) moves with the AWG level (the sense divider's default tie and the AWG's Rg2 path): change of source current over the sweep x 15 ppm/mA | <= 3.0 mV (0.1 % fit share of 3 V) | 0.802 mA -> 36.1 uV | +2964 uV | the host reads the reference with every tap reading; this is the movement between two readings |
 | PASS | REF/signal | SC-7, D-V2-10 | the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each | <= 3.0 mV | 0.49 uV |  |  |
 | PASS | REF/dropout | PA-2 | VIN >= VOUT + 0.2 V at the weakest +rail (power.py) | >= 3.200 V | see power.json min_p |  | the rail block's corner, see section 1 |
 | info | REF/CL | PA-2 | output capacitor | 0.1..22 uF, ESR 10..500 mohm | 1 uF X5R (C15849) |  | 1 uF C15849 X5R at the output: the datasheet's CL range 0.1..22 uF holds; its ESR window 10..500 mohm is above a ceramic's (a few mohm) *(check: the datasheet states stability with ceramics only by the CL range)* |

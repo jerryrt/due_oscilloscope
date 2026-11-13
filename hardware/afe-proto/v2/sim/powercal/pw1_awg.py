@@ -21,9 +21,9 @@ LM_IQ_TYP = 0.39e-3        # LM27762 SNVSAF7C: IQ typical, no maximum given *(ch
 PUMP_OVERHEAD = 0.10       # allowance on the inverting pump's input current over its output current *(check: no efficiency table in the PDF text)*
 VP_MAX = 3.4177            # the strong +rail corner (design.md section 1, 1 % feedback resistors)
 VREF = 3.009               # REF3030E 3.000 V +0.3 % (initial 0.1 % + 0.2 % allowance)
-# loads of the design (../awg/design.md, powercal/design.md): Rg2 + Rvr 3.1 kohm, Rf 3 kohm; ladder 6 x 330 ohm at -1 %; scope centres 2 x 5.4 uA; bleed 1.8 kohm;
+# loads of the design (../awg/design.md, powercal/design.md): Rg2 + Rvr 3.13 kohm, Rf 3 kohm; ladder 6 x 330 ohm at -1 %; scope centres 2 x 5.4 uA; bleed 1.8 kohm;
 # I2C pull-ups 2 x 4.7 kohm if fitted on the AFE; sense divider default tie 20 kohm total to the reference
-RF, RG2, RVR = 3000.0, 3000.0, 100.0
+RF, RG2, RVR = 3000.0, 3000.0, 130.0
 ROUT, RLOAD = 49.5, 50.0   # the back-termination at its low corner (2 x 100 ohm 1 %), and a 50 ohm load
 I_BLEED = VP_MAX / 1.8e3
 I_I2C = 2 * VP_MAX / 4.7e3
