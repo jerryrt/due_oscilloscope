@@ -105,7 +105,7 @@ CSV_DIR = AFE / "models-open" / "cl21a106kaynnne"
 ESL_H = 0.373e-9         # ohm-henry: median over 3-10 MHz with C = 10 uF (PROVENANCE.md)
 
 
-def samsung_from_csv(csv_dir=CSV_DIR):
+def samsung_from_csv(csv_dir=CSV_DIR, esl=ESL_H):
     """What whatif/lm27762/samsung.py's load() returns, from the committed numbers instead of Samsung's page
     (which is not in git and whose upstream bytes no longer match its pinned hash). k(V) = 1 + dcbias(|V|)/100."""
     dc = np.genfromtxt(csv_dir / "dcbias.csv", delimiter=",", skip_header=1)
@@ -113,16 +113,16 @@ def samsung_from_csv(csv_dir=CSV_DIR):
     xv, yv = dc[np.argsort(dc[:, 0])].T
     fr, rr = er[np.argsort(er[:, 0])].T
     return dict(esr=lambda f: float(np.interp(f, fr, rr)), k=lambda v: 1 + float(np.interp(abs(v), xv, yv)) / 100,
-                esl=ESL_H, xv=xv, yv=yv)
+                esl=esl, xv=xv, yv=yv)
 
 
-def load_harness():
+def load_harness(csv_dir=CSV_DIR, esl=ESL_H):
     """The frozen whatif/lm27762/run.py as a module, with its `samsung` data read from the committed CSVs. The
     harness imports samsung.py, which parses Samsung's page and asserts the page's sha256; a stand-in module
     with the same interface is put in its place so the frozen files are untouched."""
     import types
     stand_in = types.ModuleType("samsung")
-    stand_in.load = samsung_from_csv
+    stand_in.load = lambda: samsung_from_csv(Path(csv_dir), esl)
     sys.modules["samsung"] = stand_in
     sys.path.insert(0, str(WHATIF))
     spec = importlib.util.spec_from_file_location("lm1", WHATIF / "run.py")

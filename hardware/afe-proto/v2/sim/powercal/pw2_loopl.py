@@ -48,12 +48,14 @@ def main(argv):
             kw[key] = float(argv[argv.index(flag) + 1])
     kw.setdefault("tstop", 1.3e-3)
     kw.setdefault("tmax", 0.25e-6)
-    lm1 = pw2.load_harness()
+    curve = argv[argv.index("--curve") + 1] if "--curve" in argv else None      # a capacitor data folder (dcbias.csv, esr.csv)
+    esl = float(argv[argv.index("--esl-nh") + 1]) * 1e-9 if "--esl-nh" in argv else pw2.ESL_H
+    lm1 = pw2.load_harness(Path(curve) if curve else pw2.CSV_DIR, esl)
     work = Path(tempfile.mkdtemp(prefix=f"pw2-{case}-"))
     res, run = pw2.run_case(lm1, f"pw2_{case}".replace(".", "p"), work, mem="3G", timeout=3300,
                             **CASES[case], **circuit(lm1), **kw)
     print(json.dumps(dict(case=case, **res.__dict__, tstop=kw["tstop"], tmax=kw["tmax"],
-                          damp=kw.get("damp", pw2.DAMP), short_until=kw.get("short_until", 0.0), wall_s=run.wall_s if run else None, peak_rss_kb=(run.peak_rss_bytes or 0) // 1024 if run else None)))
+                          curve=curve or "samsung-default", damp=kw.get("damp", pw2.DAMP), short_until=kw.get("short_until", 0.0), wall_s=run.wall_s if run else None, peak_rss_kb=(run.peak_rss_bytes or 0) // 1024 if run else None)))
     return 0 if res.status == "OK" else 3
 
 

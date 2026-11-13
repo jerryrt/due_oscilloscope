@@ -27,7 +27,7 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 def pytest_addoption(parser):
     parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",   # bare flag: the two in-image tools; add docker for the host gate
                      metavar="TOOLS",
-                     help="comma list of tools (pcbnew,ngspice,docker,vendor) whose marked tests FAIL, not skip, "
+                     help="comma list of tools (pcbnew,ngspice,docker,vendor,network) whose marked tests FAIL, not skip, "
                           "when the tool is missing; bare flag means both. Write it "
                           "--require-tool=pcbnew or --require-tool pcbnew")
 
@@ -76,6 +76,16 @@ def pcb_image_tag():
     return ref if pulled.returncode == 0 else None
 
 
+def network_reachable():
+    """'up' if the vendor hosts answer on 443 within 5 s (the gate runs --network none, so it does not)."""
+    import socket
+    try:
+        socket.create_connection(("www.ti.com", 443), timeout=5).close()
+        return "up"
+    except OSError:
+        return None
+
+
 def vendor_models():
     """The hash-verified vendor SPICE models (tools/fetch_models.py), untracked: 'present' or None."""
     return "present" if (Path(__file__).resolve().parents[1] / "models" / "opa365" / "OPA365_PSPICE.lib").is_file() else None
@@ -84,6 +94,7 @@ def vendor_models():
 _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".")[0]) == 10,
                       "KiCad 10.x pcbnew importable in this interpreter"),
            "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH"),
+           "network": (network_reachable, lambda v: v is not None, "network access to the vendor hosts (www.ti.com:443)"),
            "vendor": (vendor_models, lambda v: v is not None, "the vendor SPICE models (python3 -I hardware/afe-proto/tools/fetch_models.py)"),
            "docker": (pcb_image_tag, lambda v: v is not None, "docker and the pinned docker/pcb image (pulled by digest from image-revisions.json; docker login first)")}
 

@@ -56,3 +56,38 @@ def test_the_derived_save_is_what_ngspice_keeps(tmp_path):
 def test_a_noise_analysis_deck_is_left_alone():
     d = "t\nV1 in 0 dc 0 ac 1\nR1 in out 1k\nR2 out 0 1k\n.control\nnoise v(out) V1 dec 5 10 1e6\nsetplot noise1\nwrdata o.dat onoise_spectrum\n.endc\n.end\n"
     assert C.with_save(d) == d
+
+
+NOISE_DECK = """noise test
+V1 in 0 dc 0 ac 1
+R1 in out 10k
+C1 out 0 1n
+R2 out x 10k
+C2 x 0 1n
+.control
+noise v(x) V1 dec 20 10 1e8
+setplot noise1
+wrdata o.dat onoise_spectrum
+setplot noise2
+print onoise_total
+.endc
+.end
+"""
+NOISE_PEAK_BUDGET_KB = 100_000          # a noise deck is small: 100 MB is a loose ceiling, not a measurement of it
+
+
+@pytest.mark.ngspice
+@pytest.mark.hostcap
+def test_a_noise_deck_runs_unrestricted_under_the_cap_and_stays_under_its_budget(tmp_path):
+    """Noise decks are exempt from the .save restriction (ngspice aborts the analysis under one), so the cap
+    and a peak budget are what bound them."""
+    import sys
+    from simtools import capped
+    if not capped.available():
+        pytest.skip("no capped runner")
+    (tmp_path / "n.cir").write_text(NOISE_DECK)
+    r = capped.run(["ngspice", "-b", "n.cir"], mem="1G", timeout=60, cwd=tmp_path)
+    assert r.returncode == 0 and (tmp_path / "o.dat").exists() and "onoise_total" in r.stdout + r.stderr, r.stdout[-300:]
+    kb = r.peak_rss_bytes // 1024
+    assert kb < NOISE_PEAK_BUDGET_KB, kb
+    assert kb > 1_000, kb                 # and a budget of 1 MB would have failed: the measurement is real
