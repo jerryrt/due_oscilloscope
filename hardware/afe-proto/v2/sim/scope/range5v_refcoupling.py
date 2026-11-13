@@ -59,13 +59,15 @@ def ref_move(Rvr, C=14e-6, Rg2=3000.0, Rf=3000.0, dv=3.2):
 def rvr_cases(argv):
     """The scope network at the AWG's REF swing for Rvr 100 / 120 / 130 / 140 / 150, cases baseline, A and B (stray at N, as ../sensitivity_n_stray.json)."""
     committed = json.load(open(AWG))["ref"]["move"]["chosen, graph"]
-    m130, f130 = ref_move(130.0)
-    print(f"check of the copied formula against the AWG results file (Rvr 130 committed): {committed[0]*1e3:.4f} mV at {committed[1]:.0f} Hz vs {m130*1e3:.4f} mV at {f130:.0f} Hz")
-    assert abs(committed[0] - m130) < 1e-6 and abs(committed[1] - f130) < 1, "formula differs from the AWG study's"
+    final = "--final" in argv                        # the AWG's final values: +-1.5 V (3.0 V pp at the node's source), Rvr 150; history rows: +-1.6 V (3.2 V)
+    dv = 3.0 if final else 3.2
+    m150, f150 = ref_move(150.0, dv=3.0)
+    print(f"check of the copied formula against the AWG results file (final: Rvr 150, +-1.5 V): {committed[0]*1e3:.4f} mV at {committed[1]:.0f} Hz vs {m150*1e3:.4f} mV at {f150:.0f} Hz")
+    assert abs(committed[0] - m150) < 1e-6 and abs(committed[1] - f150) < 1, "formula differs from the AWG study's"
     out = {}
     for case, (cnp, cx) in {"baseline": (None, None), "A": (4.31e-12, 5e-17), "B": (0.81e-12, 5e-17)}.items():
-        for rvr in (100.0, 120.0, 130.0, 140.0, 150.0):
-            m, f = ref_move(rvr)
+        for rvr in ((150.0,) if final else (100.0, 120.0, 130.0, 140.0, 150.0)):
+            m, f = ref_move(rvr, dv=dv)
             R.set_range("5vc")
             if cnp is not None:
                 NL.P0["Cn_par"], NL.P0["Cx"] = cnp, cx
