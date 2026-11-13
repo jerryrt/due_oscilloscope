@@ -91,11 +91,14 @@ Follower: the output goes straight to the inverting input (no feedback resistor;
 ## Reproducing
 
 ```
-python3 -I run.py            # all sections, about a minute; run.py <section> for one
-python3 -I report.py          # writes report.md from results/*.json
+docker/pcb/run.sh -m 3G -t 900 python3 -I hardware/afe-proto/v2/sim/scope/run.py --out DIR --work DIR/w [section ...]
+docker/pcb/run.sh python3 -I hardware/afe-proto/v2/sim/scope/report.py DIR        # DIR/report.md from DIR/results/*.json
 ```
 
-Sections: `netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards`. Needs ngspice 47 and numpy; the vendor macro is read from
-`../../whatif/tph2502/models/TPH2501_ngspice.mdl` (local, uncommitted) and its sha256 is checked against `models/VENDOR_MODEL.sha256`; the two
-datasheet-fitted models (BEH21, BEH60) from `$TPH2502_DIR/beh/tph2502_beh.lib` (default `../../whatif/tph2502`), hashed into `results/meta.json`.
-`beh_check.py` is `run.py beh`. `netlists/` and `work/` are generated and may be deleted.
+Sections: `netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards` (about a minute in all; one process per
+section is the way to run them). `--out` defaults to this folder, `--work` to a temporary directory: nothing is written beside
+the code. Every deck goes through `simtools.netlib_common.run_ng` (memory cap, a `.save` of the vectors the deck reads; the
+`noise` deck is left unrestricted). The vendor macro is `simtools.vendor`'s derived copy of 3PEAK's TPH2501 (fetched by
+`tools/fetch_models.py`, its sha256 checked there and against `models/VENDOR_MODEL.sha256`); the two datasheet-fitted models
+(BEH21, BEH60) are `models-open/tph2502-beh/tph2502_beh.lib`, hashed into `results/meta.json`. `beh_check.py` is `run.py beh`.
+The port reproduces the old code's numbers exactly: `tests/test_v2_sim_port.py`.

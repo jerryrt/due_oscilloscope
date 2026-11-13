@@ -1,0 +1,128 @@
+[
+ {
+  "rule": "LR-5",
+  "what": "sensitive copper to U401/C409 (mm)",
+  "value": 12.130459007737304,
+  "limit": 10.0,
+  "kind": "min",
+  "margin": 2.1304590077373042,
+  "marginal": false
+ },
+ {
+  "rule": "LR-1",
+  "what": "longest bottom hop (mm)",
+  "value": 2.5,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.5,
+  "marginal": false
+ },
+ {
+  "rule": "LR-1",
+  "what": "vias on the longest hop",
+  "value": 2.0,
+  "limit": 2.0,
+  "kind": "max",
+  "margin": 0.0,
+  "marginal": true
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "what": "AWG_FB inverting node (mm)",
+  "value": 4.946976021793542,
+  "limit": 5.0,
+  "kind": "max",
+  "margin": 0.053023978206457656,
+  "marginal": true
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "what": "CH1_OUT (mm)",
+  "value": 2.7200009999999963,
+  "limit": 5.0,
+  "kind": "max",
+  "margin": 2.2799990000000037,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "what": "CH2_OUT (mm)",
+  "value": 2.5349990000000098,
+  "limit": 5.0,
+  "kind": "max",
+  "margin": 2.4650009999999902,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4",
+  "what": "AWG_FB node track length (mm; FB_MAX)",
+  "value": 4.946976021793542,
+  "limit": 14.0,
+  "kind": "max",
+  "margin": 9.053023978206458,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C104>U101.8",
+  "value": 1.6279597108042863,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 1.3720402891957137,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C105>U101.8",
+  "value": 2.4220341905105216,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.5779658094894784,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C305>U301.8",
+  "value": 2.42467008065015,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.57532991934985,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C306>U301.4",
+  "value": 2.9387446554610674,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.061255344538932555,
+  "marginal": true
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C502>U501.1",
+  "value": 2.00701893364263,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.9929810663573702,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C501>U501.2",
+  "value": 1.9416487838947618,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 1.0583512161052382,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C503>U502.8",
+  "value": 2.1744876178081576,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.8255123821918424,
+  "marginal": false
+ }
+]

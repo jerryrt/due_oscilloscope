@@ -3,22 +3,38 @@
 Imported by run.py (python3 -I run.py puts this directory on sys.path).
 
 The op-amp is one instance of the vendor's TPH2501_simplify macro per channel (pin order IN+ IN- V+ V- OUT).  The
-macro lives in hardware/afe-proto/whatif/tph2502/models/ and is referenced from there, never copied (MC-6); its
-sha256 is checked by run.py against models/VENDOR_MODEL.sha256.  It is a SINGLE-amplifier model of the TPH2501,
+macro is simtools.vendor's derived copy of 3PEAK's file (fetched by tools/fetch_models.py, never committed, MC-6) and
+is included by absolute path; its sha256 is checked there and again by run.py against models/VENDOR_MODEL.sha256.  It is a SINGLE-amplifier model of the TPH2501,
 which shares the TPH2502's die: nothing in it couples two channels, and its input stage is one PMOS pair with no
 rail-to-rail crossover.  Everything that depends on those two facts is marked in report.md.
 """
-import os, re, subprocess
+import os, re, sys, tempfile
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-NETD = os.path.join(HERE, "netlists")
-WORK = os.path.join(HERE, "work")
-WORK_REL = "../work"
-OPAMP_MDL_REL = "../../../../whatif/tph2502/models/TPH2501_ngspice.mdl"       # from netlists/
-OPAMP_MDL = os.path.normpath(os.path.join(NETD, OPAMP_MDL_REL))
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "..")))   # hardware/afe-proto, for simtools
+from simtools import netlib_common as _C
+from simtools import vendor
+WORK_ROOT = None                      # set_workdir(): netlists/ and work/ below it; a temporary directory until then
+NETD = WORK = None
+WORK_REL = "../work"                  # work/ as seen from netlists/
+OPAMP_INC = str(vendor.tph2501_ngspice())      # absolute path of the macro (what the .include lines say)
+OPAMP_MDL = OPAMP_INC
 SUB = "TPH2501_simplify"
 PFX = ""
+
+
+def set_workdir(path=None):
+    """Where netlists and wrdata files go for this process. Nothing is written beside the code."""
+    global WORK_ROOT, NETD, WORK
+    WORK_ROOT = os.path.abspath(path) if path else tempfile.mkdtemp(prefix="v2-scope-")
+    NETD, WORK = os.path.join(WORK_ROOT, "netlists"), os.path.join(WORK_ROOT, "work")
+    os.makedirs(NETD, exist_ok=True)
+    os.makedirs(WORK, exist_ok=True)
+    return WORK_ROOT
+
+
+set_workdir(os.environ.get("DUE_SCOPE_WORK"))
 
 # ---------------------------------------------------------------------------------------------------------
 # Nominal design.  Every number here is either a design value (the first block) or an assumption marked (check).
@@ -69,7 +85,7 @@ def rp_of(p):
 
 
 def header(title, extra=""):
-    return (f"* {title}\n.include {OPAMP_MDL_REL}\n{DESD}{DBAV99}"
+    return (f"* {title}\n.include {OPAMP_INC}\n{DESD}{DBAV99}"
             ".options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear\n" + extra)
 
 
@@ -161,32 +177,20 @@ def coupling(p):
 
 
 def write_net(name, text):
-    os.makedirs(NETD, exist_ok=True)
-    path = os.path.join(NETD, PFX + name + ".cir")
-    with open(path, "w") as f:
-        f.write(text if text.endswith("\n") else text + "\n")
-    return path
+    return _C.write_net(NETD, PFX, name, text)
 
 
 def run_ng(name, text, timeout=900):
-    os.makedirs(WORK, exist_ok=True)
-    path = write_net(name, text)
-    r = subprocess.run(["ngspice", "-b", os.path.basename(path)], cwd=NETD, capture_output=True, text=True,
-                       timeout=timeout)
-    return r.stdout + r.stderr
+    return _C.run_ng(NETD, WORK, PFX, name, text, timeout)
 
 
 def wr(name, key):
-    return f"{WORK_REL}/{PFX}{name}_{key}.dat"
+    return _C.wr(WORK_REL, PFX, name, key)
 
 
 def load(name, key):
-    return np.atleast_2d(np.loadtxt(os.path.join(WORK, f"{PFX}{name}_{key}.dat")))
+    return _C.load(WORK, PFX, name, key, atleast_2d=True)
 
 
 def ngspice_version():
-    out = subprocess.run(["ngspice", "-v"], capture_output=True, text=True).stdout
-    for l in out.splitlines():
-        if "ngspice" in l.lower() and re.search(r"\d", l):
-            return l.strip("* ").strip()
-    return out.strip()
+    return _C.ngspice_version(strip="* ")

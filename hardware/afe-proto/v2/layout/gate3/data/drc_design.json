@@ -1,0 +1,61 @@
+{
+ "counts": [
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "n": 2,
+   "documented": 2
+  }
+ ],
+ "items": [
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "description": "Courtyards overlap",
+   "items": [
+    "Footprint MH602",
+    "Footprint J607"
+   ],
+   "pos_due_mm": [
+    [
+     90.17,
+     50.8
+    ],
+    [
+     68.58,
+     50.8
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "description": "Courtyards overlap",
+   "items": [
+    "Footprint MH602",
+    "Footprint J605"
+   ],
+   "pos_due_mm": [
+    [
+     90.17,
+     50.8
+    ],
+    [
+     96.52,
+     50.8
+    ]
+   ],
+   "documented": true,
+   "library": false
+  }
+ ],
+ "unconnected": 0,
+ "kicad": "10.0.8",
+ "schematic_parity": 0,
+ "total": 2,
+ "undocumented": 0,
+ "library": 0,
+ "real_undocumented": 0
+}

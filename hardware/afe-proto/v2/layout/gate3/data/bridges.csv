@@ -1,0 +1,14 @@
+ref,x,y,net_a,net_b,crossed,needs_ruling,block,why
+BR101,66.04,35.7,/+3V3A_S,/+3V3A_U,/A1,True,CH1,+3V3A_S to the scope dual V+ segment
+BR102,62.8,35.7,/+3V3A_K,/+3V3A_S,/VREF,True,CH1,+3V3A_K (the scope feed after BR509) to the +3V3A_S segment
+BR401,35.15,7.9,/VNEG_G,/VNEG,/+5V_F,False,POWER,"the LM27762 side of the negative rail (OUT-, C407, C408, R403) to VNEG"
+BR501,68.58,21.1,/AWG_BNC_M,/AWG_BNC,/A0,True,REFCAL,AWG BNC node to the middle segment
+BR502,66.04,19.5,/AWG_BNC_L,/AWG_BNC_M,/A1,True,REFCAL,middle segment to the sense divider R507
+BR503,66.04,22.8,/VREF,/VREF_M,/A1,True,REFCAL,VREF to the middle segment
+BR504,68.58,24.5,/VREF_M,/VREF_P,/A0,True,REFCAL,middle segment to CH2 R206
+BR506,55.88,14.4,/TAP4,/TAP4_A,/VREF,True,REFCAL,2/3 tap to the ADS1115 AIN1
+BR507,49.0,9.75,/+3V3A_R,/+3V3A,/VREF,True,REFCAL,REF3030E input segment to +3V3A
+BR510,50.5,22.600001,/SCL,/SCL_A,/AREF,False,REFCAL,"SCL crosses the AREF lane on top: lane side (R513.2, J604.10) / ADS1115 side (U502.10)"
+BR511,50.5,24.4,/SDA,/SDA_A,/AREF,False,REFCAL,"SDA crosses the AREF lane on top: lane side (J604.9) / ADS1115 side (U502.9, R512.2)"
+BR509,50.5,27.0,/+3V3A,/+3V3A_K,/AREF,False,REFCAL,"scope +3V3A feed: POWER side to the BR102 side, over the AREF lane (AREF stays continuous on top)"
+BR508,58.42,14.4,/SNS_B,/SNS_B_N,/VREF,True,REFCAL,sense bottom node B: J501.2 (south of the VREF branches) to the divider and AIN3 (north)

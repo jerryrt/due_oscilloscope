@@ -2,8 +2,8 @@
 
 DAC0 into one TPH2502 dual with both halves paralleled as one gain stage (V2-2: no spare half), a divider in front of the + inputs, an offset taken from the REF3030E through a
 100 ohm + 10 uF x 2 filter, and a 50 ohm back-termination (no output capacitor). Every number comes from `run.py` (rows in `report_table.md`, made by `table.py`) and `design.py`
-(the DC arithmetic, hard corners and the Basic-value search). Figures marked *(check)* are open. The vendor op-amp model is read from `../../whatif/tph2502/models` and the stability
-models from `$TPH2502_DIR/beh/` (both local, never copied here).
+(the DC arithmetic, hard corners and the Basic-value search). Figures marked *(check)* are open. The vendor op-amp model is `simtools.vendor`'s derived copy of 3PEAK's TPH2501 (fetched, never committed) and the stability
+models are `models-open/tph2502-beh/`.
 
 **Status after the offset filter (REF3030E Fig. 6-14 peaking):** 99 rows, **0 FAIL**. The guaranteed range is **-1.5 V to +1.63 V** (it was +1.71 V): the filter's shelf lets an AC waveform
 reach above the DC window top end, so the supply-pin limit is judged on an **AC top end** of 2.197 V against 2.2275 V (+30 mV). The position-aware row is at 0.9194 (+0.0006) and the AC supply-pin
@@ -164,9 +164,12 @@ AW-5 94.3 uA; PW-3 58.0 mA +pin (58.7), 50.7 mA -pin (54.3); PR-4 +0.73 / -0.60 
 ## Reproducing
 
 ```
-cd hardware/afe-proto/v2/sim/awg
-TPH2502_DIR=<repo>/hardware/afe-proto/whatif/tph2502 python3 -I run.py     # about 15 s, writes raw/results.json, netlists, parts.csv
-python3 -I table.py                                                      # report_table.md
-python3 -I design.py                                                     # the Basic search (large and small Rf/Rg2) and the chosen values' corners
-python3 -I run.py guards                                                 # the guards alone
+docker/pcb/run.sh -m 3G -t 600 python3 -I hardware/afe-proto/v2/sim/awg/run.py --out DIR --work DIR/w   # about 15 s: DIR/raw/results.json, awg.cir, parts.csv, report_table.md
+docker/pcb/run.sh python3 -I hardware/afe-proto/v2/sim/awg/run.py guards                  # the guards alone
+python3 -I hardware/afe-proto/v2/sim/awg/design.py                                        # the Basic search (large and small Rf/Rg2) and the chosen values' corners
 ```
+
+`--out` defaults to this folder (the committed copies), `--work` to a temporary directory. Constants are in `params.py`, the
+netlist builders and runner in `netlist.py`, the DC arithmetic in `design.py`; every deck runs through
+`simtools.netlib_common.run_ng` (memory cap, a `.save` of the vectors the deck reads). The op-amp macro is `simtools.vendor`'s
+derived copy of 3PEAK's TPH2501 (`tools/fetch_models.py`), the behavioural TPH2502 is `models-open/tph2502-beh/`.

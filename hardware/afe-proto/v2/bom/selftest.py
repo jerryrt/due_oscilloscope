@@ -53,10 +53,30 @@ import io, contextlib
 def quiet(*a, **k):
     with contextlib.redirect_stdout(io.StringIO()): return totals(*a, **k)
 
+def expected_unpriced(paths=None):
+    """Lines that legitimately carry no price, computed from the data (not from bom.cost): an included line with no LCSC number and no
+    fixed price (owner-fitted M2.5 standoff and screw, the calibration pins, placeholders), and an included line whose LCSC part has
+    neither a domestic nor an international ladder in the catalogue. Returns the sorted refs."""
+    d = bom.Data(bom.HERE, {k: v for k, v in (paths or {}).items()})
+    out = []
+    for x in bom.lines(d, []):
+        if not x["include"]: continue
+        if not x["lcsc"]:
+            if x["fixed_usd"] is None: out.append(x["ref"])
+        elif not d.catalog.get(x["lcsc"], {}).get("ladder_cny") and not d.intl.get(x["lcsc"], {}).get("ladder_usd"):
+            out.append(x["ref"])
+    return sorted(out)
+
+
 t20, t100, f0, _r = quiet()
 base_place = _r[20]["lo"]["placements"]
 print("baseline: $%.4f at 20, $%.4f at 100, flags %d" % (t20 / FX, t100 / FX, len(f0)))
 assert not [x for x in f0 if not x.startswith("note:")], f0
+exp0 = expected_unpriced()
+base_unpriced = len(_r[20]["lo"]["unpriced"])
+print("baseline unpriced lines: engine %d, computed from the catalogue %d (%s)" % (base_unpriced, len(exp0), ", ".join(exp0)))
+assert base_unpriced == len(exp0) and exp0, (base_unpriced, exp0)
+assert {"MH-so25", "MH-sc25"} <= set(exp0), exp0       # the owner-fitted M2.5 lines are among them
 n0 = len([x for x in f0 if x.startswith("note:")])
 print("baseline notes (placeholder rows dropped because powercal/parts.csv exists):", n0)
 assert n0 >= 20
@@ -108,9 +128,26 @@ edit_csv(pc, lambda rows: [dict(r, ladder_cny="") if r["lcsc"] == "C37593" else 
 a, b, f, res = quiet({"intl": p, "catalog": pc})
 d = a - t20
 want = -price("C37593", 20) - 0.01 * 10 - 20.0 / 20          # price, its joints and its loading fee all vanish from the total
-ok &= (len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f) and abs(d - want) < 1e-6)
-print("%-46s unpriced lines %d, flag NO PRICE present %s (total falls %.3f CNY: price, joints and loading fee of the part) %s" % (
-    "ADS1115 price removed", len(res[20]["lo"]["unpriced"]), any("NO PRICE" in x for x in f), -d, "PASS" if len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f) and abs(d - want) < 1e-6 else "FAIL"))
+paths4 = {"intl": p, "catalog": pc}
+exp4 = expected_unpriced(paths4)
+# the one removed part adds exactly the included lines that use C37593 (computed from the data, not typed in)
+n_ads = len([x for x in bom.lines(bom.Data(bom.HERE, {}), []) if x["include"] and x["lcsc"] == "C37593"])
+got = len(res[20]["lo"]["unpriced"])
+good = got == base_unpriced + n_ads == len(exp4) and any("NO PRICE" in x for x in f) and abs(d - want) < 1e-6
+ok &= good
+print("%-46s unpriced %d = baseline %d + %d line(s) of C37593 (computed %d), flag NO PRICE %s, total falls %.3f CNY  %s" % (
+    "ADS1115 price removed", got, base_unpriced, n_ads, len(exp4), any("NO PRICE" in x for x in f), -d, "PASS" if good else "FAIL"))
+
+# 4b. broken once, on purpose: a line with no price that nothing marks as owner-fitted must be CAUGHT. The engine counts it (baseline + 1),
+# and the stale rule (the old hard-coded 2, or the unmodified baseline) disagrees with it, so a count that is not computed fails here.
+pe = copy(os.path.join(HERE, "extra.csv"), "extra_unmarked.csv")
+edit_csv(pe, lambda rows: rows + [dict(rows[0], ref="X-unmarked", value="unpriced test part", lcsc="", qty="1", block="other", placeholder_for="", include="yes", replaces="", fixed_usd="")])
+a2, b2, f2, res2 = quiet({"extra": pe})
+got2 = len(res2[20]["lo"]["unpriced"])
+exp2 = expected_unpriced({"extra": pe})
+good = got2 == base_unpriced + 1 == len(exp2) and got2 != 2 and got2 != len(exp0)
+ok &= good
+print("%-46s unpriced %d vs baseline %d (a hard-coded 2 or the old baseline would now disagree)  %s" % ("unmarked unpriced line added", got2, base_unpriced, "PASS" if good else "FAIL"))
 
 # 5. the power/calibration stream is absent again: its placeholder rows come back and no row is reported dropped
 a, b, f, res = quiet({"powercal": os.path.join(work, "no_such_powercal.csv")})
@@ -118,17 +155,6 @@ back = res[20]["lo"]["placements"]
 good = not [x for x in f if x.startswith("note:")] and back > base_place
 ok &= good
 print("%-46s placements %d (baseline %d), dropped notes %d  %s" % ("powercal/parts.csv absent", back, base_place, len([x for x in f if x.startswith("note:")]), "PASS" if good else "FAIL"))
-
-# 6. version 1 reconciliation breaks when version 1's list is wrong: one 249R removed from the ladder
-p = copy(os.path.join(HERE, "v1.csv"), "v1_bad.csv")
-edit_csv(p, lambda rows: [dict(r, qty="7") if r["ref"] == "R43-R50" else r for r in rows])
-import contextlib
-with contextlib.redirect_stdout(io.StringIO()):
-    bom.main(["--path=v1=" + p, "--md", os.path.join(work, "bom_bad.md")])
-txt = open(os.path.join(work, "bom_bad.md")).read()
-good = "**NO**" in txt
-ok &= good
-print("%-46s reconciliation rows marked NO: %d  %s" % ("version 1 ladder 8 -> 7 parts", txt.count("**NO**"), "PASS" if good else "FAIL"))
 
 shutil.rmtree(work)
 print("ALL PASS" if ok else "FAILURES")

@@ -1,155 +1,157 @@
 #!/usr/bin/env python3
-"""Writes report.md from results/*.json (run.py writes those).  python3 -I report.py"""
+"""Writes report.md from results/*.json (run.py writes those).  python3 -I report.py [DIR]  (DIR holds results/; report.md is written there; default: this folder)"""
 import json, os, math
 HERE = os.path.dirname(os.path.abspath(__file__))
-J = lambda n: json.load(open(os.path.join(HERE, "results", n + ".json")))
-(meta, dc, ac, bw, noise, d17, tran, stab, beh, prot, xt, st, mc, gd, cs) = (
-    J(n) for n in ("meta", "dc", "ac", "bw", "noise", "d17", "tran", "stab", "beh", "prot", "xtalk", "static", "mc", "guards", "cscan"))
-MODELS = ("vendor", "BEH21", "BEH60")
 
-rows = []
-fails = []
+def build(res_dir, out_path):
+    J = lambda n: json.load(open(os.path.join(res_dir, n + ".json")))
+    (meta, dc, ac, bw, noise, d17, tran, stab, beh, prot, xt, st, mc, gd, cs) = (
+        J(n) for n in ("meta", "dc", "ac", "bw", "noise", "d17", "tran", "stab", "beh", "prot", "xtalk", "static", "mc", "guards", "cscan"))
+    MODELS = ("vendor", "BEH21", "BEH60")
 
-
-def R(rid, req, result, margin, ok, note=""):
-    rows.append(f"| {rid} | {req} | {result} | {margin} | {'PASS' if ok is True else ('FAIL' if ok is False else ok)} | {note} |")
-    if ok is False:
-        fails.append(rid)
+    rows = []
+    fails = []
 
 
-f0 = lambda x: f"{x:.0f}"
-f1 = lambda x: f"{x:.1f}"
-f2 = lambda x: f"{x:.2f}"
-f3 = lambda x: f"{x:.3f}"
-cn = mc["corners"]
-
-# ---- numbers used more than once
-lo_nom, hi_nom = dc["pin"][0], dc["pin"][-1]
-f3db = ac["f3dB_Hz"]
-x10 = ac["probe_x10"]
-t5, t5u, t10 = tran["sine5_fs"], tran["sine5_usable"], tran["sine10_usable"]
-unp = {(r["v1"], r["v2"], r["bleed"], r["pinclamp"]): r for r in prot["unpowered"]}
-unpd = {(r["v1"], r["v2"], r["pinclamp"]): r for r in prot["unpowered_diff"]}
-pw = {(r["v1"], r["v2"]): r for r in prot["powered"]}
-ed = prot["edge"]
-cxn = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_N_to_N"]}
-cxi = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_in_to_in"]}
-cxp = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_pad_to_pad"]}
-comb = {(r["Cx_N_pF"], r["Cx_pad_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["combined"]}
-BUD_N, BUD_P = 0.02, 0.02            # the layout budget in pF (design.md); the pair is run in section xtalk
-bud_lsb = comb[(BUD_N, BUD_P, 10.0)]
-st_spread = max(st[m]["spread_pp_100kHz"] for m in MODELS)
+    def R(rid, req, result, margin, ok, note=""):
+        rows.append(f"| {rid} | {req} | {result} | {margin} | {'PASS' if ok is True else ('FAIL' if ok is False else ok)} | {note} |")
+        if ok is False:
+            fails.append(rid)
 
 
-# AN-1: worst over the three models of the Riso 22 ohm row of the grid (0 to 100 pF at the pin) and the nominal
-def an1(model):
-    g = [x for x in stab[model]["grid"] if x["Riso"] == 22 and x["pm_deg"] is not None]
-    pm = min([x["pm_deg"] for x in g] + [stab[model]["nominal"]["pm_deg"]])
-    gm = min([x["gm_dB"] for x in g if x["gm_dB"] is not None] + [stab[model]["nominal"]["gm_dB"]])
-    g0 = [x for x in stab[model]["grid"] if x["Riso"] == 0.001 and x["pm_deg"] is not None]
-    return dict(pm=pm, gm=gm, pm0=min(x["pm_deg"] for x in g0))
+    f0 = lambda x: f"{x:.0f}"
+    f1 = lambda x: f"{x:.1f}"
+    f2 = lambda x: f"{x:.2f}"
+    f3 = lambda x: f"{x:.3f}"
+    cn = mc["corners"]
+
+    # ---- numbers used more than once
+    lo_nom, hi_nom = dc["pin"][0], dc["pin"][-1]
+    f3db = ac["f3dB_Hz"]
+    x10 = ac["probe_x10"]
+    t5, t5u, t10 = tran["sine5_fs"], tran["sine5_usable"], tran["sine10_usable"]
+    unp = {(r["v1"], r["v2"], r["bleed"], r["pinclamp"]): r for r in prot["unpowered"]}
+    unpd = {(r["v1"], r["v2"], r["pinclamp"]): r for r in prot["unpowered_diff"]}
+    pw = {(r["v1"], r["v2"]): r for r in prot["powered"]}
+    ed = prot["edge"]
+    cxn = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_N_to_N"]}
+    cxi = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_in_to_in"]}
+    cxp = {(r["C_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["Cx_pad_to_pad"]}
+    comb = {(r["Cx_N_pF"], r["Cx_pad_pF"], r["f_MHz"]): r["lsb_at_6Vpp"] for r in xt["combined"]}
+    BUD_N, BUD_P = 0.02, 0.02            # the layout budget in pF (design.md); the pair is run in section xtalk
+    bud_lsb = comb[(BUD_N, BUD_P, 10.0)]
+    st_spread = max(st[m]["spread_pp_100kHz"] for m in MODELS)
 
 
-A = {m: an1(m) for m in MODELS}
-worst_m = min(MODELS, key=lambda m: A[m]["pm"])
-pm_w = A[worst_m]["pm"]
-gm_w = min(A[m]["gm"] for m in MODELS)
+    # AN-1: worst over the three models of the Riso 22 ohm row of the grid (0 to 100 pF at the pin) and the nominal
+    def an1(model):
+        g = [x for x in stab[model]["grid"] if x["Riso"] == 22 and x["pm_deg"] is not None]
+        pm = min([x["pm_deg"] for x in g] + [stab[model]["nominal"]["pm_deg"]])
+        gm = min([x["gm_dB"] for x in g if x["gm_dB"] is not None] + [stab[model]["nominal"]["gm_dB"]])
+        g0 = [x for x in stab[model]["grid"] if x["Riso"] == 0.001 and x["pm_deg"] is not None]
+        return dict(pm=pm, gm=gm, pm0=min(x["pm_deg"] for x in g0))
 
-# SM-3: the pin with the ADC network on it (three models, both switch cases), and the sampling capacitor
-CASES = ("derived", "lowR")
-pin_f3 = {(m, c): bw[m][c]["pin"]["f3dB_MHz"] for m in MODELS for c in CASES}
-pin_8 = {(m, c): bw[m][c]["pin"]["dB_8MHz"] for m in MODELS for c in CASES}
-pin_10 = {(m, c): bw[m][c]["pin"]["dB_10MHz"] for m in MODELS for c in CASES}
-sw_f3 = {(m, c): bw[m][c]["sw"]["f3dB_MHz"] for m in MODELS for c in CASES}
-sw_8 = {(m, c): bw[m][c]["sw"]["dB_8MHz"] for m in MODELS for c in CASES}
-adc_pole = {c: 1 / (2 * math.pi * v["ron"] * v["cs"]) / 1e6 for c, v in d17["adc_cases"].items()}
-pin_f3_min = min(pin_f3.values())
-pin_8_worst = min(pin_8.values())
-pin_10_worst = min(pin_10.values())
-sw_f3_der = min(sw_f3[(m, "derived")] for m in MODELS)
-sw_f3_low = min(sw_f3[(m, "lowR")] for m in MODELS)
-sw_8_der = min(sw_8[(m, "derived")] for m in MODELS)
 
-# D17
-dr = d17["rows"]
-D = lambda m, c: dr[f"{m}|{c}"]["total_uV"]
-d17_vendor = {c: D("vendor", c) for c in CASES}
-d17_ds = {c: max(D("BEH21+6.5", c), D("BEH60+6.5", c)) for c in CASES}
-d17_93 = {c: max(D("BEH21+9.3", c), D("BEH60+9.3", c)) for c in CASES}
-d17_worst = max(max(d17_vendor.values()), max(d17_ds.values()))
-pin1g = d17["pin_1GHz_no_network"]
-e12 = max(ed["470"]["+12V_2ns"]["peak_mA"], ed["470"]["-12V_2ns"]["peak_mA"])
-cp = cs["chosen"]; c22 = cs["cn22_with_cpx"]; b2 = cs["best_by_parts"]["2"]; b4 = cs["best_by_parts"]["4"]; alt = cs["alt_20_10"]
+    A = {m: an1(m) for m in MODELS}
+    worst_m = min(MODELS, key=lambda m: A[m]["pm"])
+    pm_w = A[worst_m]["pm"]
+    gm_w = min(A[m]["gm"] for m in MODELS)
 
-# ---- requirement table
-R("§3.1 / SC-2", "range -1.5..+3.5 V rated, -2.0..+4.0 V usable; pin >= 80 mV from each end of 0..AREF at AREF 3.20 V, 1 % parts, centring +-30 mV",
-  f"pin {lo_nom:.3f} V at -2 V, {hi_nom:.3f} V at +4 V (ngspice, nominal); Monte Carlo 200,000 draws: low slack {f1(mc['lo_slack_mV_with_30mV'])} mV, high slack {f1(mc['hi_slack_mV_with_30mV'])} mV with the budget's extra +-30 mV; {f1(mc['lo_slack_mV'])} / {f1(mc['hi_slack_mV'])} mV without. 128-corner worst case {f1(cn['lo_slack_mV'])} / {f1(cn['hi_slack_mV'])} mV (no extra 30 mV)",
-  f"{f1(mc['lo_slack_mV_with_30mV'])} / {f1(mc['hi_slack_mV_with_30mV'])} mV over the 80 mV", mc["lo_slack_mV_with_30mV"] > 0 and mc["hi_slack_mV_with_30mV"] > 0,
-  "VOS +-0.5 mV and a CMRR term of +-1.7 mV (65 dB min at VS 5.4 V, *(check at 3.3 V)*) are inside")
-R("SC-4", "at most 1.8 mV per code at the input (afe-v2.md); 5 V span 70 to 75 % of FS at 3.25 V",
-  f"{f3(mc['mV_per_code_worst'])} mV/code worst (AREF 3.30 V, smallest a); span {f2(cn['span_pct_FS_3p25'][0])} to {f2(cn['span_pct_FS_3p25'][1])} % over the 128 corners",
-  f"{f3(1.8 - mc['mV_per_code_worst'])} mV ({f1((1.8 - mc['mV_per_code_worst']) / 1.8 * 100)} %); span low end {f2(cn['span_pct_FS_3p25'][0] - 70)} % FS over the 70 % minimum", cn["span_pct_FS_3p25"][0] >= 70 and mc["mV_per_code_worst"] <= 1.8,
-  "the worst corner of the 1 % parts sits 0.34 % FS above the 70 % floor; the spec lead accepted it")
-R("SC-3 / D-V2-9", "1 MOhm nominal within 1 %, spread of 1 % parts allowed on top",
-  f"R_in {dc['rin']/1e3:.2f} k nominal ({(dc['rin']/1e6-1)*100:+.2f} %); corners {cn['rin_k'][0]:.1f} to {cn['rin_k'][1]:.1f} k ({(cn['rin_k'][0]/1e3-1)*100:+.2f} to {(cn['rin_k'][1]/1e3-1)*100:+.2f} %)",
-  f"{1 - abs(dc['rin']/1e6 - 1) / 0.01:.0%} of the 1 % nominal band left", abs(dc["rin"] / 1e6 - 1) <= 0.01,
-  "R_in = R1 + R2||R3, the REF3030E taken as an AC ground")
-R("SC-3", "input capacitance at most 30 pF including wiring",
-  f"{ac['zin']['100000']['C_pF']:.1f} pF nominal with a 4 pF BNC+trace assumption ({ac['zin']['100000']['C_pF']-4:.1f} pF of network); {mc['cin_pF'][0]:.1f} to {mc['cin_pF'][2]:.1f} pF over C0G 5 % and 2..6 pF of stray at N; flat 1 kHz to 10 MHz",
-  f"{30 - mc['cin_pF'][2]:.1f} pF", mc["cin_pF"][2] <= 30, "the 4 pF is *(assumption)*; the margin covers 13 pF more")
-R("SC-3", "compensated for x1 and x10 probes",
-  f"HF/DC gain step ('shelf') nominal {ac['shelf_pct']:+.2f} %; with C0G 5 % (C1, Cn and Cpx), 1 % resistors, 2..6 pF of stray: mean {mc['shelf_pct']['mean']:+.2f} %, 95 % of boards within +-{mc['shelf_pct']['p95_abs']:.1f} %, worst of 200,000 {mc['shelf_pct']['min']:+.1f}/{mc['shelf_pct']['max']:+.1f} %. x10 probe (9 M || Cp): ripple {x10['best_ripple_pct']:.2f} % pk-pk 10 Hz to 10 MHz at Cp = {x10['best_Cp_pF']:.2f} pF ({x10['ripple_to_20MHz_pct']:.1f} % to 20 MHz, where Cpx rolls the stage off)",
-  f"**static**: the step moves {st_spread:.3f} percentage points over -2..+4 V of input and {abs(st['temperature_40K']['per_K_pp']):.3f} pp/K with temperature (the resistors); section 'Is the step static?'", "PASS*" if (st_spread < 0.1 and mc["shelf_pct"]["p95_abs"] <= 6.5) else False,
-  "*as a probe-compensated input; as a flat x1 response it needs the host calibration (SC-5), which the spec lead accepted as a design call because the step is static")
-R("SC-5", "no filter; host frequency calibration", f"no filter part in the path; f-3dB {f3db/1e6:.0f} MHz at the pin, relative to DC, with Cpx (datasheet 250 MHz typ at RF 25 ohm); {abs(ac['dev_10MHz_dB']):.2f} dB down at 10 MHz against the 100 kHz gain, no peaking",
-  "n/a", True, "the droop is Rnp x Cpx's pole (34 MHz) and the amplifier's: smooth, removed by the host's frequency calibration; the macro's 0.79 dB peak at 100 MHz and 7 % step overshoot are gone")
-R("SM-3", "bandwidth at least 8 MHz (a floor), with the ADC input network attached",
-  f"at the ADC pin with the switch closed and the sampling capacitor on it (3 models x 2 switch cases): -3 dB at {pin_f3_min:.0f} MHz at worst, {pin_8_worst:+.2f} dB at 8 MHz and {pin_10_worst:+.2f} dB at 10 MHz against the 100 kHz gain. At the sampling capacitor the switch's own pole is added: -3 dB at {sw_f3_der:.1f} MHz ({sw_8_der:+.1f} dB at 8 MHz) at 3.8 kohm / 6 pF, {sw_f3_low:.1f} MHz at 1 kohm / 8 pF; the switch pole alone is {adc_pole['derived']:.2f} and {adc_pole['lowR']:.1f} MHz",
-  f"{pin_f3_min/8:.1f}x the floor at the pin", "PASS*" if (pin_f3_min >= 8.0 and pin_8_worst > -3.0) else False,
-  "*SM-3 read at the pin, where VT-16 measures it. With the derived switch the Due's own sampling pole (6.98 MHz) is under 8 MHz before the AFE adds anything (the AFE costs 0.16 MHz); the switch is *(check)* (docs/ets.md: nothing confirms it). Spec question 1")
-R("SC-6 (D17)", "noise that reaches the Due's sampling capacitor <= 0.2 mV rms: through the stage, Riso, the pin, the input switch at its worst-case resistance and the sampling capacitor, no 10 MHz cut-off",
-  f"vendor macro (9.3 nV/rtHz): {f0(d17_vendor['derived'])} uV at 3.8 kohm / 6 pF, **{f0(d17_vendor['lowR'])} uV at 1 kohm / 8 pF**; datasheet density (6.5 nV/rtHz, on the datasheet-fitted BEH21 and BEH60): {f0(d17_ds['derived'])} uV and **{f0(d17_ds['lowR'])} uV**; 9.3 nV flat on the datasheet dynamics: {f0(d17_93['derived'])} / {f0(d17_93['lowR'])} uV. 10 Hz to 1 GHz, REF3030E {noise['ref_at_pin_uV']:.0f} uV included, the switch's own kT/C (26 uV at 6 pF) not (it is the Due's)",
-  f"{f0(200 - d17_worst)} uV under 0.2 mV on the worst of the four; the vendor macro reaches 200 uV only below a switch resistance of {d17['Rsw_for_200uV_vendor_ohm']:.0f} ohm (6 pF)", "PASS*" if d17_worst < 200 else False,
-  f"*the switch resistance is not measured (*(check)*; 3.8 k derived, 1 k the v1 study's low arm). The datasheet density reads {d17['sweep_Rsw_Cs6pF'][0]['BEH60_ds']:.0f} uV even at 100 ohm. The same circuit read the old way (pin, 10 Hz to 1 GHz, no network) is {pin1g['vendor']['total_uV']:.0f} uV on the macro: that reading is not D17's")
-R("SC-7", "DC accuracy +-0.5 % +-5 mV after calibration", f"drift terms for 10 K since calibration, referred to the input: gain {mc['drift_10K_input_mV']['gain_pct']:.3f} % (R1 against R2||R3 opposed at 100 ppm/K; C0G 0), REF3030E {mc['drift_10K_input_mV']['ref']:.2f} mV (15 ppm/K max), VOS {mc['drift_10K_input_mV']['vos']:.2f} mV (2 uV/K max); op-amp bias 3 pA max x {prot['bav99_at_N']['rp_k']:.0f} k = {prot['amp_leak']['err_node_uV']:.2f} uV; REF3030E modulation by the two channels' signal current < 0.01 uV",
-  f"{0.5 - mc['drift_10K_input_mV']['gain_pct']:.2f} % of 0.5 % and {5 - mc['drift_10K_input_mV']['ref'] - mc['drift_10K_input_mV']['vos']:.1f} mV of 5 mV left before the converter and the Due's ADC", True,
-  "rail-to-rail input crossover of the TPH2502 is not in the macro: *(check)* by VT-1; it would show as a nonlinearity the linear calibration does not remove")
-R("SC-8", "channel gain within 3 %; offset inside SC-2's centring margin", f"gain mismatch of two boards' channels, independent 1 % parts: {mc['gain_match_pct_max']:.2f} % worst of 200,000; offset mismatch {mc['offset_match_mV_max_at_pin']:.0f} mV at the pin (calibrated, SC-7)",
-  f"{3 - mc['gain_match_pct_max']:.2f} %", mc["gain_match_pct_max"] <= 3, "")
-R("SC-9", "crosstalk <= 2 LSB, full-scale input one channel, other shorted, to 10 MHz (the two channels share the dual)",
-  f"through the shared rail and shared REF3030E: {xt['shared_rail_ref_only_10MHz']['lsb_at_6Vpp']:.0e} LSB at 10 MHz (6 Vpp); datasheet -100 dB at 5 MHz is {xt['datasheet_xtalk'][0]['lsb_at_6Vpp']:.3f} LSB. **Strays dominate**: between the two N nodes {cxn[(0.02,10.0)]:.2f} LSB at 0.02 pF, {cxn[(0.05,10.0)]:.2f} at 0.05 pF (1 LSB at {xt['Cx_N_for_1LSB_10MHz_pF']:.3f} pF); **between the two +IN pads (dual pins 3 and 5) {cxp[(0.05,10.0)]:.2f} LSB at 0.05 pF, 1 LSB at {xt['Cx_pad_for_1LSB_10MHz_pF']:.3f} pF**; between the two input nets {cxi[(0.5,10.0)]:.2f} LSB at 0.5 pF",
-  f"{bud_lsb:.2f} LSB at {BUD_N:g} pF (N to N) plus {BUD_P:g} pF (pad to pad), against 2", "PASS*" if bud_lsb <= 2.0 else False,
-  "*the circuit passes; the layout must hold both strays at the budget below, about 0.02 pF each, tighter than the 0.05 pF first stated because the +IN pads are as sensitive as N. A layout rule (LR-3) checked by VT-19")
-R("SC-10", "source impedance at the ADC pin <= 5 kOhm; settle to 0.5 LSB inside the 667 ns window",
-  f"pin source impedance {tran['zout_pin']['max_ohm_to_10MHz']:.1f} ohm to 10 MHz; alternating full swing (+4 V / -2 V) through the derived ADC input (3.8 k, 6 pF): error {abs(tran['sh_derived']['err_b_lsb']):.0e} LSB at the end of the window, inside 0.5 LSB after {tran['sh_derived']['settle_b_ns']:.0f} ns; stress ADC (1 k, 8 pF) {tran['sh_stress']['settle_b_ns']:.0f} ns",
-  f"{tran['T_TRACK_ns'] - tran['sh_derived']['settle_b_ns']:.0f} ns; Z margin {5000/tran['zout_pin']['max_ohm_to_10MHz']:.0f}x", abs(tran["sh_derived"]["err_b_lsb"]) < 0.5 and tran["sh_derived"]["settle_b_ns"] < tran["T_TRACK_ns"],
-  f"control: Riso 20 kohm gives {tran['sh_control_riso20k']['err_b_lsb']:.0f} LSB, so the test can fail")
-R("SC-12", "full-scale sine undistorted (not slew-limited) to 5 MHz", f"5 MHz at 5 Vpp: THD {t5['thd_dB']:.0f} dB, pin slew {t5['slew_pin_Vus']:.0f} V/us; at the usable 6 Vpp: THD {t5u['thd_dB']:.0f} dB, {t5u['slew_pin_Vus']:.0f} V/us; at 10 MHz, 6 Vpp: {t10['thd_dB']:.0f} dB, {t10['slew_pin_Vus']:.0f} V/us",
-  f"datasheet slew 160 V/us (VS 3 V, 2 V step): {160/t5u['slew_pin_Vus']:.1f}x at 5 MHz, {160/t10['slew_pin_Vus']:.1f}x at 10 MHz", True,
-  f"THD is the macro's behavioural nonlinearity *(check: no vendor distortion model)*; control: the macro at 40 MHz reads {tran['sine40_control']['thd_pct']:.1f} % and so the test can fail")
-R("AN-1", "phase margin >= 45 degrees into Riso + clamp + pin + trace, on all three models",
-  f"loop gain broken at the amplifier output, ADC S/H load included, 0 to 100 pF added at the pin, Riso 22 ohm, Cpx 10 pF: vendor macro PM >= {A['vendor']['pm']:.1f} deg, BEH21 >= {A['BEH21']['pm']:.1f}, BEH60 >= {A['BEH60']['pm']:.1f}; GM >= {gm_w:.1f} dB. Without Riso: PM >= {min(A[m]['pm0'] for m in MODELS):.1f} deg at 100 pF",
-  f"{pm_w - 45:.1f} deg ({worst_m})", pm_w >= 45,
-  f"worst of the three. Controls: no Cpx reads {gd['pm_check_noCpx_BEH60']['pm_deg']:.1f} deg on BEH60 ({beh['cpx_scan']['0']['min_all']:.1f} at worst over the pin loads), no Riso with 1 nF reads {gd['pm_check_noRiso_1nF_BEH60']['pm_deg']:.1f} deg")
-R("PR-1 powered", "+-12 V on both inputs", f"pin {pw[(12,12)]['pin_a']:.3f} V at +12 V, {pw[(-12,-12)]['pin_a']:.3f} V at -12 V; N held at {pw[(12,12)]['N_a']:.2f} / {pw[(-12,-12)]['N_a']:.2f} V by the amplifier's own input diodes; current in them {pw[(12,12)]['i_esd_up_uA']:.1f} uA / {pw[(-12,-12)]['i_esd_dn_uA']:.1f} uA against the datasheet's 10 mA (note 3)",
-  f"{10000/pw[(-12,-12)]['i_esd_dn_uA']:.0f}x on current", True, "diode I-V is *(assumption)* (0.6 V at 10 uA); datasheet gives none")
-R("PR-1 edge", "a 12 V step reaching the node", f"peak input-diode current {ed['0']['+12V_2ns']['peak_mA']:.0f} mA with no Rnp, **{ed['470']['+12V_2ns']['peak_mA']:.1f} mA (+12 V) and {ed['470']['-12V_2ns']['peak_mA']:.1f} mA (-12 V) with Rnp 470 ohm and Cpx 10 pF** (2 ns edge from 50 ohm); 30 V / 5 ns (information): {ed['470']['+30V_5ns']['peak_mA']:.0f} mA",
-  f"{10 - e12:.1f} mA under the 10 mA note", "PASS*" if e12 <= 10 else False,
-  f"*thin: Cpx holds +IN at ground while the edge steps N, so Rnp alone limits the diode current. Rnp 560 gives {ed['560']['-12V_2ns']['peak_mA']:.1f} mA, 680 gives {ed['680']['-12V_2ns']['peak_mA']:.1f} mA (bandwidth and phase margin for those are not re-run). Diode I-V *(assumption)*")
-R("PR-1 unpowered", "+-12 V on both inputs, Due unpowered", f"rail rises to {unp[(12,12,1e9,True)]['rail']:.1f} V with no bleed; with a 14 kohm bleed {unp[(12,12,14e3,True)]['rail']:.2f} V; current into the Due's 3.3 V net {abs(unp[(12,12,14e3,True)]['i_due_uA']):.3f} uA",
-  f"largest bleed for 0.5 V: {prot['bleed_needed']['max_bleed_ohm']/1e3:.1f} kohm", "OPEN",
-  "the unpowered +3.3 V_A rail must sink about 36 uA at 0.5 V (PR-3); that is a rail-block requirement and stays open (the powercal stream owns it)")
-R("PR-2", "A0/A1 stay between -0.2 V and 3.45 V in every state", f"powered: {pw[(-12,-12)]['pin_a']:.3f} to {pw[(12,12)]['pin_a']:.3f} V (the amplifier output saturates at its rail; 3.45 V is {3.45-3.3*1.03:.2f} V above a rail at 3.3 V +3 %); unpowered, diodes-only amplifier: {unp[(-12,-12,14e3,True)]['pin_a']:.3f} to {unp[(12,12,14e3,True)]['pin_a']:.3f} V; **unpowered with a differential input clamp (adversarial): {unpd[(-12,-12,True)]['pin_a']:.3f} V at -12 V with the BAV99 at the pin, {unpd[(-12,-12,False)]['pin_a']:.3f} V without it**",
-  f"{unpd[(-12,-12,True)]['pin_a'] + 0.2:.2f} V with the pin BAV99, {unpd[(-12,-12,False)]['pin_a'] + 0.2:.2f} V without (adversarial arm)", "PASS*" if unpd[(-12, -12, True)]["pin_a"] >= -0.2 else False,
-  "*unpowered behaviour of the TPH2502 is *(check)*: the datasheet says nothing. The pin BAV99 is what passes the adversarial arm; kept per the spec lead, VT-5 may drop it")
-R("REF3030E", "loading by both channels; sink when an input is clamped high", f"sources up to {mc['ref_source_uA_max_per_channel']:.2f} uA per channel at -2 V in ({pw[(-12,-12)]['i_ref_uA']/2:.1f} uA per channel at -12 V); sinks {abs(pw[(12,12)]['i_ref_uA'])/2:.2f} uA per channel with an input at +12 V (powered; {mc['ref_sink_uA_clamped_per_channel']:.1f} uA bound at 3.37 V and 0.7 V diode drop); REF30E specification: +-10 mA, load regulation 15 ppm/mA source, 150 ppm/mA sink (ref30.pdf, 6.5)",
-  f"worst change in V_REF {(2*5.4e-3)*3*15:.2f} uV source side, {(2*1.6e-3)*3*150:.2f} uV sink side: below 0.002 % of the SC-7 5 mV", True,
-  "uA against 10 mA: 2,000x on the rated current")
+    # SM-3: the pin with the ADC network on it (three models, both switch cases), and the sampling capacitor
+    CASES = ("derived", "lowR")
+    pin_f3 = {(m, c): bw[m][c]["pin"]["f3dB_MHz"] for m in MODELS for c in CASES}
+    pin_8 = {(m, c): bw[m][c]["pin"]["dB_8MHz"] for m in MODELS for c in CASES}
+    pin_10 = {(m, c): bw[m][c]["pin"]["dB_10MHz"] for m in MODELS for c in CASES}
+    sw_f3 = {(m, c): bw[m][c]["sw"]["f3dB_MHz"] for m in MODELS for c in CASES}
+    sw_8 = {(m, c): bw[m][c]["sw"]["dB_8MHz"] for m in MODELS for c in CASES}
+    adc_pole = {c: 1 / (2 * math.pi * v["ron"] * v["cs"]) / 1e6 for c, v in d17["adc_cases"].items()}
+    pin_f3_min = min(pin_f3.values())
+    pin_8_worst = min(pin_8.values())
+    pin_10_worst = min(pin_10.values())
+    sw_f3_der = min(sw_f3[(m, "derived")] for m in MODELS)
+    sw_f3_low = min(sw_f3[(m, "lowR")] for m in MODELS)
+    sw_8_der = min(sw_8[(m, "derived")] for m in MODELS)
 
-# ---- assemble
-out = []
-A_ = out.append
-A_(f"""# AFE version 2: the scope channel, simulated
+    # D17
+    dr = d17["rows"]
+    D = lambda m, c: dr[f"{m}|{c}"]["total_uV"]
+    d17_vendor = {c: D("vendor", c) for c in CASES}
+    d17_ds = {c: max(D("BEH21+6.5", c), D("BEH60+6.5", c)) for c in CASES}
+    d17_93 = {c: max(D("BEH21+9.3", c), D("BEH60+9.3", c)) for c in CASES}
+    d17_worst = max(max(d17_vendor.values()), max(d17_ds.values()))
+    pin1g = d17["pin_1GHz_no_network"]
+    e12 = max(ed["470"]["+12V_2ns"]["peak_mA"], ed["470"]["-12V_2ns"]["peak_mA"])
+    cp = cs["chosen"]; c22 = cs["cn22_with_cpx"]; b2 = cs["best_by_parts"]["2"]; b4 = cs["best_by_parts"]["4"]; alt = cs["alt_20_10"]
+
+    # ---- requirement table
+    R("§3.1 / SC-2", "range -1.5..+3.5 V rated, -2.0..+4.0 V usable; pin >= 80 mV from each end of 0..AREF at AREF 3.20 V, 1 % parts, centring +-30 mV",
+      f"pin {lo_nom:.3f} V at -2 V, {hi_nom:.3f} V at +4 V (ngspice, nominal); Monte Carlo 200,000 draws: low slack {f1(mc['lo_slack_mV_with_30mV'])} mV, high slack {f1(mc['hi_slack_mV_with_30mV'])} mV with the budget's extra +-30 mV; {f1(mc['lo_slack_mV'])} / {f1(mc['hi_slack_mV'])} mV without. 128-corner worst case {f1(cn['lo_slack_mV'])} / {f1(cn['hi_slack_mV'])} mV (no extra 30 mV)",
+      f"{f1(mc['lo_slack_mV_with_30mV'])} / {f1(mc['hi_slack_mV_with_30mV'])} mV over the 80 mV", mc["lo_slack_mV_with_30mV"] > 0 and mc["hi_slack_mV_with_30mV"] > 0,
+      "VOS +-0.5 mV and a CMRR term of +-1.7 mV (65 dB min at VS 5.4 V, *(check at 3.3 V)*) are inside")
+    R("SC-4", "at most 1.8 mV per code at the input (afe-v2.md); 5 V span 70 to 75 % of FS at 3.25 V",
+      f"{f3(mc['mV_per_code_worst'])} mV/code worst (AREF 3.30 V, smallest a); span {f2(cn['span_pct_FS_3p25'][0])} to {f2(cn['span_pct_FS_3p25'][1])} % over the 128 corners",
+      f"{f3(1.8 - mc['mV_per_code_worst'])} mV ({f1((1.8 - mc['mV_per_code_worst']) / 1.8 * 100)} %); span low end {f2(cn['span_pct_FS_3p25'][0] - 70)} % FS over the 70 % minimum", cn["span_pct_FS_3p25"][0] >= 70 and mc["mV_per_code_worst"] <= 1.8,
+      "the worst corner of the 1 % parts sits 0.34 % FS above the 70 % floor; the spec lead accepted it")
+    R("SC-3 / D-V2-9", "1 MOhm nominal within 1 %, spread of 1 % parts allowed on top",
+      f"R_in {dc['rin']/1e3:.2f} k nominal ({(dc['rin']/1e6-1)*100:+.2f} %); corners {cn['rin_k'][0]:.1f} to {cn['rin_k'][1]:.1f} k ({(cn['rin_k'][0]/1e3-1)*100:+.2f} to {(cn['rin_k'][1]/1e3-1)*100:+.2f} %)",
+      f"{1 - abs(dc['rin']/1e6 - 1) / 0.01:.0%} of the 1 % nominal band left", abs(dc["rin"] / 1e6 - 1) <= 0.01,
+      "R_in = R1 + R2||R3, the REF3030E taken as an AC ground")
+    R("SC-3", "input capacitance at most 30 pF including wiring",
+      f"{ac['zin']['100000']['C_pF']:.1f} pF nominal with a 4 pF BNC+trace assumption ({ac['zin']['100000']['C_pF']-4:.1f} pF of network); {mc['cin_pF'][0]:.1f} to {mc['cin_pF'][2]:.1f} pF over C0G 5 % and 2..6 pF of stray at N; flat 1 kHz to 10 MHz",
+      f"{30 - mc['cin_pF'][2]:.1f} pF", mc["cin_pF"][2] <= 30, "the 4 pF is *(assumption)*; the margin covers 13 pF more")
+    R("SC-3", "compensated for x1 and x10 probes",
+      f"HF/DC gain step ('shelf') nominal {ac['shelf_pct']:+.2f} %; with C0G 5 % (C1, Cn and Cpx), 1 % resistors, 2..6 pF of stray: mean {mc['shelf_pct']['mean']:+.2f} %, 95 % of boards within +-{mc['shelf_pct']['p95_abs']:.1f} %, worst of 200,000 {mc['shelf_pct']['min']:+.1f}/{mc['shelf_pct']['max']:+.1f} %. x10 probe (9 M || Cp): ripple {x10['best_ripple_pct']:.2f} % pk-pk 10 Hz to 10 MHz at Cp = {x10['best_Cp_pF']:.2f} pF ({x10['ripple_to_20MHz_pct']:.1f} % to 20 MHz, where Cpx rolls the stage off)",
+      f"**static**: the step moves {st_spread:.3f} percentage points over -2..+4 V of input and {abs(st['temperature_40K']['per_K_pp']):.3f} pp/K with temperature (the resistors); section 'Is the step static?'", "PASS*" if (st_spread < 0.1 and mc["shelf_pct"]["p95_abs"] <= 6.5) else False,
+      "*as a probe-compensated input; as a flat x1 response it needs the host calibration (SC-5), which the spec lead accepted as a design call because the step is static")
+    R("SC-5", "no filter; host frequency calibration", f"no filter part in the path; f-3dB {f3db/1e6:.0f} MHz at the pin, relative to DC, with Cpx (datasheet 250 MHz typ at RF 25 ohm); {abs(ac['dev_10MHz_dB']):.2f} dB down at 10 MHz against the 100 kHz gain, no peaking",
+      "n/a", True, "the droop is Rnp x Cpx's pole (34 MHz) and the amplifier's: smooth, removed by the host's frequency calibration; the macro's 0.79 dB peak at 100 MHz and 7 % step overshoot are gone")
+    R("SM-3", "bandwidth at least 8 MHz (a floor), with the ADC input network attached",
+      f"at the ADC pin with the switch closed and the sampling capacitor on it (3 models x 2 switch cases): -3 dB at {pin_f3_min:.0f} MHz at worst, {pin_8_worst:+.2f} dB at 8 MHz and {pin_10_worst:+.2f} dB at 10 MHz against the 100 kHz gain. At the sampling capacitor the switch's own pole is added: -3 dB at {sw_f3_der:.1f} MHz ({sw_8_der:+.1f} dB at 8 MHz) at 3.8 kohm / 6 pF, {sw_f3_low:.1f} MHz at 1 kohm / 8 pF; the switch pole alone is {adc_pole['derived']:.2f} and {adc_pole['lowR']:.1f} MHz",
+      f"{pin_f3_min/8:.1f}x the floor at the pin", "PASS*" if (pin_f3_min >= 8.0 and pin_8_worst > -3.0) else False,
+      "*SM-3 read at the pin, where VT-16 measures it. With the derived switch the Due's own sampling pole (6.98 MHz) is under 8 MHz before the AFE adds anything (the AFE costs 0.16 MHz); the switch is *(check)* (docs/ets.md: nothing confirms it). Spec question 1")
+    R("SC-6 (D17)", "noise that reaches the Due's sampling capacitor <= 0.2 mV rms: through the stage, Riso, the pin, the input switch at its worst-case resistance and the sampling capacitor, no 10 MHz cut-off",
+      f"vendor macro (9.3 nV/rtHz): {f0(d17_vendor['derived'])} uV at 3.8 kohm / 6 pF, **{f0(d17_vendor['lowR'])} uV at 1 kohm / 8 pF**; datasheet density (6.5 nV/rtHz, on the datasheet-fitted BEH21 and BEH60): {f0(d17_ds['derived'])} uV and **{f0(d17_ds['lowR'])} uV**; 9.3 nV flat on the datasheet dynamics: {f0(d17_93['derived'])} / {f0(d17_93['lowR'])} uV. 10 Hz to 1 GHz, REF3030E {noise['ref_at_pin_uV']:.0f} uV included, the switch's own kT/C (26 uV at 6 pF) not (it is the Due's)",
+      f"{f0(200 - d17_worst)} uV under 0.2 mV on the worst of the four; the vendor macro reaches 200 uV only below a switch resistance of {d17['Rsw_for_200uV_vendor_ohm']:.0f} ohm (6 pF)", "PASS*" if d17_worst < 200 else False,
+      f"*the switch resistance is not measured (*(check)*; 3.8 k derived, 1 k the v1 study's low arm). The datasheet density reads {d17['sweep_Rsw_Cs6pF'][0]['BEH60_ds']:.0f} uV even at 100 ohm. The same circuit read the old way (pin, 10 Hz to 1 GHz, no network) is {pin1g['vendor']['total_uV']:.0f} uV on the macro: that reading is not D17's")
+    R("SC-7", "DC accuracy +-0.5 % +-5 mV after calibration", f"drift terms for 10 K since calibration, referred to the input: gain {mc['drift_10K_input_mV']['gain_pct']:.3f} % (R1 against R2||R3 opposed at 100 ppm/K; C0G 0), REF3030E {mc['drift_10K_input_mV']['ref']:.2f} mV (15 ppm/K max), VOS {mc['drift_10K_input_mV']['vos']:.2f} mV (2 uV/K max); op-amp bias 3 pA max x {prot['bav99_at_N']['rp_k']:.0f} k = {prot['amp_leak']['err_node_uV']:.2f} uV; REF3030E modulation by the two channels' signal current < 0.01 uV",
+      f"{0.5 - mc['drift_10K_input_mV']['gain_pct']:.2f} % of 0.5 % and {5 - mc['drift_10K_input_mV']['ref'] - mc['drift_10K_input_mV']['vos']:.1f} mV of 5 mV left before the converter and the Due's ADC", True,
+      "rail-to-rail input crossover of the TPH2502 is not in the macro: *(check)* by VT-1; it would show as a nonlinearity the linear calibration does not remove")
+    R("SC-8", "channel gain within 3 %; offset inside SC-2's centring margin", f"gain mismatch of two boards' channels, independent 1 % parts: {mc['gain_match_pct_max']:.2f} % worst of 200,000; offset mismatch {mc['offset_match_mV_max_at_pin']:.0f} mV at the pin (calibrated, SC-7)",
+      f"{3 - mc['gain_match_pct_max']:.2f} %", mc["gain_match_pct_max"] <= 3, "")
+    R("SC-9", "crosstalk <= 2 LSB, full-scale input one channel, other shorted, to 10 MHz (the two channels share the dual)",
+      f"through the shared rail and shared REF3030E: {xt['shared_rail_ref_only_10MHz']['lsb_at_6Vpp']:.0e} LSB at 10 MHz (6 Vpp); datasheet -100 dB at 5 MHz is {xt['datasheet_xtalk'][0]['lsb_at_6Vpp']:.3f} LSB. **Strays dominate**: between the two N nodes {cxn[(0.02,10.0)]:.2f} LSB at 0.02 pF, {cxn[(0.05,10.0)]:.2f} at 0.05 pF (1 LSB at {xt['Cx_N_for_1LSB_10MHz_pF']:.3f} pF); **between the two +IN pads (dual pins 3 and 5) {cxp[(0.05,10.0)]:.2f} LSB at 0.05 pF, 1 LSB at {xt['Cx_pad_for_1LSB_10MHz_pF']:.3f} pF**; between the two input nets {cxi[(0.5,10.0)]:.2f} LSB at 0.5 pF",
+      f"{bud_lsb:.2f} LSB at {BUD_N:g} pF (N to N) plus {BUD_P:g} pF (pad to pad), against 2", "PASS*" if bud_lsb <= 2.0 else False,
+      "*the circuit passes; the layout must hold both strays at the budget below, about 0.02 pF each, tighter than the 0.05 pF first stated because the +IN pads are as sensitive as N. A layout rule (LR-3) checked by VT-19")
+    R("SC-10", "source impedance at the ADC pin <= 5 kOhm; settle to 0.5 LSB inside the 667 ns window",
+      f"pin source impedance {tran['zout_pin']['max_ohm_to_10MHz']:.1f} ohm to 10 MHz; alternating full swing (+4 V / -2 V) through the derived ADC input (3.8 k, 6 pF): error {abs(tran['sh_derived']['err_b_lsb']):.0e} LSB at the end of the window, inside 0.5 LSB after {tran['sh_derived']['settle_b_ns']:.0f} ns; stress ADC (1 k, 8 pF) {tran['sh_stress']['settle_b_ns']:.0f} ns",
+      f"{tran['T_TRACK_ns'] - tran['sh_derived']['settle_b_ns']:.0f} ns; Z margin {5000/tran['zout_pin']['max_ohm_to_10MHz']:.0f}x", abs(tran["sh_derived"]["err_b_lsb"]) < 0.5 and tran["sh_derived"]["settle_b_ns"] < tran["T_TRACK_ns"],
+      f"control: Riso 20 kohm gives {tran['sh_control_riso20k']['err_b_lsb']:.0f} LSB, so the test can fail")
+    R("SC-12", "full-scale sine undistorted (not slew-limited) to 5 MHz", f"5 MHz at 5 Vpp: THD {t5['thd_dB']:.0f} dB, pin slew {t5['slew_pin_Vus']:.0f} V/us; at the usable 6 Vpp: THD {t5u['thd_dB']:.0f} dB, {t5u['slew_pin_Vus']:.0f} V/us; at 10 MHz, 6 Vpp: {t10['thd_dB']:.0f} dB, {t10['slew_pin_Vus']:.0f} V/us",
+      f"datasheet slew 160 V/us (VS 3 V, 2 V step): {160/t5u['slew_pin_Vus']:.1f}x at 5 MHz, {160/t10['slew_pin_Vus']:.1f}x at 10 MHz", True,
+      f"THD is the macro's behavioural nonlinearity *(check: no vendor distortion model)*; control: the macro at 40 MHz reads {tran['sine40_control']['thd_pct']:.1f} % and so the test can fail")
+    R("AN-1", "phase margin >= 45 degrees into Riso + clamp + pin + trace, on all three models",
+      f"loop gain broken at the amplifier output, ADC S/H load included, 0 to 100 pF added at the pin, Riso 22 ohm, Cpx 10 pF: vendor macro PM >= {A['vendor']['pm']:.1f} deg, BEH21 >= {A['BEH21']['pm']:.1f}, BEH60 >= {A['BEH60']['pm']:.1f}; GM >= {gm_w:.1f} dB. Without Riso: PM >= {min(A[m]['pm0'] for m in MODELS):.1f} deg at 100 pF",
+      f"{pm_w - 45:.1f} deg ({worst_m})", pm_w >= 45,
+      f"worst of the three. Controls: no Cpx reads {gd['pm_check_noCpx_BEH60']['pm_deg']:.1f} deg on BEH60 ({beh['cpx_scan']['0']['min_all']:.1f} at worst over the pin loads), no Riso with 1 nF reads {gd['pm_check_noRiso_1nF_BEH60']['pm_deg']:.1f} deg")
+    R("PR-1 powered", "+-12 V on both inputs", f"pin {pw[(12,12)]['pin_a']:.3f} V at +12 V, {pw[(-12,-12)]['pin_a']:.3f} V at -12 V; N held at {pw[(12,12)]['N_a']:.2f} / {pw[(-12,-12)]['N_a']:.2f} V by the amplifier's own input diodes; current in them {pw[(12,12)]['i_esd_up_uA']:.1f} uA / {pw[(-12,-12)]['i_esd_dn_uA']:.1f} uA against the datasheet's 10 mA (note 3)",
+      f"{10000/pw[(-12,-12)]['i_esd_dn_uA']:.0f}x on current", True, "diode I-V is *(assumption)* (0.6 V at 10 uA); datasheet gives none")
+    R("PR-1 edge", "a 12 V step reaching the node", f"peak input-diode current {ed['0']['+12V_2ns']['peak_mA']:.0f} mA with no Rnp, **{ed['470']['+12V_2ns']['peak_mA']:.1f} mA (+12 V) and {ed['470']['-12V_2ns']['peak_mA']:.1f} mA (-12 V) with Rnp 470 ohm and Cpx 10 pF** (2 ns edge from 50 ohm); 30 V / 5 ns (information): {ed['470']['+30V_5ns']['peak_mA']:.0f} mA",
+      f"{10 - e12:.1f} mA under the 10 mA note", "PASS*" if e12 <= 10 else False,
+      f"*thin: Cpx holds +IN at ground while the edge steps N, so Rnp alone limits the diode current. Rnp 560 gives {ed['560']['-12V_2ns']['peak_mA']:.1f} mA, 680 gives {ed['680']['-12V_2ns']['peak_mA']:.1f} mA (bandwidth and phase margin for those are not re-run). Diode I-V *(assumption)*")
+    R("PR-1 unpowered", "+-12 V on both inputs, Due unpowered", f"rail rises to {unp[(12,12,1e9,True)]['rail']:.1f} V with no bleed; with a 14 kohm bleed {unp[(12,12,14e3,True)]['rail']:.2f} V; current into the Due's 3.3 V net {abs(unp[(12,12,14e3,True)]['i_due_uA']):.3f} uA",
+      f"largest bleed for 0.5 V: {prot['bleed_needed']['max_bleed_ohm']/1e3:.1f} kohm", "OPEN",
+      "the unpowered +3.3 V_A rail must sink about 36 uA at 0.5 V (PR-3); that is a rail-block requirement and stays open (the powercal stream owns it)")
+    R("PR-2", "A0/A1 stay between -0.2 V and 3.45 V in every state", f"powered: {pw[(-12,-12)]['pin_a']:.3f} to {pw[(12,12)]['pin_a']:.3f} V (the amplifier output saturates at its rail; 3.45 V is {3.45-3.3*1.03:.2f} V above a rail at 3.3 V +3 %); unpowered, diodes-only amplifier: {unp[(-12,-12,14e3,True)]['pin_a']:.3f} to {unp[(12,12,14e3,True)]['pin_a']:.3f} V; **unpowered with a differential input clamp (adversarial): {unpd[(-12,-12,True)]['pin_a']:.3f} V at -12 V with the BAV99 at the pin, {unpd[(-12,-12,False)]['pin_a']:.3f} V without it**",
+      f"{unpd[(-12,-12,True)]['pin_a'] + 0.2:.2f} V with the pin BAV99, {unpd[(-12,-12,False)]['pin_a'] + 0.2:.2f} V without (adversarial arm)", "PASS*" if unpd[(-12, -12, True)]["pin_a"] >= -0.2 else False,
+      "*unpowered behaviour of the TPH2502 is *(check)*: the datasheet says nothing. The pin BAV99 is what passes the adversarial arm; kept per the spec lead, VT-5 may drop it")
+    R("REF3030E", "loading by both channels; sink when an input is clamped high", f"sources up to {mc['ref_source_uA_max_per_channel']:.2f} uA per channel at -2 V in ({pw[(-12,-12)]['i_ref_uA']/2:.1f} uA per channel at -12 V); sinks {abs(pw[(12,12)]['i_ref_uA'])/2:.2f} uA per channel with an input at +12 V (powered; {mc['ref_sink_uA_clamped_per_channel']:.1f} uA bound at 3.37 V and 0.7 V diode drop); REF30E specification: +-10 mA, load regulation 15 ppm/mA source, 150 ppm/mA sink (ref30.pdf, 6.5)",
+      f"worst change in V_REF {(2*5.4e-3)*3*15:.2f} uV source side, {(2*1.6e-3)*3*150:.2f} uV sink side: below 0.002 % of the SC-7 5 mV", True,
+      "uA against 10 mA: 2,000x on the rated current")
+
+    # ---- assemble
+    out = []
+    A_ = out.append
+    A_(f"""# AFE version 2: the scope channel, simulated
 
 Both scope channels on one TPH2502 dual as unity followers on +3.3 V only, with the input network of
 `budget/v2_scope.py` and the REF3030E as the centre. **Generated by `report.py` from `results/*.json`;
@@ -177,7 +179,7 @@ Read the starred and OPEN lines and the section "Open items and spec questions" 
 |---|---|---|---|---|---|
 """ + "\n".join(rows))
 
-A_(f"""
+    A_(f"""
 ## What was assumed (all *(assumption)* or *(check)* unless it has a source)
 
 | Item | Value | Source |
@@ -198,7 +200,7 @@ A_(f"""
 | Resistor tempco | 100 ppm/K, opposed | `jlc-basic.csv` (-> `budget/v2_scope.py` TC) |
 """)
 
-A_(f"""## DC, range and the network
+    A_(f"""## DC, range and the network
 
 Nominal (ngspice): attenuation a = {dc['a']:.4f}, R_in = {dc['rin']/1e3:.2f} k, {dc['mV_per_code_at_3p25']:.3f} mV per code at AREF 3.25 V, 5 V
 span = {dc['span_pct_FS_3p25']:.1f} % of full scale. The closed form in `run.py` reproduces ngspice to
@@ -210,14 +212,14 @@ Monte Carlo is the same circuit.
 |---|---|
 """ + "\n".join(f"| {v:+.1f} V | {p:.4f} V |" for v, p in zip(dc["vin"], dc["pin"])))
 
-A_(f"""
+    A_(f"""
 Monte Carlo (n = {mc['n']}, seed {mc['seed']}): pin at -2.0 V in {mc['pin_at_usable']['lo_V_min']*1e3:.0f} to {mc['pin_at_usable']['lo_V_max']*1e3:.0f} mV; at +4.0 V in
 {mc['pin_at_usable']['hi_V_min']:.3f} to {mc['pin_at_usable']['hi_V_max']:.3f} V; the rated -1.5..+3.5 V reaches {mc['rated_pin_V'][0]:.3f} to {mc['rated_pin_V'][1]:.3f} V. The 1 V
 input (the centre) sits {mc['centre_offset_mV_at_pin_for_1V_in'][0]:.0f} to {mc['centre_offset_mV_at_pin_for_1V_in'][1]:.0f} mV from mid-scale at AREF 3.25 V,
 which is the network's own centring and is removed by calibration. Gain drift (R1 against R2||R3, 100 ppm/K
 opposed, 20 K): {mc['gain_drift_20K_pct']:.3f} %, which is `budget/v2_scope.py`'s 0.215 % (EN-1, D-V2-3).""")
 
-A_(f"""
+    A_(f"""
 ## Compensation (C1 across R1, Cn at the node, Cpx at +IN) and the x10 probe
 
 Condition for a flat response: R1 C1 = (R2||R3)(C at N), equivalently C1/(C1 + C at N) = a, where **C at N is Cn plus the stray plus Cpx**:
@@ -323,7 +325,7 @@ capacitor's own pole and Cpx already bound the band. It would leave the S/H sett
 ({tran['sh_limit_option']['settle_b_ns']:.0f} ns, {abs(tran['sh_limit_option']['err_b_lsb']):.0e} LSB, stress arm {tran['sh_limit_option_stress']['settle_b_ns']:.0f} ns) and PM {tran['limit_option_pm']['pm_deg']:.0f} deg. It is
 **not adopted**: SC-5 says no filter and V2-9 says no margin the requirement does not ask for.""")
 
-A_(f"""
+    A_(f"""
 ## Large signal: SC-12, SC-10, the step
 
 Full-scale sine through 50 ohm (`results/tran.json`):
@@ -345,7 +347,7 @@ SC-10 (`results/tran.json`, keys `sh_*`): channels alternate through one S/H at 
 -2 V, so the S/H sees the full 2.77 V pin step every conversion; Riso 22 ohm, the pin's Cpin 2 pF and the BAV99's 1.5 pF.
 Pin source impedance {tran['zout_pin']['ohm_at_1MHz']:.0f} ohm at 1 MHz, {tran['zout_pin']['ohm_at_100MHz']:.0f} ohm at 100 MHz.""")
 
-A_(f"""
+    A_(f"""
 ## Stability (AN-1)
 
 Middlebrook loop break at the amplifier's output, the ADC's S/H (3.8 k + 6 pF) on the pin, Cfb 1 pF at the inverting
@@ -355,10 +357,10 @@ The datasheet-fitted models read lower than the vendor macro, and Cpx is what br
 | model, Riso \\\\ extra C at pin | 0 | 10 pF | 22 pF | 47 pF | 100 pF |
 |---|---|---|---|---|---|
 """ + "\n".join(
-    f"| {m}, " + ("no Riso" if r == 0.001 else f"{r:g} ohm") + " | " + " | ".join(
-        (lambda g: f"{g['pm_deg']:.0f} / " + (f"{g['gm_dB']:.1f}" if g['gm_dB'] is not None else "-"))(
-            next(x for x in stab[m]["grid"] if x["Riso"] == r and x["Cload_pF"] == c)) for c in (0, 10, 22, 47, 100)) + " |"
-    for m in MODELS for r in (0.001, 22)) + f"""
+        f"| {m}, " + ("no Riso" if r == 0.001 else f"{r:g} ohm") + " | " + " | ".join(
+            (lambda g: f"{g['pm_deg']:.0f} / " + (f"{g['gm_dB']:.1f}" if g['gm_dB'] is not None else "-"))(
+                next(x for x in stab[m]["grid"] if x["Riso"] == r and x["Cload_pF"] == c)) for c in (0, 10, 22, 47, 100)) + " |"
+        for m in MODELS for r in (0.001, 22)) + f"""
 
 With Riso 22 ohm PM is at least {pm_w:.0f} degrees across the grid on the worst model ({worst_m}). With Cpx fitted Riso no longer decides stability (without it PM is at least
 {min(A[m]['pm0'] for m in MODELS):.0f} degrees at 100 pF); it sets the pin impedance (22 ohm against SC-10's 5 kohm) and isolates the BAV99 and the pin. Feedback resistor: none (RF = 0).
@@ -371,7 +373,7 @@ With Riso 22 ohm PM is at least {pm_w:.0f} degrees across the grid on the worst 
 
 4.7 pF would do ({beh['cpx_scan']['4.7']['min_all']:.0f} degrees) but is not a Basic value; 10 pF (C1634) is, and it is the value in the design.""")
 
-A_(f"""
+    A_(f"""
 ## Protection
 
 **Powered, DC.** The amplifier's input diodes hold N at {pw[(12,12)]['N_a']:.2f} V at +12 V and {pw[(-12,-12)]['N_a']:.2f} V at -12 V, with
@@ -412,7 +414,7 @@ Schottky (BAT54S, Extended) would do better and is not needed in this arm. If th
 stays near 0 V and the BAV99 is not needed. It is fitted as a one-part insurance (Basic, about 1.5 pF on the pin, which the stability grid covers),
 *(check)*: one bench read of the unpowered pin at -12 V (VT-5) decides whether to keep it.""")
 
-A_(f"""
+    A_(f"""
 ## Crosstalk (SC-9) and the layout budget it implies
 
 The two channels share the dual, the supply and the REF3030E. The macro is a single amplifier, so the dual's internal
@@ -447,7 +449,7 @@ under about {xt['Cx_in_for_1LSB_10MHz_pF']*2:.2f} pF. A pad coupling of 0.02 pF 
 reachable is not known: the pin-to-pin capacitance of a SOP-8 with a grounded pad between is not in the repository *(check: field solver, or VT-19's extraction)*.
 The AWG-into-scope coupling of SC-9 is not in this block. VT-10 on the first board decides the scope-to-scope figure, as D16 says.""")
 
-A_(f"""
+    A_(f"""
 ## Reference loading and the SC-7 terms
 
 REF3030E (E grade, `ref30.pdf` 6.5): sink and source both specified to +-10 mA; load regulation 15 ppm/mA source (max), 150 ppm/mA sink (max);
@@ -489,7 +491,7 @@ The Monte Carlo itself is anchored by the ngspice cross-check above (12 draws, {
 a defect of the *macro*: that is the open items below.
 """)
 
-A_(f"""
+    A_(f"""
 ## Open items and spec questions
 
 **Settled by the spec lead (2026-11-12), and what the study holds**
@@ -522,5 +524,11 @@ A_(f"""
 3. **Rnp 470 ohm and the 10 mA note.** The margin is {10 - e12:.1f} mA at -12 V. A larger Rnp (560 ohm: {ed['560']['-12V_2ns']['peak_mA']:.1f} mA) needs its bandwidth, noise and phase margin re-run.
 4. **Cn 12 pF** is a second C0G value (C38523) beside C1's 22 pF and Cpx's 10 pF; C1 20 pF with Cn 10 pF (the same part as Cpx) would drop one value at a 95th percentile of {alt['p95_abs_pct']:.1f} % in place of {cp['p95_abs_pct']:.1f} %. Confirm 12 pF.
 """)
-open(os.path.join(HERE, "report.md"), "w").write("\n".join(out))
-print("report.md:", len(rows), "rows,", "fails:", fails)
+    with open(out_path, "w") as f:
+        f.write("\n".join(out))
+
+
+if __name__ == "__main__":
+    import sys
+    d = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else HERE
+    build(os.path.join(d, "results"), os.path.join(d, "report.md"))

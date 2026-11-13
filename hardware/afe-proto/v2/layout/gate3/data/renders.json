@@ -1,0 +1,34 @@
+[
+ {
+  "view": "top (F.Cu + silk)",
+  "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-F.Cu-silk.png",
+  "link": "../integrated/render/afe-v2-integrated-F.Cu-silk.png",
+  "exists": true,
+  "newer_than_board": true,
+  "delta_s": 146.5
+ },
+ {
+  "view": "bottom (B.Cu)",
+  "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-B.Cu.png",
+  "link": "../integrated/render/afe-v2-integrated-B.Cu.png",
+  "exists": true,
+  "newer_than_board": true,
+  "delta_s": 147.6
+ },
+ {
+  "view": "3D top",
+  "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d.png",
+  "link": "../integrated/render/afe-v2-integrated-3d.png",
+  "exists": true,
+  "newer_than_board": true,
+  "delta_s": 134.8
+ },
+ {
+  "view": "3D bottom",
+  "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d-bottom.png",
+  "link": "../integrated/render/afe-v2-integrated-3d-bottom.png",
+  "exists": true,
+  "newer_than_board": true,
+  "delta_s": 137.3
+ }
+]

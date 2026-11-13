@@ -1,0 +1,60 @@
+{
+ "what": "sensitivity of the v2 scope study to the extracted stray capacitance at the divider node N (0.68 +- 0.13 pF with pour, top of the error bar 0.81 pF) and N-to-N 0.05 fF",
+ "how": "python3 -I run.py --set Cn_par=<F> --set Cx=5e-17 <section> for ac bw mc static xtalk stab, one process each, in the PCB image (ngspice 45.2); baseline = the golden (ported code reproduces it exactly)",
+ "cases": {
+  "baseline": "Cn_par 3.5 pF (the study's assumed pad/trace stray at N; the macro adds about 0.5 pF), Cx 0",
+  "A_N_stray_plus_0p81pF": "Cn_par 3.5 + 0.81 = 4.31 pF, Cx (N to N) 0.05 fF; the extraction ADDED to the assumption",
+  "B_N_stray_replaced_by_0p81pF": "Cn_par 0.81 pF, Cx 0.05 fF; the extraction REPLACING the assumption"
+ },
+ "note": "mc draws its own stray (uniform 2..6 pF at N) whatever Cn_par is, so its figures do not move. The xtalk sweeps (Cx_N_to_N, combined budget) set Cx themselves, so the 0.05 fF N-N value acts only on shared_rail_ref_only; the N stray moves the sweeps through Cn_par.",
+ "results": {
+  "baseline": {
+   "f3dB_MHz": 39.8858666,
+   "droop_10MHz_dB": -0.26257712412408024,
+   "nominal_shelf_pct": -0.5906335420664099,
+   "pin_f3dB_MHz_worst": 39.8797163,
+   "sc9_shared_rail_10MHz_lsb": 6.661757476133833e-06,
+   "sc9_budget_0p02_0p02_10MHz_lsb": 1.7203345563849022,
+   "N_to_N_fF_per_lsb": 27.750314641630805,
+   "pad_to_pad_fF_per_lsb": 19.050052394186977,
+   "step_spread_pp": 0.021237082060721058,
+   "nominal_pm_deg": {
+    "vendor": 69.899268,
+    "BEH21": 60.245366000000004,
+    "BEH60": 60.238794
+   }
+  },
+  "A_N_stray_plus_0p81pF": {
+   "f3dB_MHz": 39.8858666,
+   "droop_10MHz_dB": -0.26682598980005534,
+   "nominal_shelf_pct": -2.2090039217828594,
+   "pin_f3dB_MHz_worst": 39.8797163,
+   "sc9_shared_rail_10MHz_lsb": 0.0017530842489963925,
+   "sc9_budget_0p02_0p02_10MHz_lsb": 1.6723575918016094,
+   "N_to_N_fF_per_lsb": 28.666686467799995,
+   "pad_to_pad_fF_per_lsb": 19.447431526434904,
+   "step_spread_pp": 0.020562603806084656,
+   "nominal_pm_deg": {
+    "vendor": 69.895536,
+    "BEH21": 60.235786000000004,
+    "BEH60": 60.226579
+   }
+  },
+  "B_N_stray_replaced_by_0p81pF": {
+   "f3dB_MHz": 44.7533178,
+   "droop_10MHz_dB": -0.24723081260193341,
+   "nominal_shelf_pct": 5.186587143929144,
+   "pin_f3dB_MHz_worst": 39.8797163,
+   "sc9_shared_rail_10MHz_lsb": 0.0020370626529983495,
+   "sc9_budget_0p02_0p02_10MHz_lsb": 1.8982443659847796,
+   "N_to_N_fF_per_lsb": 24.666776695363698,
+   "pad_to_pad_fF_per_lsb": 17.579072328386225,
+   "step_spread_pp": 0.023729781561865337,
+   "nominal_pm_deg": {
+    "vendor": 69.913119,
+    "BEH21": 60.280660999999995,
+    "BEH60": 60.283536999999995
+   }
+  }
+ }
+}

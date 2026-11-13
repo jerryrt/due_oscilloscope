@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Version 2 scope channel: simulation driver.  Regenerates every number in report.md.
 
-    python3 -I run.py [section ...]       sections: netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards   (default: all)
-    python3 -I report.py                  writes report.md from results/*.json
+    python3 -I run.py [--out DIR] [--work DIR] [section ...]    sections: netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards   (default: all)
+    python3 -I report.py [DIR]                                  writes DIR/report.md from DIR/results/*.json
 
-Needs ngspice 47 and numpy.  The op-amp macro is read from hardware/afe-proto/whatif/tph2502/models/ (vendor, local,
-uncommitted, MC-6); its sha256 must equal models/VENDOR_MODEL.sha256 or the run stops.
+--set KEY=VALUE (repeatable) overrides a scalar of netlib.P0 for the run and is recorded in meta.json.
+--out (default: this folder) gets results/*.json and scope_v2.cir; --work (default a temporary directory) gets netlists, wrdata
+files and logs. Run in the PCB image (docker/pcb/run.sh); every deck goes through simtools.netlib_common.run_ng, under the memory
+cap with a .save of the vectors it reads. The op-amp macro is simtools.vendor's derived copy of 3PEAK's TPH2501 (fetched by
+tools/fetch_models.py, MC-6); its sha256 must equal models/VENDOR_MODEL.sha256 or the run stops.
 """
 import sys, os, json, re, hashlib, itertools, contextlib
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -13,17 +16,27 @@ sys.path.insert(0, HERE)
 import numpy as np
 from netlib import *
 import netlib as NL
+from simtools import vendor
 
-RES = os.path.join(HERE, "results")
-os.makedirs(RES, exist_ok=True)
+OUT_DIR = HERE
+RES = os.path.join(OUT_DIR, "results")
+
+
+def set_out(path):
+    """Where results/*.json and scope_v2.cir are written."""
+    global OUT_DIR, RES
+    OUT_DIR = os.path.abspath(path)
+    RES = os.path.join(OUT_DIR, "results")
+    os.makedirs(RES, exist_ok=True)
+
+
 EXPECT_SHA = open(os.path.join(HERE, "models", "VENDOR_MODEL.sha256")).read().split()[0]
 
 # The three op-amp models.  vendor: the TPH2501 macro (noise, slew and distortion, no datasheet dynamics).  BEH21 and BEH60:
 # the project's behavioural TPH2502, fitted to the datasheet's open-loop gain and phase (small signal only, no noise), with
 # the open-loop output impedance of the table (21 ohm) and of the p6 curve's plateau (60 ohm, *(check)*).
-WI = os.environ.get("TPH2502_DIR", os.path.abspath(os.path.join(HERE, "../../../whatif/tph2502")))
-BEH_LIB = os.environ.get("TPH2502_BEH_LIB", os.path.join(WI, "beh/tph2502_beh.lib"))
-MODELS = {"vendor": ("TPH2501_simplify", NL.OPAMP_MDL_REL),
+BEH_LIB = str(vendor.tph2502_beh())
+MODELS = {"vendor": ("TPH2501_simplify", NL.OPAMP_INC),
           "BEH21": ("TPH2502_BEH ro=21", BEH_LIB),
           "BEH60": ("TPH2502_BEH ro=60", BEH_LIB)}
 
@@ -31,11 +44,11 @@ MODELS = {"vendor": ("TPH2501_simplify", NL.OPAMP_MDL_REL),
 @contextlib.contextmanager
 def use_model(name):
     """Switch the op-amp model every netlist builder uses (netlib.SUB and the .include), then restore the vendor macro."""
-    NL.SUB, NL.OPAMP_MDL_REL = MODELS[name]
+    NL.SUB, NL.OPAMP_INC = MODELS[name]
     try:
         yield name
     finally:
-        NL.SUB, NL.OPAMP_MDL_REL = MODELS["vendor"]
+        NL.SUB, NL.OPAMP_INC = MODELS["vendor"]
 
 
 def beh_sha():
@@ -1105,22 +1118,45 @@ ac dec 20 1k 1g
 .endc
 .end
 """
-    with open(os.path.join(HERE, "scope_v2.cir"), "w") as f:
-        f.write(txt.replace(OPAMP_MDL_REL, os.path.relpath(OPAMP_MDL, HERE)))
-    with open(os.path.join(NETD, "scope_v2.cir"), "w") as f:
-        f.write(txt)
-    o = subprocess.run(["ngspice", "-b", "scope_v2.cir"], cwd=HERE, capture_output=True, text=True)
-    return dict(ok=("v(apin)" in o.stdout and "Error" not in o.stdout), tail=o.stdout[-200:])
+    with open(os.path.join(OUT_DIR, "scope_v2.cir"), "w") as f:
+        f.write(txt.replace(OPAMP_INC, os.path.basename(OPAMP_MDL)))          # the committed copy names the macro, not this machine's path
+    out = run_ng("scope_v2", txt)                                              # netlists/scope_v2.cir, run under the cap
+    return dict(ok=("v(apin)" in out and "Error" not in out), tail=out[-200:])
 
 
 SECTIONS = dict(netlist=sec_netlist, cscan=sec_cscan, dc=sec_dc, ac=sec_ac, bw=sec_bw, noise=sec_noise, d17=sec_d17, tran=sec_tran, stab=sec_stab, beh=sec_beh,
                 prot=sec_prot, xtalk=sec_xtalk, static=sec_static, mc=sec_mc, guards=sec_guards)
 
-if __name__ == "__main__":
+def main(argv):
+    work, want, it, overrides = None, [], iter(argv), {}
+    for a in it:
+        if a == "--out":
+            set_out(next(it))
+        elif a == "--work":
+            work = next(it)
+        elif a == "--set":                                 # a sensitivity case: --set Cn_par=4.31e-12 (any key of netlib.P0, scalar)
+            k, v = next(it).split("=", 1)
+            if k not in NL.P0 or isinstance(NL.P0[k], (tuple, dict)):
+                raise SystemExit(f"--set {k}: not a scalar parameter of netlib.P0")
+            NL.P0[k] = type(NL.P0[k])(float(v)) if not isinstance(NL.P0[k], bool) else v == "1"
+            overrides[k] = NL.P0[k]
+        else:
+            want.append(a)
+    if work:
+        NL.set_workdir(work)
+    want = want or list(SECTIONS)
+    os.makedirs(RES, exist_ok=True)
     h = check_model()
-    want = sys.argv[1:] or list(SECTIONS)
-    meta = dict(ngspice=ngspice_version(), model_sha256=h, model=os.path.relpath(OPAMP_MDL, HERE), beh_lib_sha256=beh_sha(), beh_lib="beh/tph2502_beh.lib (whatif/tph2502, read-only)")
+    meta = dict(ngspice=ngspice_version(), model_sha256=h, model="TPH2501_ngspice.mdl (simtools.vendor)", beh_lib_sha256=beh_sha(),
+                beh_lib="models-open/tph2502-beh/tph2502_beh.lib")
+    if overrides:
+        meta["overrides"] = overrides                       # a run that is not the baseline says so in its meta.json
     save("meta", meta)
     for s in want:
         print(f"== {s}", flush=True)
         r = SECTIONS[s]()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

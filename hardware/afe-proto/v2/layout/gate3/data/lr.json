@@ -1,0 +1,169 @@
+[
+ {
+  "rule": "LR-1",
+  "checker_row": "LR-1",
+  "ok": true,
+  "detail": "2 layers, one bottom plane, 1 bottom runs, 37 GND pads each with its own via",
+  "figures": {
+   "layers": 2.0,
+   "bottom_pieces": 1.0,
+   "bottom_runs": 1.0,
+   "max_run_mm": 2.5,
+   "max_run_vias": 2.0,
+   "gnd_pads": 37.0,
+   "pads_without_via": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-2",
+  "checker_row": "LR-2",
+  "ok": true,
+  "detail": "flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)",
+  "figures": {
+   "divider_gap_mm": 5.110322886080684,
+   "generator_to_5v_mm": 13.224658785768352,
+   "generator_to_J101_mm": 75.82359856931086,
+   "generator_to_J201_mm": 71.22406124337476,
+   "generator_to_J301_mm": 70.68494960032157,
+   "U501_to_generator_mm": 13.162500000000001,
+   "U502_to_generator_mm": 16.598509037259976,
+   "R501_to_generator_mm": 27.08072423329923,
+   "R506_to_generator_mm": 15.447605801547374
+  }
+ },
+ {
+  "rule": "LR-3",
+  "checker_row": "LR-3",
+  "ok": true,
+  "detail": "10 divider nets: no via, short, no track beside",
+  "figures": {
+   "nets": 10.0,
+   "longest_mm": 5.984863273947651,
+   "tracks_too_close": 0.0
+  }
+ },
+ {
+  "rule": "LR-4",
+  "checker_row": "LR-4",
+  "ok": true,
+  "detail": "A0/A1 top only, no via (46/58 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it",
+  "figures": {
+   "a0_mm": 46.376395103067914,
+   "a1_mm": 57.87914113562374,
+   "fb_mm": 4.946976021793542,
+   "violations": 0.0,
+   "gnd_track_gap_AWG_FB_mm": 2.7146935890075143,
+   "gnd_track_gap_CH1_OUT_mm": 0.4200010000000006,
+   "gnd_track_gap_CH2_OUT_mm": 0.8799989999999994,
+   "pour_gap_AWG_FB_mm": 0.7940634878427453,
+   "pour_gap_CH1_OUT_mm": 0.1708166852133108,
+   "pour_gap_CH2_OUT_mm": 0.1708166852133051
+  }
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "checker_row": "LR-4 INV_MAX",
+  "ok": true,
+  "detail": "AWG_FB 4.9 mm, CH1_OUT 2.7 mm, CH2_OUT 2.5 mm (<= 5.0)",
+  "figures": {
+   "AWG_FB": 4.946976021793542,
+   "CH1_OUT": 2.7200009999999963,
+   "CH2_OUT": 2.5349990000000098
+  }
+ },
+ {
+  "rule": "LR-4 decoupling (DECOUP_MAX 3.0 mm)",
+  "checker_row": "LR-12 DECOUP_MAX",
+  "ok": true,
+  "detail": "7 caps within 3.0 mm: C104>U101.8 1.6, C105>U101.8 2.4, C305>U301.8 2.4, C306>U301.4 2.9, C502>U501.1 2.0, C501>U501.2 1.9, C503>U502.8 2.2",
+  "figures": {
+   "C104>U101.8": 1.6279597108042863,
+   "C105>U101.8": 2.4220341905105216,
+   "C305>U301.8": 2.42467008065015,
+   "C306>U301.4": 2.9387446554610674,
+   "C502>U501.1": 2.00701893364263,
+   "C501>U501.2": 1.9416487838947618,
+   "C503>U502.8": 2.1744876178081576
+  }
+ },
+ {
+  "rule": "LR-5",
+  "checker_row": "LR-5",
+  "ok": true,
+  "detail": "sensitive copper >= 10.0 mm from U401/C409",
+  "figures": {
+   "min_distance_mm": 12.130459007737304,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-6",
+  "checker_row": "LR-6",
+  "ok": true,
+  "detail": "+3V3A and VNEG: one piece per consumer group after cutting the star pads",
+  "figures": {
+   "pieces": 11.0,
+   "groups_reached": 4.0,
+   "groups_absent": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-7",
+  "checker_row": "LR-7",
+  "ok": true,
+  "detail": "DAC0 2.2 mm; back-termination at the BNC; shell pads on ground",
+  "figures": {
+   "dac0_mm": 2.16,
+   "shell_pads": 3.0,
+   "R301_to_J301_mm": 12.132499999999993,
+   "R302_to_J301_mm": 12.359901142404006
+  }
+ },
+ {
+  "rule": "LR-8",
+  "checker_row": "LR-8",
+  "ok": true,
+  "detail": "VREF: 6 branches each on its own copper",
+  "figures": {
+   "branches": 6.0,
+   "branches_reached": 6.0,
+   "branches_unchecked": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-9",
+  "checker_row": "LR-9",
+  "ok": true,
+  "detail": "SDA / SCL outside every analog courtyard but their own parts",
+  "figures": {
+   "digital_segments": 11.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-11",
+  "checker_row": "LR-11",
+  "ok": true,
+  "detail": "5 outlines hold exactly their parts, 112 designators, 8 test points, 8 designator pairs under the gap on their recorded floors",
+  "figures": {
+   "outlines": 5.0,
+   "designators": 112.0,
+   "violations": 0.0,
+   "waived_pairs": 8.0
+  }
+ },
+ {
+  "rule": "LR-10",
+  "checker_row": "LR-10",
+  "ok": false,
+  "detail": "DRC {'courtyards_overlap': 2}; unconnected 0",
+  "figures": {
+   "violations": 2.0,
+   "unconnected": 0.0,
+   "courtyards_overlap": 2.0
+  }
+ }
+]

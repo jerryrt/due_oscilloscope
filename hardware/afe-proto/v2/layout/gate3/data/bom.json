@@ -1,0 +1,1227 @@
+{
+ "fx": 6.6912,
+ "results": {
+  "engine_5": {
+   "boards": 5,
+   "orders": 1,
+   "total_cny_lo": 98.388740704,
+   "total_cny_hi": 98.388740704,
+   "total_usd_lo": 14.704199650884744,
+   "total_usd_hi": 14.704199650884744,
+   "parts_cny": 28.3702,
+   "owner_cny": 25.951600704,
+   "pcb_cny": 6.18694,
+   "setup_cny": 10.0,
+   "fees_cny": 27.88,
+   "placements": 77,
+   "joints": 188,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "board_5": {
+   "boards": 5,
+   "orders": 1,
+   "total_cny_lo": 98.815762104,
+   "total_cny_hi": 98.815762104,
+   "total_usd_lo": 14.768018009325681,
+   "total_usd_hi": 14.768018009325681,
+   "parts_cny": 28.5372214,
+   "owner_cny": 25.951600704,
+   "pcb_cny": 6.18694,
+   "setup_cny": 10.0,
+   "fees_cny": 28.14,
+   "placements": 90,
+   "joints": 214,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "engine_10": {
+   "boards": 10,
+   "orders": 1,
+   "total_cny_lo": 80.888740704,
+   "total_cny_hi": 80.888740704,
+   "total_usd_lo": 12.088824232424678,
+   "total_usd_hi": 12.088824232424678,
+   "parts_cny": 25.8702,
+   "owner_cny": 25.951600704,
+   "pcb_cny": 4.18694,
+   "setup_cny": 5.0,
+   "fees_cny": 19.88,
+   "placements": 77,
+   "joints": 188,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "board_10": {
+   "boards": 10,
+   "orders": 1,
+   "total_cny_lo": 81.315762104,
+   "total_cny_hi": 81.315762104,
+   "total_usd_lo": 12.152642590865614,
+   "total_usd_hi": 12.152642590865614,
+   "parts_cny": 26.0372214,
+   "owner_cny": 25.951600704,
+   "pcb_cny": 4.18694,
+   "setup_cny": 5.0,
+   "fees_cny": 20.14,
+   "placements": 90,
+   "joints": 214,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "engine_20": {
+   "boards": 20,
+   "orders": 1,
+   "total_cny_lo": 64.688740704,
+   "total_cny_hi": 67.188740704,
+   "total_usd_lo": 9.667733845050215,
+   "total_usd_hi": 10.041358904830224,
+   "parts_cny": 24.6902,
+   "owner_cny": 23.431600703999997,
+   "pcb_cny": 3.18694,
+   "setup_cny": 2.5,
+   "fees_cny": 10.88,
+   "placements": 77,
+   "joints": 188,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "board_20": {
+   "boards": 20,
+   "orders": 1,
+   "total_cny_lo": 65.115762104,
+   "total_cny_hi": 67.615762104,
+   "total_usd_lo": 9.731552203491152,
+   "total_usd_hi": 10.10517726327116,
+   "parts_cny": 24.8572214,
+   "owner_cny": 23.431600703999997,
+   "pcb_cny": 3.18694,
+   "setup_cny": 2.5,
+   "fees_cny": 11.14,
+   "placements": 90,
+   "joints": 214,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "engine_100": {
+   "boards": 100,
+   "orders": 2,
+   "total_cny_lo": 55.598740704,
+   "total_cny_hi": 56.598740704,
+   "total_usd_lo": 8.309233127690101,
+   "total_usd_hi": 8.458683151602104,
+   "parts_cny": 21.6902,
+   "owner_cny": 21.841600704,
+   "pcb_cny": 2.58694,
+   "setup_cny": 1.0,
+   "fees_cny": 8.48,
+   "placements": 77,
+   "joints": 188,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  },
+  "board_100": {
+   "boards": 100,
+   "orders": 2,
+   "total_cny_lo": 56.025762104,
+   "total_cny_hi": 57.025762104,
+   "total_usd_lo": 8.373051486131038,
+   "total_usd_hi": 8.52250151004304,
+   "parts_cny": 21.8572214,
+   "owner_cny": 21.841600704,
+   "pcb_cny": 2.58694,
+   "setup_cny": 1.0,
+   "fees_cny": 8.740000000000002,
+   "placements": 90,
+   "joints": 214,
+   "extended_types": 4,
+   "unpriced": [
+    "J_RAT",
+    "SH_RAT",
+    "MH-so25",
+    "MH-sc25",
+    "J-cal"
+   ]
+  }
+ },
+ "dnp": [
+  "R514"
+ ],
+ "bridge_part": {
+  "C21189": {
+   "n": 13,
+   "cls": "Basic",
+   "derived": true,
+   "mfr": "0603WAF0000T5E",
+   "stock": "17559264",
+   "read_utc": "2026-11-13 07:56",
+   "unit_cny_20": 0.0128478
+  }
+ },
+ "unpriced_board": [],
+ "lines": [
+  {
+   "lcsc": "C118223",
+   "refs": [
+    "U101",
+    "U301"
+   ],
+   "qty": 2,
+   "value": "TPH2502-SR",
+   "footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+   "cls": "Extended",
+   "mfr": "TPH2502-SR",
+   "derived": false,
+   "stock": "3313",
+   "unit_cny_5": 2.69,
+   "unit_cny_10": 2.69,
+   "unit_cny_20": 2.34,
+   "unit_cny_100": 1.91,
+   "line_cny_20": 4.68,
+   "line_usd_20": 0.6994261119081778
+  },
+  {
+   "lcsc": "C2837587",
+   "refs": [
+    "J101",
+    "J201",
+    "J301"
+   ],
+   "qty": 3,
+   "value": "KH-BNC50-3511",
+   "footprint": "afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal",
+   "cls": "Extended",
+   "mfr": "KH-BNC50-3511",
+   "derived": false,
+   "stock": "12520",
+   "unit_cny_5": 4.82,
+   "unit_cny_10": 4.82,
+   "unit_cny_20": 3.98,
+   "unit_cny_100": 3.45,
+   "line_cny_20": 11.94,
+   "line_usd_20": 1.7844332855093255
+  },
+  {
+   "lcsc": "C37593",
+   "refs": [
+    "U502"
+   ],
+   "qty": 1,
+   "value": "ADS1115IDGSR",
+   "footprint": "Package_SO:MSOP-10_3x3mm_P0.5mm",
+   "cls": "Extended",
+   "mfr": "ADS1115IDGSR",
+   "derived": false,
+   "stock": "16673",
+   "unit_cny_5": 7.83,
+   "unit_cny_10": 6.91,
+   "unit_cny_20": 6.91,
+   "unit_cny_100": 6.04,
+   "line_cny_20": 6.91,
+   "line_usd_20": 1.0326996652319465
+  },
+  {
+   "lcsc": "C473398",
+   "refs": [
+    "U401"
+   ],
+   "qty": 1,
+   "value": "LM27762DSSR",
+   "footprint": "Package_SON:WSON-12-1EP_3x2mm_P0.5mm_EP1x2.65_ThermalVias",
+   "cls": "Extended",
+   "mfr": "LM27762DSSR",
+   "derived": false,
+   "stock": "40693",
+   "unit_cny_5": 5.78,
+   "unit_cny_10": 4.84,
+   "unit_cny_20": 4.84,
+   "unit_cny_100": 4.18,
+   "line_cny_20": 4.84,
+   "line_usd_20": 0.7233381157340985
+  },
+  {
+   "lcsc": "C54120492",
+   "refs": [
+    "U501"
+   ],
+   "qty": 1,
+   "value": "REF3030EAIDBZR",
+   "footprint": "Package_TO_SOT_SMD:SOT-23",
+   "cls": "Extended",
+   "mfr": "REF3030EAIDBZR",
+   "derived": false,
+   "stock": "975",
+   "unit_cny_5": 5.58,
+   "unit_cny_10": 4.94,
+   "unit_cny_20": 4.94,
+   "unit_cny_100": 4.33,
+   "line_cny_20": 4.94,
+   "line_usd_20": 0.7382831181252989
+  },
+  {
+   "lcsc": "C13167",
+   "refs": [
+    "R306"
+   ],
+   "qty": 1,
+   "value": "2.7k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF2701T5E",
+   "derived": false,
+   "stock": "879280",
+   "unit_cny_5": 0.0195,
+   "unit_cny_10": 0.0195,
+   "unit_cny_20": 0.0195,
+   "unit_cny_100": 0.0195,
+   "line_cny_20": 0.0195,
+   "line_usd_20": 0.0029142754662840743
+  },
+  {
+   "lcsc": "C14663",
+   "refs": [
+    "C104",
+    "C305",
+    "C306",
+    "C502",
+    "C503"
+   ],
+   "qty": 5,
+   "value": "100n X7R",
+   "footprint": "Capacitor_SMD:C_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "CC0603KRX7R9BB104",
+   "derived": false,
+   "stock": "36456651",
+   "unit_cny_5": 0.1,
+   "unit_cny_10": 0.1,
+   "unit_cny_20": 0.1,
+   "unit_cny_100": 0.1,
+   "line_cny_20": 0.5,
+   "line_usd_20": 0.07472501195600191
+  },
+  {
+   "lcsc": "C15849",
+   "refs": [
+    "C105",
+    "C409",
+    "C501"
+   ],
+   "qty": 3,
+   "value": "1u X5R",
+   "footprint": "Capacitor_SMD:C_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "CL10A105KB8NNNC",
+   "derived": false,
+   "stock": "14206381",
+   "unit_cny_5": 0.0685,
+   "unit_cny_10": 0.0685,
+   "unit_cny_20": 0.0685,
+   "unit_cny_100": 0.0685,
+   "line_cny_20": 0.20550000000000002,
+   "line_usd_20": 0.030711979913916786
+  },
+  {
+   "lcsc": "C15850",
+   "refs": [
+    "C303",
+    "C304",
+    "C401",
+    "C402",
+    "C403",
+    "C404",
+    "C405",
+    "C406",
+    "C407",
+    "C408"
+   ],
+   "qty": 10,
+   "value": "10u X5R 25V",
+   "footprint": "Capacitor_SMD:C_0805_2012Metric",
+   "cls": "Basic",
+   "mfr": "CL21A106KAYNNNE",
+   "derived": false,
+   "stock": "8593430",
+   "unit_cny_5": 0.192,
+   "unit_cny_10": 0.192,
+   "unit_cny_20": 0.144,
+   "unit_cny_100": 0.144,
+   "line_cny_20": 1.44,
+   "line_usd_20": 0.21520803443328548
+  },
+  {
+   "lcsc": "C1634",
+   "refs": [
+    "C103",
+    "C203",
+    "C301"
+   ],
+   "qty": 3,
+   "value": "10p C0G",
+   "footprint": "Capacitor_SMD:C_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "CL10C100JB8NNNC",
+   "derived": false,
+   "stock": "1774478",
+   "unit_cny_5": 0.06,
+   "unit_cny_10": 0.06,
+   "unit_cny_20": 0.06,
+   "unit_cny_100": 0.06,
+   "line_cny_20": 0.18,
+   "line_usd_20": 0.026901004304160685
+  },
+  {
+   "lcsc": "C1653",
+   "refs": [
+    "C101",
+    "C201"
+   ],
+   "qty": 2,
+   "value": "22p C0G",
+   "footprint": "Capacitor_SMD:C_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "CL10C220JB8NNNC",
+   "derived": false,
+   "stock": "2311698",
+   "unit_cny_5": 0.0539,
+   "unit_cny_10": 0.0539,
+   "unit_cny_20": 0.0539,
+   "unit_cny_100": 0.0539,
+   "line_cny_20": 0.1078,
+   "line_usd_20": 0.01611071257771401
+  },
+  {
+   "lcsc": "C17901",
+   "refs": [
+    "R301",
+    "R302"
+   ],
+   "qty": 2,
+   "value": "100R 1%",
+   "footprint": "Resistor_SMD:R_1206_3216Metric",
+   "cls": "Basic",
+   "mfr": "1206W4F1000T5E",
+   "derived": false,
+   "stock": "2048063",
+   "unit_cny_5": 0.0359,
+   "unit_cny_10": 0.0359,
+   "unit_cny_20": 0.0359,
+   "unit_cny_100": 0.0359,
+   "line_cny_20": 0.0718,
+   "line_usd_20": 0.010730511716881875
+  },
+  {
+   "lcsc": "C21189",
+   "refs": [
+    "BR101",
+    "BR102",
+    "BR401",
+    "BR501",
+    "BR502",
+    "BR503",
+    "BR504",
+    "BR506",
+    "BR507",
+    "BR508",
+    "BR509",
+    "BR510",
+    "BR511"
+   ],
+   "qty": 13,
+   "value": "0R",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF0000T5E",
+   "derived": true,
+   "stock": "17559264",
+   "unit_cny_5": 0.0128478,
+   "unit_cny_10": 0.0128478,
+   "unit_cny_20": 0.0128478,
+   "unit_cny_100": 0.0128478,
+   "line_cny_20": 0.1670214,
+   "line_usd_20": 0.024961352223816353
+  },
+  {
+   "lcsc": "C21190",
+   "refs": [
+    "R509"
+   ],
+   "qty": 1,
+   "value": "1k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1001T5E",
+   "derived": false,
+   "stock": "28780441",
+   "unit_cny_5": 0.01,
+   "unit_cny_10": 0.01,
+   "unit_cny_20": 0.01,
+   "unit_cny_100": 0.01,
+   "line_cny_20": 0.01,
+   "line_usd_20": 0.0014945002391200382
+  },
+  {
+   "lcsc": "C22775",
+   "refs": [
+    "R305"
+   ],
+   "qty": 1,
+   "value": "100R 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1000T5E",
+   "derived": false,
+   "stock": "9930538",
+   "unit_cny_5": 0.0122,
+   "unit_cny_10": 0.0122,
+   "unit_cny_20": 0.0122,
+   "unit_cny_100": 0.0122,
+   "line_cny_20": 0.0122,
+   "line_usd_20": 0.0018232902917264468
+  },
+  {
+   "lcsc": "C22809",
+   "refs": [
+    "R507"
+   ],
+   "qty": 1,
+   "value": "15k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1502T5E",
+   "derived": false,
+   "stock": "3202479",
+   "unit_cny_5": 0.0174,
+   "unit_cny_10": 0.0174,
+   "unit_cny_20": 0.0174,
+   "unit_cny_100": 0.0174,
+   "line_cny_20": 0.0174,
+   "line_usd_20": 0.0026004304160688664
+  },
+  {
+   "lcsc": "C22935",
+   "refs": [
+    "R103",
+    "R203"
+   ],
+   "qty": 2,
+   "value": "1M 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1004T5E",
+   "derived": false,
+   "stock": "3896119",
+   "unit_cny_5": 0.0108,
+   "unit_cny_10": 0.0108,
+   "unit_cny_20": 0.0108,
+   "unit_cny_100": 0.0108,
+   "line_cny_20": 0.0216,
+   "line_usd_20": 0.0032281205164992827
+  },
+  {
+   "lcsc": "C22936",
+   "refs": [
+    "R308",
+    "R309",
+    "R406"
+   ],
+   "qty": 3,
+   "value": "1R 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF100KT5E",
+   "derived": false,
+   "stock": "484232",
+   "unit_cny_5": 0.0186,
+   "unit_cny_10": 0.0186,
+   "unit_cny_20": 0.0186,
+   "unit_cny_100": 0.0186,
+   "line_cny_20": 0.055799999999999995,
+   "line_usd_20": 0.008339311334289813
+  },
+  {
+   "lcsc": "C22967",
+   "refs": [
+    "R307"
+   ],
+   "qty": 1,
+   "value": "27k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF2702T5E",
+   "derived": false,
+   "stock": "562906",
+   "unit_cny_5": 0.0167,
+   "unit_cny_10": 0.0167,
+   "unit_cny_20": 0.0167,
+   "unit_cny_100": 0.0167,
+   "line_cny_20": 0.0167,
+   "line_usd_20": 0.002495815399330464
+  },
+  {
+   "lcsc": "C22984",
+   "refs": [
+    "R102",
+    "R202"
+   ],
+   "qty": 2,
+   "value": "30k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF3002T5E",
+   "derived": false,
+   "stock": "1628924",
+   "unit_cny_5": 0.0145,
+   "unit_cny_10": 0.0145,
+   "unit_cny_20": 0.0145,
+   "unit_cny_100": 0.0145,
+   "line_cny_20": 0.029,
+   "line_usd_20": 0.004334050693448111
+  },
+  {
+   "lcsc": "C23018",
+   "refs": [
+    "R510"
+   ],
+   "qty": 1,
+   "value": "3.9k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF3901T5E",
+   "derived": false,
+   "stock": "820991",
+   "unit_cny_5": 0.0099,
+   "unit_cny_10": 0.0099,
+   "unit_cny_20": 0.0099,
+   "unit_cny_100": 0.0099,
+   "line_cny_20": 0.0099,
+   "line_usd_20": 0.001479555236728838
+  },
+  {
+   "lcsc": "C23138",
+   "refs": [
+    "R501",
+    "R502",
+    "R503",
+    "R504",
+    "R505",
+    "R506"
+   ],
+   "qty": 6,
+   "value": "330R 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF3300T5E",
+   "derived": false,
+   "stock": "2410568",
+   "unit_cny_5": 0.0122,
+   "unit_cny_10": 0.0122,
+   "unit_cny_20": 0.0122,
+   "unit_cny_100": 0.0122,
+   "line_cny_20": 0.0732,
+   "line_usd_20": 0.010939741750358679
+  },
+  {
+   "lcsc": "C23162",
+   "refs": [
+    "R512",
+    "R513"
+   ],
+   "qty": 2,
+   "value": "4.7k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF4701T5E",
+   "derived": false,
+   "stock": "14573647",
+   "unit_cny_5": 0.0169,
+   "unit_cny_10": 0.0169,
+   "unit_cny_20": 0.0169,
+   "unit_cny_100": 0.0169,
+   "line_cny_20": 0.0338,
+   "line_usd_20": 0.005051410808225729
+  },
+  {
+   "lcsc": "C23178",
+   "refs": [
+    "R105",
+    "R205"
+   ],
+   "qty": 2,
+   "value": "470k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF4703T5E",
+   "derived": false,
+   "stock": "863438",
+   "unit_cny_5": 0.0181,
+   "unit_cny_10": 0.0181,
+   "unit_cny_20": 0.0181,
+   "unit_cny_100": 0.0181,
+   "line_cny_20": 0.0362,
+   "line_usd_20": 0.005410090865614539
+  },
+  {
+   "lcsc": "C23179",
+   "refs": [
+    "R107",
+    "R207"
+   ],
+   "qty": 2,
+   "value": "470R 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF4700T5E",
+   "derived": false,
+   "stock": "3642882",
+   "unit_cny_5": 0.0139,
+   "unit_cny_10": 0.0139,
+   "unit_cny_20": 0.0139,
+   "unit_cny_100": 0.0139,
+   "line_cny_20": 0.0278,
+   "line_usd_20": 0.004154710664753706
+  },
+  {
+   "lcsc": "C23192",
+   "refs": [
+    "R101",
+    "R104",
+    "R201",
+    "R204"
+   ],
+   "qty": 4,
+   "value": "510k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF5103T5E",
+   "derived": false,
+   "stock": "766968",
+   "unit_cny_5": 0.0121,
+   "unit_cny_10": 0.0121,
+   "unit_cny_20": 0.0121,
+   "unit_cny_100": 0.0121,
+   "line_cny_20": 0.0484,
+   "line_usd_20": 0.0072333811573409845
+  },
+  {
+   "lcsc": "C23206",
+   "refs": [
+    "R403"
+   ],
+   "qty": 1,
+   "value": "56k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF5602T5E",
+   "derived": false,
+   "stock": "706719",
+   "unit_cny_5": 0.0164,
+   "unit_cny_10": 0.0164,
+   "unit_cny_20": 0.0164,
+   "unit_cny_100": 0.0164,
+   "line_cny_20": 0.0164,
+   "line_usd_20": 0.0024509803921568627
+  },
+  {
+   "lcsc": "C23231",
+   "refs": [
+    "R402"
+   ],
+   "qty": 1,
+   "value": "68k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF6802T5E",
+   "derived": false,
+   "stock": "786500",
+   "unit_cny_5": 0.0093,
+   "unit_cny_10": 0.0093,
+   "unit_cny_20": 0.0093,
+   "unit_cny_100": 0.0093,
+   "line_cny_20": 0.0093,
+   "line_usd_20": 0.0013898852223816355
+  },
+  {
+   "lcsc": "C23345",
+   "refs": [
+    "R108",
+    "R208"
+   ],
+   "qty": 2,
+   "value": "22R 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF220JT5E",
+   "derived": false,
+   "stock": "5472853",
+   "unit_cny_5": 0.0101,
+   "unit_cny_10": 0.0101,
+   "unit_cny_20": 0.0101,
+   "unit_cny_100": 0.0101,
+   "line_cny_20": 0.0202,
+   "line_usd_20": 0.0030188904830224773
+  },
+  {
+   "lcsc": "C2500",
+   "refs": [
+    "D101",
+    "D201"
+   ],
+   "qty": 2,
+   "value": "BAV99",
+   "footprint": "Package_TO_SOT_SMD:SOT-23",
+   "cls": "Basic",
+   "mfr": "BAV99,215",
+   "derived": false,
+   "stock": "1913797",
+   "unit_cny_5": 0.0673,
+   "unit_cny_10": 0.0673,
+   "unit_cny_20": 0.0673,
+   "unit_cny_100": 0.0673,
+   "line_cny_20": 0.1346,
+   "line_usd_20": 0.020115973218555714
+  },
+  {
+   "lcsc": "C25803",
+   "refs": [
+    "R405"
+   ],
+   "qty": 1,
+   "value": "100k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1003T5E",
+   "derived": false,
+   "stock": "15152825",
+   "unit_cny_5": 0.0176,
+   "unit_cny_10": 0.0176,
+   "unit_cny_20": 0.0176,
+   "unit_cny_100": 0.0176,
+   "line_cny_20": 0.0176,
+   "line_usd_20": 0.0026303204208512673
+  },
+  {
+   "lcsc": "C25804",
+   "refs": [
+    "R508",
+    "R511"
+   ],
+   "qty": 2,
+   "value": "10k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1002T5E",
+   "derived": false,
+   "stock": "42784358",
+   "unit_cny_5": 0.0133,
+   "unit_cny_10": 0.0133,
+   "unit_cny_20": 0.0133,
+   "unit_cny_100": 0.0133,
+   "line_cny_20": 0.0266,
+   "line_usd_20": 0.003975370636059301
+  },
+  {
+   "lcsc": "C25808",
+   "refs": [
+    "R401"
+   ],
+   "qty": 1,
+   "value": "120k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1203T5E",
+   "derived": false,
+   "stock": "1074110",
+   "unit_cny_5": 0.0094,
+   "unit_cny_10": 0.0094,
+   "unit_cny_20": 0.0094,
+   "unit_cny_100": 0.0094,
+   "line_cny_20": 0.0094,
+   "line_usd_20": 0.001404830224772836
+  },
+  {
+   "lcsc": "C25811",
+   "refs": [
+    "R106",
+    "R206"
+   ],
+   "qty": 2,
+   "value": "200k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF2003T5E",
+   "derived": false,
+   "stock": "1734326",
+   "unit_cny_5": 0.0123,
+   "unit_cny_10": 0.0123,
+   "unit_cny_20": 0.0123,
+   "unit_cny_100": 0.0123,
+   "line_cny_20": 0.0246,
+   "line_usd_20": 0.003676470588235294
+  },
+  {
+   "lcsc": "C25981",
+   "refs": [
+    "R404"
+   ],
+   "qty": 1,
+   "value": "8.2k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF8201T5E",
+   "derived": false,
+   "stock": "675780",
+   "unit_cny_5": 0.021,
+   "unit_cny_10": 0.021,
+   "unit_cny_20": 0.021,
+   "unit_cny_100": 0.021,
+   "line_cny_20": 0.021,
+   "line_usd_20": 0.0031384505021520804
+  },
+  {
+   "lcsc": "C38523",
+   "refs": [
+    "C102",
+    "C202"
+   ],
+   "qty": 2,
+   "value": "12p C0G",
+   "footprint": "Capacitor_SMD:C_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "CL10C120JB8NNNC",
+   "derived": false,
+   "stock": "539529",
+   "unit_cny_5": 0.0416,
+   "unit_cny_10": 0.0416,
+   "unit_cny_20": 0.0416,
+   "unit_cny_100": 0.0416,
+   "line_cny_20": 0.0832,
+   "line_usd_20": 0.012434241989478718
+  },
+  {
+   "lcsc": "C4177",
+   "refs": [
+    "R407"
+   ],
+   "qty": 1,
+   "value": "1.8k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF1801T5E",
+   "derived": false,
+   "stock": "565050",
+   "unit_cny_5": 0.0125,
+   "unit_cny_10": 0.0125,
+   "unit_cny_20": 0.0125,
+   "unit_cny_100": 0.0125,
+   "line_cny_20": 0.0125,
+   "line_usd_20": 0.001868125298900048
+  },
+  {
+   "lcsc": "C4211",
+   "refs": [
+    "R303",
+    "R304"
+   ],
+   "qty": 2,
+   "value": "3k 1%",
+   "footprint": "Resistor_SMD:R_0603_1608Metric",
+   "cls": "Basic",
+   "mfr": "0603WAF3001T5E",
+   "derived": false,
+   "stock": "6320189",
+   "unit_cny_5": 0.0141,
+   "unit_cny_10": 0.0141,
+   "unit_cny_20": 0.0141,
+   "unit_cny_100": 0.0141,
+   "line_cny_20": 0.0282,
+   "line_usd_20": 0.004214490674318508
+  }
+ ],
+ "diffs": [
+  {
+   "lcsc": "C21189",
+   "board": 13,
+   "engine": 0,
+   "diff": 13,
+   "refs": [
+    "BR101",
+    "BR102",
+    "BR401",
+    "BR501",
+    "BR502",
+    "BR503",
+    "BR504",
+    "BR506",
+    "BR507",
+    "BR508",
+    "BR509",
+    "BR510",
+    "BR511"
+   ]
+  }
+ ],
+ "flags": [
+  "note: extra.csv row U-LM (LM27762DSSR +3.3 V_A / negative rail x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row Cin (10 uF X5R 25 V 0805 x8) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-fly (1 uF X5R 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-vin (100 nF X7R 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-fbp-a (150k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-fbp-b (24k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-fbp-c (100k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-fbn-a (100k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-fbn-b (330k 1 % 0603 x4) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-5v (1R 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-bleed (4.7k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row U-REF (REF3030EAIDBZR 3.0 V E grade x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-ref-in (100 nF X7R 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-ref-bulk (1 uF X5R 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-ref-out (100 nF X7R 0603 x2) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row U-ADC (ADS1115IDGSR x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row C-adc (100 nF X7R 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-lad (270R 1 % 0603 x8) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-sd (100k 1 % 0603 x2) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-sb (100k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts",
+  "note: extra.csv row R-ss (10k 1 % 0603 x1) dropped: powercal/parts.csv exists and lists its own parts"
+ ],
+ "owner_rows": [
+  {
+   "ref": "J-bnc",
+   "value": "BNC 50 ohm right-angle THT KH-BNC50-3511",
+   "qty": "3",
+   "fixed_usd": "",
+   "note": "v1; domestic ladder from whatif/bom.md",
+   "lcsc": "C2837587"
+  },
+  {
+   "ref": "J-hdr8",
+   "value": "1x8 stacking female header 2.54 mm",
+   "qty": "5",
+   "fixed_usd": "0.16066",
+   "note": "opencircuit.shop price EUR 0.1450 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*",
+   "lcsc": ""
+  },
+  {
+   "ref": "J-hdr10",
+   "value": "1x10 stacking female header 2.54 mm",
+   "qty": "1",
+   "fixed_usd": "0.08310",
+   "note": "opencircuit.shop price EUR 0.0750 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*",
+   "lcsc": ""
+  },
+  {
+   "ref": "J-hdr36",
+   "value": "2x18 stacking female header 2.54 mm",
+   "qty": "1",
+   "fixed_usd": "0.83102",
+   "note": "opencircuit.shop price EUR 0.7500 per piece incl. VAT (pack price / pack size), read 2026-11-12 UTC; EUR->CNY 7.414 (BoC spot selling 2026-11-13 00:00 Beijing); no quantity break; shipping excluded; tail length not stated on the listing *(check)*",
+   "lcsc": ""
+  },
+  {
+   "ref": "MH-so25",
+   "value": "M2.5 standoff (no M2.5 part priced *(check)*)",
+   "qty": "2",
+   "fixed_usd": "",
+   "note": "UNPRICED: the repo has no M2.5 standoff LCSC part (v2/kicad/README.md says nylon or brass at header-stack height); v1's M3 x 8 C66568 does not fit an M2.5 hole and was removed",
+   "lcsc": ""
+  },
+  {
+   "ref": "MH-sc25",
+   "value": "M2.5 screw (DIN 912; no M2.5 part priced *(check)*)",
+   "qty": "2",
+   "fixed_usd": "",
+   "note": "UNPRICED: the repo has no M2.5 screw LCSC part; v1's M3 x 5 C357542 was removed",
+   "lcsc": ""
+  },
+  {
+   "ref": "J-cal",
+   "value": "calibration jumper header pins",
+   "qty": "0",
+   "fixed_usd": "",
+   "note": "UNPRICED: count and part are the design's; not in the totals",
+   "lcsc": ""
+  }
+ ],
+ "nolcsc": [
+  {
+   "value": "+3V3A",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP401"
+   ]
+  },
+  {
+   "value": "+5V_F",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP403"
+   ]
+  },
+  {
+   "value": "A0",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP201"
+   ]
+  },
+  {
+   "value": "A1",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP101"
+   ]
+  },
+  {
+   "value": "ADCH0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+   "refs": [
+    "J603"
+   ]
+  },
+  {
+   "value": "ADCL0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+   "refs": [
+    "J602"
+   ]
+  },
+  {
+   "value": "AWG_OUT",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP301"
+   ]
+  },
+  {
+   "value": "CAL",
+   "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+   "refs": [
+    "J501"
+   ]
+  },
+  {
+   "value": "COMMUNICATION0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+   "refs": [
+    "J607"
+   ]
+  },
+  {
+   "value": "GND",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP404"
+   ]
+  },
+  {
+   "value": "M2.5 standoff",
+   "footprint": "MountingHole:MountingHole_2.7mm_M2.5",
+   "refs": [
+    "MH601",
+    "MH602"
+   ]
+  },
+  {
+   "value": "POWER0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+   "refs": [
+    "J601"
+   ]
+  },
+  {
+   "value": "PWMH0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
+   "refs": [
+    "J604"
+   ]
+  },
+  {
+   "value": "PWML0",
+   "footprint": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+   "refs": [
+    "J606"
+   ]
+  },
+  {
+   "value": "VNEG",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP402"
+   ]
+  },
+  {
+   "value": "VREF",
+   "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+   "refs": [
+    "TP501"
+   ]
+  },
+  {
+   "value": "XIO0",
+   "footprint": "afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO",
+   "refs": [
+    "J605"
+   ]
+  }
+ ],
+ "packages": [
+  "0603",
+  "0805",
+  "1206",
+  "BNC_Kinghelm_KH-BNC50-3511_Horizontal",
+  "MSOP-10_3x3mm_P0.5mm",
+  "MountingHole_2.7mm_M2.5",
+  "PinHeader_1x03_P2.54mm_Vertical",
+  "PinSocket_1x08_P2.54mm_Vertical",
+  "PinSocket_1x10_P2.54mm_Vertical",
+  "PinSocket_2x18_P2.54mm_Vertical_DueXIO",
+  "SOIC-8_3.9x4.9mm_P1.27mm",
+  "SOT-23",
+  "TestPoint_Pad_D1.5mm",
+  "WSON-12-1EP_3x2mm_P0.5mm_EP1x2.65_ThermalVias"
+ ],
+ "no_2512": true,
+ "no_2010": true
+}
