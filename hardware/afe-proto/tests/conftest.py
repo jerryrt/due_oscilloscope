@@ -88,7 +88,9 @@ def network_reachable():
 
 def vendor_models():
     """The hash-verified vendor SPICE models (tools/fetch_models.py), untracked: 'present' or None."""
-    return "present" if (Path(__file__).resolve().parents[1] / "models" / "opa365" / "OPA365_PSPICE.lib").is_file() else None
+    m = Path(__file__).resolve().parents[1] / "models"
+    needed = (m / "opa365" / "OPA365_PSPICE.lib", m / "tph2501" / "Spice_Model_TPH2501" / "TPH2501.mdl")
+    return "present" if all(f.is_file() for f in needed) else None
 
 
 _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".")[0]) == 10,

@@ -7,4 +7,5 @@ so is not turned into data here.
 """
 PROTECTED_NETS = ('/A0', '/A1',                       # the ADC lines
                   '/CH?_N', '/CH?_NP', '/CH?_IN',     # the divider nodes (N / NP / IN of both channels)
-                  '/VREF*')                           # the VREF branches (VREF, VREF_M, VREF_P, ...)
+                  '/VREF*',                           # the VREF branches (VREF, VREF_M, VREF_P, ...)
+                  '/SNS*')                            # the sense pair: precision copper (montreal5, after the v1 REFCAL finding)

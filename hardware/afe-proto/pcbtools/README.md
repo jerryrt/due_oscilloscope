@@ -233,6 +233,10 @@ takes the medians. The five old tools and the two new build steps are in `tests/
 
 ## `planar.py`: can this block be routed on one layer without a crossing?
 
+**Status: an advisory screen, not a gate; nobody is required to run it.** What it showed: *non-planar is a reason to expect a
+bridge; planar promises nothing.* It also **disagrees with the hand-found v1 REFCAL crossing** (under the guessed leg order it
+suggests TAP3, not SNS_B). A geometric version is deliberately not built: the router flow is the better investment.
+
 Crossings used to be found only while routing. `planar.check(block_nets, pads, rotation, boundary, protected)` answers before:
 planar or not, the fewest nets that must be bridged (a 0R 0603 or a hop), which net to bridge (never one that matches
 `protected`: ADC lines, divider nodes, VREF branches, `boards/planar_v2.PROTECTED_NETS`), and which nets it crosses. The planarity
@@ -290,8 +294,8 @@ hand derivation:
 
 The hand derivation used placement facts the topology lacks (leg D running between the pads of R517-R519, which face each leg
 borders), so `test_v1_refcal_finds_the_hand_found_crossing` is a strict xfail with that reason and the three findings above are
-pinned as ordinary tests. SNS_B is not matched by the default protected patterns, so the rule would not have forbidden bridging it
-(it is a sense net: add `/SNS*` to `PROTECTED_NETS` if the owner wants it protected).
+pinned as ordinary tests. `/SNS*` is in `PROTECTED_NETS` (the sense pair is precision copper), so the tool would now refuse to
+suggest SNS_B as a bridge.
 
 ### What it cannot see
 

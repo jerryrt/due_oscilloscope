@@ -304,9 +304,9 @@ def test_v2_edge_points_come_from_tracks(v2board, v2cfg):
 def test_v2_protected_patterns_cover_the_rule():
     from pcbtools.boards import planar_v2
     p = planar_v2.PROTECTED_NETS
-    for net in ('/A0', '/A1', '/CH1_N', '/CH2_NP', '/CH1_IN', '/VREF', '/VREF_M', '/VREF_P'):
+    for net in ('/A0', '/A1', '/CH1_N', '/CH2_NP', '/CH1_IN', '/VREF', '/VREF_M', '/VREF_P', '/SNS_B', '/SNS_T0'):
         assert planar._is_protected(net, p), net
-    for net in ('/+3V3A', '/VNEG', '/SNS_B', '/TAP3', '/AWG_BIN'):
+    for net in ('/+3V3A', '/VNEG', '/TAP3', '/AWG_BIN'):
         assert not planar._is_protected(net, p), net
 
 
