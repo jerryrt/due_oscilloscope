@@ -39,11 +39,19 @@ def _load(name, path):
 
 
 def _modules(old, names):
+    """load the old scripts of the copy in `old` under namespaced names. The old build scripts import their siblings by plain
+    name (design, sexpr, layout): `old` is on sys.path only while they load (the path is restored whole, the scripts add entries of their own), and every plain-named module they brought in
+    is removed from sys.modules again, so a later `import sexpr` in this process cannot find this board's copy."""
+    before, path = set(sys.modules), list(sys.path)
     sys.path.insert(0, old)
     try:
-        return [_load(f'_v1b_{os.path.basename(old)}_{n}', os.path.join(old, n + '.py')) for n in names]
+        return [_load(f'pcbtools._fixture_v1_build.{os.path.basename(old)}.{n}', os.path.join(old, n + '.py')) for n in names]
     finally:
-        sys.path.remove(old)
+        sys.path[:] = path                       # the old scripts also insert their own folder at import
+        for k in set(sys.modules) - before:
+            f = getattr(sys.modules[k], '__file__', None) or ''
+            if '.' not in k and os.path.abspath(f).startswith(os.path.abspath(old) + os.sep):
+                del sys.modules[k]
 
 
 def _exclusions(pin_at, uid, root):

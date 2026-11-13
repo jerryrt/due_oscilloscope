@@ -17,24 +17,21 @@ SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures'
 
 
 def _load_sources():
-    """import design, floorplan and layout from SOURCE_DIR under private names (nothing is put on sys.path)"""
+    """import design, floorplan and layout from SOURCE_DIR under namespaced names (pcbtools._fixture_v1.<name>): nothing is
+    put on sys.path and no plain name ('floorplan', 'layout') is left in sys.modules for another board's code to pick up.
+    The three files import nothing of each other, which is why no path is needed."""
     mods = {}
     keep = sys.dont_write_bytecode
     sys.dont_write_bytecode = True               # the fixture folder is frozen: importing it must not leave __pycache__ in it
-    added = SOURCE_DIR not in sys.path
-    if added:
-        sys.path.insert(0, SOURCE_DIR)           # design.py imports its siblings by plain name; undone below
     try:
         for name in ('design', 'floorplan', 'layout'):
-            spec = importlib.util.spec_from_file_location(f'_pcbtools_v1_{name}', os.path.join(SOURCE_DIR, name + '.py'))
+            spec = importlib.util.spec_from_file_location(f'pcbtools._fixture_v1.{name}', os.path.join(SOURCE_DIR, name + '.py'))
             m = importlib.util.module_from_spec(spec)
             sys.modules[spec.name] = m
             spec.loader.exec_module(m)
             mods[name] = m
     finally:
         sys.dont_write_bytecode = keep
-        if added:
-            sys.path.remove(SOURCE_DIR)
     return mods['design'], mods['floorplan'], mods['layout']
 
 
