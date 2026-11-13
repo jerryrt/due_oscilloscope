@@ -143,3 +143,39 @@ direct solve (SuperLU) took 0.48 s at 19 k unknowns against 0.1 s for plain CG a
 (CG 1.1 s); an ILU preconditioner (spilu) made CG take 23 000 iterations on 2 k unknowns and was dropped. Coordinates are
 rounded to a nanometre in KiCad mm before rasterising so every cell decision equals the old tool's (a 0.2 mm track on a 0.1 mm grid
 puts cell centres exactly on its edge). `python tests/pcbtools/mutate_cap.py` is the mutation proof.
+
+
+# Write path and generators (kvm_01): editor, sexpr, schematic, build, renumber, floorplan, merge
+
+Every module reads from or writes to plain Python values; none names a host path, and none keeps module-level state (a
+board object kept alive in a module is what ran the shared machine out of memory once).
+
+| module | what it does | checked against |
+|---|---|---|
+| `editor.py` | `with edit(path, out=None) as e:` the ONE place a board is changed: `move`, `set_ref`, `set_ref_pose`, `add_text`, `add_footprint_from`, `remove_footprint`, `add_tracks(net, layer, x0, y0, x1, y1, w)` and `add_vias(net, x, y, dia, drill)` (array arguments, grouped by the caller), `remove_tracks`/`remove_vias(idx)` by the `*_idx` of `BoardArrays`, `fill_zones`, `pour`. Saved once on exit | read-back with `boardio` after each edit; repeated edits in one process (the SWIG ownership traps below) |
+| `sexpr.py` | tokenizer and iterative reader/writer of KiCad s-expressions (`parse`, `dump`, `find`, `first`, `Q`), symmetric escapes | round trip on every fixture file; atom count; a slow budget step |
+| `schematic.py` | `write_all(parts, cfg, out_dir)`: the symbol library, the sheets and the project from `design.PARTS` | byte-identical to the old `build_sch.py` on v1 |
+| `build.py` | `build_board(parts, cfg, place, nets, out, legalise_overlaps, anchors)`; `legalise` pushes overlapping courtyards apart (anchors never move); `overlaps` is one array pass | same parts, pads, nets, outline and positions as the old `build_pcb.py` on v1; two builds are byte-identical |
+| `renumber.py` | `build_map`, `rewrite` (whole-word, single pass), `unmapped` | the v1 renumber map |
+| `floorplan.py` | `table_md`, `svg`, `validate` from the floorplan data | the v1 contract table |
+| `merge.py` | `merge(base, {block: board}, out, cfg)`; `python -m pcbtools.merge --board v1 --base B --out O BLOCK=PATH ...` (exit 0 all merged, 1 a block refused, 2 usage) | the old `merge_blocks.py`: same merged board, same refusals |
+
+`boards/v1.py` is the v1 BoardConfig (fences, hundreds map, tolerance) and `boards/v1_build.py` the one place that turns the frozen
+old design, layout and build constants into the `cfg` objects of `schematic.write_all` and `build_board`; the equivalence tests
+and the bench steps both use it.
+
+## Things that bite in the write path
+
+- **pcbnew SWIG ownership.** `board.Remove(item)` hands the item to Python, which frees it without its destructor and a later
+  `LoadBoard` then returns a bare `SwigPyObject`: the editor uses `RemoveNative`, and every item it `Add`s gets `thisown = False`.
+- **A via that lands on a pad takes that pad's net** when the board is saved and read back, whatever net was asked for.
+- **pcbnew writes `<board>.kicad_prl` (and a lock) beside any board it loads**: run it on a copy, never on a fixture. A test fails
+  if one appears in `tests/fixtures`.
+- **The old tools write next to themselves**, so they run on a throw-away copy of the frozen fixture
+  (`tests/golden/v1-34b2e51-image/run_old.sh`).
+
+## Goldens of record, v1
+
+`tests/golden/v1-34b2e51-image/`: each old v1 tool's output, taken inside the pinned PCB image and stamped with its digest in
+`STAMP.json`; every output was produced twice and compared byte for byte. The figures in `STAMP.json` are single runs; the bench
+takes the medians. The five old tools and the two new build steps are in `tests/bench_steps.json`.
