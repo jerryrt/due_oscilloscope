@@ -6,7 +6,7 @@ its nets, the links to the schematic. Nothing here names a board.
 
 parts  [dict]   ref, fp ('lib:name'), value, lcsc, mpn, fitted_by, note, dnp
 place  {ref: (x, y, rot[, locked])}   Due mm, degrees; every part must be in it (a missing one raises)
-cfg    object   PROJECT, NS, OUTLINE (x0, y0, x1, y1), REFERENCE_OUTLINE [(x, y)...] (drawn on User.1, optional), TITLE, REV,
+cfg    object   PROJECT, NS, OUTLINE (x0, y0, x1, y1), KEEPOUTS [(name, (x0, y0, x1, y1))] rule areas (optional), REFERENCE_OUTLINE [(x, y)...] (drawn on User.1, optional), TITLE, REV,
                 COMMENTS [str], FOOTPRINT_DIR (KiCad's .pretty libraries), PROJECT_LIB_DIR (the 'afe' library),
                 MODEL_OVERRIDE {fpid: (file, sha256)} and MODELS_DIR (optional)
 
@@ -188,6 +188,19 @@ def build_board(parts, cfg, place, nets, out_path, legalise_overlaps=False, anch
     poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], pcb.Edge_Cuts, 0.1, True)
     if getattr(cfg, 'REFERENCE_OUTLINE', None):
         poly(cfg.REFERENCE_OUTLINE, pcb.User_1, 0.15, False)
+    for kname, (kx0, ky0, kx1, ky1) in getattr(cfg, 'KEEPOUTS', ()):         # rule areas: no tracks, vias or copper pour, on every copper layer
+        z = pcb.ZONE(board)
+        z.SetIsRuleArea(True)
+        z.SetLayerSet(pcb.LSET.AllCuMask())
+        z.SetDoNotAllowTracks(True)
+        z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowZoneFills(True)
+        z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowFootprints(False)
+        z.SetZoneName(kname)
+        for px, py in ((kx0, ky0), (kx1, ky0), (kx1, ky1), (kx0, ky1)):
+            z.AppendCorner(at(px, py), -1)
+        board.Add(z)
 
     net_items = {}
 

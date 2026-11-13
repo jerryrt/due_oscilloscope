@@ -77,7 +77,10 @@ SYMBOL_DIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
 FOOTPRINT_DIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
 
 # board geometry
-BOARD_RECT = (17.0, 0.0, 117.0, 53.34)                          # the shield's rectangle
+# The shield's rectangle (Due mm, y up). The outline overhangs the Due by 5 mm on the analog-header edge only (the south edge, y 0), and that band is a
+# copper keep-out: owner's ruling 2026-11-13 (MC-1 amended); the other edges keep the Due's outline, so the board is 100 x 58.34 mm.
+BOARD_RECT = (17.0, -5.0, 117.0, 53.34)
+KEEPOUTS = [('analog edge band', (17.0, -5.0, 117.0, 0.0))]      # rule area over the 5 mm band: no tracks, vias or pour
 REFERENCE_OUTLINE = [(1, 0), (98.06, 0), (99.06, 1), (99.06, 2.54), (101.6, 5.08), (101.6, 37.846), (99.06, 40.386),
                      (99.06, 51.816), (97.536, 53.34), (1, 53.34), (0, 52.34), (0, 1), (1, 0)]   # the Due's own outline (V03)
 # header: (pin-1 x, pin-1 y, direction of rising pin numbers), due-header-table.md section 2
@@ -161,7 +164,7 @@ ANCHORS = frozenset(set(HEADERS) | set(BNCS) | {'J607', 'MH601', 'MH602'})      
 def pcb_cfg(**over):
     import types
     cfg = types.SimpleNamespace(
-        PROJECT=PROJECT, NS=NS, OUTLINE=BOARD_RECT, REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
+        PROJECT=PROJECT, NS=NS, OUTLINE=BOARD_RECT, KEEPOUTS=list(KEEPOUTS), REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
         TITLE=TITLE + ': AFE shield for the Arduino Due, placement', REV=REV, COMMENTS=list(PCB_COMMENTS),
         FOOTPRINT_DIR=FOOTPRINT_DIR, PROJECT_LIB_DIR=PROJECT_LIB_DIR, MODEL_OVERRIDE=dict(MODEL_OVERRIDE), MODELS_DIR=MODELS_DIR)
     for k, v in over.items():

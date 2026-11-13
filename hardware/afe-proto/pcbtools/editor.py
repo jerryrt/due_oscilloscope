@@ -204,6 +204,42 @@ class Editor:
         self.fill_zones()
         return z
 
+    def set_outline(self, rect, width=0.1):
+        """Edge.Cuts replaced by the rectangle `rect` = (x0, y0, x1, y1) in Due mm: every Edge.Cuts drawing is removed and four
+        segments added"""
+        for d in [d for d in self.b.GetDrawings() if d.GetLayer() == self.pcb.Edge_Cuts]:
+            self.b.RemoveNative(d)
+        x0, y0, x1, y1 = rect
+        pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        for a_, b_ in zip(pts, pts[1:] + pts[:1]):
+            s = self.pcb.PCB_SHAPE(self.b)
+            s.SetShape(self.pcb.SHAPE_T_SEGMENT)
+            s.SetStart(self._pt(*a_))
+            s.SetEnd(self._pt(*b_))
+            s.SetLayer(self.pcb.Edge_Cuts)
+            s.SetWidth(self.pcb.FromMM(float(width)))
+            self.b.Add(s)
+            self._give(s)
+
+    def keepout(self, rect, name='keepout', tracks=True, vias=True, pour=True):
+        """a rule area over `rect` = (x0, y0, x1, y1) in Due mm on every copper layer: no tracks, no vias, no copper pour (each
+        switchable); pads and footprints are allowed. KiCad's DRC reports anything inside it as a keepout violation"""
+        z = self.pcb.ZONE(self.b)
+        z.SetIsRuleArea(True)
+        z.SetLayerSet(self.pcb.LSET.AllCuMask())
+        z.SetDoNotAllowTracks(bool(tracks))
+        z.SetDoNotAllowVias(bool(vias))
+        z.SetDoNotAllowZoneFills(bool(pour))
+        z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowFootprints(False)
+        z.SetZoneName(name)
+        x0, y0, x1, y1 = rect
+        for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+            z.AppendCorner(self._pt(px, py), -1)
+        self.b.Add(z)
+        self._give(z)
+        return z
+
     def pad_xy(self, ref, pin):
         """centre of pad `pin` of `ref` in Due mm (the last pad of that number, as boardio reads it)"""
         hit = [p for p in self._fp(ref).Pads() if p.GetNumber() == str(pin)]

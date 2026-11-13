@@ -198,3 +198,40 @@ def test_stub_via_runs_from_the_pad_centre_to_the_offset_and_ends_in_a_via(board
     with pytest.raises(KeyError):
         with edit(board) as e:
             e.pad_xy(ref, 'nope')
+
+
+def test_set_outline_replaces_the_edge_cuts_rectangle(board):
+    with edit(board) as e:
+        e.set_outline((10.0, -5.0, 110.0, 55.0))
+    b = boardio.read_board(board)
+    x0, y0, x1, y1 = b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()
+    assert (x0, y0, x1, y1) == pytest.approx((10.0, -5.0, 110.0, 55.0), abs=1e-5)
+    assert len(np.unique(b.outline.round(4), axis=0)) == 4                       # one rectangle, nothing of the old outline left
+
+
+def _drc_types(path):
+    import json
+    import subprocess
+    out = path.parent / 'drc.json'
+    subprocess.run(['kicad-cli', 'pcb', 'drc', '--format', 'json', '--severity-all', '-o', str(out), str(path)], capture_output=True)
+    return [v['type'] for v in json.loads(out.read_text())['violations']]
+
+
+def test_keepout_makes_kicad_report_a_track_and_a_via_inside_it(board):
+    """the rule area has to DO something: with it a track and a via inside the band are 'items not allowed' (keepout area) violations, without it they are not
+    (the arm: the same copper on a board with no rule area)"""
+    import shutil
+    if not shutil.which('kicad-cli'):
+        pytest.skip('no kicad-cli')
+    b = boardio.read_board(board)
+    x0, y0, x1, y1 = b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()
+    band = (x0, y0 - 5.0, x1, y0)                                               # 5 mm south of the outline
+    with edit(board) as e:
+        e.set_outline((x0, y0 - 5.0, x1, y1))
+        e.add_tracks('GND', 'F', x0 + 10, y0 - 2.5, x0 + 14, y0 - 2.5, 0.2)
+        e.add_vias('GND', x0 + 20, y0 - 2.5, 0.6, 0.3)
+    assert 'items_not_allowed' not in _drc_types(board)
+    with edit(board) as e:
+        e.keepout(band, name='analog edge band')
+    types = _drc_types(board)
+    assert types.count('items_not_allowed') == 2, types                      # the track and the via: KiCad's keepout violation
