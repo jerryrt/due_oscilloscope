@@ -979,12 +979,18 @@ def lr11(b, cfg):
             bad.append('designator over another part\'s pad: ' + ', '.join(f'{a} on {c}' for a, c in over[:12]))
         if far:
             bad.append(f'designator more than {cfg.DESIGNATOR_DIST_MAX} mm from its part: ' + ', '.join(f'{a} {d}' for a, d in far[:12]))
+    npin = 0
+    if hasattr(cfg, 'EDGE_SOCKETS'):                       # the Due's pin names in the bands (pcbtools/pinlabels.py): only a config that names its edge sockets
+        from . import pinlabels
+        pin_bad = pinlabels.findings(b, cfg)
+        bad += pin_bad
+        npin = len(pinlabels.plan_labels(b, cfg))
     names = set(b.t_text)
     for w in cfg.SILK_WORDS:
         if w not in names:
             bad.append(f'silk word {w!r} missing')
     note = f', {nwaived} designator pairs under the gap on their recorded floors' if nwaived else ''
-    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}',
+    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}' + (f', {npin} pin labels' if npin else ''),
                   dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad)), waived_pairs=float(nwaived)))
 
 

@@ -13,4 +13,5 @@ draw_outlines.py       adds the table's rectangles the silk lacks (the AWG BNC o
 place_designators.py   silk-only designator placement (moves each Reference text; copper, parts, pads untouched); run it in the image
 refine_designators.py  second silk-only pass: turns/moves labels so none reads as one (cfg.DESIGNATOR_GAP_ONE_LABEL, same baseline) and none sits in a foreign outline; run in the image
 refill_zones.py        refills every zone with pcbnew so the fills honour the project's min_copper_edge_clearance (0.45); splices only the filled_polygon blocks into the board text; idempotent; run in the image
+pinlabels (pcbtools/pinlabels.py)  the Due's own pin names beside each edge-row socket, on top silk in the bands (LR-11): python3 -m pcbtools.pinlabels BOARD --config v2_layout --write; --check and --list too. Names come from docs/due-header-table.md, sockets from EDGE_SOCKETS in boards/v2_layout.py
 Both tools above are pure text editing except place_designators.py, which reads the board with pcbnew.

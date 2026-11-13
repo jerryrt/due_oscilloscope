@@ -65,6 +65,23 @@ KEEPOUTS = [(BAND_NAME, (DUE_RECT[0], BOARD_RECT[1], DUE_RECT[2], DUE_RECT[1])),
             (FAR_BAND_NAME, (DUE_RECT[0], DUE_RECT[3], DUE_RECT[2], BOARD_RECT[3]))]
 KEEPOUT_LAYERS = ('F.Cu',)                                      # top only: the bottom ground plane fills the bands
 ZONE_MARGIN = 0.05                                              # the bottom GND zone outline is BOARD_RECT grown by this; its fill is held back by the edge clearance
+# The Due's own pin names, printed on top silk in the bands beside each edge-row socket (LR-11, owner 2026-11-13: the shield covers the
+# Due's silkscreen). pcbtools/pinlabels.py builds them from this config and the table; no name is typed here. EDGE_SOCKETS: which sockets
+# are edge rows -> the Due header whose table gives their pins (J605, the XIO socket, is on the short edge and is not one).
+EDGE_SOCKETS = {'J601': 'POWER0', 'J602': 'ADCL0', 'J603': 'ADCH0', 'J604': 'PWMH0', 'J606': 'PWML0', 'J607': 'COMMUNICATION0'}
+PIN_TABLE = 'hardware/afe-proto/docs/due-header-table.md'     # repo relative; names are its "Arduino" / "Due label" column
+PIN_LABEL_ALIASES = {'3.3 V': '3V3', '5 V': '5V'}             # a whole table cell -> the name the Due prints (the cells spell them with a space)
+PIN_LABEL_H = 1.0                # character height: the board house's minimum silk text (JLC) *(check)*
+PIN_LABEL_W = 0.8                # character width; a turned label that would reach its pad is narrowed to PIN_LABEL_MIN_W
+PIN_LABEL_MIN_W = 0.55           # the five-letter names (CANRX, CANTX, IOREF, RESET) must be narrowed this far to fit between the band's edge and the socket's own silk
+PIN_LABEL_THICK = 0.15           # stroke
+PIN_LABEL_ADVANCE = 1.0          # box length per character, as a fraction of the character width (KiCad's stroke font measured in the PCB image:
+PIN_LABEL_INK_PAD = 0.3          # n x 0.775-0.835 x the width + 0.22 mm of stroke and margin: a bit over, on purpose) *(check)*
+PIN_LABEL_EDGE_MARGIN = 0.35     # the ink starts this far inside the board edge, and the band's outer edge is where a label starts
+PIN_LABEL_PAD_GAP = 0.7          # and ends this far from a socket pad box: the socket footprint's silk outline sits 0.4 mm outside its pads (it is not in
+                                 # the board arrays), so the label stops 0.3 mm short of that line *(check against DRC silk_overlap)*
+PIN_LABEL_POS_TOL = 0.05         # the checker finds a label within this of its planned place
+
 # The design rules the project file carries and DRC judges the board against (v2/layout/v2-integration build RULES: clearance 0.15,
 # track 0.15, via 0.6 / 0.3, hole-to-hole 0.25). min_copper_edge_clearance 0.45 mm: the fabricator's minimum is 0.2 mm *(check)* and the
 # outline tolerance +-0.2 mm, so 0.45 leaves 0.25 mm worst case (spec team's ruling, as v1).

@@ -5,7 +5,7 @@
   "link": "../integrated/render/afe-v2-integrated-F.Cu-silk.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 280.4
+  "delta_s": 69.4
  },
  {
   "view": "bottom (B.Cu)",
@@ -13,7 +13,7 @@
   "link": "../integrated/render/afe-v2-integrated-B.Cu.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 280.5
+  "delta_s": 69.5
  },
  {
   "view": "3D top",
@@ -21,7 +21,7 @@
   "link": "../integrated/render/afe-v2-integrated-3d.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 284.3
+  "delta_s": 73.5
  },
  {
   "view": "3D bottom",
@@ -29,6 +29,6 @@
   "link": "../integrated/render/afe-v2-integrated-3d-bottom.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 286.9
+  "delta_s": 76.2
  }
 ]
