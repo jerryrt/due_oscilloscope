@@ -41,18 +41,16 @@ def test_two_boards_in_one_process_do_not_see_each_other():
     assert r.returncode == 0 and r.stdout.strip() == 'ok', r.stderr[-600:]
 
 
-def test_the_build_helper_leaves_no_plain_modules_either(tmp_path):
-    code = r'''
+def test_building_the_cfgs_leaves_no_plain_modules_either():
+    code = r"""
 import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, %r)
-from pcbtools.boards import v1_build as b
-w = b.prepare(%r)
-b.sch_inputs(w)
-left = [k for k in ('design', 'sexpr', 'build_sch', 'layout') if k in sys.modules]
+from pcbtools.boards import v1
+v1.sch_cfg(); v1.pcb_cfg(); v1.pcb_place()
+left = [k for k in ('design', 'sexpr', 'build_sch', 'layout', 'floorplan') if k in sys.modules]
 assert not left, left
-assert %r not in sys.path
 print('ok')
-''' % (str(pcbtools_root), str(tmp_path), str(tmp_path / 'old'))
+""" % str(pcbtools_root)
     r = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True)
     assert r.returncode == 0 and r.stdout.strip() == 'ok', r.stderr[-600:]

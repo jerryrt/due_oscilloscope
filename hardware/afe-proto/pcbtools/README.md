@@ -160,9 +160,12 @@ board object kept alive in a module is what ran the shared machine out of memory
 | `floorplan.py` | `table_md`, `svg`, `validate` from the floorplan data | the v1 contract table |
 | `merge.py` | `merge(base, {block: board}, out, cfg)`; `python -m pcbtools.merge --board v1 --base B --out O BLOCK=PATH ...` (exit 0 all merged, 1 a block refused, 2 usage) | the old `merge_blocks.py`: same merged board, same refusals |
 
-`boards/v1.py` is the v1 BoardConfig (fences, hundreds map, tolerance) and `boards/v1_build.py` the one place that turns the frozen
-old design, layout and build constants into the `cfg` objects of `schematic.write_all` and `build_board`; the equivalence tests
-and the bench steps both use it.
+`boards/v1.py` is the v1 BoardConfig: the fences and the hundreds map, the build data the old build scripts kept as constants (title,
+block titles, headers, BNCs, model overrides, ...) with `sch_cfg()`, `pcb_cfg()` and `pcb_place()` that make the `cfg` objects of
+`schematic.write_all` and `build_board`, and the names the checks and their arms read. The equivalence tests and the bench steps use it.
+`schematic_check.py` is the old `check.py`: rows S1-S4 (ERC, netlist, symbols, BOM) and P1-P3 (pad nets, DRC with parity,
+outline and header pins) with their mutation arms, `python -m pcbtools.schematic_check --board v1 --project DIR --pcb --arms`; its
+header lists what a board config provides. Verdicts and details equal the old rows in `tests/golden/v1-34b2e51-image/check_pcb.out`.
 
 ## Things that bite in the write path
 

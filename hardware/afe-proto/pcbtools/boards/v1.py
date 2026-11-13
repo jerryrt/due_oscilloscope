@@ -45,3 +45,122 @@ FENCES = {b: list(rs) for b, rs in _floorplan.FENCES.items()}           # floorp
 HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': None}
 OWNER_OVERRIDE = {}                           # none for v1: the bridges already carry their block's digit
 TOL_MM = 0.001                                # position tolerance of the fence rule
+
+
+# ------------------------------------------------------------------------------------------------ build data
+# What the old build_sch.py / build_pcb.py kept as module constants, now data. Positions are Due mm (x right, y up).
+from .. import schematic as _sch          # noqa: E402  (after the loader above: the box symbol needs design.SC706)
+
+PROJECT = 'afe-proto'
+TITLE = 'AFE full range design 01'
+REV = 'FR-01'
+NS = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'                  # uuid namespace of every generated id
+BLOCK_ORDER = ['power', 'ch1', 'ch2', 'awg', 'cal', 'due']
+BLOCK_TITLE = {
+    'power': 'POWER: 5 V feed (take only), LM27762 +3.3 V_A / -2.07 V, bleed',
+    'ch1': 'SCOPE CH1 (A1): 1 Mohm compensated divider centred from the REF3030E, TPH2502 follower (shared dual), ADC-pin clamp',
+    'ch2': 'SCOPE CH2 (A0): as CH1, on the dual\'s half B',
+    'awg': 'AWG: TPH2502 (DAC0 buffer + gain stage), attenuator, own Vmid (TLV9062), 50 ohm out',
+    'cal': 'CALIBRATION: REF3030E, ladder (A2..A7), ADS1115 on I2C, AWG-sense divider and ratio switch',
+    'due': 'DUE HEADERS (V03 positions), mounting, test points',
+}
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', 'P33_R']
+SCH_COMMENTS = ['Generated from design.py by pcbtools.schematic: edit design.py, not this file',
+                'Values and parts: whatif/bom.txt. Connectivity: the simulated circuit (docs/architecture.md)',
+                'Own work, CC BY-SA 4.0']
+PCB_COMMENTS = ['Generated from design.py by pcbtools.build; not routed', 'Own work, CC BY-SA 4.0']
+SYMBOL_DIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
+FOOTPRINT_DIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
+
+# board geometry
+OUTLINE = (17.0, 0.0, 117.0, 53.34)                          # the shield's rectangle
+REFERENCE_OUTLINE = [(1, 0), (98.06, 0), (99.06, 1), (99.06, 2.54), (101.6, 5.08), (101.6, 37.846), (99.06, 40.386),
+                     (99.06, 51.816), (97.536, 53.34), (1, 53.34), (0, 52.34), (0, 1), (1, 0)]   # the Due's own outline (V03)
+# header: (pin-1 x, pin-1 y, direction of rising pin numbers), due-header-table.md section 2
+HEADERS = {'J601': (27.94, 2.54, '+x'), 'J602': (50.80, 2.54, '+x'), 'J603': (73.66, 2.54, '+x'),
+           'J604': (63.50, 50.80, '-x'), 'J605': (68.58, 50.80, '+x'), 'J606': (41.656, 50.80, '-x')}
+XIO = (93.98, 50.80)          # J607 pin 1; odd pins at x 93.98, even at 96.52, rows step down 2.54
+HEADER_ROT = {'+x': 90.0, '-x': -90.0}
+BNCS = {'J101': 44.45, 'J201': 24.13, 'J301': 7.4}           # y of each BNC centre pin: CH1, CH2, AWG
+BNC_X = 102.0
+MH = (96.52, 2.54)
+MH602 = (90.17, 50.8)
+MODEL_OVERRIDE = {'Package_QFP:TQFP-32_5x5mm_P0.5mm': ('LQFP-32_5x5mm_P0.5mm.step',
+                                                       '9f2be83a713ff62d2355f91718245c4e93f9a75ac14a804dc68810514dd9a3a3')}
+PROJECT_LIB_DIR = os.path.join(SOURCE_DIR, 'lib', 'afe.pretty')
+MODELS_DIR = os.path.join(SOURCE_DIR, '3d')
+
+# the checks (schematic_check.py): what the old check.py kept at module level
+BOM_PATH = os.path.normpath(os.path.join(SOURCE_DIR, '..', 'whatif', 'bom.txt'))
+BOM_DELTAS = {}               # parts on the board that bom.txt does not list, each with its reason
+ERC_EXCLUDED = 1              # exactly one documented ERC exclusion (U401 PGOOD)
+MIN_NETS, MIN_COMPS, MIN_BOM, MIN_PADS = 40, 90, 90, 250       # floors: a check that examined fewer items than this did not run
+HEADER_PINS = {}              # (ref, pin) -> (x, y) of every Due header pin, the V03 positions
+for _ref, (_x, _y, _d) in {'J601': (27.94, 2.54, 1), 'J602': (50.80, 2.54, 1), 'J603': (73.66, 2.54, 1),
+                           'J604': (63.50, 50.80, -1), 'J605': (68.58, 50.80, 1), 'J606': (41.656, 50.80, -1)}.items():
+    for _k in range(10 if _ref == 'J606' else 8):
+        HEADER_PINS[(_ref, str(_k + 1))] = (_x + _d * 2.54 * _k, _y)
+for _k in range(36):
+    HEADER_PINS[('J607', str(_k + 1))] = (93.98 if _k % 2 == 0 else 96.52, 50.80 - 2.54 * (_k // 2))
+HEADER_TOL_MM = 0.01
+SILK_EDGE_ALLOWED = ('J101', 'J201', 'J301')                 # the BNCs overhang the right edge by design
+
+
+def _erc_exclusions(pin_at, uid, root):
+    pg = pin_at[('U401', '1')]
+    return [[f"pin_to_pin|{round(pg[0] * 1e4)}|{round(pg[1] * 1e4)}|{uid('pin', 'U401', 1, '1')}|{uid('pin', '#FLG01', 1, '1')}"
+             f"|/{root}|/{root}|/{root}", 'PGOOD unused, tied to GND per SNVSAF7C; GND carries the PWR_FLAG']]
+
+
+def sch_cfg(**over):
+    """the namespace schematic.write_all(PARTS, cfg, out_dir) takes; keyword arguments replace a field (the check's mutation arms)"""
+    import types
+    tmux = _sch.box_symbol('TMUX1119', [
+        ('4', 'S1', 'passive', 'L', 0), ('6', 'S2', 'passive', 'L', 2), ('1', 'SEL', 'input', 'L', 4),
+        ('5', 'D', 'passive', 'R', 1), ('2', 'VDD', 'power_in', 'T', 1), ('3', 'GND', 'power_in', 'B', 1)],
+        width=10.16, fp=_design.SC706, ds='https://www.ti.com/lit/ds/symlink/tmux1119.pdf',
+        desc='SPDT 5 V analog switch, SC70-6 (SCDS401C table 4-1): SEL low = S1-D')
+    cfg = types.SimpleNamespace(
+        PROJECT=PROJECT, NS=NS, BLOCK_ORDER=list(BLOCK_ORDER), BLOCK_TITLE=dict(BLOCK_TITLE), PWR_FLAG_NETS=list(PWR_FLAG_NETS),
+        TITLE=TITLE + ': AFE shield for the Arduino Due', REV=REV, COMMENTS=list(SCH_COMMENTS), PROJECT_SYMBOLS=[tmux],
+        ERC_EXCLUSIONS=_erc_exclusions, SYMBOL_DIR=SYMBOL_DIR)
+    for k, v in over.items():
+        setattr(cfg, k, v)
+    return cfg
+
+
+def pcb_place():
+    """the placement build_board takes: the layout's own, then the fixed header, BNC and mounting-hole positions"""
+    place = {ref: tuple(v) for ref, v in PLACE.items()}
+    for ref, (x, y, d) in HEADERS.items():
+        place[ref] = (x, y, HEADER_ROT[d], True)
+    place['J607'] = (XIO[0] + 2.54, XIO[1], 0, True)
+    for ref, y in BNCS.items():
+        place[ref] = (BNC_X, y, -90)
+    place['MH601'] = (*MH, 0, True)
+    place['MH602'] = (*MH602, 0, True)
+    return place
+
+
+ANCHORS = frozenset(set(HEADERS) | set(BNCS) | {'J607', 'MH601', 'MH602'})      # parts the legaliser never moves
+
+
+def pcb_cfg(**over):
+    import types
+    cfg = types.SimpleNamespace(
+        PROJECT=PROJECT, NS=NS, OUTLINE=OUTLINE, REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
+        TITLE=TITLE + ': AFE shield for the Arduino Due, placement', REV=REV, COMMENTS=list(PCB_COMMENTS),
+        FOOTPRINT_DIR=FOOTPRINT_DIR, PROJECT_LIB_DIR=PROJECT_LIB_DIR, MODEL_OVERRIDE=dict(MODEL_OVERRIDE), MODELS_DIR=MODELS_DIR)
+    for k, v in over.items():
+        setattr(cfg, k, v)
+    return cfg
+
+
+# the mutation arms of schematic_check: what each one breaks
+ARM_SWAP_PINS = 'R104'                  # a two-pin part whose pins are exchanged in the design
+ARM_LCSC = ('R503', 'C2984375')         # a part given another resistor's code
+ARM_BOM_DROP = 'C503'                   # a fitted part dropped from bom.txt
+ARM_NO_FLAG = 'GND'                     # the PWR_FLAG net whose flag is removed
+ARM_NET_SWAP = 'R303'                   # two-pad part whose pad nets are exchanged on the board
+ARM_OVERLAP = ('R102', 'R103')          # the first dropped onto the second
+ARM_HEADER = ('J602', '1')              # header pin shifted 0.2 mm

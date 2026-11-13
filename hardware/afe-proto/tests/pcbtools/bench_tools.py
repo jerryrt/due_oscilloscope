@@ -38,21 +38,19 @@ def _work():
 
 def schematic(_=None):
     from pcbtools import schematic as sch
-    from pcbtools.boards import v1_build as v1b
-    w = _work()
-    parts, cfg = v1b.sch_inputs(v1b.prepare(w))
-    sch.write_all(parts, cfg, os.path.join(w, 'new'))
+    from pcbtools.boards import v1
+    sch.write_all(v1.PARTS, v1.sch_cfg(), os.path.join(_work(), 'new'))
 
 
 def board(_=None):
+    import shutil
     from pcbtools import build as bd
-    from pcbtools.boards import v1_build as v1b
+    from pcbtools.boards import v1
     w = _work()
-    old = v1b.prepare(w)
-    inp = v1b.pcb_inputs(old)
-    nets = bd.schematic_nets(os.path.join(old, 'afe-proto.kicad_sch'))
-    bd.build_board(inp['parts'], inp['cfg'], inp['place'], nets, os.path.join(w, 'new.kicad_pcb'),
-                   legalise_overlaps=True, anchors=inp['anchors'])
+    shutil.copy(os.path.join(v1.SOURCE_DIR, 'afe-proto.kicad_sch'), w)        # kicad-cli reads a copy, never the fixture
+    nets = bd.schematic_nets(os.path.join(w, 'afe-proto.kicad_sch'))
+    bd.build_board(v1.PARTS, v1.pcb_cfg(), v1.pcb_place(), nets, os.path.join(w, 'new.kicad_pcb'),
+                   legalise_overlaps=True, anchors=v1.ANCHORS)
 
 
 def fence(path, base, block):
