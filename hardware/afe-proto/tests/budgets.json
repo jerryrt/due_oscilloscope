@@ -1,8 +1,8 @@
 {
  "meta": {
-  "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
-  "machine": "jerry-x1gen7",
+  "image": "sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293",
+  "installed": "0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6",
+  "machine": "montreal5",
   "versions": {
    "python": "3.14.4",
    "numpy": "2.3.5",
@@ -12,462 +12,538 @@
   },
   "runs": 5,
   "remeasured_later": [
+   "new-v1-check",
+   "new-v1-check-mutate",
+   "new-v2-awg",
    "new-v2-cap",
    "new-v2-check",
    "new-v2-check-mutate",
    "new-v2-fence",
-   "old-v1-build_pcb",
-   "old-v1-check-pcb",
-   "old-v1-fence_check",
+   "new-v2-schematic-build",
+   "new-v2-schematic-check",
+   "new-v2-scope",
    "old-v1-lr_check",
    "old-v1-lr_check-mutate",
+   "old-v2-awg",
+   "old-v2-build_sch",
    "old-v2-cap",
    "old-v2-fence_check",
    "old-v2-lr_check",
-   "old-v2-lr_check-mutate"
+   "old-v2-lr_check-mutate",
+   "old-v2-schematic-check",
+   "old-v2-scope"
   ],
+  "load": {
+   "before": 1.14,
+   "cpus": 8,
+   "after": 1.14
+  },
   "margin": 1.5,
   "rule": "median of the measured runs times margin"
  },
  "budgets": {
   "v1": {
    "pcbnew-load": {
-    "peak_rss_kb": 229758,
+    "peak_rss_kb": 171108,
     "wall_s": 0.43,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 258690,
-    "wall_s": 0.57,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 194616,
+    "wall_s": 0.58,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 312246,
-    "wall_s": 3.97,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 243858,
+    "wall_s": 3.71,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 527652,
-    "wall_s": 2.61,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 470466,
+    "wall_s": 2.55,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 30066,
+    "peak_rss_kb": 26028,
     "wall_s": 0.12,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 274674,
-    "wall_s": 0.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 202068,
+    "wall_s": 0.68,
+    "machine": "montreal5"
    },
    "erc-v1-schematic": {
-    "peak_rss_kb": 2048082,
-    "wall_s": 9.77,
-    "machine": "jerry-x1gen7"
-   },
-   "schematic-build-v1": {
-    "peak_rss_kb": 320940,
-    "wall_s": 3.15,
-    "machine": "jerry-x1gen7"
-   },
-   "board-build-v1": {
-    "peak_rss_kb": 354546,
-    "wall_s": 6.27,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 1994718,
+    "wall_s": 9.79,
+    "machine": "montreal5"
    },
    "old-v1-build_pcb": {
-    "peak_rss_kb": 354516,
-    "wall_s": 6.48,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 296088,
+    "wall_s": 6.44,
+    "machine": "montreal5"
    },
    "old-v1-check-pcb": {
-    "peak_rss_kb": 2305392,
-    "wall_s": 66.27,
-    "machine": "jerry-x1gen7"
-   },
-   "old-v1-lr_check": {
-    "peak_rss_kb": 2211426,
-    "wall_s": 8.96,
-    "machine": "jerry-x1gen7"
-   },
-   "old-v1-lr_check-mutate": {
-    "peak_rss_kb": 2231952,
-    "wall_s": 18.18,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2200866,
+    "wall_s": 66.2,
+    "machine": "montreal5"
    },
    "old-v1-fence_check": {
-    "peak_rss_kb": 235380,
-    "wall_s": 0.52,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 179412,
+    "wall_s": 0.51,
+    "machine": "montreal5"
+   },
+   "schematic-build-v1": {
+    "peak_rss_kb": 313998,
+    "wall_s": 2.79,
+    "machine": "montreal5"
+   },
+   "board-build-v1": {
+    "peak_rss_kb": 296364,
+    "wall_s": 5.97,
+    "machine": "montreal5"
+   },
+   "sim-v1-scope-dc": {
+    "peak_rss_kb": 58992,
+    "wall_s": 31.38,
+    "machine": "montreal5"
+   },
+   "old-v1-lr_check": {
+    "peak_rss_kb": 2143710,
+    "wall_s": 9.23,
+    "machine": "montreal5"
+   },
+   "new-v1-check": {
+    "peak_rss_kb": 2141790,
+    "wall_s": 9.84,
+    "machine": "montreal5"
+   },
+   "old-v1-lr_check-mutate": {
+    "peak_rss_kb": 2151090,
+    "wall_s": 18.63,
+    "machine": "montreal5"
+   },
+   "new-v1-check-mutate": {
+    "peak_rss_kb": 2095290,
+    "wall_s": 10.71,
+    "machine": "montreal5"
    }
   },
   "v2-BASE": {
    "pcbnew-load": {
-    "peak_rss_kb": 240168,
+    "peak_rss_kb": 180864,
     "wall_s": 0.49,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 268422,
-    "wall_s": 0.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 203976,
+    "wall_s": 0.7,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322944,
-    "wall_s": 4.05,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 255006,
+    "wall_s": 3.78,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558210,
-    "wall_s": 3.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 500178,
+    "wall_s": 3.58,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 38304,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 34320,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 294612,
-    "wall_s": 0.93,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 221340,
+    "wall_s": 0.89,
+    "machine": "montreal5"
    }
   },
   "v2-awg": {
    "pcbnew-load": {
-    "peak_rss_kb": 238848,
-    "wall_s": 0.51,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 181308,
+    "wall_s": 0.49,
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 267714,
-    "wall_s": 0.7,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 203496,
+    "wall_s": 0.69,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 321516,
-    "wall_s": 4.11,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 254670,
+    "wall_s": 3.79,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 556656,
-    "wall_s": 3.66,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 500310,
+    "wall_s": 3.56,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 37734,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 33972,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 291198,
-    "wall_s": 0.92,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 220638,
+    "wall_s": 0.89,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2232606,
-    "wall_s": 10.43,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2170308,
+    "wall_s": 10.68,
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 271824,
-    "wall_s": 1.32,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 211146,
+    "wall_s": 1.48,
+    "machine": "montreal5"
    },
    "old-v2-fence_check": {
-    "peak_rss_kb": 250602,
-    "wall_s": 0.68,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 197568,
+    "wall_s": 0.65,
+    "machine": "montreal5"
    },
    "new-v2-fence": {
-    "peak_rss_kb": 279432,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 219450,
+    "wall_s": 0.89,
+    "machine": "montreal5"
    }
   },
   "v2-integrated": {
    "pcbnew-load": {
-    "peak_rss_kb": 238386,
+    "peak_rss_kb": 180936,
     "wall_s": 0.49,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 268920,
-    "wall_s": 0.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 203880,
+    "wall_s": 0.68,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322446,
-    "wall_s": 4.05,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 253884,
+    "wall_s": 3.76,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 556584,
-    "wall_s": 3.6,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 500520,
+    "wall_s": 3.54,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 37626,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 33696,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 292518,
-    "wall_s": 0.9,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 218886,
+    "wall_s": 0.87,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2224530,
-    "wall_s": 10.3,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2131608,
+    "wall_s": 10.48,
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 270462,
-    "wall_s": 1.32,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 210906,
+    "wall_s": 1.46,
+    "machine": "montreal5"
    },
    "old-v2-cap": {
-    "peak_rss_kb": 475902,
-    "wall_s": 72.6,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 419838,
+    "wall_s": 97.52,
+    "machine": "montreal5"
    },
    "new-v2-cap": {
-    "peak_rss_kb": 824148,
-    "wall_s": 42.53,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 802854,
+    "wall_s": 62.66,
+    "machine": "montreal5"
    },
    "old-v2-lr_check-mutate": {
-    "peak_rss_kb": 2211984,
-    "wall_s": 16.68,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2163546,
+    "wall_s": 15.66,
+    "machine": "montreal5"
    },
    "new-v2-check-mutate": {
-    "peak_rss_kb": 273702,
-    "wall_s": 1.54,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 210294,
+    "wall_s": 3.58,
+    "machine": "montreal5"
    }
   },
   "v2-power": {
    "pcbnew-load": {
-    "peak_rss_kb": 238914,
-    "wall_s": 0.49,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 181596,
+    "wall_s": 0.51,
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 268704,
+    "peak_rss_kb": 204330,
     "wall_s": 0.7,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 321510,
-    "wall_s": 4.0,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 254454,
+    "wall_s": 3.81,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558408,
-    "wall_s": 3.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 501066,
+    "wall_s": 3.54,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 38232,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 34386,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 294546,
-    "wall_s": 0.93,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 221046,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2245170,
+    "peak_rss_kb": 2155608,
     "wall_s": 10.95,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 273480,
-    "wall_s": 1.4,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 210984,
+    "wall_s": 1.65,
+    "machine": "montreal5"
    },
    "old-v2-fence_check": {
-    "peak_rss_kb": 250200,
-    "wall_s": 0.68,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 197784,
+    "wall_s": 0.66,
+    "machine": "montreal5"
    },
    "new-v2-fence": {
-    "peak_rss_kb": 277332,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 220272,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    }
   },
   "v2-power3": {
    "pcbnew-load": {
-    "peak_rss_kb": 239736,
+    "peak_rss_kb": 181896,
     "wall_s": 0.51,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 268494,
-    "wall_s": 0.73,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 205182,
+    "wall_s": 0.69,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322968,
-    "wall_s": 4.0,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 254838,
+    "wall_s": 3.78,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 558930,
-    "wall_s": 3.71,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 501198,
+    "wall_s": 3.56,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 38316,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 34386,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 293496,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 222198,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2255868,
-    "wall_s": 10.96,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2165028,
+    "wall_s": 10.95,
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 271752,
-    "wall_s": 1.4,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 211224,
+    "wall_s": 1.67,
+    "machine": "montreal5"
    },
    "old-v2-fence_check": {
-    "peak_rss_kb": 250584,
+    "peak_rss_kb": 197868,
     "wall_s": 0.68,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "new-v2-fence": {
-    "peak_rss_kb": 280002,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 221442,
+    "wall_s": 0.92,
+    "machine": "montreal5"
    }
   },
   "v2-refcal": {
    "pcbnew-load": {
-    "peak_rss_kb": 240204,
+    "peak_rss_kb": 182238,
     "wall_s": 0.51,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 269976,
-    "wall_s": 0.72,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 204660,
+    "wall_s": 0.69,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 322332,
-    "wall_s": 4.11,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 256470,
+    "wall_s": 3.79,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 559932,
-    "wall_s": 3.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 503256,
+    "wall_s": 3.58,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 38694,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 34836,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 295800,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 222822,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2227392,
-    "wall_s": 10.73,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2151018,
+    "wall_s": 10.79,
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 272922,
-    "wall_s": 1.4,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 211470,
+    "wall_s": 1.68,
+    "machine": "montreal5"
    },
    "old-v2-fence_check": {
-    "peak_rss_kb": 249642,
-    "wall_s": 0.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 197700,
+    "wall_s": 0.66,
+    "machine": "montreal5"
    },
    "new-v2-fence": {
-    "peak_rss_kb": 280068,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 221670,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    }
   },
   "v2-scope2east": {
    "pcbnew-load": {
-    "peak_rss_kb": 238944,
-    "wall_s": 0.51,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 181404,
+    "wall_s": 0.49,
+    "machine": "montreal5"
    },
    "boardio-read": {
-    "peak_rss_kb": 267534,
-    "wall_s": 0.7,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 204318,
+    "wall_s": 0.69,
+    "machine": "montreal5"
    },
    "kicad-cli-step": {
-    "peak_rss_kb": 321822,
-    "wall_s": 4.11,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 253206,
+    "wall_s": 3.79,
+    "machine": "montreal5"
    },
    "kicad-cli-render": {
-    "peak_rss_kb": 557658,
-    "wall_s": 3.72,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 500178,
+    "wall_s": 3.57,
+    "machine": "montreal5"
    },
    "sexpr-parse": {
-    "peak_rss_kb": 38088,
-    "wall_s": 0.2,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 34224,
+    "wall_s": 0.18,
+    "machine": "montreal5"
    },
    "editor-roundtrip": {
-    "peak_rss_kb": 293058,
-    "wall_s": 0.95,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 220824,
+    "wall_s": 0.89,
+    "machine": "montreal5"
    },
    "old-v2-lr_check": {
-    "peak_rss_kb": 2220810,
-    "wall_s": 10.81,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 2153772,
+    "wall_s": 10.94,
+    "machine": "montreal5"
    },
    "new-v2-check": {
-    "peak_rss_kb": 270972,
-    "wall_s": 1.4,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 211308,
+    "wall_s": 1.65,
+    "machine": "montreal5"
    },
    "old-v2-fence_check": {
-    "peak_rss_kb": 248826,
-    "wall_s": 0.69,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 197136,
+    "wall_s": 0.66,
+    "machine": "montreal5"
    },
    "new-v2-fence": {
-    "peak_rss_kb": 279696,
-    "wall_s": 0.93,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 219498,
+    "wall_s": 0.9,
+    "machine": "montreal5"
    }
   },
   "-": {
    "ngspice-rc-ladder": {
-    "peak_rss_kb": 48636,
-    "wall_s": 0.26,
-    "machine": "jerry-x1gen7"
+    "peak_rss_kb": 38646,
+    "wall_s": 0.24,
+    "machine": "montreal5"
+   },
+   "old-v2-awg": {
+    "peak_rss_kb": 146670,
+    "wall_s": 31.32,
+    "machine": "montreal5"
+   },
+   "new-v2-awg": {
+    "peak_rss_kb": 149358,
+    "wall_s": 32.22,
+    "machine": "montreal5"
+   },
+   "old-v2-scope": {
+    "peak_rss_kb": 317862,
+    "wall_s": 137.72,
+    "machine": "montreal5"
+   },
+   "new-v2-scope": {
+    "peak_rss_kb": 132072,
+    "wall_s": 130.56,
+    "machine": "montreal5"
    }
   },
   "v1+v2": {
    "netlib-text-v1v2": {
-    "peak_rss_kb": 53916,
+    "peak_rss_kb": 41766,
     "wall_s": 0.15,
-    "machine": "jerry-x1gen7"
+    "machine": "montreal5"
+   }
+  },
+  "v2": {
+   "sim-v2-powercal": {
+    "peak_rss_kb": 168990,
+    "wall_s": 22.8,
+    "machine": "montreal5"
+   }
+  },
+  "v2-sch": {
+   "old-v2-schematic-check": {
+    "peak_rss_kb": 1993698,
+    "wall_s": 252.19,
+    "machine": "montreal5"
+   },
+   "new-v2-schematic-check": {
+    "peak_rss_kb": 1993602,
+    "wall_s": 315.23,
+    "machine": "montreal5"
+   },
+   "old-v2-build_sch": {
+    "peak_rss_kb": 296976,
+    "wall_s": 3.87,
+    "machine": "montreal5"
+   },
+   "new-v2-schematic-build": {
+    "peak_rss_kb": 306960,
+    "wall_s": 3.22,
+    "machine": "montreal5"
    }
   }
  }

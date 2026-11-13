@@ -1,8 +1,8 @@
 {
  "meta": {
-  "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
-  "machine": "jerry-x1gen7",
+  "image": "sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293",
+  "installed": "0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6",
+  "machine": "montreal5",
   "versions": {
    "python": "3.14.4",
    "numpy": "2.3.5",
@@ -11,20 +11,32 @@
    "ngspice": "45.2"
   },
   "runs": 5,
+  "load": {
+   "before": 1.14,
+   "cpus": 8,
+   "after": 1.14
+  },
   "remeasured_later": [
+   "new-v1-check",
+   "new-v1-check-mutate",
+   "new-v2-awg",
    "new-v2-cap",
    "new-v2-check",
    "new-v2-check-mutate",
    "new-v2-fence",
-   "old-v1-build_pcb",
-   "old-v1-check-pcb",
-   "old-v1-fence_check",
+   "new-v2-schematic-build",
+   "new-v2-schematic-check",
+   "new-v2-scope",
    "old-v1-lr_check",
    "old-v1-lr_check-mutate",
+   "old-v2-awg",
+   "old-v2-build_sch",
    "old-v2-cap",
    "old-v2-fence_check",
    "old-v2-lr_check",
-   "old-v2-lr_check-mutate"
+   "old-v2-lr_check-mutate",
+   "old-v2-schematic-check",
+   "old-v2-scope"
   ]
  },
  "rows": [
@@ -36,13 +48,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.29,
-    "min": 0.27,
-    "max": 0.31
+    "min": 0.29,
+    "max": 0.29
    },
    "peak_rss_kb": {
-    "median": 153172,
-    "min": 152128,
-    "max": 153976
+    "median": 114072,
+    "min": 114008,
+    "max": 114392
    }
   },
   {
@@ -54,12 +66,12 @@
    "wall_s": {
     "median": 0.33,
     "min": 0.33,
-    "max": 0.34
+    "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 160112,
-    "min": 158796,
-    "max": 161128
+    "median": 120576,
+    "min": 120364,
+    "max": 121084
    }
   },
   {
@@ -69,14 +81,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.34,
+    "median": 0.33,
     "min": 0.33,
-    "max": 0.35
+    "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 159232,
-    "min": 157472,
-    "max": 160424
+    "median": 120872,
+    "min": 120372,
+    "max": 121008
    }
   },
   {
@@ -87,13 +99,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.33,
-    "min": 0.32,
-    "max": 0.33
+    "min": 0.33,
+    "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 158924,
-    "min": 157756,
-    "max": 159144
+    "median": 120624,
+    "min": 120372,
+    "max": 120976
    }
   },
   {
@@ -103,14 +115,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.33,
-    "min": 0.33,
-    "max": 0.35
+    "median": 0.34,
+    "min": 0.34,
+    "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 159276,
-    "min": 158424,
-    "max": 160860
+    "median": 121064,
+    "min": 120512,
+    "max": 121228
    }
   },
   {
@@ -121,13 +133,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.34,
-    "min": 0.33,
+    "min": 0.34,
     "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 159824,
-    "min": 158424,
-    "max": 160188
+    "median": 121264,
+    "min": 121124,
+    "max": 121304
    }
   },
   {
@@ -139,12 +151,12 @@
    "wall_s": {
     "median": 0.34,
     "min": 0.34,
-    "max": 0.35
+    "max": 0.36
    },
    "peak_rss_kb": {
-    "median": 160136,
-    "min": 158308,
-    "max": 161192
+    "median": 121492,
+    "min": 120712,
+    "max": 121784
    }
   },
   {
@@ -154,14 +166,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.34,
+    "median": 0.33,
     "min": 0.33,
     "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 159296,
-    "min": 157252,
-    "max": 160268
+    "median": 120936,
+    "min": 120468,
+    "max": 121016
    }
   },
   {
@@ -171,35 +183,18 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.38,
+    "median": 0.39,
     "min": 0.38,
-    "max": 0.4
+    "max": 0.39
    },
    "peak_rss_kb": {
-    "median": 172460,
-    "min": 171816,
-    "max": 172776
+    "median": 129744,
+    "min": 129332,
+    "max": 129964
    }
   },
   {
    "board": "v2-BASE",
-   "tool": "boardio-read",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.46,
-    "min": 0.46,
-    "max": 0.49
-   },
-   "peak_rss_kb": {
-    "median": 178948,
-    "min": 178188,
-    "max": 179432
-   }
-  },
-  {
-   "board": "v2-awg",
    "tool": "boardio-read",
    "runs": 5,
    "dropped_first": true,
@@ -210,13 +205,13 @@
     "max": 0.48
    },
    "peak_rss_kb": {
-    "median": 178476,
-    "min": 178300,
-    "max": 180796
+    "median": 135984,
+    "min": 135944,
+    "max": 136544
    }
   },
   {
-   "board": "v2-integrated",
+   "board": "v2-awg",
    "tool": "boardio-read",
    "runs": 5,
    "dropped_first": true,
@@ -227,9 +222,26 @@
     "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 179280,
-    "min": 177956,
-    "max": 180216
+    "median": 135664,
+    "min": 135216,
+    "max": 136080
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.45,
+    "min": 0.45,
+    "max": 0.46
+   },
+   "peak_rss_kb": {
+    "median": 135920,
+    "min": 135420,
+    "max": 136244
    }
   },
   {
@@ -241,12 +253,12 @@
    "wall_s": {
     "median": 0.47,
     "min": 0.46,
-    "max": 0.48
+    "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 179136,
-    "min": 178540,
-    "max": 179736
+    "median": 136220,
+    "min": 135632,
+    "max": 136412
    }
   },
   {
@@ -256,286 +268,286 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.49,
-    "min": 0.48,
-    "max": 0.49
-   },
-   "peak_rss_kb": {
-    "median": 178996,
-    "min": 178284,
-    "max": 180640
-   }
-  },
-  {
-   "board": "v2-refcal",
-   "tool": "boardio-read",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.48,
-    "min": 0.47,
-    "max": 0.48
-   },
-   "peak_rss_kb": {
-    "median": 179984,
-    "min": 178764,
-    "max": 181088
-   }
-  },
-  {
-   "board": "v2-scope2east",
-   "tool": "boardio-read",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.47,
+    "median": 0.46,
     "min": 0.46,
-    "max": 0.49
+    "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 178356,
-    "min": 177668,
-    "max": 179344
-   }
-  },
-  {
-   "board": "v1",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.65,
-    "min": 2.6,
-    "max": 2.74
-   },
-   "peak_rss_kb": {
-    "median": 208164,
-    "min": 207464,
-    "max": 209280
-   }
-  },
-  {
-   "board": "v2-BASE",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.7,
-    "min": 2.69,
-    "max": 2.75
-   },
-   "peak_rss_kb": {
-    "median": 215296,
-    "min": 213984,
-    "max": 216884
-   }
-  },
-  {
-   "board": "v2-awg",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.74,
-    "min": 2.63,
-    "max": 2.77
-   },
-   "peak_rss_kb": {
-    "median": 214344,
-    "min": 213540,
-    "max": 215624
-   }
-  },
-  {
-   "board": "v2-integrated",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.7,
-    "min": 2.66,
-    "max": 2.73
-   },
-   "peak_rss_kb": {
-    "median": 214964,
-    "min": 213492,
-    "max": 215708
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.67,
-    "min": 2.65,
-    "max": 2.72
-   },
-   "peak_rss_kb": {
-    "median": 214340,
-    "min": 212556,
-    "max": 215376
-   }
-  },
-  {
-   "board": "v2-power3",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.67,
-    "min": 2.64,
-    "max": 2.82
-   },
-   "peak_rss_kb": {
-    "median": 215312,
-    "min": 214500,
-    "max": 215844
+    "median": 136788,
+    "min": 135556,
+    "max": 137028
    }
   },
   {
    "board": "v2-refcal",
-   "tool": "kicad-cli-step",
+   "tool": "boardio-read",
    "runs": 5,
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.74,
-    "min": 2.66,
-    "max": 2.78
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 214888,
-    "min": 214412,
-    "max": 217188
+    "median": 136440,
+    "min": 135752,
+    "max": 136844
    }
   },
   {
    "board": "v2-scope2east",
-   "tool": "kicad-cli-step",
+   "tool": "boardio-read",
    "runs": 5,
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.74,
-    "min": 2.72,
-    "max": 2.78
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 214548,
-    "min": 211544,
-    "max": 214728
+    "median": 136212,
+    "min": 135856,
+    "max": 136472
    }
   },
   {
    "board": "v1",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 1.74,
-    "min": 1.72,
-    "max": 1.78
-   },
-   "peak_rss_kb": {
-    "median": 351768,
-    "min": 351372,
-    "max": 352516
-   }
-  },
-  {
-   "board": "v2-BASE",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.46,
-    "min": 2.4,
-    "max": 2.48
-   },
-   "peak_rss_kb": {
-    "median": 372140,
-    "min": 371664,
-    "max": 373008
-   }
-  },
-  {
-   "board": "v2-awg",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.44,
-    "min": 2.4,
-    "max": 2.47
-   },
-   "peak_rss_kb": {
-    "median": 371104,
-    "min": 370256,
-    "max": 371708
-   }
-  },
-  {
-   "board": "v2-integrated",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.4,
-    "min": 2.39,
-    "max": 2.44
-   },
-   "peak_rss_kb": {
-    "median": 371056,
-    "min": 370932,
-    "max": 371996
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.46,
-    "min": 2.43,
-    "max": 2.48
-   },
-   "peak_rss_kb": {
-    "median": 372272,
-    "min": 371584,
-    "max": 372676
-   }
-  },
-  {
-   "board": "v2-power3",
-   "tool": "kicad-cli-render",
+   "tool": "kicad-cli-step",
    "runs": 5,
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
     "median": 2.47,
-    "min": 2.45,
-    "max": 2.51
+    "min": 2.43,
+    "max": 2.52
    },
    "peak_rss_kb": {
-    "median": 372620,
-    "min": 371752,
-    "max": 373284
+    "median": 162572,
+    "min": 162540,
+    "max": 162668
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.52,
+    "min": 2.49,
+    "max": 2.54
+   },
+   "peak_rss_kb": {
+    "median": 170004,
+    "min": 168352,
+    "max": 170380
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.53,
+    "min": 2.52,
+    "max": 2.55
+   },
+   "peak_rss_kb": {
+    "median": 169780,
+    "min": 167744,
+    "max": 169928
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.51,
+    "min": 2.48,
+    "max": 2.52
+   },
+   "peak_rss_kb": {
+    "median": 169256,
+    "min": 166896,
+    "max": 169648
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.54,
+    "min": 2.52,
+    "max": 2.54
+   },
+   "peak_rss_kb": {
+    "median": 169636,
+    "min": 167720,
+    "max": 170304
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.52,
+    "min": 2.51,
+    "max": 2.54
+   },
+   "peak_rss_kb": {
+    "median": 169892,
+    "min": 169472,
+    "max": 170620
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.53,
+    "min": 2.53,
+    "max": 2.54
+   },
+   "peak_rss_kb": {
+    "median": 170980,
+    "min": 170524,
+    "max": 171140
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.53,
+    "min": 2.49,
+    "max": 2.55
+   },
+   "peak_rss_kb": {
+    "median": 168804,
+    "min": 168060,
+    "max": 169740
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 1.7,
+    "min": 1.68,
+    "max": 1.72
+   },
+   "peak_rss_kb": {
+    "median": 313644,
+    "min": 313492,
+    "max": 313756
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.39,
+    "min": 2.36,
+    "max": 2.4
+   },
+   "peak_rss_kb": {
+    "median": 333452,
+    "min": 332744,
+    "max": 333764
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.37,
+    "min": 2.34,
+    "max": 2.38
+   },
+   "peak_rss_kb": {
+    "median": 333540,
+    "min": 333028,
+    "max": 333640
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.36,
+    "min": 2.33,
+    "max": 2.37
+   },
+   "peak_rss_kb": {
+    "median": 333680,
+    "min": 333252,
+    "max": 334148
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.36,
+    "min": 2.34,
+    "max": 2.39
+   },
+   "peak_rss_kb": {
+    "median": 334044,
+    "min": 333392,
+    "max": 334360
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.37,
+    "min": 2.37,
+    "max": 2.43
+   },
+   "peak_rss_kb": {
+    "median": 334132,
+    "min": 333528,
+    "max": 334708
    }
   },
   {
@@ -545,14 +557,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.46,
-    "min": 2.44,
-    "max": 2.49
+    "median": 2.39,
+    "min": 2.3,
+    "max": 2.4
    },
    "peak_rss_kb": {
-    "median": 373288,
-    "min": 373060,
-    "max": 374740
+    "median": 335504,
+    "min": 334592,
+    "max": 336064
    }
   },
   {
@@ -562,14 +574,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.48,
-    "min": 2.42,
-    "max": 2.5
+    "median": 2.38,
+    "min": 2.35,
+    "max": 2.39
    },
    "peak_rss_kb": {
-    "median": 371772,
-    "min": 370872,
-    "max": 372896
+    "median": 333452,
+    "min": 333188,
+    "max": 334196
    }
   },
   {
@@ -581,12 +593,12 @@
    "wall_s": {
     "median": 0.08,
     "min": 0.08,
-    "max": 0.09
+    "max": 0.08
    },
    "peak_rss_kb": {
-    "median": 20044,
-    "min": 19860,
-    "max": 20096
+    "median": 17352,
+    "min": 17284,
+    "max": 17472
    }
   },
   {
@@ -596,14 +608,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
-    "min": 0.13,
-    "max": 0.15
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25536,
-    "min": 25492,
-    "max": 25560
+    "median": 22880,
+    "min": 22820,
+    "max": 22896
    }
   },
   {
@@ -613,14 +625,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
+    "median": 0.12,
     "min": 0.12,
     "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25156,
-    "min": 25040,
-    "max": 25240
+    "median": 22648,
+    "min": 22624,
+    "max": 22676
    }
   },
   {
@@ -630,14 +642,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
+    "median": 0.12,
     "min": 0.12,
-    "max": 0.13
+    "max": 0.12
    },
    "peak_rss_kb": {
-    "median": 25084,
-    "min": 25068,
-    "max": 25116
+    "median": 22464,
+    "min": 22408,
+    "max": 22484
    }
   },
   {
@@ -647,14 +659,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
-    "min": 0.13,
-    "max": 0.13
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.12
    },
    "peak_rss_kb": {
-    "median": 25488,
-    "min": 25396,
-    "max": 25568
+    "median": 22924,
+    "min": 22824,
+    "max": 22980
    }
   },
   {
@@ -664,14 +676,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
-    "min": 0.13,
-    "max": 0.15
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.12
    },
    "peak_rss_kb": {
-    "median": 25544,
-    "min": 25444,
-    "max": 25592
+    "median": 22924,
+    "min": 22824,
+    "max": 22956
    }
   },
   {
@@ -681,14 +693,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
-    "min": 0.13,
-    "max": 0.14
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25796,
-    "min": 25740,
-    "max": 25848
+    "median": 23224,
+    "min": 23100,
+    "max": 23260
    }
   },
   {
@@ -698,14 +710,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.13,
-    "min": 0.13,
-    "max": 0.13
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.12
    },
    "peak_rss_kb": {
-    "median": 25392,
-    "min": 25196,
-    "max": 25436
+    "median": 22816,
+    "min": 22688,
+    "max": 22884
    }
   },
   {
@@ -715,14 +727,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.46,
-    "min": 0.45,
-    "max": 0.46
+    "median": 0.45,
+    "min": 0.44,
+    "max": 0.45
    },
    "peak_rss_kb": {
-    "median": 183116,
-    "min": 182400,
-    "max": 184048
+    "median": 134712,
+    "min": 134584,
+    "max": 134904
    }
   },
   {
@@ -732,14 +744,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.62,
-    "min": 0.62,
-    "max": 0.62
+    "median": 0.59,
+    "min": 0.59,
+    "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 196408,
-    "min": 194512,
-    "max": 196576
+    "median": 147560,
+    "min": 146212,
+    "max": 148252
    }
   },
   {
@@ -749,18 +761,35 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.61,
-    "min": 0.61,
-    "max": 0.63
+    "median": 0.59,
+    "min": 0.58,
+    "max": 0.6
    },
    "peak_rss_kb": {
-    "median": 194132,
-    "min": 193344,
-    "max": 197144
+    "median": 147092,
+    "min": 145968,
+    "max": 148368
    }
   },
   {
    "board": "v2-integrated",
+   "tool": "editor-roundtrip",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.58,
+    "min": 0.57,
+    "max": 0.58
+   },
+   "peak_rss_kb": {
+    "median": 145924,
+    "min": 144600,
+    "max": 147380
+   }
+  },
+  {
+   "board": "v2-power",
    "tool": "editor-roundtrip",
    "runs": 5,
    "dropped_first": true,
@@ -771,26 +800,9 @@
     "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 195012,
-    "min": 193632,
-    "max": 195956
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "editor-roundtrip",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.62,
-    "min": 0.61,
-    "max": 0.63
-   },
-   "peak_rss_kb": {
-    "median": 196364,
-    "min": 193428,
-    "max": 197384
+    "median": 147364,
+    "min": 146544,
+    "max": 148612
    }
   },
   {
@@ -800,14 +812,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.63,
-    "min": 0.63,
-    "max": 0.65
+    "median": 0.6,
+    "min": 0.59,
+    "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 195664,
-    "min": 194064,
-    "max": 197152
+    "median": 148132,
+    "min": 147428,
+    "max": 148964
    }
   },
   {
@@ -817,14 +829,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.63,
-    "min": 0.63,
-    "max": 0.64
+    "median": 0.6,
+    "min": 0.6,
+    "max": 0.6
    },
    "peak_rss_kb": {
-    "median": 197200,
-    "min": 194880,
-    "max": 197932
+    "median": 148548,
+    "min": 146160,
+    "max": 148656
    }
   },
   {
@@ -834,14 +846,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.63,
-    "min": 0.61,
-    "max": 0.63
+    "median": 0.59,
+    "min": 0.59,
+    "max": 0.6
    },
    "peak_rss_kb": {
-    "median": 195372,
-    "min": 193676,
-    "max": 196416
+    "median": 147216,
+    "min": 146304,
+    "max": 147980
    }
   },
   {
@@ -851,14 +863,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 6.51,
-    "min": 6.47,
-    "max": 6.58
+    "median": 6.53,
+    "min": 6.41,
+    "max": 6.55
    },
    "peak_rss_kb": {
-    "median": 1365388,
-    "min": 1364508,
-    "max": 1366276
+    "median": 1329812,
+    "min": 1329720,
+    "max": 1330004
    }
   },
   {
@@ -868,14 +880,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.17,
-    "min": 0.17,
-    "max": 0.18
+    "median": 0.16,
+    "min": 0.16,
+    "max": 0.16
    },
    "peak_rss_kb": {
-    "median": 32424,
-    "min": 32196,
-    "max": 32576
+    "median": 25764,
+    "min": 25700,
+    "max": 25792
    }
   },
   {
@@ -887,46 +899,12 @@
    "wall_s": {
     "median": 0.1,
     "min": 0.1,
-    "max": 0.11
+    "max": 0.1
    },
    "peak_rss_kb": {
-    "median": 35944,
-    "min": 35576,
-    "max": 36012
-   }
-  },
-  {
-   "board": "v1",
-   "tool": "schematic-build-v1",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.1,
-    "min": 2.04,
-    "max": 2.11
-   },
-   "peak_rss_kb": {
-    "median": 213960,
-    "min": 213856,
-    "max": 214156
-   }
-  },
-  {
-   "board": "v1",
-   "tool": "board-build-v1",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 4.18,
-    "min": 4.1,
-    "max": 4.23
-   },
-   "peak_rss_kb": {
-    "median": 236364,
-    "min": 236048,
-    "max": 236904
+    "median": 27844,
+    "min": 27796,
+    "max": 27944
    }
   },
   {
@@ -936,14 +914,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 4.32,
-    "min": 4.3,
-    "max": 4.44
+    "median": 4.29,
+    "min": 4.25,
+    "max": 4.33
    },
    "peak_rss_kb": {
-    "median": 236344,
-    "min": 235540,
-    "max": 237132
+    "median": 197392,
+    "min": 197364,
+    "max": 197584
    }
   },
   {
@@ -954,49 +932,14 @@
    "expect_exit": 1,
    "status": "OK",
    "wall_s": {
-    "median": 44.18,
-    "min": 43.88,
-    "max": 44.2
+    "median": 44.13,
+    "min": 43.86,
+    "max": 44.32
    },
    "peak_rss_kb": {
-    "median": 1536928,
-    "min": 1523236,
-    "max": 1557368
-   }
-  },
-  {
-   "board": "v1",
-   "tool": "old-v1-lr_check",
-   "runs": 5,
-   "dropped_first": true,
-   "expect_exit": 1,
-   "status": "OK",
-   "wall_s": {
-    "median": 5.97,
-    "min": 5.92,
-    "max": 6.02
-   },
-   "peak_rss_kb": {
-    "median": 1474284,
-    "min": 1452516,
-    "max": 1493696
-   }
-  },
-  {
-   "board": "v1",
-   "tool": "old-v1-lr_check-mutate",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 12.12,
-    "min": 12.08,
-    "max": 12.35
-   },
-   "peak_rss_kb": {
-    "median": 1487968,
-    "min": 1466188,
-    "max": 1498588
+    "median": 1467244,
+    "min": 1459424,
+    "max": 1484144
    }
   },
   {
@@ -1006,14 +949,82 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.35,
+    "median": 0.34,
     "min": 0.34,
     "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 156920,
-    "min": 155484,
-    "max": 158104
+    "median": 119608,
+    "min": 119520,
+    "max": 120052
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "schematic-build-v1",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 1.86,
+    "min": 1.84,
+    "max": 1.89
+   },
+   "peak_rss_kb": {
+    "median": 209332,
+    "min": 209160,
+    "max": 209388
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "board-build-v1",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 3.98,
+    "min": 3.97,
+    "max": 4.04
+   },
+   "peak_rss_kb": {
+    "median": 197576,
+    "min": 197520,
+    "max": 197716
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "sim-v1-scope-dc",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 20.92,
+    "min": 20.9,
+    "max": 20.92
+   },
+   "peak_rss_kb": {
+    "median": 39328,
+    "min": 39232,
+    "max": 39476
+   }
+  },
+  {
+   "board": "v2",
+   "tool": "sim-v2-powercal",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 15.2,
+    "min": 14.78,
+    "max": 15.42
+   },
+   "peak_rss_kb": {
+    "median": 112660,
+    "min": 112588,
+    "max": 112768
    }
   },
   {
@@ -1024,14 +1035,14 @@
    "interleaved_with": "new-v2-check",
    "status": "OK",
    "wall_s": {
-    "median": 6.95,
-    "min": 6.94,
-    "max": 7.09
+    "median": 7.12,
+    "min": 7.03,
+    "max": 7.2
    },
    "peak_rss_kb": {
-    "median": 1488404,
-    "min": 1474212,
-    "max": 1501300
+    "median": 1446872,
+    "min": 1424500,
+    "max": 1458872
    }
   },
   {
@@ -1042,14 +1053,14 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.88,
-    "min": 0.87,
-    "max": 0.88
+    "median": 0.99,
+    "min": 0.98,
+    "max": 1.0
    },
    "peak_rss_kb": {
-    "median": 181216,
-    "min": 180100,
-    "max": 183340
+    "median": 140764,
+    "min": 140164,
+    "max": 141036
    }
   },
   {
@@ -1060,14 +1071,14 @@
    "interleaved_with": "new-v2-check",
    "status": "OK",
    "wall_s": {
-    "median": 6.87,
-    "min": 6.82,
-    "max": 6.97
+    "median": 6.99,
+    "min": 6.97,
+    "max": 7.02
    },
    "peak_rss_kb": {
-    "median": 1483020,
-    "min": 1443952,
-    "max": 1517544
+    "median": 1421072,
+    "min": 1420128,
+    "max": 1434228
    }
   },
   {
@@ -1078,14 +1089,14 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.88,
-    "min": 0.87,
-    "max": 0.91
+    "median": 0.97,
+    "min": 0.97,
+    "max": 0.99
    },
    "peak_rss_kb": {
-    "median": 180308,
-    "min": 179712,
-    "max": 182780
+    "median": 140604,
+    "min": 139884,
+    "max": 140688
    }
   },
   {
@@ -1097,13 +1108,13 @@
    "status": "OK",
    "wall_s": {
     "median": 7.3,
-    "min": 7.22,
-    "max": 7.47
+    "min": 7.29,
+    "max": 7.32
    },
    "peak_rss_kb": {
-    "median": 1496780,
-    "min": 1467868,
-    "max": 1506724
+    "median": 1437072,
+    "min": 1416932,
+    "max": 1456532
    }
   },
   {
@@ -1114,14 +1125,14 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.93,
-    "min": 0.92,
-    "max": 0.94
+    "median": 1.1,
+    "min": 1.1,
+    "max": 1.1
    },
    "peak_rss_kb": {
-    "median": 182320,
-    "min": 180292,
-    "max": 183572
+    "median": 140656,
+    "min": 140196,
+    "max": 140836
    }
   },
   {
@@ -1132,14 +1143,14 @@
    "interleaved_with": "new-v2-check",
    "status": "OK",
    "wall_s": {
-    "median": 7.31,
-    "min": 7.24,
-    "max": 7.4
+    "median": 7.3,
+    "min": 7.23,
+    "max": 7.38
    },
    "peak_rss_kb": {
-    "median": 1503912,
-    "min": 1468364,
-    "max": 1510748
+    "median": 1443352,
+    "min": 1410792,
+    "max": 1470932
    }
   },
   {
@@ -1150,14 +1161,14 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.93,
-    "min": 0.93,
-    "max": 0.94
+    "median": 1.11,
+    "min": 1.1,
+    "max": 1.11
    },
    "peak_rss_kb": {
-    "median": 181168,
-    "min": 178824,
-    "max": 183492
+    "median": 140816,
+    "min": 140568,
+    "max": 141208
    }
   },
   {
@@ -1168,14 +1179,14 @@
    "interleaved_with": "new-v2-check",
    "status": "OK",
    "wall_s": {
-    "median": 7.15,
-    "min": 7.08,
-    "max": 7.28
+    "median": 7.19,
+    "min": 7.14,
+    "max": 7.24
    },
    "peak_rss_kb": {
-    "median": 1484928,
-    "min": 1468960,
-    "max": 1519096
+    "median": 1434012,
+    "min": 1430428,
+    "max": 1453160
    }
   },
   {
@@ -1186,14 +1197,14 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.93,
-    "min": 0.93,
-    "max": 0.94
+    "median": 1.12,
+    "min": 1.12,
+    "max": 1.13
    },
    "peak_rss_kb": {
-    "median": 181948,
-    "min": 179812,
-    "max": 182632
+    "median": 140980,
+    "min": 140600,
+    "max": 141712
    }
   },
   {
@@ -1204,14 +1215,14 @@
    "interleaved_with": "new-v2-check",
    "status": "OK",
    "wall_s": {
-    "median": 7.21,
-    "min": 7.15,
-    "max": 7.3
+    "median": 7.29,
+    "min": 7.25,
+    "max": 7.32
    },
    "peak_rss_kb": {
-    "median": 1480540,
-    "min": 1477352,
-    "max": 1503284
+    "median": 1435848,
+    "min": 1421816,
+    "max": 1459056
    }
   },
   {
@@ -1222,18 +1233,90 @@
    "interleaved_with": "old-v2-lr_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.93,
-    "min": 0.92,
-    "max": 0.95
+    "median": 1.1,
+    "min": 1.09,
+    "max": 1.11
    },
    "peak_rss_kb": {
-    "median": 180648,
-    "min": 179784,
-    "max": 182028
+    "median": 140872,
+    "min": 140148,
+    "max": 141096
    }
   },
   {
    "board": "v2-awg",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-fence",
+   "status": "OK",
+   "wall_s": {
+    "median": 0.43,
+    "min": 0.43,
+    "max": 0.44
+   },
+   "peak_rss_kb": {
+    "median": 131712,
+    "min": 130444,
+    "max": 132964
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-fence_check",
+   "status": "OK",
+   "wall_s": {
+    "median": 0.59,
+    "min": 0.59,
+    "max": 0.62
+   },
+   "peak_rss_kb": {
+    "median": 146300,
+    "min": 144084,
+    "max": 147768
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-fence",
+   "status": "OK",
+   "wall_s": {
+    "median": 0.44,
+    "min": 0.44,
+    "max": 0.44
+   },
+   "peak_rss_kb": {
+    "median": 131856,
+    "min": 129152,
+    "max": 132164
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-fence_check",
+   "status": "OK",
+   "wall_s": {
+    "median": 0.6,
+    "min": 0.59,
+    "max": 0.61
+   },
+   "peak_rss_kb": {
+    "median": 146848,
+    "min": 145960,
+    "max": 148172
+   }
+  },
+  {
+   "board": "v2-power3",
    "tool": "old-v2-fence_check",
    "runs": 5,
    "dropped_first": true,
@@ -1245,81 +1328,9 @@
     "max": 0.46
    },
    "peak_rss_kb": {
-    "median": 167068,
-    "min": 164440,
-    "max": 167436
-   }
-  },
-  {
-   "board": "v2-awg",
-   "tool": "new-v2-fence",
-   "runs": 5,
-   "dropped_first": true,
-   "interleaved_with": "old-v2-fence_check",
-   "status": "OK",
-   "wall_s": {
-    "median": 0.63,
-    "min": 0.61,
-    "max": 0.63
-   },
-   "peak_rss_kb": {
-    "median": 186288,
-    "min": 183128,
-    "max": 187136
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "old-v2-fence_check",
-   "runs": 5,
-   "dropped_first": true,
-   "interleaved_with": "new-v2-fence",
-   "status": "OK",
-   "wall_s": {
-    "median": 0.45,
-    "min": 0.45,
-    "max": 0.47
-   },
-   "peak_rss_kb": {
-    "median": 166800,
-    "min": 166044,
-    "max": 168292
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "new-v2-fence",
-   "runs": 5,
-   "dropped_first": true,
-   "interleaved_with": "old-v2-fence_check",
-   "status": "OK",
-   "wall_s": {
-    "median": 0.63,
-    "min": 0.63,
-    "max": 0.65
-   },
-   "peak_rss_kb": {
-    "median": 184888,
-    "min": 184116,
-    "max": 186336
-   }
-  },
-  {
-   "board": "v2-power3",
-   "tool": "old-v2-fence_check",
-   "runs": 5,
-   "dropped_first": true,
-   "interleaved_with": "new-v2-fence",
-   "status": "OK",
-   "wall_s": {
-    "median": 0.45,
-    "min": 0.45,
-    "max": 0.46
-   },
-   "peak_rss_kb": {
-    "median": 167056,
-    "min": 165664,
-    "max": 169080
+    "median": 131912,
+    "min": 129656,
+    "max": 132624
    }
   },
   {
@@ -1330,14 +1341,14 @@
    "interleaved_with": "old-v2-fence_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.63,
-    "min": 0.62,
-    "max": 0.64
+    "median": 0.61,
+    "min": 0.6,
+    "max": 0.62
    },
    "peak_rss_kb": {
-    "median": 186668,
-    "min": 184516,
-    "max": 188360
+    "median": 147628,
+    "min": 145144,
+    "max": 148564
    }
   },
   {
@@ -1348,14 +1359,14 @@
    "interleaved_with": "new-v2-fence",
    "status": "OK",
    "wall_s": {
-    "median": 0.46,
-    "min": 0.45,
-    "max": 0.47
+    "median": 0.44,
+    "min": 0.43,
+    "max": 0.44
    },
    "peak_rss_kb": {
-    "median": 166428,
-    "min": 165492,
-    "max": 168104
+    "median": 131800,
+    "min": 129296,
+    "max": 132820
    }
   },
   {
@@ -1366,14 +1377,14 @@
    "interleaved_with": "old-v2-fence_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.63,
-    "min": 0.61,
-    "max": 0.65
+    "median": 0.6,
+    "min": 0.59,
+    "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 186712,
-    "min": 184516,
-    "max": 187144
+    "median": 147780,
+    "min": 147096,
+    "max": 148284
    }
   },
   {
@@ -1384,14 +1395,14 @@
    "interleaved_with": "new-v2-fence",
    "status": "OK",
    "wall_s": {
-    "median": 0.46,
-    "min": 0.45,
-    "max": 0.48
+    "median": 0.44,
+    "min": 0.44,
+    "max": 0.45
    },
    "peak_rss_kb": {
-    "median": 165884,
-    "min": 163824,
-    "max": 166752
+    "median": 131424,
+    "min": 130612,
+    "max": 132732
    }
   },
   {
@@ -1402,14 +1413,14 @@
    "interleaved_with": "old-v2-fence_check",
    "status": "OK",
    "wall_s": {
-    "median": 0.62,
-    "min": 0.61,
-    "max": 0.64
+    "median": 0.6,
+    "min": 0.59,
+    "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 186464,
-    "min": 185572,
-    "max": 186892
+    "median": 146332,
+    "min": 145616,
+    "max": 147660
    }
   },
   {
@@ -1420,14 +1431,14 @@
    "interleaved_with": "new-v2-cap",
    "status": "OK",
    "wall_s": {
-    "median": 48.4,
-    "min": 48.1,
-    "max": 48.93
+    "median": 65.01,
+    "min": 64.61,
+    "max": 65.04
    },
    "peak_rss_kb": {
-    "median": 317268,
-    "min": 315980,
-    "max": 317440
+    "median": 279892,
+    "min": 279772,
+    "max": 280564
    }
   },
   {
@@ -1438,14 +1449,14 @@
    "interleaved_with": "old-v2-cap",
    "status": "OK",
    "wall_s": {
-    "median": 28.35,
-    "min": 28.27,
-    "max": 28.41
+    "median": 41.77,
+    "min": 41.72,
+    "max": 41.95
    },
    "peak_rss_kb": {
-    "median": 549432,
-    "min": 549128,
-    "max": 549664
+    "median": 535236,
+    "min": 535084,
+    "max": 535324
    }
   },
   {
@@ -1456,14 +1467,14 @@
    "interleaved_with": "new-v2-check-mutate",
    "status": "OK",
    "wall_s": {
-    "median": 11.12,
-    "min": 11.02,
-    "max": 11.32
+    "median": 10.44,
+    "min": 10.38,
+    "max": 10.53
    },
    "peak_rss_kb": {
-    "median": 1474656,
-    "min": 1454224,
-    "max": 1488096
+    "median": 1442364,
+    "min": 1418412,
+    "max": 1455892
    }
   },
   {
@@ -1474,14 +1485,233 @@
    "interleaved_with": "old-v2-lr_check-mutate",
    "status": "OK",
    "wall_s": {
-    "median": 1.03,
-    "min": 1.03,
-    "max": 1.04
+    "median": 2.39,
+    "min": 2.37,
+    "max": 2.41
    },
    "peak_rss_kb": {
-    "median": 182468,
-    "min": 181200,
-    "max": 182832
+    "median": 140196,
+    "min": 139964,
+    "max": 140556
+   }
+  },
+  {
+   "board": "v2-sch",
+   "tool": "old-v2-schematic-check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-schematic-check",
+   "status": "OK",
+   "wall_s": {
+    "median": 168.13,
+    "min": 167.39,
+    "max": 168.61
+   },
+   "peak_rss_kb": {
+    "median": 1329132,
+    "min": 1329088,
+    "max": 1329172
+   },
+   "expect_exit": 1
+  },
+  {
+   "board": "v2-sch",
+   "tool": "new-v2-schematic-check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-schematic-check",
+   "status": "OK",
+   "wall_s": {
+    "median": 210.15,
+    "min": 209.52,
+    "max": 212.09
+   },
+   "peak_rss_kb": {
+    "median": 1329068,
+    "min": 1328948,
+    "max": 1329220
+   },
+   "expect_exit": 1
+  },
+  {
+   "board": "v2-sch",
+   "tool": "old-v2-build_sch",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-schematic-build",
+   "status": "OK",
+   "wall_s": {
+    "median": 2.58,
+    "min": 2.56,
+    "max": 2.6
+   },
+   "peak_rss_kb": {
+    "median": 197984,
+    "min": 197792,
+    "max": 198036
+   }
+  },
+  {
+   "board": "v2-sch",
+   "tool": "new-v2-schematic-build",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-build_sch",
+   "status": "OK",
+   "wall_s": {
+    "median": 2.15,
+    "min": 2.15,
+    "max": 2.16
+   },
+   "peak_rss_kb": {
+    "median": 204640,
+    "min": 204572,
+    "max": 204700
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v1-check",
+   "status": "OK",
+   "wall_s": {
+    "median": 6.15,
+    "min": 6.13,
+    "max": 6.19
+   },
+   "peak_rss_kb": {
+    "median": 1429140,
+    "min": 1405852,
+    "max": 1447508
+   },
+   "expect_exit": 1
+  },
+  {
+   "board": "v1",
+   "tool": "new-v1-check",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v1-lr_check",
+   "status": "OK",
+   "wall_s": {
+    "median": 6.56,
+    "min": 6.52,
+    "max": 6.61
+   },
+   "peak_rss_kb": {
+    "median": 1427860,
+    "min": 1408448,
+    "max": 1437620
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-lr_check-mutate",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v1-check-mutate",
+   "status": "OK",
+   "wall_s": {
+    "median": 12.42,
+    "min": 12.4,
+    "max": 12.68
+   },
+   "peak_rss_kb": {
+    "median": 1434060,
+    "min": 1414332,
+    "max": 1454364
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "new-v1-check-mutate",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v1-lr_check-mutate",
+   "status": "OK",
+   "wall_s": {
+    "median": 7.14,
+    "min": 7.02,
+    "max": 7.19
+   },
+   "peak_rss_kb": {
+    "median": 1396860,
+    "min": 1388684,
+    "max": 1421840
+   }
+  },
+  {
+   "board": "-",
+   "tool": "old-v2-awg",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-awg",
+   "status": "OK",
+   "wall_s": {
+    "median": 20.88,
+    "min": 20.61,
+    "max": 21.0
+   },
+   "peak_rss_kb": {
+    "median": 97780,
+    "min": 97668,
+    "max": 97872
+   }
+  },
+  {
+   "board": "-",
+   "tool": "new-v2-awg",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-awg",
+   "status": "OK",
+   "wall_s": {
+    "median": 21.48,
+    "min": 21.35,
+    "max": 21.58
+   },
+   "peak_rss_kb": {
+    "median": 99572,
+    "min": 99508,
+    "max": 99600
+   }
+  },
+  {
+   "board": "-",
+   "tool": "old-v2-scope",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "new-v2-scope",
+   "status": "OK",
+   "wall_s": {
+    "median": 91.81,
+    "min": 90.81,
+    "max": 92.87
+   },
+   "peak_rss_kb": {
+    "median": 211908,
+    "min": 211896,
+    "max": 211992
+   }
+  },
+  {
+   "board": "-",
+   "tool": "new-v2-scope",
+   "runs": 5,
+   "dropped_first": true,
+   "interleaved_with": "old-v2-scope",
+   "status": "OK",
+   "wall_s": {
+    "median": 87.04,
+    "min": 85.92,
+    "max": 88.3
+   },
+   "peak_rss_kb": {
+    "median": 88048,
+    "min": 88012,
+    "max": 88200
    }
   }
  ],
@@ -1492,11 +1722,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.920454545454545,
-    "min": 7.886363636363637,
-    "max": 8.14942528735632
+    "median": 7.262626262626263,
+    "min": 7.03,
+    "max": 7.272727272727273
    },
-   "peak_ratio_old_over_new": 8.213424863146741
+   "peak_ratio_old_over_new": 10.278707624108437
   },
   {
    "board": "v2-integrated",
@@ -1504,11 +1734,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.7727272727272725,
-    "min": 7.549450549450549,
-    "max": 8.011494252873563
+    "median": 7.185567010309279,
+    "min": 7.08080808080808,
+    "max": 7.237113402061856
    },
-   "peak_ratio_old_over_new": 8.22492623732724
+   "peak_ratio_old_over_new": 10.106910187476885
   },
   {
    "board": "v2-power",
@@ -1516,11 +1746,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.817204301075268,
-    "min": 7.680851063829787,
-    "max": 8.032258064516128
+    "median": 6.636363636363636,
+    "min": 6.627272727272727,
+    "max": 6.654545454545454
    },
-   "peak_ratio_old_over_new": 8.209631417288284
+   "peak_ratio_old_over_new": 10.216926402002047
   },
   {
    "board": "v2-power3",
@@ -1528,11 +1758,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.78494623655914,
-    "min": 7.73404255319149,
-    "max": 7.956989247311828
+    "median": 6.6090909090909085,
+    "min": 6.513513513513513,
+    "max": 6.672727272727272
    },
-   "peak_ratio_old_over_new": 8.301201095116136
+   "peak_ratio_old_over_new": 10.24991478241109
   },
   {
    "board": "v2-refcal",
@@ -1540,11 +1770,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.688172043010753,
-    "min": 7.531914893617022,
-    "max": 7.744680851063831
+    "median": 6.419642857142857,
+    "min": 6.374999999999999,
+    "max": 6.428571428571428
    },
-   "peak_ratio_old_over_new": 8.161276848330292
+   "peak_ratio_old_over_new": 10.171740672435806
   },
   {
    "board": "v2-scope2east",
@@ -1552,11 +1782,11 @@
    "new": "new-v2-check",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 7.73404255319149,
-    "min": 7.589473684210526,
-    "max": 7.849462365591397
+    "median": 6.636363636363636,
+    "min": 6.531531531531531,
+    "max": 6.6880733944954125
    },
-   "peak_ratio_old_over_new": 8.19571763872282
+   "peak_ratio_old_over_new": 10.192571980237378
   },
   {
    "board": "v2-awg",
@@ -1564,11 +1794,11 @@
    "new": "new-v2-fence",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 0.7142857142857143,
-    "min": 0.6984126984126984,
-    "max": 0.7540983606557378
+    "median": 0.728813559322034,
+    "min": 0.6935483870967741,
+    "max": 0.7457627118644068
    },
-   "peak_ratio_old_over_new": 0.8968264193077385
+   "peak_ratio_old_over_new": 0.9002870813397129
   },
   {
    "board": "v2-power",
@@ -1576,11 +1806,11 @@
    "new": "new-v2-fence",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 0.7142857142857143,
-    "min": 0.703125,
-    "max": 0.7460317460317459
+    "median": 0.7333333333333334,
+    "min": 0.7213114754098361,
+    "max": 0.7457627118644068
    },
-   "peak_ratio_old_over_new": 0.9021677988836485
+   "peak_ratio_old_over_new": 0.8979080409675311
   },
   {
    "board": "v2-power3",
@@ -1588,11 +1818,11 @@
    "new": "new-v2-fence",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 0.71875,
-    "min": 0.703125,
-    "max": 0.7301587301587302
+    "median": 0.75,
+    "min": 0.7213114754098361,
+    "max": 0.7540983606557378
    },
-   "peak_ratio_old_over_new": 0.8949364647395376
+   "peak_ratio_old_over_new": 0.8935432302815184
   },
   {
    "board": "v2-refcal",
@@ -1600,11 +1830,11 @@
    "new": "new-v2-fence",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 0.7343749999999999,
-    "min": 0.6923076923076923,
-    "max": 0.7540983606557378
+    "median": 0.7333333333333334,
+    "min": 0.7166666666666667,
+    "max": 0.7457627118644068
    },
-   "peak_ratio_old_over_new": 0.8913620977762543
+   "peak_ratio_old_over_new": 0.8918662877249967
   },
   {
    "board": "v2-scope2east",
@@ -1612,11 +1842,11 @@
    "new": "new-v2-fence",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 0.7419354838709677,
-    "min": 0.71875,
-    "max": 0.7580645161290323
+    "median": 0.7333333333333334,
+    "min": 0.7213114754098361,
+    "max": 0.75
    },
-   "peak_ratio_old_over_new": 0.8896301698987472
+   "peak_ratio_old_over_new": 0.8981220785610803
   },
   {
    "board": "v2-integrated",
@@ -1624,11 +1854,11 @@
    "new": "new-v2-cap",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 1.7084362866219556,
-    "min": 1.6930658218936994,
-    "max": 1.7308100459851432
+    "median": 1.551419708900024,
+    "min": 1.5479156684235744,
+    "max": 1.5582454458293387
    },
-   "peak_ratio_old_over_new": 0.5774472546193159
+   "peak_ratio_old_over_new": 0.5229319403029692
   },
   {
    "board": "v2-integrated",
@@ -1636,11 +1866,83 @@
    "new": "new-v2-check-mutate",
    "status": "OK",
    "wall_ratio_old_over_new": {
-    "median": 10.796116504854368,
-    "min": 10.699029126213592,
-    "max": 10.884615384615385
+    "median": 4.394957983193278,
+    "min": 4.3070539419087135,
+    "max": 4.405857740585773
    },
-   "peak_ratio_old_over_new": 8.081723918714514
+   "peak_ratio_old_over_new": 10.288196524865189
+  },
+  {
+   "board": "v2-sch",
+   "old": "old-v2-schematic-check",
+   "new": "new-v2-schematic-check",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 0.7989531287175827,
+    "min": 0.7930124003960582,
+    "max": 0.8047441771668576
+   },
+   "peak_ratio_old_over_new": 1.0000481540447892
+  },
+  {
+   "board": "v2-sch",
+   "old": "old-v2-build_sch",
+   "new": "new-v2-schematic-build",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 1.2000000000000002,
+    "min": 1.1851851851851851,
+    "max": 1.2093023255813955
+   },
+   "peak_ratio_old_over_new": 0.9674745895230649
+  },
+  {
+   "board": "v1",
+   "old": "old-v1-lr_check",
+   "new": "new-v1-check",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 0.9432515337423314,
+    "min": 0.9273827534039334,
+    "max": 0.944954128440367
+   },
+   "peak_ratio_old_over_new": 1.0008964464303223
+  },
+  {
+   "board": "v1",
+   "old": "old-v1-lr_check-mutate",
+   "new": "new-v1-check-mutate",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 1.756373937677054,
+    "min": 1.7270194986072425,
+    "max": 1.7759103641456584
+   },
+   "peak_ratio_old_over_new": 1.0266311584553929
+  },
+  {
+   "board": "-",
+   "old": "old-v2-awg",
+   "new": "new-v2-awg",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 0.9738805970149252,
+    "min": 0.9559369202226345,
+    "max": 0.9776536312849162
+   },
+   "peak_ratio_old_over_new": 0.9820029727232555
+  },
+  {
+   "board": "-",
+   "old": "old-v2-scope",
+   "new": "new-v2-scope",
+   "status": "OK",
+   "wall_ratio_old_over_new": {
+    "median": 1.0592830882352942,
+    "min": 1.0284258210645527,
+    "max": 1.080889199255121
+   },
+   "peak_ratio_old_over_new": 2.406732691259313
   }
  ]
 }
