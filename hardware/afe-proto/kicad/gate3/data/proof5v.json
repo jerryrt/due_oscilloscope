@@ -281,7 +281,7 @@
    ],
    "drc_unconnected": 1,
    "drc_named_pads": [
-    "U401.8"
+    "U401.12"
    ],
    "drc_items": [
     {
@@ -289,15 +289,15 @@
       "/+5V_F"
      ],
      "pads": [
-      "U401.8"
+      "U401.12"
      ],
      "raw": [
-      "Pad 8 [/+5V_F] of U401 on F.Cu",
-      "Track [/+5V_F] on F.Cu, length 1.0500 mm"
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm",
+      "Pad 12 [/+5V_F] of U401 on F.Cu"
      ]
     }
    ],
-   "agree": false,
+   "agree": true,
    "label": "trunk, middle of the pin 3 run"
   },
   {
@@ -312,20 +312,14 @@
     "U401.3"
    ],
    "drc_unconnected": 2,
-   "drc_named_pads": [
-    "U401.3"
-   ],
+   "drc_named_pads": [],
    "drc_items": [
     {
-     "nets": [
-      "/+5V_F"
-     ],
-     "pads": [
-      "U401.3"
-     ],
+     "nets": [],
+     "pads": [],
      "raw": [
       "Track [/+5V_F] on F.Cu, length 1.0500 mm",
-      "Pad 3 [/+5V_F] of U401 on F.Cu"
+      "Track [/+5V_F] on F.Cu, length 13.6500 mm"
      ]
     },
     {

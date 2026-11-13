@@ -553,6 +553,49 @@ def lost_pads(g, src):
     return sorted(k for k, c in g['pad_comp'].items() if c != g['pad_comp'][src])
 
 
+def _piece_of(g, item, origin):
+    """the copper piece (a component id of graph g) the DRC item `item` (description and pos, in KiCad's coordinates) belongs to: a pad by its
+    name, a track or via by the one piece of g whose copper holds its position; None if it is on no piece or on more than one"""
+    m = _PAD_DESC.search(item.get('description', ''))
+    if m:
+        k = f'{m.group(3)}.{m.group(1)}'
+        return g['pad_comp'].get(k)
+    pos = item.get('pos')
+    if not pos:
+        return None
+    x, y = pos['x'] - origin[0], origin[1] - pos['y']
+    found = set()
+    for i, nd in enumerate(g['nodes']):
+        if nd['kind'] == 'track':
+            x0, y0, x1, y1, w = nd['detail']
+            if CONN._pt_seg(x, y, x0, y0, x1, y1) <= w / 2 + CONN.TOL:
+                found.add(int(g['comp'][i]))
+        elif nd['kind'] == 'via':
+            vx, vy, vd = nd['detail']
+            if np.hypot(x - vx, y - vy) <= vd / 2 + CONN.TOL:
+                found.add(int(g['comp'][i]))
+    return found.pop() if len(found) == 1 else None
+
+
+def straddles(g, report, src, pred, origin):
+    """the exact condition of a broken-once arm. The cut splits the net into the piece of `src` (kept) and the pieces that lose it (lost). Every
+    unconnected pair DRC reports must be two items, one on a lost piece and one on the kept piece, and the lost pieces the pairs name must be
+    exactly the pieces of the predicted lost pads. An item on no piece, a pair with both items on one side, and a predicted piece no pair
+    names all fail. Which item KiCad picks to represent a piece is its own business."""
+    kept = g['pad_comp'][src]
+    want = {g['pad_comp'][p] for p in pred}
+    named = set()
+    for u in report.get('unconnected_items', []):
+        it = u.get('items', [])
+        if len(it) != 2:
+            return False
+        a, c = (_piece_of(g, i, origin) for i in it)
+        if a is None or c is None or (a == kept) == (c == kept):
+            return False
+        named.add(c if a == kept else a)
+    return named == want
+
+
 def cut_arm(b, text, net, seg, src, drc_fn, origin=(50.0, 150.0)):
     """broken-once arm: remove ONE track (index `seg` of the b.s_* arrays) from a scratch copy of the board text, predict from the graph which pads
     lose the source, and let KiCad's DRC say which pads it reports unconnected"""
@@ -564,7 +607,7 @@ def cut_arm(b, text, net, seg, src, drc_fn, origin=(50.0, 150.0)):
     named = sorted({p for u in un for p in u['pads']})
     return dict(track=f"{LAYER_NAMES[int(b.s_layer[seg])]} ({b.s_x0[seg]:.3f},{b.s_y0[seg]:.3f})-({b.s_x1[seg]:.3f},{b.s_y1[seg]:.3f})", removed_from_text=n,
                 graph_lost_pads=pred, drc_unconnected=len(un), drc_named_pads=named, drc_items=un,
-                agree=bool(n == 1 and bool(pred) == bool(un) and set(named) <= set(pred)))
+                agree=bool(n == 1 and bool(pred) == bool(un) and straddles(g, rep_, src, pred, origin)))
 
 
 def _pin_key(pin):
