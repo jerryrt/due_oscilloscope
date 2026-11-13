@@ -119,8 +119,8 @@ def test_the_gate_run_twice_passes_twice(main_image):
     before = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
                             capture_output=True, text=True).stdout
     sel = ["docker/pcb/run-gate.sh"]     # no -m: the guard counts a deselected pcbnew test as one that did not run
-    first = run_in(main_image, *sel, m="3G", t=500)
-    second = run_in(main_image, *sel, m="3G", t=500)
+    first = run_in(main_image, *sel, m="4G", t=3000)   # the gate's own cap and limit (gate-host.sh)
+    second = run_in(main_image, *sel, m="4G", t=3000)
     after = subprocess.run(["git", "status", "--porcelain", "--ignored", "hardware/afe-proto"], cwd=REPO,
                            capture_output=True, text=True).stdout
     assert first.returncode == 0, first.stdout[-600:]
