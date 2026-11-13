@@ -55,10 +55,10 @@ def test_gate_fails_in_an_image_without_ngspice(main_image):
         b = subprocess.run(["bash", str(REPO / "docker" / "pcb" / "build-image.sh")], capture_output=True, text=True,
                            env=dict(os.environ, DUE_PCB_WITHOUT_NGSPICE="1"), timeout=1800)
         assert b.returncode == 0 and have_image(CONTROL), b.stdout[-500:] + b.stderr[-500:]
-    sel = ["docker/pcb/run-gate.sh", "-m", "ngspice and not jobcap"]
-    good = run_in(main_image, *sel)
+    sel = ["docker/pcb/run-gate.sh", "-m", "ngspice and not jobcap and not slow"]   # the slow sim studies are 20+ min and prove nothing more here
+    good = run_in(main_image, *sel, m="2G", t=300)
     assert good.returncode == 0 and re.search(r"\d+ passed", good.stdout), good.stdout[-800:]   # the control's control
-    bad = run_in(CONTROL, *sel)
+    bad = run_in(CONTROL, *sel, m="2G", t=300)
     assert bad.returncode != 0, bad.stdout[-800:]
     assert "--require-tool given but needs ngspice on PATH" in bad.stdout
     assert "skipped" not in bad.stdout.splitlines()[-3:].__str__() or "failed" in bad.stdout
@@ -184,7 +184,8 @@ def _gate_with_a_test_that_touches_a_fixture(env_extra):
 
 
 def test_a_test_that_writes_a_fixture_fails_the_gate_and_names_the_file(main_image):
-    r = _gate_with_a_test_that_touches_a_fixture({})
+    # opted out of the read-only mount (the default since r4), so the write succeeds and it is the guard that must catch it
+    r = _gate_with_a_test_that_touches_a_fixture({"DUE_PCB_RO_FIXTURES": "0"})
     assert r.returncode == 3, (r.returncode, r.stdout[-300:], r.stderr[-300:])
     assert "new: hardware/afe-proto/tests/fixtures/zz-touched.txt" in r.stderr
 
