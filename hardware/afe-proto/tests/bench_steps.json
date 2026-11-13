@@ -576,6 +576,16 @@
         "--config",
         "v2"
       ]
+    },
+    {
+      "tool": "sim-v1-scope-dc",
+      "board": "v1",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/bench_sim.py",
+        "sim/scope",
+        "dc"
+      ]
     }
   ],
   "_note_v2": "old-v2-* steps are the frozen v2 tools (tests/fixtures/v2-8a1f7ac/tools), new-v2-* the pcbtools replacements, one pair per tool and board so the table reads before and after. Exit 0 and 1 are both a finished run (1 = a rule FAILed on the board, which these frozen boards do) unless the output holds a Traceback (an exit 1 from an exception must not pass for a verdict); >1 is a crash. new-v2-fence has no CLI: bench_tools.py fence reads BASE and the block board and runs fence.check_fence. Old vs new cap in the image (3 runs, median): old 26.2 s / 312 MB; new first measured 97.2 s / 551 MB because numpy/scipy started 12 BLAS threads under the container's 2-CPU quota (spinning against it); pcbtools/__init__.py now pins them to one: new 15.3 s / 522 MB, i.e. about 1.7x faster for about 1.7x the memory (CSR operator); budget from the image run. Select only these with --only -v2-",

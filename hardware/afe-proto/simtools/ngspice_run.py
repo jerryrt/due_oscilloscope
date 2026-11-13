@@ -28,7 +28,14 @@ class DeckError(ValueError):
 
 
 class RunError(RuntimeError):
-    """ngspice ran and failed: cap kill, timeout, or a non-zero exit."""
+    """ngspice ran and failed: cap kill, timeout, or a non-zero exit. `result` is the capped run (its stdout is
+    ngspice's log) and `raw_path` the raw file as far as it got, if any, so a caller can tell a convergence
+    failure from a broken deck."""
+
+    def __init__(self, msg, result=None, raw_path=None):
+        super().__init__(msg)
+        self.result = result
+        self.raw_path = raw_path
 
 
 @dataclass
@@ -89,7 +96,7 @@ def run(deck, *, save, workdir, name, corner=None, mem="2G", timeout=300, extra_
     res = capped.run(["ngspice", "-b", "-r", raw.name, cir.name], mem=mem, timeout=timeout, cwd=workdir)
     if res.cap_killed or res.timed_out or res.returncode != 0:
         why = "memory cap" if res.cap_killed else "timeout" if res.timed_out else f"exit {res.returncode}"
-        raise RunError(f"{name}: ngspice stopped by {why} (corner {corner}, cap {mem}, limit {timeout}s)")
+        raise RunError(f"{name}: ngspice stopped by {why} (corner {corner}, cap {mem}, limit {timeout}s)", res, raw)
     if not raw.exists():
         raise RunError(f"{name}: ngspice exited 0 but wrote no raw file; log tail: {res.stdout[-300:]}")
     out = Run(res, raw, dict(corner or {}), list(save))
