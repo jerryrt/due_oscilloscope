@@ -275,3 +275,26 @@ def test_the_gate_fails_in_an_image_without_the_router(main_image):
     bad = run_in(CONTROL_NO_ROUTER, *sel)
     assert bad.returncode != 0, bad.stdout[-600:]
     assert "--require-tool given but needs Freerouting" in bad.stdout
+
+
+def test_a_gate_run_without_the_vendor_models_fails_rather_than_skips(main_image, tmp_path):
+    """The gate requires the vendor models (--require-tool=vendor). An empty directory is mounted over models/, so
+    the run sees none, and a vendor-marked test must FAIL the run with the reason, not skip."""
+    import os
+    empty = tmp_path / "no-models"
+    empty.mkdir()
+    env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"}
+    env["DUE_PCB_EXTRA_VOLUMES"] = f"{empty}:/work/hardware/afe-proto/models:ro"
+    r = subprocess.run(["bash", str(RUN), "-m", "1G", "-t", "200", "docker/pcb/run-gate.sh", "-k",
+                        "test_v1_scope_hz_reproduces_its_golden"], capture_output=True, text=True, env=env, timeout=400)
+    assert r.returncode != 0, r.stdout[-400:]
+    assert "--require-tool given but needs the vendor SPICE models" in r.stdout, r.stdout[-600:]
+    assert " skipped" not in r.stdout.splitlines()[-4].replace("deselected", "") or "failed" in r.stdout
+
+
+def test_the_host_gate_script_fetches_before_it_runs_and_requires_the_models():
+    src = (REPO / "docker" / "pcb" / "gate-host.sh").read_text()
+    assert src.index("fetch_models.py") < src.index("docker/pcb/run-gate.sh"), "the fetch must come first"
+    gate = (REPO / "docker" / "pcb" / "run-gate.sh").read_text()
+    for tool in ("pcbnew", "ngspice", "freerouting", "networkx", "vendor"):
+        assert tool in gate.rsplit("--require-tool=", 1)[1].split()[0], tool

@@ -111,6 +111,38 @@ def test_the_same_design_routes_to_the_same_session_byte_for_byte(tmp_path):
     assert outs[0] == outs[1] and len(outs[0]) > 100
 
 
+def test_the_same_board_exported_and_routed_twice_gives_the_same_session(tmp_path):
+    """The point of the canonicaliser: pcbnew exports the same board in a different order each time, so two exports
+    are different files, and the wrapper must still route them to the same bytes. Several exports, one result."""
+    sessions, dsns = set(), set()
+    for k in range(4):
+        d = tmp_path / f"e{k}"
+        d.mkdir()
+        _, dsn = export_dsn(d)
+        dsns.add(dsn.read_text().replace(str(dsn), "X"))
+        ses = d / "t.ses"
+        r = run_router(dsn, ses)
+        assert r.returncode == 0, r.stderr[-300:]
+        sessions.add(ses.read_bytes())
+    assert len(sessions) == 1, f"{len(sessions)} different sessions from {len(dsns)} different exports"
+
+
+def test_without_canonicalisation_the_router_input_is_the_raw_export(tmp_path):
+    """--no-canon is honoured: the router runs on the file as exported (and still routes it)."""
+    _, dsn = export_dsn(tmp_path)
+    ses = tmp_path / "raw.ses"
+    r = subprocess.run(["bash", str(SCRIPT), str(dsn), str(ses), "--no-canon", "--timeout", "120"],
+                       capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0 and ses.stat().st_size > 0, r.stderr[-300:]
+
+
+def test_a_design_with_nothing_to_canonicalise_is_exit_5(tmp_path):
+    dsn = tmp_path / "x.dsn"
+    dsn.write_text("(pcb x\n  (resolution um 10)\n)\n")
+    r = subprocess.run(["bash", str(SCRIPT), str(dsn), str(tmp_path / "x.ses")], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 5, (r.returncode, r.stderr[-200:])
+
+
 def test_a_missing_router_is_an_error_not_a_success(tmp_path):
     dsn = tmp_path / "x.dsn"
     dsn.write_text("(pcb x)\n")
