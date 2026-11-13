@@ -27,7 +27,7 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 def pytest_addoption(parser):
     parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",   # bare flag: the two in-image tools; add docker for the host gate
                      metavar="TOOLS",
-                     help="comma list of tools (pcbnew,ngspice,docker,vendor,network) whose marked tests FAIL, not skip, "
+                     help="comma list of tools (pcbnew,ngspice,docker,vendor,network,freerouting,networkx) whose marked tests FAIL, not skip, "
                           "when the tool is missing; bare flag means both. Write it "
                           "--require-tool=pcbnew or --require-tool pcbnew")
 
@@ -76,6 +76,21 @@ def pcb_image_tag():
     return ref if pulled.returncode == 0 else None
 
 
+def networkx_version():
+    """networkx's version if this interpreter can import it (the r4 image pins 3.7), else None."""
+    try:
+        import networkx
+        return networkx.__version__
+    except ImportError:
+        return None
+
+
+def freerouting_jar():
+    """The router's jar if Java and the jar are both in this environment ('present'), else None."""
+    jar = Path(os.environ.get("FREEROUTING_JAR", "/opt/freerouting/freerouting.jar"))
+    return "present" if shutil.which("java") and jar.is_file() else None
+
+
 def network_reachable():
     """'up' if the vendor hosts answer on 443 within 5 s (the gate runs --network none, so it does not)."""
     import socket
@@ -94,6 +109,8 @@ def vendor_models():
 _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".")[0]) == 10,
                       "KiCad 10.x pcbnew importable in this interpreter"),
            "ngspice": (ngspice_version, lambda v: v is not None, "ngspice on PATH"),
+           "freerouting": (freerouting_jar, lambda v: v is not None, "Freerouting (java + the pinned jar, in the PCB image)"),
+           "networkx": (networkx_version, lambda v: v is not None, "networkx (pinned in requirements-pcb.txt; the r4 image carries it)"),
            "network": (network_reachable, lambda v: v is not None, "network access to the vendor hosts (www.ti.com:443)"),
            "vendor": (vendor_models, lambda v: v is not None, "the vendor SPICE models (python3 -I hardware/afe-proto/tools/fetch_models.py)"),
            "docker": (pcb_image_tag, lambda v: v is not None, "docker and the pinned docker/pcb image (pulled by digest from image-revisions.json; docker login first)")}

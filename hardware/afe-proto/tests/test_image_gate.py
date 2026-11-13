@@ -258,3 +258,20 @@ def test_the_docker_probe_looks_for_the_pinned_digest_not_a_local_tag(pcb_image_
     """A bench that only pulled by digest has no pcb-tools:<ver> tag; the probe must use image-revisions.json
     exactly as run.sh does."""
     assert pcb_image_ref == PINNED
+
+
+CONTROL_NO_ROUTER = f"pcb-tools:{CFG['kicad']}-r{CFG['current']}-no-freerouting"
+
+
+def test_the_gate_fails_in_an_image_without_the_router(main_image):
+    """The control for Freerouting: a missing jar is an error, never a skip. Built from the same recipe with
+    WITH_FREEROUTING=0 (docker shares every layer before the router's)."""
+    import os
+    if not have_image(CONTROL_NO_ROUTER):
+        b = subprocess.run(["bash", str(REPO / "docker" / "pcb" / "build-image.sh")], capture_output=True, text=True,
+                           env=dict(os.environ, DUE_PCB_WITHOUT_FREEROUTING="1"), timeout=1800)
+        assert b.returncode == 0 and have_image(CONTROL_NO_ROUTER), b.stdout[-500:] + b.stderr[-500:]
+    sel = ["docker/pcb/run-gate.sh", "-k", "test_the_round_trip_leaves_no_unconnected_items"]
+    bad = run_in(CONTROL_NO_ROUTER, *sel)
+    assert bad.returncode != 0, bad.stdout[-600:]
+    assert "--require-tool given but needs Freerouting" in bad.stdout

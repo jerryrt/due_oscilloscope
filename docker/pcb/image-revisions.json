@@ -1,6 +1,6 @@
 {
   "kicad": "10.0.8",
-  "current": "3",
+  "current": "4",
   "registry": "dcr.ca2324.servep2p.com:8443/due-scope/pcb-tools",
   "digest": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
   "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
