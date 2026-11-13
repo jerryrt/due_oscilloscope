@@ -12,6 +12,7 @@ outlines_from_silk.py  recovers the outlines actually drawn on a board's F.Silks
 draw_outlines.py       adds the table's rectangles the silk lacks (the AWG BNC outline); silk only
 place_designators.py   silk-only designator placement (moves each Reference text; copper, parts, pads untouched); run it in the image
 refine_designators.py  second silk-only pass: turns/moves labels so none reads as one (cfg.DESIGNATOR_GAP_ONE_LABEL, same baseline) and none sits in a foreign outline; run in the image
+set_models.py          points U401 at the project's VRML stand-in for the WSON-12 (MODEL_BY_REF in boards/v2_layout.py); text splice, idempotent; render only, a STEP export leaves it out
 place_bncs.py          puts the three BNCs where boards/v2_layout.py says (BNC_X, BNC_Y, SCOPE_PITCH: CH1 44.45, CH2 26.67, AWG 8.89, Due mm; owner 2026-11-13) and moves what hangs on them: labels, silk boxes, the two scope input runs (pad, jog inside the BNC fence, old corridor), J605's designator (DESIGNATOR_AT); text splice, idempotent; refill the zones afterwards
 refill_zones.py        refills every zone with pcbnew so the fills honour the project's min_copper_edge_clearance (0.45); splices only the filled_polygon blocks into the board text; idempotent; run in the image
 pinlabels (pcbtools/pinlabels.py)  the Due's own pin names beside each edge-row socket, on top silk in the bands (LR-11): python3 -m pcbtools.pinlabels BOARD --config v2_layout --write; --check and --list too. Names come from docs/due-header-table.md, sockets from EDGE_SOCKETS in boards/v2_layout.py

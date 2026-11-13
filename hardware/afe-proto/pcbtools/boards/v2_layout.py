@@ -24,6 +24,10 @@ SCOPE_PITCH = _t.SCOPE_PITCH                                                    
 # socket, into the strip between the socket's own silk (top edge 52.13) and the Due's edge, beside the owner's pin labels' band and not in it
 # (silk only; v2/layout/place_bncs.py). {ref: (x, y) Due mm, centre of the label}
 DESIGNATOR_AT = {'J605': (96.2, 53.0)}
+# 3D models the board names by reference instead of the footprint's own (KiCad 10 ships none for the LM27762's WSON-12 package: the library's
+# link dangles). ${KIPRJMOD} is the board's folder (v2/layout/integrated); the file is the project's own VRML stand-in, render only (a KiCad
+# STEP export leaves it out). v2/layout/set_models.py applies it by text splice.
+MODEL_BY_REF = {'U401': '${KIPRJMOD}/../../../kicad/lib/afe.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_standin.wrl'}
 SHARED_PARTS = dict(_t.SHARED_PARTS)
 SHARED_MARGIN = _t.SHARED_MARGIN
 # the designator legibility check of LR-11 (rules.py): thresholds, all mm

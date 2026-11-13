@@ -1,0 +1,16 @@
+#VRML V2.0 utf8
+# WSON-12-1EP 3x2 mm P0.5 (TI DSS, LM27762) render stand-in: body 2.0 x 3.0 x 0.75 mm, 12 leads, pin-1 dot. KiCad 10 ships no model for this package. Own work, CC BY-SA 4.0. Not for mechanical STEP export.
+Transform { translation 0.0000 0.0000 0.1476 children Shape { appearance Appearance { material Material { diffuseColor 0.12 0.12 0.12 } } geometry Box { size 0.7874 1.1811 0.2953 } } }
+Transform { translation -0.3445 -0.4921 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.3445 -0.2953 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.3445 -0.0984 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.3445 0.0984 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.3445 0.2953 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.3445 0.4921 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 -0.4921 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 -0.2953 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 -0.0984 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 0.0984 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 0.2953 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation 0.3445 0.4921 0.0394 children Shape { appearance Appearance { material Material { diffuseColor 0.80 0.80 0.80 } } geometry Box { size 0.1181 0.0984 0.0787 } } }
+Transform { translation -0.2165 0.4528 0.2992 children Shape { appearance Appearance { material Material { diffuseColor 0.7 0.7 0.7 } } geometry Box { size 0.1181 0.1181 0.0079 } } }

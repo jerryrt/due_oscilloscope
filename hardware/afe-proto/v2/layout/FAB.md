@@ -49,3 +49,4 @@ ENIG is not chosen up front; it is the one change to make if, and only if, JLC's
 6. The two documented MH602 courtyard overlaps in the DRC (owner caliper check pending, the screw is optional).
 7. The three new capacitor and resistor numbers (C1647, C1671, C22808) have an international price read only; their domestic ladder was not read (jlc-smt.com did not answer on 2026-11-13) *(check)*.
 8. The values of D-V2-17 rest on simulations: VT-10 (REF output impedance) and VT-23 (top of the range) are the first bench measurements.
+9. 3D models: U401 (the LM27762's WSON-12) has no model in KiCad 10's library, so the board points it at the project's own VRML stand-in, `kicad/lib/afe.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_standin.wrl` (`MODEL_BY_REF` in `pcbtools/boards/v2_layout.py`, applied by `v2/layout/set_models.py`). It is a render stand-in and VRML only, so a KiCad **STEP export leaves U401 out**; the renders show it. It changes no Gerber, drill, BOM or CPL byte.
