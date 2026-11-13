@@ -1,6 +1,6 @@
 """Point each footprint named in boards/v2_layout.py MODEL_BY_REF at its 3D model file, by text splice (no KiCad needed; idempotent).
 
-    python3 v2/layout/set_models.py BOARD.kicad_pcb [--write OUT.kicad_pcb]
+    python3 v2/layout/set_models.py BOARD.kicad_pcb [--design v1] [--write OUT.kicad_pcb]
 
 Only the quoted path of the footprint's (model ...) entry changes; its offset, scale and rotation, and every other byte of the board, stay.
 A reference with no (model ...) entry is an error (nothing is added). The project file is not touched.
@@ -12,11 +12,12 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..'))
 from pcbtools.boards import v2_layout as cfg  # noqa: E402
+from pcbtools.boards import v1 as cfg1  # noqa: E402
 
 
 def set_models(text, table=None):
     """(new text, [refs changed])"""
-    table = cfg.MODEL_BY_REF if table is None else table
+    table = getattr(cfg, 'MODEL_BY_REF', {}) if table is None else table
     changed = []
     for ref, path in table.items():
         for m in re.finditer(r'\n\t\(footprint "[^"]*"\n', text):
@@ -39,7 +40,7 @@ def set_models(text, table=None):
 def main(argv):
     with open(argv[1]) as fh:
         text = fh.read()
-    new, changed = set_models(text)
+    new, changed = set_models(text, cfg1.MODEL_BY_REF if '--design' in argv and argv[argv.index('--design') + 1] == 'v1' else None)
     print('models set:', changed or 'already as configured')
     if '--write' in argv:
         with open(argv[argv.index('--write') + 1], 'w') as fh:

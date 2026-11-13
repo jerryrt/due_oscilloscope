@@ -280,20 +280,14 @@
     "U401.3"
    ],
    "drc_unconnected": 1,
-   "drc_named_pads": [
-    "U401.12"
-   ],
+   "drc_named_pads": [],
    "drc_items": [
     {
-     "nets": [
-      "/+5V_F"
-     ],
-     "pads": [
-      "U401.12"
-     ],
+     "nets": [],
+     "pads": [],
      "raw": [
       "Track [/+5V_F] on F.Cu, length 1.0500 mm",
-      "Pad 12 [/+5V_F] of U401 on F.Cu"
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm"
      ]
     }
    ],
@@ -327,7 +321,7 @@
      "pads": [],
      "raw": [
       "Track [/+5V_F] on F.Cu, length 0.3000 mm",
-      "Track [/+5V_F] on F.Cu, length 0.3000 mm"
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm"
      ]
     }
    ],

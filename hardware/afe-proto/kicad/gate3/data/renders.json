@@ -5,7 +5,7 @@
   "link": "../render/v1-top.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 387.3
+  "delta_s": 8.5
  },
  {
   "view": "Bottom",
@@ -13,7 +13,7 @@
   "link": "../render/v1-bottom.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 387.5
+  "delta_s": 8.5
  },
  {
   "view": "3D",
@@ -21,6 +21,6 @@
   "link": "../render/v1-3d.png",
   "exists": true,
   "newer_than_board": true,
-  "delta_s": 391.2
+  "delta_s": 8.5
  }
 ]

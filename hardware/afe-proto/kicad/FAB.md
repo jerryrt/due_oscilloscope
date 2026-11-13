@@ -36,6 +36,8 @@ takes the BOM and CPL in a separate upload step, so leave those two out of the G
 Holes, counted independently from the board file: plated 160 (59 x 0.3 mm vias and pads, 95 x 1.0 mm, 6 x 2.2 mm), non-plated 2 (2.7 mm). The top layer carries no copper pour; the bottom
 is the one ground plane.
 
+U401 (the LM27762, WSON-12) has no 3D model in KiCad 10; the board points it at the project's own VRML stand-in, `lib/afe.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_standin.wrl` (`MODEL_BY_REF` in `pcbtools/boards/v1.py`, applied by `v2/layout/set_models.py --design v1`). It is for the renders only: a KiCad STEP export leaves U401 out, and nothing in the fabrication set uses it.
+
 ## Ordering options (fixed by the spec lead, cost first)
 
 1.6 mm FR-4, 2 layers, 1 oz copper, green solder mask, white silk, lead-free HASL. JLC assembles 0.5 mm-pitch WSON and MSOP parts on HASL routinely, so ENIG is not chosen up front; it

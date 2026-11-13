@@ -147,6 +147,10 @@ HEADERS = {'J601': (27.94, 2.54, '+x'), 'J602': (50.80, 2.54, '+x'), 'J603': (73
 XIO = (93.98, 50.80)          # J607 pin 1; odd pins at x 93.98, even at 96.52, rows step down 2.54
 HEADER_ROT = {'+x': 90.0, '-x': -90.0}
 BNCS = {'J101': 44.45, 'J201': 26.67, 'J301': 7.4}           # y of each BNC centre pin: CH1, CH2, AWG
+# 3D models the board names by reference instead of the footprint's own (KiCad 10 ships none for the LM27762's WSON-12: the library link
+# dangles). ${KIPRJMOD} is the board's folder (kicad/); the file is the project's own VRML stand-in, render only. v2/layout/set_models.py
+# --design v1 applies it by text splice.
+MODEL_BY_REF = {'U401': '${KIPRJMOD}/lib/afe.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_standin.wrl'}
 SCOPE_PITCH = 17.78                                          # J101 to J201 (owner, 2026-11-13)
 AWG_BNC_GAP_MIN = SCOPE_PITCH + 1.0                          # J201 to J301: the AWG is set apart from the scope pair (spec team, 2026-11-13)
 BNC_X = 102.0

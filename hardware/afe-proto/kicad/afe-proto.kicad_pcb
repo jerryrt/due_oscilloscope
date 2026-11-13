@@ -4549,7 +4549,7 @@
 			(uuid "53ab4f7e-e666-55a6-92a8-980362fe339f")
 		)
 		(embedded_fonts no)
-		(model "${KICAD10_3DMODEL_DIR}/Package_SON.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_EP1x2.65.step"
+		(model "${KIPRJMOD}/lib/afe.3dshapes/WSON-12-1EP_3x2mm_P0.5mm_standin.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
