@@ -14,9 +14,13 @@ Differences that are by design, not by rounding (each is also asserted below):
   | LR-1/3/5/9 point tests                | any sample point every 0.1-0.5 mm    | exact segment tests (geom): same verdicts   |
   | LR-5 distance figure                  | nearest sample point                 | exact: never larger than the old figure     |
   | LR-4 'pour near FB' arm               | a point list `extra_top_gnd`         | a top GND track: detail says 'GND track'    |
-  | LR-4 top-pour test                    | HitTestFilledArea(accuracy 0.02 mm)  | even-odd point-in-ring, hole-aware, no 0.02 |
+  | LR-4 top-pour test                    | HitTestFilledArea(accuracy 0.02 mm)  | exact edge distance to the fill (finding 9) |
   | LR-6/LR-8 touch tests                 | samples every 0.05 / 0.1 mm          | exact: an end 0.05 mm from a line touches   |
   | LR-10                                 | in lr_check.py                       | pcbtools.drc (kicad-cli), see test_drc      |
+
+The differences that are IMPROVEMENTS (the review of the port: bridge-joined nets, unrouted nets, both layers and zones, the exact
+pour gap) are data in known_improvements.py. Exactly those are explained: a difference not listed there fails, and a listed one
+that no longer differs fails (a stale entry).
 """
 import glob
 import json
@@ -26,9 +30,10 @@ import re
 import numpy as np
 import pytest
 
-from pcbtools import boardio, fence, rules as R
+from pcbtools import boardio, fence, mutate as M, rules as R
 from pcbtools.boards import v2, v2_arms
 import pcbtools.check as CK
+import known_improvements as KI
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOLD = os.path.join(HERE, '..', 'golden', 'v2-8a1f7ac')
@@ -63,6 +68,14 @@ DIFFS = {
 def test_verdict_and_detail_match_the_old_tool(board, row):
     old = gold(board)[row]
     new = dict(R.ROWS)[row](arrays(board), v2)
+    if (board, row) in KI.KNOWN:
+        k = KI.KNOWN[(board, row)]
+        assert old['verdict'] == k['old'], 'the entry names a golden verdict that is not the golden one'
+        assert ('PASS' if new.ok else 'FAIL') == k['new'], (new.detail, k)
+        assert k['contains'] in new.detail, new.detail
+        assert new.detail != old['detail'], 'stale known improvement: the new detail equals the golden one'
+        assert (board, row) not in DIFFS
+        return
     assert ('PASS' if new.ok else 'FAIL') == old['verdict'], (new.detail, old['detail'])
     if (board, row) in DIFFS:
         assert new.detail != old['detail'], 'stale DIFFS entry: the details agree now'
@@ -71,6 +84,12 @@ def test_verdict_and_detail_match_the_old_tool(board, row):
         assert re.sub(r'\d', '#', new.detail) == re.sub(r'\d', '#', old['detail']), 'more than a digit differs'
     else:
         assert new.detail == old['detail']
+
+
+def test_known_improvements_are_listed_for_real_cells_only():
+    cells = {(b, r) for b in LR_BOARDS for r in ROWS}
+    assert set(KI.KNOWN) <= cells and len(KI.KNOWN) >= 15                          # a floor: the data was not emptied
+    assert {k['finding'] for k in KI.KNOWN.values()} == {1, 2, 9}
 
 
 FIG = re.compile(r'(\d+(?:\.\d+)?)')
@@ -86,7 +105,8 @@ def test_figures_agree_with_the_old_printed_ones(board):
             assert f'{r.figures[lab]:.1f}' == val
     r = R.lr12(b, v2)
     old = dict(re.findall(r'(C\d+>U\d+\.\d) (\d+\.\d)', g['LR-12 DECOUP_MAX']['detail']))
-    old |= {f'{c}>{v2.DECOUP[c][0]}.{v2.DECOUP[c][1]}': d for c, d in re.findall(r'(C\d+) is (\d+\.\d) mm from', g['LR-12 DECOUP_MAX']['detail'])}
+    dec = {c: (ic, pin) for c, ic, pin in v2.DECOUP}
+    old |= {f'{c}>{dec[c][0]}.{dec[c][1]}': d for c, d in re.findall(r'(C\d+) is (\d+\.\d) mm from', g['LR-12 DECOUP_MAX']['detail'])}
     assert old
     for k, val in old.items():
         assert f'{r.figures[k]:.1f}' == val, k
@@ -121,11 +141,17 @@ def test_the_old_arms_are_all_ported():
     names = [a[0] for a in ARMS]
     assert len(old) == 28 and old[-1].startswith('LR-10')
     assert set(old[:-1]) <= set(names)                                          # the 27 numpy arms of the old tool
-    assert len(ARMS) == 28 and len(set(names)) == 28                            # 27 + 'LR-4 top GND zone near FB'
+    assert len(v2_arms.OLD_ARMS) == 28 and len(set(names)) == len(ARMS)         # 27 + 'LR-4 top GND zone near FB'; the new arms have new names
+    assert len(v2_arms.NEW_ARMS) >= 12 and not {a[0] for a in v2_arms.NEW_ARMS} & set(old)
 
 
 def _clean_board(rule):
-    """the integrated board, except for LR-11, which fails on it before any arm: its arms run on the refcal block board"""
+    """a board on which the rule PASSES, which an arm needs to show a flip. The integrated board, except: LR-11 fails on it before any
+    arm (its arms run on the refcal block board), and LR-4 fails on it since the exact pour gap (finding 9: the /CH1_N and /CH2_N
+    pours are 0.16 mm off) - its arms run on the integrated board with its top GND pours removed"""
+    if rule is R.lr4:
+        b = arrays('v2-integrated-990d4b03')
+        return M.drop_zones(b, (b.z_layer == 0) & (b.z_net == b.net_id('/GND')))
     return arrays('v2-refcal-326f141b' if rule is R.lr11 else 'v2-integrated-990d4b03')
 
 
@@ -150,18 +176,34 @@ def test_the_arms_leave_the_clean_board_alone():
 
 
 def test_arm_output_equals_the_old_tool_line_for_line():
-    """the --mutate output of the old tool on the integrated board, minus the two designed differences"""
+    """the --mutate output of the old tool on the integrated board, minus the designed differences: the one extra arm, the LR-10 arm,
+    and the arms that are now reported NOT TESTABLE (known_improvements.ARM_NOT_TESTABLE: the rule fails on the clean board)"""
     old = json.load(open(os.path.join(GOLD, 'v2-integrated-990d4b03.lr_check_mutate.json')))['raw'].splitlines()
     lines = []
-    CK.run_arms(arrays('v2-integrated-990d4b03'), v2, [a for a in ARMS if a[0] != 'LR-4 top GND zone near FB'], out=lines.append)
-    assert len(lines) == len(old) - 1                                           # no LR-10 arm line, and the summary
+    CK.run_arms(arrays('v2-integrated-990d4b03'), v2, [a for a in v2_arms.OLD_ARMS if a[0] != 'LR-4 top GND zone near FB'],
+                out=lines.append, no_drc=True)
+    assert lines[-2].startswith('[SKIP] LR-10 arm') and len(lines) == len(old) == 29          # 27 arms, the LR-10 line, the summary
+    seen, seen_text = set(), set()
     for a, b in zip(old, lines):
-        if 'pour near FB' in a:
+        if 'LR-10' in a:
+            continue
+        if a.startswith('every arm caught'):
+            assert b.startswith('NOT TESTABLE on this board: ') and not b.startswith('every arm caught')
+            continue
+        name = a.split('] ', 1)[1].split(' (clean board')[0]
+        if name in KI.ARM_NOT_TESTABLE:
+            seen.add(name)
+            assert b.startswith(f'[NOT TESTABLE on this board] {name} (clean board: fail')
+            continue
+        if name in KI.ARM_TEXT:
+            seen_text.add(name)
+            head = f'[FAILED AS REQUIRED] {name} (clean board: pass): '
+            assert a.startswith(head) and b.startswith(head) and a != b
+        elif 'pour near FB' in a:
             assert a.replace("['added ground copper']", "['GND track']") == b
-        elif a.startswith('every arm caught'):
-            assert b == a
-        elif 'LR-10' not in a:
+        else:
             assert a == b
+    assert seen == set(KI.ARM_NOT_TESTABLE) and seen_text == set(KI.ARM_TEXT)
 
 
 # ------------------------------------------------------------------------------------------------ fence
@@ -188,13 +230,20 @@ def test_fence_cases_include_both_clean_and_dirty():
 
 # ------------------------------------------------------------------------------------------------ the command line
 def test_cli_prints_the_old_lines(capsys):
+    """the row lines are the old tool's, except LR-4 (finding 9, known_improvements); the LR-10 row and the summary say that DRC did
+    not run, and the run is not a pass"""
     npz = os.path.join(ARR, 'v2-integrated-990d4b03.npz')
     rc = CK.main([npz, '--config', 'v2'])
     out = capsys.readouterr().out.splitlines()
     old = json.load(open(os.path.join(GOLD, 'v2-integrated-990d4b03.lr_check.json')))['raw'].splitlines()
     assert rc == 1
-    assert [l for l in out if 'LR-10' not in l] == [l for l in old if 'LR-10' not in l and not l.startswith('FAIL:')] + ['FAIL: LR-11']
-    assert any(l.startswith('[SKIP] LR-10') for l in out)
+    body = [l for l in out if 'LR-10' not in l and not l.startswith('FAIL:')]
+    want = [l for l in old if 'LR-10' not in l and not l.startswith('FAIL:')]
+    assert len(body) == len(want)
+    for a, b in zip(body, want):
+        assert a == b or (a.startswith('[FAIL] LR-4:') and b.startswith('[PASS] LR-4:'))
+    assert any(l.startswith('[NOT RUN] LR-10') for l in out)
+    assert out[-1] == 'FAIL: LR-4, LR-11; LR-10 NOT RUN'
 
 
 def test_cli_all_pass_and_rows_and_exit_codes(capsys):
@@ -211,7 +260,7 @@ def test_cli_all_pass_and_rows_and_exit_codes(capsys):
 
 def test_cli_mutate_reports_an_arm_that_is_not_caught(capsys):
     b = arrays('v2-integrated-990d4b03')
-    miss = CK.run_arms(b, v2, [('does nothing', R.lr5, lambda b, c: b)])
+    miss = CK.run_arms(b, v2, [('does nothing', R.lr5, lambda b, c: b)], no_drc=True)
     assert miss == ['does nothing']
     out = capsys.readouterr().out
     assert '[NOT CAUGHT] does nothing' in out and out.strip().endswith('NOT CAUGHT: does nothing')

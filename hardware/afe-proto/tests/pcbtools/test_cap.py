@@ -21,6 +21,7 @@ import pytest
 from pcbtools import boardio, cap
 from pcbtools.boards import v2
 import synth
+from synth import Synth
 
 TESTS = pathlib.Path(__file__).resolve().parents[1]
 ARR = TESTS / 'fixtures' / 'arrays'
@@ -165,8 +166,8 @@ def test_only_top_copper_of_the_chosen_nets_and_pads_are_conductors():
     b = s.build()
     arc = dataclasses.replace(b, a_idx=[9], a_x0=[24.0], a_y0=[20.0], a_xm=[25.0], a_ym=[21.0], a_x1=[26.0], a_y1=[20.0], a_w=[0.3],
                               a_layer=[0], a_net=[b.net_id('/A')])
-    cu = cap.copper(arc, ('/A',))
-    assert len(cu.segs['/A']) == 1 + 2 and len(cu.rects['/A']) == 1 and not len(cu.segs['__other__']) and not len(cu.rects['/GND'])
+    cu = cap.copper(arc, ('/A',), '/GND')
+    assert len(cu.segs['/A']) == 1 + 2 and len(cu.rects['/A']) == 1 and not len(cu.segs['__other__']) and not len(cu.rects['__gnd__'])
     xa = cu.rects['/A'][0]
     assert (xa[2] - xa[0], xa[3] - xa[1]) == pytest.approx((1.0, 1.0)) and xa[0] == pytest.approx(21.0 + 50 - 0.5)
     assert cu.segs['/A'][0][1] == pytest.approx(150 - 20)                           # KiCad y = 150 - y
@@ -188,8 +189,10 @@ def test_kicad_coordinates_are_the_exact_nanometre_doubles_pcbnew_gives():
 
 def test_nets_are_grouped_other_and_ground():
     s = synth.Synth('/A', '/B', '/GND').s('/A', 'F', 0, 0, 1, 0).s('/B', 'F', 0, 1, 1, 1).s('/GND', 'F', 0, 2, 1, 2).s('', 'F', 0, 3, 1, 3)
-    cu = cap.copper(s.build(), ('/A',))
-    assert [len(cu.segs[g]) for g in ('/A', '__other__', '/GND')] == [1, 2, 1]
+    cu = cap.copper(s.build(), ('/A',), '/GND')
+    assert [len(cu.segs[g]) for g in ('/A', '__other__', '__gnd__')] == [1, 2, 1]
+    cu = cap.copper(s.build(), ('/A',))                                   # no ground net named: nothing is ground
+    assert [len(cu.segs[g]) for g in ('/A', '__other__', '__gnd__')] == [1, 3, 0]
 
 
 def test_a_window_without_copper_is_an_error():
@@ -301,8 +304,8 @@ def test_figures_have_the_physical_ordering(rep):
 @pytest.mark.slow
 def test_self_capacitance_of_awg_fb_changes_by_the_stated_amount_when_the_cell_is_halved(integrated):
     """0.2 -> 0.1 mm: no pour 0.699 -> 0.730 pF (+4.5 %), pour 0.934 -> 0.856 pF (-8.3 %); neither is converged"""
-    a = cap.self_cap(integrated, '/AWG_FB', 3.0, 0.2)
-    b = cap.self_cap(integrated, '/AWG_FB', 3.0, 0.1)
+    a = cap.self_cap(integrated, '/AWG_FB', 3.0, 0.2, gnd='/GND')
+    b = cap.self_cap(integrated, '/AWG_FB', 3.0, 0.1, gnd='/GND')
     assert b[False] / a[False] - 1 == pytest.approx(0.045, abs=0.01)
     assert b[True] / a[True] - 1 == pytest.approx(-0.083, abs=0.01)
     assert abs(b[True] / a[True] - 1) < 0.10 and abs(b[False] / a[False] - 1) < 0.10
@@ -328,7 +331,7 @@ same = {}
 for name, nets, h, pad in (('awg_fb', ('/AWG_FB',), 0.1, 3.0), ('n_pair', ('/CH1_N', '/CH2_N'), 0.2, 3.0), ('np_pair', ('/CH1_NP', '/CH2_NP'), 0.1, 3.0)):
     old.H = h
     cu_o = old.copper(board, nets)
-    cu_n = new.copper(b, nets)
+    cu_n = new.copper(b, nets, '/GND')
     if len(nets) == 1:
         its = cu_o[nets[0]]
         xs = [v for it in its for v in (it[1], it[3])]; ys = [v for it in its for v in (it[2], it[4])]
@@ -338,7 +341,7 @@ for name, nets, h, pad in (('awg_fb', ('/AWG_FB',), 0.1, 3.0), ('n_pair', ('/CH1
     nx, ny = int(round((w[2] - w[0]) / h)), int(round((w[3] - w[1]) / h))
     for g in list(nets) + ['__other__', '/GND']:
         mo = old.raster(cu_o.get(g, []), w[0], w[1], nx, ny)
-        mn = new.raster(cu_n, g, w[0], w[1], nx, ny, h)
+        mn = new.raster(cu_n, '__gnd__' if g == '/GND' else g, w[0], w[1], nx, ny, h)
         same[f'{name}:{g}'] = [bool((mo == mn).all()), int(mo.sum())]
 print(json.dumps(dict(out, masks=same)))
 '''
@@ -372,3 +375,32 @@ def test_live_unrounded_figures_equal_the_old_tools(pcbnew_required, live):
 def test_live_rasters_are_cell_for_cell_the_old_tools(pcbnew_required, live):
     assert live['masks'] and all(v[0] for v in live['masks'].values()), live['masks']
     assert sum(v[1] for v in live['masks'].values()) > 1000                            # compared real copper, not empty masks
+
+
+# ---------------------------------------------------------------------------------------------- the grid-size guard
+def test_a_grid_over_the_cell_limit_is_refused_before_anything_is_built(monkeypatch):
+    assert cap.MAX_CELLS == 3_000_000
+    assert cap.check_grid(100, 100, 58) == 580_000
+    assert cap.check_grid(100, 100, 300) == 3_000_000                           # exactly the limit is allowed
+    with pytest.raises(cap.GridTooLarge, match=r'3,000,001 cells, over the limit of 3,000,000'):
+        cap.check_grid(3_000_001, 1, 1)
+    assert issubclass(cap.GridTooLarge, ValueError)
+    built = []
+    monkeypatch.setattr(cap, '_eps', lambda *a, **k: built.append(a))
+    s = Synth('/CH1_N', '/CH2_N', '/AWG_FB').part('R1', 0, 0).p('R1', '1', 0, 0, '/CH1_N').p('R1', '2', 400, 300, '/CH2_N')
+    b = s.build()
+    win = cap.window(b, ('/CH1_N', '/CH2_N'), 3.0)
+    with pytest.raises(cap.GridTooLarge):
+        cap.pair_caps(b, ['/CH1_N', '/CH2_N'], win, False, h=0.1)
+    s = Synth('/AWG_FB').part('R1', 0, 0).p('R1', '1', 0, 0, '/AWG_FB').p('R1', '2', 400, 300, '/AWG_FB')
+    with pytest.raises(cap.GridTooLarge):
+        cap.self_cap(s.build(), '/AWG_FB', pad=3.0, h=0.1)
+    assert built == []                                                          # refused before the first allocation
+
+
+def test_the_real_windows_are_under_the_limit():
+    b = boardio.load_npz(str(ARR / 'v2-integrated-990d4b03.npz'))
+    for label, nets, pad, h in v2.CAP_PAIRS:
+        x0, y0, x1, y1 = cap.window(b, nets, pad)
+        nzb, nz = cap._grid(h, cap.STACK)
+        assert cap.check_grid(round((x1 - x0) / h), round((y1 - y0) / h), nz) < cap.MAX_CELLS

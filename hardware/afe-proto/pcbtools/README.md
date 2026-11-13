@@ -43,7 +43,7 @@ The pcbnew group skips with an explicit reason when pcbnew is missing, **fails**
 * `s_idx`/`a_idx`/`v_idx` index the whole `board.GetTracks()` enumeration (segments, arcs and vias together).
 * `p_pin` can repeat within a footprint (shield or thermal pads): `pad_index` returns the first, `pad_indices` all.
   The old loader keyed pads by (ref, pin), last wins; the equivalence tests reproduce that.
-* Zones export filled outlines and their holes as rings (`z_ring_off`, `z_vert_off`, `z_ring_hole`); a pour as KiCad 10 returns it on these boards is already fractured (HoleCount 0 on every fixture zone: a cut-out is a slit in the outline), so even-odd on the outline ring is complete; real hole rings are exported when KiCad returns them; layer codes 0 F.Cu, 1 B.Cu, 2 inner.
+* Zones export filled outlines and their holes as rings (`z_ring_off`, `z_vert_off`, `z_ring_hole`); a pour as KiCad 10 returns it on these boards is already fractured (HoleCount 0 on every fixture zone: a cut-out is a slit in the outline), so on these boards even-odd on the outline ring is complete. **The hole path is therefore proven only by the synthetic test** (`test_lr4_pour_is_hole_aware`, `test_a_zone_fill_joins_what_lies_in_it_on_its_layer_hole_aware`): no recorded board has a hole ring, and the code that honours one has never met a KiCad export of it (`HoleCount` > 0). Layer codes 0 F.Cu, 1 B.Cu, 2 inner.
 * `seg_seg_dist` refuses a matrix over 256 MB; use `within` / `min_dist` for large inputs.
 
 # Stage 2: the rules, the fence rule, the command line
@@ -55,7 +55,9 @@ The pcbnew group skips with an explicit reason when pcbnew is missing, **fails**
     pcbtools/drc.py              LR-10: kicad-cli DRC wrapper (the only KiCad-dependent rule), and its arm
     pcbtools/fence.py            owner_of, inside_masks, violations, check_fence (the old fence_check on arrays)
     pcbtools/mutate.py           the numpy edits the arms are written in (add_segment, add_via, move_footprint, ...)
-    pcbtools/check.py            python -m pcbtools.check BOARD.kicad_pcb|CACHE.npz --config v2 [--mutate] [--rows LR-1 ...] [--drc]
+    pcbtools/CONFIG_FIELDS.md    every board-config field, its shape and a v2 example; rules.py & co. hold NO ref or net literal
+                                 (tests/pcbtools/test_no_board_literals.py)
+    pcbtools/check.py            python -m pcbtools.check BOARD.kicad_pcb|CACHE.npz --config v2 [--mutate] [--rows LR-1 ...] [--drc | --no-drc]
 
 ## Rules
 
@@ -64,18 +66,27 @@ the same upper-case names, so a test builds a config from plain values (`tests/p
 `detail` reproduces the old tool's printed line; `figures` holds floats (lengths, distances, counts) under stable keys.
 No rule loops over segments: segment tests are `geom` kernels, connectivity is `geom.connected_components`.
 
-What the old tool treated as "touching", kept exactly (`rules.pieces`, used by LR-6 and LR-8): two top tracks touch when an end
-of one is within 0.05 mm of the other's centre line; a track and a via when the via centre is within 0.05 mm of the centre
-line; a track and a pad when the centre line enters the pad's box grown by 0.02 mm; two vias within 0.05 mm; a via and a pad
-when the via centre is in the pad's box grown by 0.02 mm; two pads never, except the `BRIDGE_PADS` pairs; widths are not used;
-the star pads (LR-6) and source pads (LR-8) are removed before connecting. A pad is identified by (ref, pin) and the last pad of
-a repeated pin wins, as in the old loader. The top pour test of LR-4 is a point-in-ring test of the zone arrays, hole-aware
-(`geom.points_in_polys(..., hole=z_ring_hole)`); the old HitTestFilledArea's 0.02 mm accuracy is not reproduced and no verdict
-depends on it. KiCad returns these pours already fractured (a cut-out is a slit in the outline, `HoleCount` 0 on every fixture
-zone), so even-odd on the outline ring is complete; real hole rings are exported and honoured when KiCad returns them.
+Connectivity (`rules.pieces`, used by LR-6 and LR-8) is the old tool's touch rules, exact, over the copper of one ELECTRICAL net:
+the nets joined by 0 ohm bridge parts (`cfg.BRIDGES`) are one net (`rules.family`), the two pads of every bridge part are joined, and
+copper is tracks on BOTH layers, vias, pads and the filled zones of the net's family. Two tracks of one layer touch when an end of
+one is within 0.05 mm of the other's centre line (or 0.02 of an end); a track and a via when the via centre is within 0.05 mm of the
+centre line (a via spans both layers); a track and a pad when the centre line enters the pad's box grown by 0.02 mm AND the pad
+has the track's layer; two vias within 0.05 mm; a via and a pad when the via centre is in the pad's box grown by 0.02 mm; two pads
+never, except bridge pairs; a zone fill (one node per outline ring, even-odd, hole-aware) holds the items with a point in it on its
+layer; widths are not used. LR-6 and LR-8 also require REACHABILITY: every present consumer group (LR-6) and every branch (LR-8)
+reaches a star / source pad through that copper, so an unrouted net no longer passes; a group or branch none of whose parts is on
+the board is "absent", not unreachable. A pad is identified by (ref, pin) and the last pad of a repeated pin wins, as in the old
+loader. LR-4's top-pour test is the exact distance from the pour's polygon edges (outline and hole rings) to the node's copper:
+tracks as capsules, pads by size and rotation (`pcbtools.shapes`; a rounded-rectangle pad is its circumscribed rectangle, which
+overstates the pad by at most its corner radius: conservative), 0 where the node's copper lies on the fill; the figure
+`pour_gap_<node>_mm` is that distance. **Which nodes** LR-4's pour sentence covers is a decision recorded in `boards/v2.py`: it names
+"each op-amp's inverting node", the config's `INV_NODES` (`/AWG_FB`, `/CH1_N`, `/CH2_N`) are judged; `/CH1_N` and `/CH2_N` are the
+high-impedance attenuator nodes and a follower's inverting PIN is on its output net, so `/CH1_OUT` and `/CH2_OUT` (`POUR_INFO_NODES`)
+are reported in the figures and not judged. LR-5 is measured from the copper EDGE (a track's half width, a pad's extent) to the
+generator's courtyard.
 
 LR-8 needs `route.KELVIN['VREF']`, which lives in a module that imports pcbnew; its two lists are in `boards/v2.py`
-(`VREF_SOURCE`, `VREF_BRANCHES`, from commit 8a1f7ac) and are the one copy of that data outside route.py.
+(`VREF_SOURCE`, `VREF_BRANCHES` as pad lists, from commit 8a1f7ac) and are the one copy of that data outside route.py.
 
 ## Differences from the old tool (each tested in tests/pcbtools/test_rules_equivalence.py)
 
@@ -85,7 +96,11 @@ LR-8 needs `route.KELVIN['VREF']`, which lives in a module that imports pcbnew; 
 | LR-5 distance figure | nearest sample point (0.5 mm step) | exact distance to the box | figure can only be smaller; verdicts equal |
 | printed 0.1 mm figures sitting on x.x5 | float sum of nm integers | float sum of 1e-6 rounded coordinates | 5 rows print 1.4 for 1.5 or 1.8 for 1.9 (CH2_OUT 1.45 on four boards, DAC0 1.85 on awg): the value is the same, the rounding of an exact half differs |
 | LR-4 pour-near-FB arm | a point list `extra_top_gnd` | a top GND track (and an added zone arm for the pour test) | arm detail says `GND track`, not `added ground copper` |
-| LR-4 pour test | HitTestFilledArea(accuracy 0.02) | even-odd, hole-aware, no accuracy | none |
+| LR-4 pour test | HitTestFilledArea(accuracy 0.02) at 4 axial probes 0.5 mm from pad centres | exact edge-to-edge distance, all pour edges | every fixture fails LR-4 now (finding 9, `tests/pcbtools/known_improvements.py`) |
+| LR-6, LR-8 | nets taken one by one, top copper only; unrouted passed | bridge-joined nets, both layers and zones, reachability | vacuous passes become verdicts (findings 1-3) |
+| LR-1 | first bottom GND zone only; runs joined end to end | every bottom zone; T and crossing joins | findings 4, 5 |
+| `--mutate` | an arm on a rule that already failed counted as caught | NOT TESTABLE, exit 1 | finding 6 |
+| `check` without LR-10 | ALL PASS | `LR-10 NOT RUN`, exit 1 (`--no-drc` to skip on purpose) | finding 8 |
 | LR-6 missing star pads message | set iteration order | config list order | order only (never printed on a passing board) |
 | arcs | read as chords | not on any fixture; `a_*` arrays are ignored by the rules (fence compares arc ends) | none |
 

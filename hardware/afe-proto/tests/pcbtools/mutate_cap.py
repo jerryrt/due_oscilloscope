@@ -43,6 +43,9 @@ MUTANTS = [
     (C, 'B.Cu tracks counted as top copper', "    top_s = b.s_layer == 0", "    top_s = b.s_layer >= 0"),
     (C, 'arcs dropped', "        seg = np.vstack([seg, c1, c2])", "        pass"),
     (C, 'window ignores its pad', "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad", "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad * 0"),
+    # the grid-size guard (review finding 17)
+    (C, 'grid guard never refuses', "    if n > lim:\n", "    if n > lim * 10 ** 9:\n"),
+    (C, 'grid guard after the allocation', "    check_grid(nx, ny, nz)\n    eps = _eps((nz, ny, nx), nzb, stack)\n    masks", "    eps = _eps((nz, ny, nx), nzb, stack)\n    check_grid(nx, ny, nz)\n    masks"),
     # pour and the other nets
     (C, 'no pour keep-back radius', "    k = int(round(clear / h))\n", "    k = 0\n"),
     (C, 'pour case without the pour', "            g = g | ~keep_back(m | other, stack.pour_clear, h)", "            g = g"),

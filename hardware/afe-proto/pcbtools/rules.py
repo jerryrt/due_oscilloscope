@@ -25,7 +25,7 @@ import weakref
 import numpy as np
 from scipy.spatial import cKDTree
 
-from . import geom
+from . import geom, shapes
 
 
 @dataclasses.dataclass
@@ -161,9 +161,9 @@ def _first_true(M):
 
 # ----------------------------------------------------------------------------------------------------- LR-1
 def bottom_runs(b, cfg):
-    """connected runs of non-GND bottom segments (same net, endpoints within 0.01 mm): list of
+    """connected runs of non-GND bottom segments (same net, touching within 0.01 mm: end to end, end on a segment's interior, crossing): list of
     (net name, length, vias at its ends, [analog refs it lies under]) plus the segment rows and their labels"""
-    gnd = nid(b, '/GND')
+    gnd = nid(b, cfg.GND)
     rows = np.flatnonzero((b.s_layer == 1) & (b.s_net != gnd))
     n = len(rows)
     if not n:
@@ -172,12 +172,12 @@ def bottom_runs(b, cfg):
     net = b.s_net[rows]
     E = np.vstack([S[:, :2], S[:, 2:]])
     tree = cKDTree(E)
-    pr = tree.query_pairs(0.01, output_type='ndarray')
-    if len(pr):
-        ok = (np.hypot(*(E[pr[:, 0]] - E[pr[:, 1]]).T) < 0.01) & (net[pr[:, 0] % n] == net[pr[:, 1] % n])
-        joins = np.column_stack([pr[ok, 0] % n, pr[ok, 1] % n])
-    else:
-        joins = np.zeros((0, 2), np.int64)
+    # two segments of one net are one run when they touch: end to end, an end on the INTERIOR of the other (a T), or crossing -
+    # exact segment-to-segment distance under the 0.01 mm tolerance of an end-to-end join (it was end to end only: a hop built
+    # as two segments meeting at a T was two short runs and passed)
+    i, j = geom.within(S, S, 0.01)
+    keep = (i < j) & (net[i] == net[j])
+    joins = np.column_stack([i[keep], j[keep]]) if keep.any() else np.zeros((0, 2), np.int64)
     k, lab = geom.connected_components(n, joins)
     L = np.bincount(lab, weights=geom.seg_len(S), minlength=k)
     # vias at the ends of the run: same net, within 0.05 of any end of any segment of the run
@@ -203,7 +203,7 @@ def bottom_runs(b, cfg):
 
 
 def bottom_crossings(b, cfg):
-    gnd = nid(b, '/GND')
+    gnd = nid(b, cfg.GND)
     rows = np.flatnonzero((b.s_layer == 1) & (b.s_net != gnd))
     if not len(rows):
         return []
@@ -243,16 +243,22 @@ def lr1(b, cfg):
     bad = []
     if b.copper_layers != 2:
         bad.append(f'{b.copper_layers} copper layers')
-    gnd = nid(b, '/GND')
-    bz = np.flatnonzero((b.z_layer == 1) & (b.z_net == gnd))
+    gnd = nid(b, cfg.GND)
+    # EVERY bottom zone: exactly one, it is GND, it is filled and one piece; a bottom zone of another net is a split plane
+    bot = np.flatnonzero(b.z_layer == 1)
+    for zi in bot[b.z_net[bot] != gnd]:
+        bad.append(f'bottom zone of {b.nets[b.z_net[zi]] or "no net"}: the bottom layer carries the ground plane only')
+    bz = bot[b.z_net[bot] == gnd]
     pieces_n = None
     if not len(bz):
         bad.append('no bottom GND zone')
     else:
-        z = bz[0]
-        if not b.z_filled[z]:
-            bad.append('bottom zone not filled')
-        pieces_n = int((b.z_ring_hole[b.z_ring_off[z]:b.z_ring_off[z + 1]] == 0).sum()) if b.z_filled[z] else 0
+        if len(bz) > 1:
+            bad.append(f'{len(bz)} bottom GND zones, not 1')
+        for z in bz:
+            if not b.z_filled[z]:
+                bad.append('bottom zone not filled')
+        pieces_n = int(sum((b.z_ring_hole[b.z_ring_off[z]:b.z_ring_off[z + 1]] == 0).sum() for z in bz if b.z_filled[z]))
         if pieces_n != 1:
             bad.append(f'bottom plane is {pieces_n} pieces, not 1')
     runs, _, _ = bottom_runs(b, cfg)
@@ -290,35 +296,36 @@ def lr1(b, cfg):
 # ----------------------------------------------------------------------------------------------------- LR-2
 def lr2(b, cfg):
     bad = []
-    for ch, base, bnc, adc in cfg.CHANNELS:
-        seq = [pad_c(b, bnc, '1')[0], pos(b, f'R{base + 1}')[0], pos(b, f'R{base + 7}')[0], pos(b, 'U101')[0],
-               pos(b, f'R{base + 8}')[0], pad_c(b, 'J602', adc)[0]]
+    for ch in cfg.CHANNELS:
+        seq = [pad_c(b, *ch['bnc'])[0], pos(b, ch['prot'])[0], pos(b, ch['rnp'])[0], pos(b, ch['opamp'])[0],
+               pos(b, ch['riso'])[0], pad_c(b, *ch['adc_pad'])[0]]
         if not all(x > y for x, y in zip(seq, seq[1:])):
-            bad.append(f'CH{ch}: x does not fall BNC > R1 > Rnp > U101 > Riso > ADC pad: {[round(float(x), 1) for x in seq]}')
-        outl = length_of(b, '/A1' if ch == 1 else '/A0') + length_of(b, f'/CH{ch}_OUT') + (length_of(b, '/CH2_RISO') if ch == 2 else 0)
-        hiz = sum(length_of(b, f'/CH{ch}_{n}') for n in ('N', 'M1', 'M2', 'M3', 'NP'))
+            bad.append(f"{ch['name']}: x does not fall {cfg.CH_FLOW_TEXT}: {[round(float(x), 1) for x in seq]}")
+        outl = sum(length_of(b, n) for n in ch['out_nets'])
+        hiz = sum(length_of(b, n) for n in ch['hiz_nets'])
         if outl <= hiz:
-            bad.append(f'CH{ch}: output run {outl:.1f} mm is not longer than the divider side {hiz:.1f} mm')
+            bad.append(f"{ch['name']}: output run {outl:.1f} mm is not longer than the divider side {hiz:.1f} mm")
     g = pos(b, cfg.GEN[0])
-    d5 = float(np.hypot(*(g - pad_c(b, 'J601', '5'))))
+    d5 = float(np.hypot(*(g - pad_c(b, *cfg.FEED_PAD))))
     if d5 > 15:
         bad.append(f'generator {d5:.1f} mm from the 5 V pad')
     dj = {}
-    for j in ('J101', 'J201', 'J301'):
+    for j in cfg.BNC_REFS:
         dj[j] = float(np.hypot(*(g - pos(b, j))))
         if dj[j] < 50:
             bad.append(f'generator {dj[j]:.0f} mm from {j}')
     dref = {}
-    for r in ('U501', 'U502', 'R501', 'R506'):
+    for r in cfg.QUIET_REFS:
         dref[r] = min(float(geom.box_dist(box(b, r), box(b, x))[0, 0]) for x in cfg.GEN)
         if dref[r] < cfg.KEEPOUT:
             bad.append(f'{r} only {dref[r]:.1f} mm from the generator')
     pt = pads(b)
     px, py = b.p_x[pt.rows], b.p_y[pt.rows]
     names = np.array(b.nets)[pt.net] if len(pt.rows) else np.array([])
-    A = np.column_stack([px, py])[np.isin(names, ['/CH1_N', '/CH1_NP', '/CH1_IN']) & (px < cfg.DIVIDER_X_MAX)]
-    B = np.column_stack([px, py])[np.isin(names, ['/CH2_N', '/CH2_NP', '/CH2_IN']) & (px < cfg.DIVIDER_X_MAX)]
-    gap = float(np.hypot(A[:, None, 0] - B[None, :, 0], A[:, None, 1] - B[None, :, 1]).min())
+    P = np.column_stack([px, py])
+    G = [P[np.isin(names, list(g)) & (px < cfg.DIVIDER_X_MAX)] for g in cfg.DIVIDER_GROUPS]
+    gap = min(float(np.hypot(A[:, None, 0] - B[None, :, 0], A[:, None, 1] - B[None, :, 1]).min())
+              for i, A in enumerate(G) for B in G[i + 1:])
     if gap < 5.0:
         bad.append(f"channels' divider pads only {gap:.1f} mm apart")
     fig = dict(divider_gap_mm=gap, generator_to_5v_mm=d5, **{f'generator_to_{j}_mm': v for j, v in dj.items()},
@@ -330,15 +337,15 @@ def lr2(b, cfg):
 def lr3(b, cfg):
     bad = []
     for n in cfg.HIZ:
-        net = '/' + n
+        net = n
         if (b.v_net == nid(b, net)).any():
             bad.append(f'{net}: a via')
         L = length_of(b, net)
         if L > 14:
             bad.append(f'{net}: {L:.1f} mm of track')
-    ids = [nid(b, '/' + n) for n in cfg.HIZ]
+    ids = [nid(b, n) for n in cfg.HIZ]
     hz = np.flatnonzero(np.isin(b.s_net, ids) & (b.s_layer == 0))
-    gnd = nid(b, '/GND')
+    gnd = nid(b, cfg.GND)
     ot = np.flatnonzero((b.s_layer == 0) & (b.s_net != gnd))
     nclose = 0
     if len(hz) and len(ot):
@@ -353,7 +360,7 @@ def lr3(b, cfg):
             for i in np.flatnonzero(any_):
                 bad.append(f'{b.nets[b.s_net[ia[i]]]} track within 0.6 mm of {b.nets[b.s_net[ot[first[i]]]]} track')
                 nclose += 1
-    longest = max([length_of(b, '/' + n) for n in cfg.HIZ], default=0.0)
+    longest = max([length_of(b, n) for n in cfg.HIZ], default=0.0)
     return Result(not bad, '; '.join(sorted(set(bad))[:6]) or f'{len(cfg.HIZ)} divider nets: no via, short, no track beside',
                   dict(nets=float(len(cfg.HIZ)), longest_mm=longest, tracks_too_close=float(nclose)))
 
@@ -367,18 +374,60 @@ def _has_bottom(b, net):
     return bool(((b.s_net == nid(b, net)) & (b.s_layer == 1)).any())
 
 
+POUR_KEEP_BACK = 0.5      # LR-4: the top ground pour stays at least this far from an inverting node's copper (a design value, afe.md)
+
+
+def _node_copper(b, net):
+    """top copper of one node as exact outlines: its F.Cu tracks and the pads that reach F.Cu"""
+    n_id = nid(b, net)
+    rows = np.flatnonzero((b.s_net == n_id) & (b.s_layer == 0))
+    pt = pads(b)
+    prow = pt.rows[(pt.net == n_id) & ((b.p_layer_mask[pt.rows] & 1) > 0)] if len(pt.rows) else np.zeros(0, np.int64)
+    return shapes.join(shapes.track_copper(b, rows), shapes.pad_copper(b, prow))
+
+
+def pour_gaps(b, cfg):
+    """[(node net, gap to top GND tracks, gap to top GND pour fills)] for every cfg.POUR_NODES node (and POUR_INFO_NODES) on the board: the exact
+    copper-edge to copper-edge distance (tracks as capsules, pads by size and rotation), +inf when there is nothing to
+    measure to. A pour is measured to the EDGES of its filled outline and hole rings, and is 0 where the node's copper lies
+    on the fill (an even-odd, hole-aware point test)."""
+    gnd = nid(b, cfg.GND)
+    gt = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0))
+    zi = [z for z in range(len(b.z_layer)) if b.z_layer[z] == 0 and b.z_net[z] == gnd and b.z_filled[z]]
+    out = []
+    for net in tuple(cfg.POUR_NODES) + tuple(getattr(cfg, 'POUR_INFO_NODES', ())):
+        cu = _node_copper(b, net)
+        if not len(cu.C):
+            out.append((net, math.inf, math.inf))
+            continue
+        trk = math.inf
+        if len(gt):
+            G = segs(b)[gt]
+            wg = b.s_w[gt] / 2
+            for a in range(0, len(gt), 1024):
+                D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None] - wg[None, a:a + 1024]
+                trk = min(trk, float(np.maximum(D, 0.0).min()))
+        pour = math.inf
+        for z in zi:
+            r0, r1 = b.z_ring_off[z], b.z_ring_off[z + 1]
+            off = b.z_vert_off[r0:r1 + 1]
+            pour = min(pour, float(cu.gap_to_fill(b.z_xy[off[0]:off[-1]], off - off[0], b.z_ring_hole[r0:r1]).min()))
+        out.append((net, trk, pour))
+    return out
+
+
 def lr4(b, cfg):
     bad = []
-    for net in ('/A0', '/A1'):
+    for net in cfg.ADC_NETS:
         if _has_via(b, net):
             bad.append(f'{net}: a via')
         if _has_bottom(b, net):
             bad.append(f'{net}: bottom copper')
-    for r, pinpad in (('R108', ('U101', '7')), ('R208', ('U101', '1'))):
-        if float(np.hypot(*(pad_c(b, r, '1') - pad_c(b, *pinpad)))) > 5:
-            bad.append(f'{r} not at the output pin')
-    for cap, pad in (('C104', ('U101', '8')), ('C305', ('U301', '8')), ('C306', ('U301', '4'))):
-        d = float(np.hypot(*(pad_c(b, cap, '1') - pad_c(b, *pad))))
+    for ch in cfg.CHANNELS:
+        if float(np.hypot(*(pad_c(b, ch['riso'], '1') - pad_c(b, *ch['out_pin'])))) > 5:
+            bad.append(f"{ch['riso']} not at the output pin")
+    for cap, ic, pin in cfg.SUPPLY_CAPS:
+        d = float(np.hypot(*(pad_c(b, cap, '1') - pad_c(b, ic, pin))))
         if d > 12:
             bad.append(f'{cap} {d:.0f} mm from its supply pin')
     for net in cfg.INV_NODES:
@@ -386,39 +435,28 @@ def lr4(b, cfg):
             bad.append(f'{net}: inverting node has a via')
         if _has_bottom(b, net):
             bad.append(f'{net}: inverting node has bottom copper')
-    L = length_of(b, '/AWG_FB')
+    fb_net = cfg.AWG['fb_net']
+    L = length_of(b, fb_net)
     if L > cfg.FB_MAX:
         bad.append(f'AWG inverting node {L:.1f} mm of track (limit {cfg.FB_MAX})')
-    near = set()
-    fbn, gnd = nid(b, '/AWG_FB'), nid(b, '/GND')
-    fb = np.flatnonzero((b.s_net == fbn) & (b.s_layer == 0))
-    pt = pads(b)
-    fbp = pt.rows[pt.net == fbn]
-    P = np.vstack([sample_points(segs(b)[fb], 0.5)[0], np.column_stack([b.p_x[fbp], b.p_y[fbp]])]) if (len(fb) or len(fbp)) else np.zeros((0, 2))
-    gt = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0))
-    if len(P) and len(gt):
-        G = segs(b)[gt]
-        # top GND track within 0.5 mm of the node: distance from the node's sample points to the track's centre line,
-        # less the track's half width (as the old tool; the track side is exact here, it was sampled every 0.25 mm)
-        D = geom.point_seg_dist(P, G) - b.s_w[gt][None, :] / 2
-        if (D < 0.5).any():
-            near.add('GND track')
-    zi = [z for z in range(len(b.z_layer)) if b.z_layer[z] == 0 and b.z_net[z] == gnd and b.z_filled[z]]
-    if len(P) and zi:
-        Q = np.vstack([P + [dx, dy] for dx, dy in ((0.5, 0), (-0.5, 0), (0, 0.5), (0, -0.5))])
-        for z in zi:
-            r0, r1 = b.z_ring_off[z], b.z_ring_off[z + 1]
-            ring_off = b.z_vert_off[r0:r1 + 1]
-            xy = b.z_xy[ring_off[0]:ring_off[-1]]
-            inside = geom.points_in_polys(Q, xy, ring_off - ring_off[0], hole=b.z_ring_hole[r0:r1])
-            if inside.any():
-                near.add('top pour')
+    near, gaps = set(), {}
+    for net, g_trk, g_pour in pour_gaps(b, cfg):
+        gaps[net[1:]] = (g_trk, g_pour)
+        if net not in cfg.POUR_NODES:
+            continue                                           # reported, not judged (POUR_INFO_NODES)
+        tag = '' if net == fb_net else ' ' + net[1:]
+        if g_trk < POUR_KEEP_BACK:
+            near.add('GND track' + tag)
+        if g_pour < POUR_KEEP_BACK:
+            near.add('top pour' + tag)
     if near:
-        bad.append(f'top ground copper within 0.5 mm of the inverting node ({sorted(near)})')
-    a0, a1 = length_of(b, '/A0'), length_of(b, '/A1')
-    return Result(not bad, '; '.join(bad[:5]) or f'A0/A1 top only, no via ({a0:.0f}/{a1:.0f} mm); '
-                  f'FB node {L:.1f} mm of track; decoupling near; no pour within 0.5 mm of it',
-                  dict(a0_mm=a0, a1_mm=a1, fb_mm=L, violations=float(len(bad))))
+        bad.append(f'top ground copper within {POUR_KEEP_BACK} mm of the inverting node ({sorted(near)})')
+    lens = [length_of(b, n) for n in cfg.ADC_NETS]
+    names = '/'.join(n[1:] for n in cfg.ADC_NETS)
+    return Result(not bad, '; '.join(bad[:5]) or f'{names} top only, no via (' + '/'.join(f'{x:.0f}' for x in lens) + ' mm); '
+                  f'FB node {L:.1f} mm of track; decoupling near; no pour within {POUR_KEEP_BACK} mm of it',
+                  dict(**{f'{n[1:].lower()}_mm': x for n, x in zip(cfg.ADC_NETS, lens)}, fb_mm=L, violations=float(len(bad)),
+                       **{f'gnd_track_gap_{n}_mm': g[0] for n, g in gaps.items()}, **{f'pour_gap_{n}_mm': g[1] for n, g in gaps.items()}))
 
 
 def lr4_inv(b, cfg):
@@ -433,8 +471,7 @@ def lr4_inv(b, cfg):
 
 
 # ----------------------------------------------------------------------------------------------------- LR-12
-def decoup_dist(b, cfg, cap):
-    ic, pin = cfg.DECOUP[cap]
+def decoup_dist(b, cap, ic, pin):
     net = pad_net(b, ic, pin)
     ks = [k for k in ('1', '2') if pad_net(b, cap, k) == net] or ['1']
     return min(float(np.hypot(*(pad_c(b, cap, k) - pad_c(b, ic, pin)))) for k in ks)
@@ -442,8 +479,8 @@ def decoup_dist(b, cfg, cap):
 
 def lr12(b, cfg):
     bad, fig, figs = [], [], {}
-    for cap, (ic, pin) in cfg.DECOUP.items():
-        d = decoup_dist(b, cfg, cap)
+    for cap, ic, pin in cfg.DECOUP:
+        d = decoup_dist(b, cap, ic, pin)
         figs[f'{cap}>{ic}.{pin}'] = d
         fig.append(f'{cap}>{ic}.{pin} {d:.1f}')
         if d > cfg.DECOUP_MAX:
@@ -453,53 +490,73 @@ def lr12(b, cfg):
 
 # ----------------------------------------------------------------------------------------------------- LR-5
 def lr5(b, cfg):
+    """sensitive copper keeps cfg.KEEPOUT from the generator's courtyards, measured from the copper's EDGE: a track as a
+    capsule (centre line less half its width), a pad by its size and rotation (pcbtools.shapes), to the courtyard box"""
     gen = [box(b, r) for r in cfg.GEN]
     near, dmin = [], math.inf
     sens = net_prefix(b, cfg.SENSITIVE)
     rows = np.flatnonzero((b.s_layer == 0) & sens[b.s_net])
     if len(rows):
-        S = segs(b)[rows]
-        d = np.min([seg_box_dist(S, g) for g in gen], axis=0)
+        cu = shapes.track_copper(b, rows)
+        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
         dmin = min(dmin, float(d.min()))
         for i in np.flatnonzero(d < cfg.KEEPOUT):
             near.append(f'{b.nets[b.s_net[rows[i]]]} {d[i]:.1f} mm')
     pt = pads(b)
-    for j in np.flatnonzero(sens[pt.net]):
-        k = pt.keys[j]
-        if k[0] in cfg.GENERATOR_BLOCK:
-            continue
-        r = pt.rows[j]
-        c = np.array([[b.p_x[r], b.p_y[r]]])
-        d = min(float(pt_box_dist(c, g)[0]) for g in gen)
-        dmin = min(dmin, d)
-        if d < cfg.KEEPOUT:
-            near.append(f'{b.nets[b.p_net[r]]} pad {k[0]}.{k[1]} {d:.1f} mm')
+    js = [j for j in np.flatnonzero(sens[pt.net]) if pt.keys[j][0] not in cfg.GENERATOR_BLOCK]
+    if js:
+        prow = pt.rows[js]
+        cu = shapes.pad_copper(b, prow)
+        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
+        dmin = min(dmin, float(d.min()))
+        for i in np.flatnonzero(d < cfg.KEEPOUT):
+            k = pt.keys[js[i]]
+            near.append(f'{b.nets[b.p_net[prow[i]]]} pad {k[0]}.{k[1]} {d[i]:.1f} mm')
     return Result(not near, '; '.join(sorted(set(near))[:6]) or f'sensitive copper >= {cfg.KEEPOUT} mm from {"/".join(cfg.GEN)}',
                   dict(min_distance_mm=dmin, violations=float(len(near))))
 
 
 # ----------------------------------------------------------------------------------------------------- pieces of copper
-def pieces(b, cfg, net, cut=()):
-    """connected pieces of one net's top copper (tracks, vias, pads), the pads in `cut` removed; the pads of
-    cfg.BRIDGE_PADS are joined. Returns a list of sets of refs, one per piece, in order of first member.
+def family(cfg, net):
+    """the nets that are ONE electrical net with `net`: the nets joined through the 0 ohm bridge parts (cfg.BRIDGES, (ref, net a,
+    net b)), transitively. A supply rail is split by its bridges into `+3V3A`, `+3V3A_K`, `+3V3A_S`, `+3V3A_U`, `+3V3A_R` and a
+    rule about the rail's copper must see them as one, or a consumer behind a bridge is on no net it can be found on."""
+    br = [(a, c) for _, a, c in getattr(cfg, 'BRIDGES', ())]
+    fam = {net}
+    grow = True
+    while grow:
+        grow = False
+        for a, c in br:
+            if (a in fam) != (c in fam):
+                fam |= {a, c}
+                grow = True
+    return fam
 
-    Touch rules, as the old tool, exact instead of sampled: two tracks touch when an end of one is within 0.02 of an end
-    of the other or within 0.05 of the other's centre line; a track and a via when the via centre is within 0.05 of the
-    centre line; a track and a pad when the centre line enters the pad's box grown by 0.02; two vias within 0.05; a via
-    and a pad when the via centre lies in the pad's box grown by 0.02; two pads never (a part does not join its pads,
-    except the cfg.BRIDGE_PADS pairs). Track widths are not used."""
-    n_id = nid(b, net)
-    srow = np.flatnonzero((b.s_net == n_id) & (b.s_layer == 0))
-    vrow = np.flatnonzero(b.v_net == n_id)
+
+def _graph(b, cfg, net, cut=()):
+    """Connectivity of the copper of one electrical net (`family(cfg, net)`), every copper layer: tracks and arcs (chords) on F.Cu
+    and B.Cu, vias, pads, and the fill of every filled zone of the net. The pads in `cut` are removed. Returns
+    (count, labels, pad keys, label of each pad key's node)."""
+    fam = family(cfg, net)
+    ids = [i for i in (nid(b, n) for n in fam) if i >= 0]
+    srow = np.flatnonzero(np.isin(b.s_net, ids) & (b.s_layer < 2))
+    S = segs(b)[srow]
+    SL = b.s_layer[srow].astype(np.int64)
+    arow = np.flatnonzero(np.isin(b.a_net, ids) & (b.a_layer < 2)) if len(b.a_idx) else np.zeros(0, np.int64)
+    if len(arow):                                          # an arc is the two chords start-mid and mid-end
+        A = np.column_stack([b.a_x0, b.a_y0, b.a_xm, b.a_ym, b.a_x1, b.a_y1])[arow]
+        S = np.vstack([S, A[:, :4], A[:, 2:]])
+        SL = np.concatenate([SL, b.a_layer[arow], b.a_layer[arow]]).astype(np.int64)
+    vrow = np.flatnonzero(np.isin(b.v_net, ids))
     pt = pads(b)
     cutset = set(cut)
-    pj = [j for j in np.flatnonzero(pt.net == n_id) if pt.keys[j] not in cutset]
+    pj = [j for j in np.flatnonzero(np.isin(pt.net, ids)) if pt.keys[j] not in cutset]
     prow = pt.rows[pj]
     pkeys = [pt.keys[j] for j in pj]
-    ns, nv, npd = len(srow), len(vrow), len(prow)
-    S = segs(b)[srow]
+    ns, nv, npd = len(S), len(vrow), len(prow)
     V = np.column_stack([b.v_x[vrow], b.v_y[vrow]])
     PB = pad_box(b, prow)
+    PM = b.p_layer_mask[prow].astype(np.int64)
     J = []
     if ns:
         P0, P1 = S[:, :2], S[:, 2:]
@@ -508,14 +565,15 @@ def pieces(b, cfg, net, cut=()):
                                np.hypot(P0[:, None, 0] - P1[None, :, 0], P0[:, None, 1] - P1[None, :, 1]),
                                np.hypot(P1[:, None, 0] - P0[None, :, 0], P1[:, None, 1] - P0[None, :, 1]),
                                np.hypot(P1[:, None, 0] - P1[None, :, 0], P1[:, None, 1] - P1[None, :, 1])])
-        T = (e < 0.02) | (D0 < 0.05) | (D1 < 0.05) | (D0.T < 0.05) | (D1.T < 0.05)
+        T = ((e < 0.02) | (D0 < 0.05) | (D1 < 0.05) | (D0.T < 0.05) | (D1.T < 0.05)) & (SL[:, None] == SL[None, :])
         a, c = np.nonzero(np.triu(T, 1))
         J.append(np.column_stack([a, c]))
         if nv:
-            a, c = np.nonzero(geom.point_seg_dist(V, S) < 0.05)
+            a, c = np.nonzero(geom.point_seg_dist(V, S) < 0.05)                # a via spans every layer
             J.append(np.column_stack([c, ns + a]))
         if npd:
-            a, c = np.nonzero(geom.seg_in_box(S, PB, pad=0.02))
+            hit = geom.seg_in_box(S, PB, pad=0.02) & (((PM[None, :] >> SL[:, None]) & 1) > 0)    # the pad must reach the track's layer
+            a, c = np.nonzero(hit)
             J.append(np.column_stack([a, ns + nv + c]))
     if nv:
         dv = np.hypot(V[:, None, 0] - V[None, :, 0], V[:, None, 1] - V[None, :, 1])
@@ -526,70 +584,179 @@ def pieces(b, cfg, net, cut=()):
                    & (V[:, None, 1] >= PB[None, :, 1] - 0.02) & (V[:, None, 1] <= PB[None, :, 3] + 0.02))
             a, c = np.nonzero(inb)
             J.append(np.column_stack([ns + a, ns + nv + c]))
-    for (ra, pa, rb, pb) in cfg.BRIDGE_PADS:
+    # zone fills: one node per outline ring (a fractured pour is several pieces); an item joins the node when one of its points
+    # (a track's ends and middle, a via's centre, a pad's centre) lies in the fill, even-odd and hole-aware, on the zone's layer
+    nzn = 0
+    zs = [z for z in range(len(b.z_layer)) if b.z_filled[z] and b.z_net[z] in ids and b.z_layer[z] < 2]
+    if zs:
+        pts = np.vstack([S[:, :2], S[:, 2:], (S[:, :2] + S[:, 2:]) / 2, V, np.column_stack([b.p_x[prow], b.p_y[prow]])]) if (ns or nv or npd) \
+            else np.zeros((0, 2))
+        item = np.concatenate([np.tile(np.arange(ns), 3), ns + np.arange(nv), ns + nv + np.arange(npd)]).astype(np.int64)
+        layer_ok = np.concatenate([np.tile(SL, 3), np.full(nv, -1), np.full(npd, -1)])
+        for z in zs:
+            r0, r1 = b.z_ring_off[z], b.z_ring_off[z + 1]
+            off = b.z_vert_off[r0:r1 + 1]
+            inside = geom.points_in_polys(pts, b.z_xy[off[0]:off[-1]], off - off[0], hole=b.z_ring_hole[r0:r1]) if len(pts) \
+                else np.zeros((0, int((b.z_ring_hole[r0:r1] == 0).sum())), bool)
+            for col in range(inside.shape[1]):
+                node = ns + nv + npd + nzn
+                nzn += 1
+                m = inside[:, col]
+                m &= (layer_ok == b.z_layer[z]) | (layer_ok == -1)
+                if npd:                                      # a pad joins a zone it reaches: its layer mask has the zone's layer
+                    pm = np.zeros(len(pts), bool)
+                    pm[ns * 3 + nv:] = ((PM >> int(b.z_layer[z])) & 1) > 0
+                    m &= np.where(np.arange(len(pts)) >= ns * 3 + nv, pm, True)
+                if m.any():
+                    J.append(np.column_stack([item[m], np.full(int(m.sum()), node)]))
+                else:
+                    J.append(np.zeros((0, 2), np.int64))
+    for (ra, pa, rb, pb) in list(cfg.BRIDGE_PADS) + [(r, '1', r, '2') for r, _, _ in getattr(cfg, 'BRIDGES', ())]:
         ia = [i for i, k in enumerate(pkeys) if k == (ra, pa)]
         ib = [i for i, k in enumerate(pkeys) if k == (rb, pb)]
         if ia and ib:
             J.append(np.array([[ns + nv + ia[0], ns + nv + ib[0]]]))
-    n = ns + nv + npd
+    n = ns + nv + npd + nzn
     if not n:
-        return []
+        return 0, np.zeros(0, np.int32), pkeys, np.zeros(0, np.int32)
     k, lab = geom.connected_components(n, np.vstack(J) if J else np.zeros((0, 2), np.int64))
+    return k, lab, pkeys, lab[ns + nv:ns + nv + npd]
+
+
+def pieces_keys(b, cfg, net, cut=()):
+    """connected pieces of one electrical net's copper (see `_graph`): a list of sets of pad keys (ref, pin), one per piece in
+    order of first member, pad-less pieces (a track and nothing else) included as empty sets"""
+    k, _, pkeys, plab = _graph(b, cfg, net, cut)
     groups = [set() for _ in range(k)]
-    for i, key in enumerate(pkeys):
-        groups[lab[ns + nv + i]].add(key[0])
+    for key, lb in zip(pkeys, plab):
+        groups[lb].add(key)
     return groups
+
+
+def pieces(b, cfg, net, cut=()):
+    """connected pieces of one electrical net's copper, the pads in `cut` removed: a list of sets of refs, one per piece, in
+    order of first member.
+
+    The net is `family(cfg, net)`: the nets the 0 ohm bridges join are one. Copper is tracks on BOTH layers, vias, pads and
+    the fill of the net's filled zones; a track and a pad touch only on a layer the pad has; a pad of cfg.BRIDGE_PADS and the two
+    pads of every bridge part are joined.
+
+    Touch rules, as the old tool, exact instead of sampled: two tracks of one layer touch when an end of one is within 0.02 of
+    an end of the other or within 0.05 of the other's centre line; a track and a via when the via centre is within 0.05 of the
+    centre line; a track and a pad when the centre line enters the pad's box grown by 0.02; two vias within 0.05; a via and a
+    pad when the via centre lies in the pad's box grown by 0.02; two pads never (a part does not join its pads, except the
+    bridges). Track widths are not used."""
+    return [{key[0] for key in g} for g in pieces_keys(b, cfg, net, cut)]
+
+
+def _reached(b, cfg, net, targets, cut=()):
+    """{pad key: True when its piece also holds one of `targets`} over the pads of the net's family, nothing cut by default"""
+    k, lab, pkeys, plab = _graph(b, cfg, net, cut)
+    tl = {int(lb) for key, lb in zip(pkeys, plab) if key in targets}
+    return {key: int(lb) in tl for key, lb in zip(pkeys, plab)}
+
+
+def _names(keys, n=4):
+    ks = [f'{k[0]}.{k[1]}' for k in sorted(keys)]
+    return ', '.join(ks[:n]) + (f' (+{len(ks) - n})' if len(ks) > n else '')
 
 
 # ----------------------------------------------------------------------------------------------------- LR-6
 def lr6(b, cfg):
-    bad, npieces = [], 0
+    """Each rail's supply copper is a star. Two things are checked on the rail's ELECTRICAL net (the nets its 0 ohm bridges
+    join): every present consumer group's supply pads reach a star pad through copper (an unrouted branch is not a star
+    leg), and with the star pads cut no piece of copper serves two groups."""
+    bad, npieces, reached, absent = [], 0, 0, 0
+    pt = pads(b)
+    refs_on_board = set(b.fp_ref)
     for net, groups in cfg.GROUPS.items():
         cut = list(cfg.STAR[net])
-        pt = pads(b)
         have = {pt.keys[j] for j in np.flatnonzero(pt.net == nid(b, net))}
         missing = [f'{k[0]}.{k[1]}' for k in cut if k not in have]
         if missing:
             bad.append(f'{net}: star pads {missing} are not on the net')
+        else:
+            fam = [i for i in (nid(b, n) for n in family(cfg, net)) if i >= 0]
+            famkeys = [pt.keys[j] for j in np.flatnonzero(np.isin(pt.net, fam))]
+            ok = _reached(b, cfg, net, set(cut))
+            for g, refs in groups.items():
+                if not refs & refs_on_board:
+                    absent += 1                                  # the group's parts are not on this board: nothing to reach
+                    continue
+                gk = [k for k in famkeys if k[0] in refs]
+                lost = [k for k in gk if not ok[k]]
+                if not gk:
+                    bad.append(f'{net}: consumer group {g} has no supply pad on the rail')
+                elif lost:
+                    bad.append(f'{net}: consumer group {g} is not connected to the star: {_names(lost)} unreachable by copper')
+                else:
+                    reached += 1
         for pc in pieces(b, cfg, net, cut):
             npieces += 1
             hit = sorted(g for g, refs in groups.items() if pc & refs)
             if len(hit) > 1:
                 bad.append(f'{net}: one piece of copper serves {hit}')
     return Result(not bad, '; '.join(bad[:5]) or '+3V3A and VNEG: one piece per consumer group after cutting the star pads',
-                  dict(pieces=float(npieces), violations=float(len(bad))))
+                  dict(pieces=float(npieces), groups_reached=float(reached), groups_absent=float(absent), violations=float(len(bad))))
 
 
 # ----------------------------------------------------------------------------------------------------- LR-7
 def lr7(b, cfg):
+    awg = cfg.AWG
+    dac = awg['dac_net'][1:]
     bad = []
-    L = length_of(b, '/DAC0')
+    L = length_of(b, awg['dac_net'])
     if L > 12:
-        bad.append(f'DAC0 {L:.1f} mm of track')
+        bad.append(f'{dac} {L:.1f} mm of track')
     dr = {}
-    for r in ('R301', 'R302'):
-        dr[r] = float(np.hypot(*(pos(b, r) - pos(b, 'J301'))))
+    for r in awg['back_term']:
+        dr[r] = float(np.hypot(*(pos(b, r) - pos(b, awg['bnc']))))
         if dr[r] > 16:
-            bad.append(f'{r} {dr[r]:.0f} mm from J301')
-    j = b.ref_index('J301')
-    shell = int(((b.p_fp == j) & (np.asarray(b.p_pin, dtype=object) == '2') & (b.p_net == nid(b, '/GND'))).sum())
+            bad.append(f"{r} {dr[r]:.0f} mm from {awg['bnc']}")
+    j = b.ref_index(awg['bnc'])
+    shell = int(((b.p_fp == j) & (np.asarray(b.p_pin, dtype=object) == awg['shell_pin']) & (b.p_net == nid(b, cfg.GND))).sum())
     if shell < 3:
         bad.append(f'{shell} BNC shell pads on ground')
-    return Result(not bad, '; '.join(bad) or f'DAC0 {L:.1f} mm; back-termination at the BNC; shell pads on ground',
-                  dict(dac0_mm=L, shell_pads=float(shell), **{f'{r}_to_J301_mm': v for r, v in dr.items()}))
+    return Result(not bad, '; '.join(bad) or f'{dac} {L:.1f} mm; back-termination at the BNC; shell pads on ground',
+                  dict(**{f'{dac.lower()}_mm': L}, shell_pads=float(shell), **{f"{r}_to_{awg['bnc']}_mm": v for r, v in dr.items()}))
 
 
 # ----------------------------------------------------------------------------------------------------- LR-8
 def lr8(b, cfg):
-    cut = {tuple(s.split('.')) for s in cfg.VREF_SOURCE}
-    refs_of = [{tuple(s.split('.'))[0] for s in g} for g in cfg.VREF_BRANCHES]
-    bad = []
-    for pc in pieces(b, cfg, '/VREF', cut):
+    """The reference is routed by Kelvin: on its electrical net (through the bridges) every branch's pads reach a source pad
+    (a branch with no copper to the source is not routed), and with the source pads cut no piece serves two branches."""
+    src = [tuple(k) for k in cfg.VREF_SOURCE]
+    cut = set(src)
+    refs_of = [{k[0] for k in g} for g in cfg.VREF_BRANCHES]
+    bad, reached, skipped = [], 0, 0
+    pt = pads(b)
+    refs_on_board = set(b.fp_ref)
+    if {k[0] for k in src} & refs_on_board:
+        fam = [i for i in (nid(b, n) for n in family(cfg, cfg.VREF_NET)) if i >= 0]
+        onnet = {pt.keys[j] for j in np.flatnonzero(np.isin(pt.net, fam))}
+        gone = [f'{k[0]}.{k[1]}' for k in src if k not in onnet]
+        if gone:
+            bad.append(f'VREF: source pads {gone} are not on the net')
+        else:
+            ok = _reached(b, cfg, cfg.VREF_NET, cut)
+            for i, g in enumerate(cfg.VREF_BRANCHES):
+                ks = [tuple(k) for k in g if tuple(k) in onnet]
+                lost = [k for k in ks if not ok[k]]
+                if not ks:
+                    skipped += 1
+                elif lost:
+                    bad.append(f'VREF: branch {i} ({_names(lost)}) is not connected to the source {_names(src)} by copper')
+                else:
+                    reached += 1
+    else:
+        skipped = len(cfg.VREF_BRANCHES)                       # the source is not on this board
+    for pc in pieces(b, cfg, cfg.VREF_NET, cut):
         hit = sorted(k for k, g in enumerate(refs_of) if pc & g)
         if len(hit) > 1:
             bad.append(f'VREF: branches {hit} share copper ({sorted(pc)[:6]})')
     return Result(not bad, '; '.join(bad[:4]) or f'VREF: {len(cfg.VREF_BRANCHES)} branches each on its own copper',
-                  dict(branches=float(len(cfg.VREF_BRANCHES)), violations=float(len(bad))))
+                  dict(branches=float(len(cfg.VREF_BRANCHES)), branches_reached=float(reached), branches_unchecked=float(skipped),
+                       violations=float(len(bad))))
 
 
 # ----------------------------------------------------------------------------------------------------- LR-9
@@ -625,12 +792,12 @@ def lr11(b, cfg):
     bad = []
     blocks = {}
     for r, blk in cfg.BLOCK.items():
-        if blk != 'EDGE' or r in cfg.BLOCK_OVERRIDE:
+        if blk != cfg.EDGE_BLOCK or r in cfg.BLOCK_OVERRIDE:
             blocks.setdefault(blk, set()).add(r)
-    blocks.pop('EDGE', None)
+    blocks.pop(cfg.EDGE_BLOCK, None)
     refs = list(b.fp_ref)
     P = np.column_stack([b.fp_x, b.fp_y])
-    candidate = np.array([(r in cfg.BLOCK and cfg.BLOCK[r] != 'EDGE') or r in cfg.BLOCK_OVERRIDE for r in refs], bool)
+    candidate = np.array([(r in cfg.BLOCK and cfg.BLOCK[r] != cfg.EDGE_BLOCK) or r in cfg.BLOCK_OVERRIDE for r in refs], bool)
     for blk, rects in cfg.OUTLINE.items():
         inside = {refs[i] for i in np.flatnonzero(candidate & _in_rects(P, rects))}
         want = blocks.get(blk, set())
@@ -651,7 +818,7 @@ def lr11(b, cfg):
         if want != bof[i]:
             bad.append(f'{r}: designator number says {want}, the part is in {bof[i]}')
     pt = pads(b)
-    have = {bof[i] for i, r in enumerate(refs) if r.startswith('TP') and (r, '1') in pt.lookup}
+    have = {bof[i] for i, r in enumerate(refs) if r.startswith(cfg.TP_PREFIX) and (r, cfg.TP_PIN) in pt.lookup}
     for blk in sorted(set(cfg.TEST_BLOCKS) - have):
         bad.append(f'block {blk} has no test point')
     refrow = {int(f): i for i, f in enumerate(b.r_fp)}
@@ -662,7 +829,7 @@ def lr11(b, cfg):
         if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
             bad.append(f'{r}: designator not on silk at 0.8 mm or more')
     for r, n in cfg.TP_NETS.items():
-        if (r, '1') not in pt.lookup or pad_net(b, r, '1') != n:
+        if (r, cfg.TP_PIN) not in pt.lookup or pad_net(b, r, cfg.TP_PIN) != n:
             bad.append(f'{r}: missing or not on {n}')
     names = set(b.t_text)
     for w in cfg.SILK_WORDS:

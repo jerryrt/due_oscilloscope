@@ -65,13 +65,17 @@ def test_lr10_matches_the_old_drc_row(pcbnew_required, tmp_path, name):
 def test_lr10_arm_is_caught(pcbnew_required, tmp_path):
     name = 'v2-integrated-990d4b03'
     b = boardio.load_npz(os.path.join(ARR, name + '.npz')).replace(path=os.path.join(FX, name + '.kicad_pcb'))
-    arm = drc.lr10_arm(b, str(tmp_path))
+    arm = drc.lr10_arm(b, str(tmp_path), v2)
     assert os.path.exists(arm) and os.path.exists(arm.replace('.kicad_pcb', '.kicad_pro'))
     r = drc.lr10_path(arm, outdir=str(tmp_path))
     old = json.load(open(os.path.join(GOLD, f'{name}.lr_check_mutate.json')))['raw']
     old_line = next(l for l in old.splitlines() if 'LR-10' in l)
     assert not r.ok and 'track_width' in r.detail
-    assert _drc_parts(old_line[old_line.index('DRC '):]) == _drc_parts(r.detail), (old_line, r.detail)
+    want = _drc_parts(old_line[old_line.index('DRC '):])
+    # review finding 7: the OLD arm was copied without fp-lib-table and lib/, so it gained 'lib_footprint_issues' (4) on its own; the new
+    # arm is made inside the same work copy as the base run and must not have them. Everything else must equal the old line.
+    assert want[0].pop('lib_footprint_issues') == 4, old_line
+    assert want == _drc_parts(r.detail), (old_line, r.detail)
 
 
 @pytest.mark.pcbnew

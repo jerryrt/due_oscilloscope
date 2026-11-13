@@ -45,8 +45,9 @@ GEN = ('U401', 'C409')                        # the generator: charge pump and f
 INV_MAX = 5.0                                 # LR-4 (row 'LR-4 INV_MAX')
 DECOUP_MAX = 3.0                              # LR-12
 # cap ref -> (IC ref, supply pin), from lr_check.py
-DECOUP = {'C104': ('U101', '8'), 'C105': ('U101', '8'), 'C305': ('U301', '8'), 'C306': ('U301', '4'),
-          'C502': ('U501', '1'), 'C501': ('U501', '2'), 'C503': ('U502', '8')}
+DECOUP = [('C104', 'U101', '8'), ('C105', 'U101', '8'), ('C305', 'U301', '8'), ('C306', 'U301', '4'),
+          ('C502', 'U501', '1'), ('C501', 'U501', '2'), ('C503', 'U502', '8')]      # (cap, IC, supply pin)
+SUPPLY_CAPS = [('C104', 'U101', '8'), ('C305', 'U301', '8'), ('C306', 'U301', '4')]      # LR-4: each supply pin has its 100 nF
 
 BLOCK = {p['ref']: _layout.BLOCK_OVERRIDE.get(p['ref'], p['block']) for p in _design.PARTS}      # ref -> block
 BLOCK.update({r: v[2] for r, v in _layout.EXTRA.items()})
@@ -59,13 +60,23 @@ GENERATOR_BLOCK = frozenset(p['ref'] for p in _design.PARTS if p['block'] == 'PO
 ANALOG_FENCE = ('CH1', 'CH2', 'AWG')          # LR-1: layout.OUTLINE rectangles of these blocks
 OUTLINE = {k: list(v) for k, v in _layout.OUTLINE.items()}                         # LR-11 (silk outlines)
 BRIDGE_PADS = list(_layout.BRIDGE_PADS)       # (ref, pin, ref, pin): the part joins its two pads (LR-6, LR-8)
+# design.BRIDGES: every 0 ohm bridge part (ref, net a, net b). The nets a bridge joins are ONE electrical net for the supply and
+# reference rules (LR-6, LR-8), and the part's pads 1 and 2 are joined in the copper graph
+BRIDGES = [(ref, '/' + na, '/' + nb) for ref, na, nb, _blk, _why in _design.BRIDGES]
 
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/AREF', '/AWG_FB', '/AWG_BIN', '/CH1_NP', '/CH2_NP',
          '/CH1_N', '/CH2_N', '/CH1_M', '/CH2_M', '/CH1_IN', '/CH2_IN')               # LR-1: bottom copper forbidden under
 INV_NODES = ('/AWG_FB', '/CH1_N', '/CH2_N')   # LR-4: no via, no bottom copper
 INV_LEN_NODES = ('/AWG_FB', '/CH1_OUT', '/CH2_OUT')   # LR-4 INV_MAX
+# LR-4 pour keep-back: the nodes the row calls the op-amps' inverting nodes, which is INV_NODES - the set the row's no-via /
+# no-bottom-copper prohibitions already use, so the row has one definition. NOTE the naming: /CH1_N and /CH2_N are the
+# high-impedance attenuator nodes, and a scope stage is a follower whose inverting PIN is tied to its output, so physically that
+# node is /CHn_OUT (the nets INV_MAX measures). The tables say CHn_N and the check follows the tables; the gap of /CHn_OUT is
+# reported in the figures (POUR_INFO_NODES) and not judged, so the owner can decide whether the rule means it: a one-line change.
+POUR_NODES = INV_NODES
+POUR_INFO_NODES = ('/CH1_OUT', '/CH2_OUT')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')   # LR-5
-HIZ = ('CH1_N', 'CH1_M1', 'CH1_M2', 'CH1_M3', 'CH1_NP', 'CH2_N', 'CH2_M1', 'CH2_M2', 'CH2_M3', 'CH2_NP')   # LR-3
+HIZ = ('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP', '/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')   # LR-3
 DIGITAL = ('/SDA', '/SCL')                    # LR-9
 GROUPS = {'/+3V3A': {'scope': {'U101', 'C104', 'C105', 'BR101', 'BR102', 'D201', 'D101'},
                      'awg': {'U301', 'C305'}, 'adc': {'U501', 'C502', 'U502', 'C503', 'R512', 'R513', 'BR507'}},
@@ -74,8 +85,9 @@ STAR = {'/+3V3A': [('U401', '11'), ('C405', '1'), ('C406', '1'), ('R401', '1'), 
         '/VNEG_G': [('U401', '6'), ('C407', '1'), ('C408', '1'), ('R403', '1')]}      # LR-6 star pads, cut out
 # LR-8: route.KELVIN['VREF'] of commit 8a1f7ac (route.py imports pcbnew, so it cannot be imported here): the source pads cut
 # out of the VREF net, and the named branches, each a list of 'REF.PIN'
-VREF_SOURCE = ['U501.2', 'C501.1']
-VREF_BRANCHES = [['J602.1'], ['U502.4'], ['R514.1'], ['TP501.1'], ['R305.1'], ['R106.2', 'R509.2', 'BR503.1']]
+VREF_SOURCE = [('U501', '2'), ('C501', '1')]
+VREF_BRANCHES = [[('J602', '1')], [('U502', '4')], [('R514', '1')], [('TP501', '1')], [('R305', '1')],
+                 [('R106', '2'), ('R509', '2'), ('BR503', '1')]]
 # LR-11
 LR_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
 TEST_BLOCKS = ('CH1', 'CH2', 'AWG', 'POWER', 'REFCAL')
@@ -84,7 +96,23 @@ TP_NETS = {'TP101': '/A1', 'TP201': '/A0', 'TP301': '/AWG_VO', 'TP401': '/+3V3A'
 SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON')
 DESIGNATOR_MIN_H = 0.79
 # LR-2 / LR-7 constants of the old tool
-CHANNELS = ((1, 100, 'J101', '7'), (2, 200, 'J201', '8'))        # channel, ref base, BNC, ADC header pin on J602
+GND = '/GND'                                   # the one ground net
+ADC_NETS = ('/A0', '/A1')                      # the nets that reach the Due's ADC pins, in report order (LR-4)
+CHANNELS = (
+    dict(name='CH1', bnc=('J101', '1'), prot='R101', rnp='R107', opamp='U101', riso='R108', out_pin=('U101', '7'),
+         adc_pad=('J602', '7'), out_nets=('/A1', '/CH1_OUT'), hiz_nets=('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP')),
+    dict(name='CH2', bnc=('J201', '1'), prot='R201', rnp='R207', opamp='U101', riso='R208', out_pin=('U101', '1'),
+         adc_pad=('J602', '8'), out_nets=('/A0', '/CH2_OUT', '/CH2_RISO'), hiz_nets=('/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')))                                 # LR-2, LR-4: one record per scope channel
+DIVIDER_GROUPS = (('/CH1_N', '/CH1_NP', '/CH1_IN'), ('/CH2_N', '/CH2_NP', '/CH2_IN'))     # LR-2: the channels' divider pads, kept apart
+CH_FLOW_TEXT = 'BNC > R1 > Rnp > U101 > Riso > ADC pad'                              # LR-2's message
+AWG = dict(name='AWG', dac_net='/DAC0', fb_net='/AWG_FB', back_term=('R301', 'R302'), bnc='J301', shell_pin='2')     # LR-4, LR-7
+FEED_PAD = ('J601', '5')                       # LR-2: the Due 5 V feed the generator sits by
+BNC_REFS = ('J101', 'J201', 'J301')            # LR-2: the generator is 50 mm from each
+QUIET_REFS = ('U501', 'U502', 'R501', 'R506')  # LR-2: reference, ladder and precision ADC, kept KEEPOUT from the generator
+RAIL_TEXT = '+3V3A and VNEG'                   # LR-6's pass message
+VREF_NET = '/VREF'
+TP_PREFIX, TP_PIN, EDGE_BLOCK = 'TP', '1', 'EDGE'          # LR-11
+DRC_ARM = dict(ref='R101', pin='1', net='/CH1_N')          # LR-10's arm: a 0.1 mm track on this net, 1 mm from this pad
 DIVIDER_X_MAX = 91.0
 
 # fence_check

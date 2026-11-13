@@ -1,7 +1,7 @@
 """Stray capacitance between chosen nets: a 3-D finite-difference Laplace solve on a window of the board, in numpy/scipy.
 
-    pairs = pair_caps(b, ('/CH1_N', '/CH2_N'), window, pour=False, h=0.2)       -> {(i, j): pF}
-    both  = self_cap(b, '/AWG_FB', pad=3.0, h=0.1)                             -> {False: pF, True: pF}
+    pairs = pair_caps(b, (net_a, net_b), window, pour=False, h=0.2, gnd=gnd)   -> {(i, j): pF}
+    both  = self_cap(b, net, pad=3.0, h=0.1, gnd=gnd)                          -> {False: pF, True: pF}
     rep   = report(b, cfg)                                                       the old tool's whole output, as data
     python -m pcbtools.cap BOARD.kicad_pcb|CACHE.npz [--config v2] | selftest    prints the old tool's lines
 
@@ -40,6 +40,28 @@ E0 = 8.854e-12            # F/m, as the old tool (the figures in the goldens are
 CHUNK = 2_000_000         # cells rasterised at once: bounds the temporary arrays of the ragged expansion
 
 
+MAX_CELLS = 3_000_000     # the most 3-D cells (nz * ny * nx) one solve may build; see GridTooLarge
+
+
+class GridTooLarge(ValueError):
+    """the grid a window and a cell size ask for has more than MAX_CELLS cells. Measured: the 0.1 mm NP-NP window of the v2
+    integrated board (about 0.98 million cells) peaks near 520 MB; memory grows linearly with the cell count (the sparse operator,
+    its free-cell copy and the solver's vectors), so 3 million cells is about 1.6 GB, which is what a 3 GB job cap leaves room
+    for. Raise the limit only together with the cap, or choose a larger cell size or a smaller window; halving the cell size is
+    8 times the cells."""
+
+
+def check_grid(nx, ny, nz, max_cells=None):
+    """refuse a grid over the cell limit BEFORE anything of that size is allocated (an oversize window used to be found out by
+    the operating system's out-of-memory killer, after minutes)"""
+    lim = MAX_CELLS if max_cells is None else max_cells
+    n = int(nx) * int(ny) * int(nz)
+    if n > lim:
+        raise GridTooLarge(f'a {nx} x {ny} x {nz} grid is {n:,} cells, over the limit of {lim:,} (cap.MAX_CELLS): '
+                           'use a coarser cell or a smaller window')
+    return n
+
+
 @dataclasses.dataclass(frozen=True)
 class Stack:
     """the board stack-up, mm; er is *(check)* (the JLC 1.6 mm 2-layer stack is not given in jlcpcb.md)"""
@@ -63,18 +85,18 @@ def kicad(x, y):
 @dataclasses.dataclass
 class Copper:
     """F.Cu items in KiCad mm by group: rects[g] (n, 4) = x0 y0 x1 y1, segs[g] (n, 5) = xa ya xb yb width.
-    Groups: each requested net, '__other__' (every other net, and no net) and '/GND'."""
+    Groups: each requested net, '__other__' (every other net, and no net) and '__gnd__' (the ground net `gnd`, if there is one)."""
     rects: dict
     segs: dict
 
 
-def copper(b, nets) -> Copper:
+def copper(b, nets, gnd=None) -> Copper:
     code = np.full(len(b.nets), len(nets), np.int64)                 # default group: other (net '' included)
     for k, n in enumerate(nets):
         code[b.net_id(n)] = k
-    if '/GND' in b.nets:
-        code[b.net_id('/GND')] = len(nets) + 1                       # ground is ground even if asked for, as the old tool had it
-    names = list(nets) + ['__other__', '/GND']
+    if gnd is not None and gnd in b.nets:
+        code[b.net_id(gnd)] = len(nets) + 1                       # ground is ground even if asked for, as the old tool had it
+    names = list(nets) + ['__other__', '__gnd__']
     top = (b.p_layer_mask & 1).astype(bool)
     px0, py1 = kicad(b.p_bx0, b.p_by0)                    # y flips: Due y0 becomes KiCad y1
     px1, py0 = kicad(b.p_bx1, b.p_by1)
@@ -255,16 +277,17 @@ def _fixed(cond, nzb):
 
 
 # ------------------------------------------------------------------------------------------------- the figures
-def pair_caps(b, nets, win, pour, h=0.1, stack=STACK, tol=1e-6):
+def pair_caps(b, nets, win, pour, h=0.1, stack=STACK, tol=1e-6, gnd=None):
     """{(i, j): pF}: charge on conductor j with conductor i at 1 V, for every ordered pair of `nets`; `win` in KiCad mm"""
-    cu = copper(b, tuple(nets))
+    cu = copper(b, tuple(nets), gnd)
     x0, y0, x1, y1 = win
     nx, ny = int(round((x1 - x0) / h)), int(round((y1 - y0) / h))
     nzb, nz = _grid(h, stack)
+    check_grid(nx, ny, nz)
     eps = _eps((nz, ny, nx), nzb, stack)
     masks = {n: raster(cu, n, x0, y0, nx, ny, h) for n in nets}
     other = raster(cu, '__other__', x0, y0, nx, ny, h)
-    gnd = raster(cu, '/GND', x0, y0, nx, ny, h)
+    gnd = raster(cu, '__gnd__', x0, y0, nx, ny, h)
     if pour:
         occ = other.copy()
         for m in masks.values():
@@ -292,10 +315,10 @@ def _at(nzb, m2, shape):
     return m
 
 
-def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6):
+def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6, gnd=None):
     """{False: pF, True: pF}: capacitance of one net's top copper to everything else (held at 0 V), without and with the
     top pour (kept `pour_clear` off the copper); the window is the net's own items grown by `pad`"""
-    cu = copper(b, (net,))
+    cu = copper(b, (net,), gnd)
     r, s = cu.rects[net], cu.segs[net]
     xs = np.concatenate([r[:, [0, 2]].ravel(), s[:, [0, 2]].ravel()])
     ys = np.concatenate([r[:, [1, 3]].ravel(), s[:, [1, 3]].ravel()])
@@ -304,10 +327,11 @@ def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6):
     x0, y0, x1, y1 = xs.min() - pad, ys.min() - pad, xs.max() + pad, ys.max() + pad
     nx, ny = int(round((x1 - x0) / h)), int(round((y1 - y0) / h))
     nzb, nz = _grid(h, stack)
+    check_grid(nx, ny, nz)
     eps = _eps((nz, ny, nx), nzb, stack)
     m = raster(cu, net, x0, y0, nx, ny, h)
     other = raster(cu, '__other__', x0, y0, nx, ny, h)
-    gnd = raster(cu, '/GND', x0, y0, nx, ny, h)
+    gnd = raster(cu, '__gnd__', x0, y0, nx, ny, h)
     out = {}
     for pour in (False, True):
         g = gnd | other
@@ -343,10 +367,10 @@ def report(b, cfg, stack=STACK, tol=1e-6, h_override=None):
         h = h_override or h
         w = window(b, nets, pad)
         for pour in (False, True):
-            r = pair_caps(b, list(nets), w, pour, h, stack, tol)
+            r = pair_caps(b, list(nets), w, pour, h, stack, tol, cfg.GND)
             pairs[(label, pour)] = dict(c=r[(nets[0], nets[1])], reverse=r[(nets[1], nets[0])], window=(w[2] - w[0], w[3] - w[1]), cell=h)
     for net, pad, h in cfg.CAP_SELF:
-        selfs[net] = self_cap(b, net, pad, h_override or h, stack, tol)
+        selfs[net] = self_cap(b, net, pad, h_override or h, stack, tol, cfg.GND)
     return Report(pairs, selfs)
 
 

@@ -33,7 +33,7 @@ editor, so the checking side (kvm_02) and the building side (kvm_01) can work in
 | pads | `p_fp: int32` (index into footprints), `p_pin: tuple[str]`, `p_x p_y: float64` centre, `p_bx0 p_by0 p_bx1 p_by1: float64` bbox, `p_net: int32`, `p_smd: bool`, `p_rot: float64` (degrees, absolute), `p_shape: int8` (0 circle, 1 rect, 2 oval, 3 roundrect, 4 other), `p_sx p_sy: float64` (pad size before rotation; a rotated pad's bbox overstates clearance, so geometry uses size and rotation), `p_layer_mask: uint8` (bit0 F, bit1 B) |
 | reference text | `r_x r_y r_h r_w r_t: float64`, `r_ang: float64`, `r_layer: int8` (0 = F.SilkS, 1 = B.SilkS, 2 = F.Fab, 3 = other), `r_on_silk: bool` (visible on F.SilkS), `r_fp: int32` |
 | silk texts (board-level) | `t_text: tuple[str]`, `t_x t_y t_h: float64` |
-| zones | per zone: `z_layer: int8`, `z_net: int32`, `z_filled: bool`. Filled copper as ONE vertex array `z_xy: float64 (V,2)` plus int64 offsets per level: `z_ring_off` (zone -> ring: zone i owns rings `z_ring_off[i]:z_ring_off[i+1]`) and `z_vert_off` (ring -> vertex: ring j owns `z_xy[z_vert_off[j]:z_vert_off[j+1]]`), and `z_ring_hole: int8` per ring (0 = outline, 1 = hole; a hole cuts the nearest outline ring before it). `geom.points_in_polys(..., hole=z_ring_hole)` respects holes |
+| zones | per zone: `z_layer: int8`, `z_net: int32`, `z_filled: bool`. Filled copper as ONE vertex array `z_xy: float64 (V,2)` plus int64 offsets per level: `z_ring_off` (zone -> ring: zone i owns rings `z_ring_off[i]:z_ring_off[i+1]`) and `z_vert_off` (ring -> vertex: ring j owns `z_xy[z_vert_off[j]:z_vert_off[j+1]]`), and `z_ring_hole: int8` per ring (0 = outline, 1 = hole; a hole cuts the nearest outline ring before it). `geom.points_in_polys(..., hole=z_ring_hole)` respects holes KiCad fractures the fills it returns (`HoleCount` 0 on every fixture zone), so a recorded board has no hole ring: the hole path is proven by the synthetic tests only |
 
 A `BoardArrays` also carries two derived lookups (built once, plain numpy):
 
@@ -84,7 +84,7 @@ in-process (one subprocess per arm is only for the `pcbnew`-marked tests that lo
 ## Settled in review (kvm_01, montreal5, kvm_02)
 
 1. Field list as above: plus the `*_idx` fields, `r_layer`, arcs, pad rotation/shape/size and the 1e-6 rounding. Not needed: 3D, footprint properties, silk graphics beyond text. LR-10 stays KiCad's DRC.
-2. Zones: one flat vertex array plus int64 offsets per level (zone -> ring -> vertex) and a per-ring outline/hole flag (holes are kept: the LR-4 pour keep-back round an inverting node is a hole in the top pour).
+2. Zones: one flat vertex array plus int64 offsets per level (zone -> ring -> vertex) and a per-ring outline/hole flag (holes are kept in the arrays, but KiCad's fractured fills carry none, so the keep-back round an inverting node is a slit in the outline and the hole path rests on the synthetic tests).
 3. Config is Python modules (they import `design.py` / `floorplan.py`: one source, no second home for a table); every constant a module-level name so a test can build a config from plain values.
 4. Base: this branch is cut from `origin/main`; the old tools stay on `v1-layout-wip` / `v2-layout-wip` as the reference (goldens are captured from there) and are ported only into `pcbtools/`. Board files used as fixtures go in `tests/fixtures/` as copies named after their source commit.
 

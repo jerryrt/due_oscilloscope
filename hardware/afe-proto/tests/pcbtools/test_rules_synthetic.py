@@ -126,7 +126,7 @@ def test_lr1_unfilled_plane_and_near_miss_distances():
 
 
 # ----------------------------------------------------------------------------- LR-3
-C3 = cfg(HIZ=('CH1_N',))
+C3 = cfg(HIZ=('/CH1_N',))
 
 
 def lr3_board(other_y=None, length=(3, 4), via=False):
@@ -157,14 +157,15 @@ def test_lr3():
 
 
 # ----------------------------------------------------------------------------- LR-4 and INV_MAX
-def lr4_board(fb=(3, 4), a0=(0, 0, 3, 4), a0_via=False, gnd_track=None, pour=None, fb_pad=(40, 40), r108=(1, 1), c104=(9, 10)):
-    s = Synth('/A0', '/A1', '/AWG_FB', '/CH1_N', '/CH2_N', '/GND', '/VCC')
+def lr4_board(fb=(3, 4), a0=(0, 0, 3, 4), a0_via=False, gnd_track=None, pour=None, fb_pad=(40, 40), r108=(1, 1), c104=(9, 10), extra=None,
+              fb_pad_kw=None):
+    s = Synth('/A0', '/A1', '/AWG_FB', '/CH1_N', '/CH2_N', '/CH1_OUT', '/GND', '/VCC')
     s.part('R108', 0, 0).p('R108', '1', *r108, '/A1')
     s.part('U101', 0, 0).p('U101', '7', 1, 1).p('U101', '1', 1, 2).p('U101', '8', 9, 9)
     s.part('R208', 0, 0).p('R208', '1', 1, 2)
     s.part('U301', 0, 0).p('U301', '8', 20, 20).p('U301', '4', 21, 20)
     s.part('C104', 0, 0).p('C104', '1', *c104).part('C305', 0, 0).p('C305', '1', 20, 21).part('C306', 0, 0).p('C306', '1', 21, 21)
-    s.part('R303', 0, 0).p('R303', '2', *fb_pad, '/AWG_FB')
+    s.part('R303', 0, 0).p('R303', '2', *fb_pad, '/AWG_FB', **(fb_pad_kw or {}))
     s.s('/AWG_FB', 'F', 40, 40, 40 + fb[0], 40 + fb[1])
     s.s('/A0', 'F', *a0)
     s.s('/A1', 'F', 0, 10, 0, 12)
@@ -174,6 +175,8 @@ def lr4_board(fb=(3, 4), a0=(0, 0, 3, 4), a0_via=False, gnd_track=None, pour=Non
         s.s('/GND', 'F', *gnd_track)
     if pour is not None:
         s.z('/GND', 'F', pour)
+    if extra:
+        extra(s)
     return s.build()
 
 
@@ -208,30 +211,51 @@ def test_lr4_output_resistor_and_decoupling_distance_limits(kw, ok):
         assert ('R108 not at the output pin' if 'r108' in kw else 'C104 12 mm from its supply pin') in r.detail
 
 
-@pytest.mark.parametrize('x, ok', [(39.3, True), (39.5, False)])
+@pytest.mark.parametrize('x, ok', [(39.0, True), (39.2, False)])
 def test_lr4_ground_track_distance_threshold(x, ok):
-    assert R.lr4(lr4_board(gnd_track=(x, 39, x, 41)), cfg()).ok == ok
+    """exact copper edges: the node's pad is 0.6 square at (40, 40) (edge at 39.7) and the ground track 0.2 wide, so the gap is
+    40 - x - 0.3 - 0.1 (the old tool measured from the pad CENTRE: 0.5 mm there meant 0.4 here)"""
+    r = R.lr4(lr4_board(gnd_track=(x, 39, x, 41)), cfg())
+    assert r.ok == ok
+    assert r.figures['gnd_track_gap_AWG_FB_mm'] == pytest.approx(40 - x - 0.4)
 
 
-@pytest.mark.parametrize('c', [(40.5, 40), (39.5, 40), (40, 40.5), (40, 39.5)], ids=['+x', '-x', '+y', '-y'])
-def test_lr4_each_of_the_four_pour_probe_directions(c):
-    # a pour 0.1 mm square centred on one probe point (0.5 mm from the pad) and nowhere else
-    r = R.lr4(lr4_board(pour=[(SQ(c[0] - 0.05, c[1] - 0.05, c[0] + 0.05, c[1] + 0.05), False)]), cfg())
+# the node's copper spans x 39.7 .. 43.1 (pad edge; the track's round end) and y 39.7 .. 44.1
+@pytest.mark.parametrize('side, ring', [('+x', lambda g: SQ(43.1 + g, 30, 60, 60)), ('-x', lambda g: SQ(20, 30, 39.7 - g, 60)),
+                                          ('+y', lambda g: SQ(30, 44.1 + g, 60, 60)), ('-y', lambda g: SQ(30, 20, 60, 39.7 - g))])
+def test_lr4_pour_edge_distance_from_each_side(side, ring):
+    """the pour is measured from ITS EDGE to the node's copper edge, on every side: 0.45 mm fails with that figure, 0.55 passes"""
+    r = R.lr4(lr4_board(pour=[(ring(0.45), False)]), cfg())
     assert not r.ok and "['top pour']" in r.detail
-    d = 0.2
-    assert R.lr4(lr4_board(pour=[(SQ(c[0] - 0.05 + d, c[1] - 0.05 + d, c[0] + 0.05 + d, c[1] + 0.05 + d), False)]), cfg()).ok
+    assert r.figures['pour_gap_AWG_FB_mm'] == pytest.approx(0.45)
+    r = R.lr4(lr4_board(pour=[(ring(0.55), False)]), cfg())
+    assert r.ok and r.figures['pour_gap_AWG_FB_mm'] == pytest.approx(0.55)
 
 
 def test_lr4_pour_is_hole_aware():
+    """THE ONLY PROOF of the hole path: KiCad fractures every fill on the fixture boards (HoleCount 0), so no recorded board has a
+    hole ring. A pour over the node fails (the node is on the fill); a hole round it makes the gap the hole's, and the same
+    rings with the hole flag cleared are an outline: the node is on the fill again"""
     pour = SQ(30, 30, 60, 60)
     r = R.lr4(lr4_board(pour=[(pour, False)]), cfg())
-    assert not r.ok and "(['top pour'])" in r.detail
-    # the keep-back round the node is a hole in the pour: nothing within 0.5 mm of the node is copper
-    keep = SQ(38, 38, 45, 46)
-    assert R.lr4(lr4_board(pour=[(pour, False), (keep, True)]), cfg()).ok
-    # a pour that starts beyond the last probe point (the node ends at (43, 44); the probe is 0.5 mm out) does not count
-    assert R.lr4(lr4_board(pour=[(SQ(43.6, 30, 60, 60), False)]), cfg()).ok
-    assert not R.lr4(lr4_board(pour=[(SQ(43.4, 30, 60, 60), False)]), cfg()).ok
+    assert not r.ok and "(['top pour'])" in r.detail and r.figures['pour_gap_AWG_FB_mm'] == 0.0
+    keep = SQ(38, 38, 45, 46)                                    # 1.7 mm clear on the nearest side (x 39.7 - 38)
+    r = R.lr4(lr4_board(pour=[(pour, False), (keep, True)]), cfg())
+    assert r.ok and r.figures['pour_gap_AWG_FB_mm'] == pytest.approx(1.7)
+    assert not R.lr4(lr4_board(pour=[(pour, False), (keep, False)]), cfg()).ok       # holes ignored: still on the fill
+    tight = SQ(39.0, 38, 45, 46)                                  # 0.7 on the left, then the pad edge
+    assert R.lr4(lr4_board(pour=[(pour, False), (tight, True)]), cfg()).ok
+    tighter = SQ(39.4, 38, 45, 46)                                # 0.3 on the left
+    r = R.lr4(lr4_board(pour=[(pour, False), (tighter, True)]), cfg())
+    assert not r.ok and r.figures['pour_gap_AWG_FB_mm'] == pytest.approx(0.3)
+
+
+def test_lr4_diagonal_gap_is_not_an_axial_probe():
+    """a pour corner at (43, 44) + (d, d), d = 0.5 / sqrt 2, is 0.5 mm from the track's far end CENTRE and 0.4 mm from its edge,
+    diagonally: none of the four axial probes 0.5 mm from the end reaches it, the exact distance does"""
+    d = 0.5 / np.sqrt(2)
+    r = R.lr4(lr4_board(pour=[(SQ(43 + d, 44 + d, 60, 60), False)]), cfg())
+    assert not r.ok and r.figures['pour_gap_AWG_FB_mm'] == pytest.approx(0.4)
 
 
 def test_inv_max_boundary_all_layers():
@@ -255,7 +279,7 @@ def lr12_board(d, cap_pins=('1',)):
     return s.build()
 
 
-C12 = cfg(DECOUP={'C1': ('U1', '8')})
+C12 = cfg(DECOUP=[('C1', 'U1', '8')])
 
 
 def test_lr12_boundary_and_supply_pad_choice():
@@ -282,16 +306,19 @@ def lr5_board(x, pad=None):
 
 
 def test_lr5_boundary_exact_distance_and_pads():
-    r = R.lr5(lr5_board(12.0), C5)
-    assert r.ok and r.figures['min_distance_mm'] == 10.0
-    r = R.lr5(lr5_board(11.9), C5)
+    """copper EDGE to courtyard: a 0.2 mm track's centre line 10.1 mm out is 10.0 mm to its edge"""
+    r = R.lr5(lr5_board(12.2), C5)
+    assert r.ok and r.figures['min_distance_mm'] == pytest.approx(10.1)
+    r = R.lr5(lr5_board(12.0), C5)                                   # centre line exactly 10.0: the edge is 9.9
     assert not r.ok and r.detail == '/A0 9.9 mm' and r.figures['min_distance_mm'] == pytest.approx(9.9)
-    # a segment that only passes a corner: distance to the corner, not to an edge line
+    r = R.lr5(lr5_board(11.9), C5)
+    assert not r.ok and r.detail == '/A0 9.8 mm' and r.figures['min_distance_mm'] == pytest.approx(9.8)
+    # a segment that only passes a corner: distance to the corner, not to an edge line, less the half width
     s = Synth('/A0').part('U401', 1, 1, box=(0, 0, 2, 2)).part('C409', 50, 50, box=(49, 49, 51, 51)).s('/A0', 'F', 5, 5, 9, 9)
-    assert R.lr5(s.build(), C5).figures['min_distance_mm'] == pytest.approx(np.hypot(3, 3))
-    r = R.lr5(lr5_board(30.0, pad=(2 + 6, 1)), C5)                       # a sensitive pad 6 mm from the box
-    assert not r.ok and r.detail == '/A0 pad R1.1 6.0 mm'
-    assert R.lr5(lr5_board(30.0, pad=(2 + 10, 1)), C5).ok
+    assert R.lr5(s.build(), C5).figures['min_distance_mm'] == pytest.approx(np.hypot(3, 3) - 0.1)
+    r = R.lr5(lr5_board(30.0, pad=(2 + 6, 1)), C5)                       # a 0.6 pad whose centre is 6 mm out: its edge is 5.7
+    assert not r.ok and r.detail == '/A0 pad R1.1 5.7 mm'
+    assert R.lr5(lr5_board(30.0, pad=(2 + 10.5, 1)), C5).ok              # edge 10.2
     s = Synth('/A0').part('U401', 1, 1, box=(0, 0, 2, 2)).part('C409', 50, 50, box=(49, 49, 51, 51)).s('/A0', 'F', 0.5, 1, 1.5, 1)
     r = R.lr5(s.build(), C5)                                              # inside the courtyard: distance 0
     assert not r.ok and r.detail == '/A0 0.0 mm' and r.figures['min_distance_mm'] == 0.0
@@ -320,12 +347,19 @@ def test_lr6_star_and_shared_copper():
 
 
 def test_lr6_bridge_pads_join_a_piece():
+    c = cfg(GROUPS=C6.GROUPS, STAR=C6.STAR, BRIDGE_PADS=[('U101', '8', 'U301', '8')])
+    assert R.lr6(star_board(), C6).ok
+    assert "serves ['awg', 'scope']" in R.lr6(star_board(), c).detail        # the part joins two pads: the legs share copper
+
+
+def test_lr6_three_isolated_pads_are_unrouted_not_a_pass():
+    """with no copper at all the old rule passed (no piece served two groups); each group must reach the star"""
     s = Synth('/+3V3A').part('U401', 0, 0).p('U401', '11', 0, 0, '/+3V3A')
     s.part('U101', 10, 0).p('U101', '8', 10, 0, '/+3V3A').part('U301', 0, 10).p('U301', '8', 0, 10, '/+3V3A')
-    b = s.build()
-    assert R.lr6(b, C6).ok                           # three isolated pads
-    c = cfg(GROUPS=C6.GROUPS, STAR=C6.STAR, BRIDGE_PADS=[('U101', '8', 'U301', '8')])
-    assert 'serves' in R.lr6(b, c).detail
+    r = R.lr6(s.build(), C6)
+    assert not r.ok
+    assert '/+3V3A: consumer group scope is not connected to the star: U101.8 unreachable by copper' in r.detail
+    assert 'consumer group awg is not connected to the star: U301.8' in r.detail
 
 
 @pytest.mark.parametrize('gap, joined', [(0.0, True), (0.04, True), (0.06, False)])
@@ -355,7 +389,7 @@ def test_pads_never_join_each_other():
 
 
 def test_lr8_branches():
-    c = cfg(VREF_SOURCE=['U1.1'], VREF_BRANCHES=[['R1.1'], ['R2.1']], BRIDGE_PADS=[])
+    c = cfg(VREF_SOURCE=[('U1', '1')], VREF_BRANCHES=[[('R1', '1')], [('R2', '1')]], BRIDGE_PADS=[])
 
     def board(link):
         s = Synth('/VREF').part('U1', 0, 0).p('U1', '1', 0, 0, '/VREF').part('R1', 10, 0).p('R1', '1', 10, 0, '/VREF')
@@ -438,6 +472,8 @@ def test_lr11():
 
 
 # ----------------------------------------------------------------------------- LR-2 (the flow rule, small geometry)
+C2 = cfg(CHANNELS=(dict(name='CH1', bnc=('J101', '1'), prot='R101', rnp='R107', opamp='U101', riso='R108', out_pin=('U101', '7'),
+                        adc_pad=('J602', '7'), out_nets=('/A1', '/CH1_OUT'), hiz_nets=('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP')),))
 def lr2_board(x_r1=90.0, outl_extra=0.0, gen=(20, 20), pad2_y=40.0):
     s = Synth('/A1', '/A0', '/CH1_OUT', '/CH2_OUT', '/CH2_RISO', '/CH1_N', '/CH1_NP', '/CH1_IN', '/CH2_N', '/CH2_NP', '/CH2_IN', '/CH1_M1')
     for ch, base, bnc, adc, y in ((1, 100, 'J101', '7', 40.0), (2, 200, 'J201', '8', 20.0)):
@@ -454,7 +490,7 @@ def lr2_board(x_r1=90.0, outl_extra=0.0, gen=(20, 20), pad2_y=40.0):
 
 
 def test_lr2_flow_generator_and_separation():
-    c = cfg(CHANNELS=((1, 100, 'J101', '7'),))
+    c = C2
     r = R.lr2(lr2_board(), c)
     assert 'x does not fall' not in r.detail
     # channel 1 divider side: 2 mm of CH1_M1; the output (A1) run 10 mm is longer: no complaint
@@ -467,7 +503,7 @@ def test_lr2_flow_generator_and_separation():
 
 # ----------------------------------------------------------------------------- remaining boundaries
 def test_lr2_boundaries():
-    c = cfg(CHANNELS=((1, 100, 'J101', '7'),))
+    c = C2
 
     def detail(**kw):
         return R.lr2(lr2_board(**kw), c).detail

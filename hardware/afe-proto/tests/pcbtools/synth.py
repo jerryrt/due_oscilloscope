@@ -31,10 +31,15 @@ class Synth:
             self.rt.append((x, y, h, 0.8, 0.12, 0.0, 0, bool(silk), i))
         return self
 
-    def p(self, ref, pin, x, y, net='', size=0.6, smd=True):
+    def p(self, ref, pin, x, y, net='', size=0.6, smd=True, mask=1, shape=1, sy=None, rot=0.0):
+        """a pad: `size` square (or size x sy), `mask` the copper layers it reaches (bit0 F.Cu, bit1 B.Cu), `shape` as boardio
+        (1 rect, 0 circle, 2 oval), `rot` degrees; the bounding box follows the rotation"""
         i = [f[0] for f in self.fp].index(ref)
-        h = size / 2
-        self.pad.append((i, pin, x, y, x - h, y - h, x + h, y + h, self.n(net) if net else 0, smd))
+        sy = size if sy is None else sy
+        a = np.radians(rot)
+        hx = (abs(np.cos(a)) * size + abs(np.sin(a)) * sy) / 2
+        hy = (abs(np.sin(a)) * size + abs(np.cos(a)) * sy) / 2
+        self.pad.append((i, pin, x, y, x - hx, y - hy, x + hx, y + hy, self.n(net) if net else 0, smd, mask, shape, size, sy, rot))
         return self
 
     def s(self, net, layer, x0, y0, x1, y1, w=0.2):
@@ -71,7 +76,7 @@ class Synth:
             c = lambda k: [r[k] for r in self.pad]
             n = len(self.pad)
             kw.update(p_fp=c(0), p_pin=c(1), p_x=c(2), p_y=c(3), p_bx0=c(4), p_by0=c(5), p_bx1=c(6), p_by1=c(7), p_net=c(8),
-                      p_smd=c(9), p_rot=[0.0] * n, p_shape=[1] * n, p_sx=[0.6] * n, p_sy=[0.6] * n, p_layer_mask=[1] * n)
+                      p_smd=c(9), p_rot=c(14), p_shape=c(11), p_sx=c(12), p_sy=c(13), p_layer_mask=c(10))
         if self.rt:
             c = lambda k: [r[k] for r in self.rt]
             kw.update(r_x=c(0), r_y=c(1), r_h=c(2), r_w=c(3), r_t=c(4), r_ang=c(5), r_layer=c(6), r_on_silk=c(7), r_fp=c(8))

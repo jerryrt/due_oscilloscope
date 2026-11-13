@@ -4,7 +4,7 @@ caller wraps the whole process in its memory cap, so the child inherits it. No p
 
     lr10(b, cfg=None, outdir=None, cli='kicad-cli') -> Result      b is a BoardArrays whose .path is the board file
     drc_time()                                                     seconds the last DRC child took (for the benchmark)
-    lr10_arm(b, outdir) -> path of a copy with a 0.1 mm track added (needs the .kicad_pro beside the original)
+    lr10_arm(b, outdir, cfg) -> path of a work copy (same libraries as lr10's) with a 0.1 mm track added
 """
 from __future__ import annotations
 
@@ -75,19 +75,21 @@ def lr10(b, cfg=None, outdir=None, cli='kicad-cli'):
     return lr10_path(b.path, outdir, cli)
 
 
-def lr10_arm(b, outdir):
-    """copy b.path (and its .kicad_pro) into outdir with a 0.1 mm top track on /CH1_N one mm (KiCad +y) from R101's first pad, as the old arm"""
-    src = b.path
-    text = open(src).read()
-    r = int(b.pad_indices('R101', '1')[0])
+def lr10_arm(b, outdir, cfg):
+    """The arm's board: the original's work copy (`_work_copy`: board, project file, fp-lib-table and lib/, exactly what the base run
+    gets) in outdir/arm, with a 0.1 mm top track one mm (KiCad +y) from a pad appended to its text, as the old arm: the pad and
+    the net are `cfg.DRC_ARM` (ref, pin, net). The text is edited in the copy, so the arm runs with the same libraries as the base run and gains no
+    lib_footprint_issues of its own (it used to be copied alone, without fp-lib-table and lib/). Returns the path of the edited copy."""
+    arm_dir = os.path.join(outdir, 'arm')
+    os.makedirs(arm_dir, exist_ok=True)
+    dst = _work_copy(b.path, arm_dir)
+    text = open(dst).read()
+    arm = cfg.DRC_ARM
+    r = int(b.pad_indices(arm['ref'], arm['pin'])[0])
     x, y = boardio.from_due(b.p_x[r], b.p_y[r])
     seg = (f'\t(segment (start {x:.6f} {y + 1.0:.6f}) (end {x + 3.0:.6f} {y + 1.0:.6f}) (width 0.1) (layer "F.Cu") '
-           f'(net "/CH1_N") (uuid "00000000-0000-4000-8000-000000000101"))\n')
+           f'(net "{arm['net']}") (uuid "00000000-0000-4000-8000-000000000101"))\n')
     i = text.rstrip().rfind(')')
-    dst = os.path.join(outdir, os.path.basename(src))
     with open(dst, 'w') as f:
         f.write(text[:i] + seg + text[i:])
-    pro = os.path.splitext(src)[0] + '.kicad_pro'
-    if os.path.exists(pro):
-        shutil.copy(pro, os.path.splitext(dst)[0] + '.kicad_pro')
     return dst
