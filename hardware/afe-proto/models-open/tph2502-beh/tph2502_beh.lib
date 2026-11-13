@@ -1,0 +1,25 @@
+* TPH2502 behavioural small-signal model (project's own, CC-BY-SA 4.0, models-open/LICENSE terms).
+* Pins: +IN -IN V+ V- OUT (the order of the 3PEAK and TI models in this project).
+* Fitted to 3PEAK TPH2501/2/3/4 datasheet Rev. A (tph2502.pdf, sha256 774114f825b8...):
+*   GBW 120 MHz (table, G=+10) and the p7 "Open Loop Gain And Phase" curve (VS 5 V, RL 1k): unity
+*   crossing 120 MHz, phase margin about 56 deg; the excess phase over the 90 deg of an integrator is
+*   linear in frequency, 0.28 deg/MHz from 30 to 200 MHz, so it is modelled as a 0.78 ns delay;
+*   AVOL 110 dB (table, typ); RO open-loop output impedance 21 ohm (table, f = 1 kHz) by default,
+*   ro=60 as the stress corner read from the p6 closed-loop output impedance curve (about 60 ohm
+*   plateau at 300 MHz-1 GHz, *(check)*); CIN 2.7 pF differential, 1 pF common mode (table).
+* Small-signal only: no rails, no slew, no current limit, no noise (noise is integrated from the
+* datasheet density outside SPICE).  AC and .op use only.
+.subckt TPH2502_BEH inp inn vp vn out params: gbw=120e6 a0db=110 td=0.78e-9 ro=21 ccm=1p cdiff=2.7p
+Ccmp inp vn {ccm}
+Ccmn inn vn {ccm}
+Cdif inp inn {cdiff}
+G1 0 n1 inp inn 1e-3
+R1 n1 0 {pow(10, a0db/20)/1e-3}
+C1 n1 0 {1e-3/(2*3.14159265*gbw)}
+E2 d1 0 n1 0 1
+Rt1 d1 d2 50
+T1 d2 0 d3 0 Z0=50 TD={td}
+Rt2 d3 0 50
+Bo e 0 V=2*V(d3)+0.5*(V(vp)+V(vn))
+Ro e out {ro}
+.ends TPH2502_BEH
