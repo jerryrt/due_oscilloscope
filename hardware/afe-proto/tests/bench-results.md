@@ -1,6 +1,6 @@
 # AFE tool bench
 
-image `sha256:d59d5…` installed `a64aa4f285c5…` · machine jerry-x1gen7 · KiCad 10.0.8 · ngspice 45.2 · Python 3.14.4 · numpy 2.3.5 · 5 runs per step, first dropped by index · remeasured in a later run in the same image: old-v1-build_pcb, old-v1-check-pcb, old-v1-fence_check, old-v1-lr_check, old-v1-lr_check-mutate
+image `sha256:d59d5…` installed `a64aa4f285c5…` · machine jerry-x1gen7 · KiCad 10.0.8 · ngspice 45.2 · Python 3.14.4 · numpy 2.3.5 · 5 runs per step, first dropped by index · remeasured in a later run in the same image: new-v2-cap, new-v2-check, new-v2-check-mutate, new-v2-fence, old-v1-build_pcb, old-v1-check-pcb, old-v1-fence_check, old-v1-lr_check, old-v1-lr_check-mutate, old-v2-cap, old-v2-fence_check, old-v2-lr_check, old-v2-lr_check-mutate
 
 | board | tool | status | wall median (s) | wall max (s) | peak RSS median (MB) | peak max (MB) |
 |---|---|---|---|---|---|---|
@@ -57,34 +57,54 @@ image `sha256:d59d5…` installed `a64aa4f285c5…` · machine jerry-x1gen7 · K
 | v1+v2 | netlib-text-v1v2 | OK | 0.10 | 0.11 | 35 | 35 |
 | v1 | schematic-build-v1 | OK | 2.10 | 2.11 | 209 | 209 |
 | v1 | board-build-v1 | OK | 4.18 | 4.23 | 231 | 231 |
-| v2-awg | old-v2-lr_check | OK | 7.02 | 7.04 | 1461 | 1475 |
-| v2-awg | new-v2-check | OK | 0.90 | 0.91 | 177 | 178 |
-| v2-integrated | old-v2-lr_check | OK | 6.81 | 6.94 | 1458 | 1462 |
-| v2-integrated | new-v2-check | OK | 0.88 | 0.91 | 177 | 178 |
-| v2-power | old-v2-lr_check | OK | 7.27 | 7.33 | 1466 | 1477 |
-| v2-power | new-v2-check | OK | 0.93 | 0.94 | 178 | 180 |
-| v2-power3 | old-v2-lr_check | OK | 7.30 | 7.35 | 1442 | 1469 |
-| v2-power3 | new-v2-check | OK | 0.95 | 0.95 | 178 | 178 |
-| v2-refcal | old-v2-lr_check | OK | 7.11 | 7.12 | 1453 | 1468 |
-| v2-refcal | new-v2-check | OK | 0.93 | 0.94 | 176 | 178 |
-| v2-scope2east | old-v2-lr_check | OK | 7.24 | 7.27 | 1449 | 1456 |
-| v2-scope2east | new-v2-check | OK | 0.92 | 0.94 | 177 | 177 |
-| v2-integrated | old-v2-lr_check-mutate | OK | 10.84 | 10.93 | 1449 | 1461 |
-| v2-integrated | new-v2-check-mutate | OK | 1.02 | 1.02 | 176 | 177 |
-| v2-power3 | old-v2-fence_check | OK | 0.46 | 0.47 | 163 | 165 |
-| v2-power3 | new-v2-fence | OK | 0.64 | 0.64 | 183 | 184 |
-| v2-power | old-v2-fence_check | OK | 0.46 | 0.47 | 162 | 164 |
-| v2-power | new-v2-fence | OK | 0.63 | 0.63 | 182 | 183 |
-| v2-refcal | old-v2-fence_check | OK | 0.46 | 0.47 | 162 | 163 |
-| v2-refcal | new-v2-fence | OK | 0.63 | 0.63 | 183 | 184 |
-| v2-awg | old-v2-fence_check | OK | 0.46 | 0.47 | 162 | 163 |
-| v2-awg | new-v2-fence | OK | 0.62 | 0.64 | 181 | 182 |
-| v2-scope2east | old-v2-fence_check | OK | 0.46 | 0.47 | 163 | 164 |
-| v2-scope2east | new-v2-fence | OK | 0.63 | 0.65 | 181 | 182 |
-| v2-integrated | old-v2-cap | OK | 48.40 | 48.70 | 310 | 310 |
-| v2-integrated | new-v2-cap | OK | 28.88 | 29.59 | 536 | 537 |
 | v1 | old-v1-build_pcb | OK | 4.32 | 4.44 | 231 | 232 |
 | v1 | old-v1-check-pcb | OK | 44.18 | 44.20 | 1501 | 1521 |
 | v1 | old-v1-lr_check | OK | 5.97 | 6.02 | 1440 | 1459 |
 | v1 | old-v1-lr_check-mutate | OK | 12.12 | 12.35 | 1453 | 1463 |
 | v1 | old-v1-fence_check | OK | 0.35 | 0.35 | 153 | 154 |
+| v2-awg | old-v2-lr_check | OK | 6.95 | 7.09 | 1454 | 1466 |
+| v2-awg | new-v2-check | OK | 0.88 | 0.88 | 177 | 179 |
+| v2-integrated | old-v2-lr_check | OK | 6.87 | 6.97 | 1448 | 1482 |
+| v2-integrated | new-v2-check | OK | 0.88 | 0.91 | 176 | 178 |
+| v2-power | old-v2-lr_check | OK | 7.30 | 7.47 | 1462 | 1471 |
+| v2-power | new-v2-check | OK | 0.93 | 0.94 | 178 | 179 |
+| v2-power3 | old-v2-lr_check | OK | 7.31 | 7.40 | 1469 | 1475 |
+| v2-power3 | new-v2-check | OK | 0.93 | 0.94 | 177 | 179 |
+| v2-refcal | old-v2-lr_check | OK | 7.15 | 7.28 | 1450 | 1483 |
+| v2-refcal | new-v2-check | OK | 0.93 | 0.94 | 178 | 178 |
+| v2-scope2east | old-v2-lr_check | OK | 7.21 | 7.30 | 1446 | 1468 |
+| v2-scope2east | new-v2-check | OK | 0.93 | 0.95 | 176 | 178 |
+| v2-awg | old-v2-fence_check | OK | 0.45 | 0.46 | 163 | 164 |
+| v2-awg | new-v2-fence | OK | 0.63 | 0.63 | 182 | 183 |
+| v2-power | old-v2-fence_check | OK | 0.45 | 0.47 | 163 | 164 |
+| v2-power | new-v2-fence | OK | 0.63 | 0.65 | 181 | 182 |
+| v2-power3 | old-v2-fence_check | OK | 0.45 | 0.46 | 163 | 165 |
+| v2-power3 | new-v2-fence | OK | 0.63 | 0.64 | 182 | 184 |
+| v2-refcal | old-v2-fence_check | OK | 0.46 | 0.47 | 163 | 164 |
+| v2-refcal | new-v2-fence | OK | 0.63 | 0.65 | 182 | 183 |
+| v2-scope2east | old-v2-fence_check | OK | 0.46 | 0.48 | 162 | 163 |
+| v2-scope2east | new-v2-fence | OK | 0.62 | 0.64 | 182 | 183 |
+| v2-integrated | old-v2-cap | OK | 48.40 | 48.93 | 310 | 310 |
+| v2-integrated | new-v2-cap | OK | 28.35 | 28.41 | 537 | 537 |
+| v2-integrated | old-v2-lr_check-mutate | OK | 11.12 | 11.32 | 1440 | 1453 |
+| v2-integrated | new-v2-check-mutate | OK | 1.03 | 1.04 | 178 | 179 |
+
+## Old / new, interleaved
+
+Measured alternately (old, new, old, new, ...) in one run so machine load hits both arms alike: **quote the ratios, not the absolute wall times** (those are from a loaded machine). Ratio = old / new, so above 1 the new tool is faster or smaller.
+
+| board | old | new | wall ratio median (min–max) | peak RSS ratio |
+|---|---|---|---|---|
+| v2-awg | old-v2-lr_check | new-v2-check | 7.92 (7.89–8.15) | 8.21 |
+| v2-integrated | old-v2-lr_check | new-v2-check | 7.77 (7.55–8.01) | 8.22 |
+| v2-power | old-v2-lr_check | new-v2-check | 7.82 (7.68–8.03) | 8.21 |
+| v2-power3 | old-v2-lr_check | new-v2-check | 7.78 (7.73–7.96) | 8.30 |
+| v2-refcal | old-v2-lr_check | new-v2-check | 7.69 (7.53–7.74) | 8.16 |
+| v2-scope2east | old-v2-lr_check | new-v2-check | 7.73 (7.59–7.85) | 8.20 |
+| v2-awg | old-v2-fence_check | new-v2-fence | 0.71 (0.70–0.75) | 0.90 |
+| v2-power | old-v2-fence_check | new-v2-fence | 0.71 (0.70–0.75) | 0.90 |
+| v2-power3 | old-v2-fence_check | new-v2-fence | 0.72 (0.70–0.73) | 0.89 |
+| v2-refcal | old-v2-fence_check | new-v2-fence | 0.73 (0.69–0.75) | 0.89 |
+| v2-scope2east | old-v2-fence_check | new-v2-fence | 0.74 (0.72–0.76) | 0.89 |
+| v2-integrated | old-v2-cap | new-v2-cap | 1.71 (1.69–1.73) | 0.58 |
+| v2-integrated | old-v2-lr_check-mutate | new-v2-check-mutate | 10.80 (10.70–10.88) | 8.08 |
