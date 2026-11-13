@@ -1,15 +1,15 @@
 {
- "zip_sha256": "f3b868ed4567cf16acff4e8a6c29aae899dba2fa23544fc12d4b2fa81d3aa20b",
+ "zip_sha256": "7f5858e41010bd1d310d80a6832a20f38198b1327b16a780c966aa245670df94",
  "members": [
   {
    "name": "COPPIA-AFE-2-REVA-B_Cu.gbl",
-   "size": 165683,
-   "sha256": "f1b3e09adaea62495d509b7874224e0acbcb34d1b42f892c602e845a8a0360ad"
+   "size": 165686,
+   "sha256": "45c2bfd7ff9cc17702f9698924c3666d49d0864572f26f6a64e46e224a01c998"
   },
   {
    "name": "COPPIA-AFE-2-REVA-B_Mask.gbs",
-   "size": 3642,
-   "sha256": "db823265099fbed460e28e83dc6c8ff7e8cf506a4e31bad106f3174e3007a23a"
+   "size": 3641,
+   "sha256": "8ee626df7f3af2899e369d995fbe8d5a49534cb8506b2f9aea8d09b3a8dde87a"
   },
   {
    "name": "COPPIA-AFE-2-REVA-B_Silkscreen.gbo",
@@ -23,13 +23,13 @@
   },
   {
    "name": "COPPIA-AFE-2-REVA-F_Cu.gtl",
-   "size": 331185,
-   "sha256": "59948747641f59df6e1a0b9c3d9d83038f912e367681cfe63dfa57515828c150"
+   "size": 332199,
+   "sha256": "a7a08010e8f712f51c7f7d833163de6309af36487f47f0d71b02164f913bc3d4"
   },
   {
    "name": "COPPIA-AFE-2-REVA-F_Mask.gts",
-   "size": 13936,
-   "sha256": "f8b8b473d1baed48544f17f58e725df068da5b96a01f9cc3f95e1c4e71569e22"
+   "size": 13935,
+   "sha256": "8de8dc468f21058e654e47f2363757d0a0aecc9308c600b42c49b21bc737fb23"
   },
   {
    "name": "COPPIA-AFE-2-REVA-F_Paste.gtp",
@@ -38,8 +38,8 @@
   },
   {
    "name": "COPPIA-AFE-2-REVA-F_Silkscreen.gto",
-   "size": 401996,
-   "sha256": "fe934dc8e3cb0f3d303f24361ce801a56efdf22bd1379065b1eb2fba5467935a"
+   "size": 401992,
+   "sha256": "1e5f2edd8f5250f71aa2723c628df2ab0dbfdc260be3f272c3d933adcb0df9cf"
   },
   {
    "name": "COPPIA-AFE-2-REVA-NPTH.drl",
@@ -48,8 +48,8 @@
   },
   {
    "name": "COPPIA-AFE-2-REVA-PTH.drl",
-   "size": 2687,
-   "sha256": "4be3c5fd3a2092f2c994fb781a63b2e709a46cc1fdab003f62612c5ef29cc896"
+   "size": 2686,
+   "sha256": "3b44d9f212ba6ed16c54368686963ffab7ab9b2946ef86ad4e6d275503fbcfa9"
   },
   {
    "name": "COPPIA-AFE-2-REVA-bom.csv",

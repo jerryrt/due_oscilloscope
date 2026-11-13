@@ -1,8 +1,8 @@
 {
  "description": "Grid convergence of the v2 integrated board capacitance figures, pcbtools.cap.report(converge=True): cell sizes 0.2, 0.1, 0.05 mm, Richardson extrapolation (observed order must be 0.5-2.5 and the sequence monotone, else the finest value with the full spread). Pair values are mutual capacitances in pF; self values are capacitances to everything else in pF. SELF CAPACITANCE IS NOT VALIDATED AGAINST A FIELD SOLVER.",
  "board": "v2/layout/integrated/afe-v2-integrated.kicad_pcb",
- "board_sha256": "8dd0c7f7df48094ba5a962645ce8319d4f8adb9533fc8be7269c8497379d9989",
- "commit": "b84db6aba00b580ed25ee168240f786e415b5ca0",
+ "board_sha256": "f08f92e7de3bd4b7cb1e9a9ed7d58fe41f538cb49c243fdb139897bc8305be37",
+ "commit": "91c616693d744cab39873c1648595b8940f46a5d",
  "config": "pcbtools/boards/v2.py (CAP_PAIRS, CAP_SELF)",
  "tol": 1e-06,
  "max_cells": 3000000,
@@ -14,8 +14,8 @@
  "env": {
   "image": "sha256:69fe5abfb265ffc6c4f1cf85743e8b21b7f9605c452c389239d928a703d80c18",
   "runner": "docker/pcb/run.sh -m 8G",
-  "wall_s": 273.95,
-  "peak_rss_kb": 1717948,
+  "wall_s": 245.87,
+  "peak_rss_kb": 1717756,
   "run": "one process solves every figure"
  },
  "figures": [
