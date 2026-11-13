@@ -262,7 +262,7 @@ def clip_detect(levels, vtb, thr=0.5, win=3):
         if np.mean(w) < thr * med: keep[i] = False
     return keep
 
-def clip_case(thr=0.5, vclip=-1.923, n=1025, lo=-2.06, hi=1.785, noise_mv=0.1):
+def clip_case(thr=0.5, vclip=-1.923, n=1025, lo=-2.031, hi=1.747, noise_mv=0.1):
     """A staircase of DAC codes (1.45 mV per code at the AWG output), the AWG flat below vclip; k = 0.4 so the pair reads k (A - B).  Returns (first dropped level, kept count,
     fit gain error over the kept levels, bottom of the kept range)."""
     rng = np.random.default_rng(2)

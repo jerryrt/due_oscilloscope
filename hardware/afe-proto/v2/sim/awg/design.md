@@ -5,7 +5,7 @@ DAC0 into one TPH2502 dual with both halves paralleled as one gain stage (V2-2: 
 (the DC arithmetic, hard corners and the Basic-value search). Figures marked *(check)* are open. The vendor op-amp model is `simtools.vendor`'s derived copy of 3PEAK's TPH2501 (fetched, never committed) and the stability
 models are `models-open/tph2502-beh/`.
 
-**Status (owner ruling 2026-11-13): the guaranteed range is +-1.6 V, symmetric, with every value unchanged**; 99 rows, **0 FAIL**; see "The +-1.6 V range" below, which supersedes the -1.5 .. +1.63 V figures quoted in the older text (the sections after it are kept as the derivation and have not been re-worded). Before that ruling (REF3030E Fig. 6-14 peaking) the range was **-1.5 V to +1.63 V** (it was +1.71 V): the filter's shelf lets an AC waveform
+**Status (owner rulings 2026-11-13): the guaranteed range is +-1.5 V with Rvr 150 ohm and R6 3.0 kohm (section "The final values"); the +-1.6 V text after it is history**; 99 rows, **0 FAIL**; see "The +-1.6 V range" below, which supersedes the -1.5 .. +1.63 V figures quoted in the older text (the sections after it are kept as the derivation and have not been re-worded). Before that ruling (REF3030E Fig. 6-14 peaking) the range was **-1.5 V to +1.63 V** (it was +1.71 V): the filter's shelf lets an AC waveform
 reach above the DC window top end, so the supply-pin limit is judged on an **AC top end** of 2.197 V against 2.2275 V (+30 mV). The position-aware row is at 0.9194 (+0.0006) and the AC supply-pin
 peak at 59.4 mA (+0.6 mA): both are fragile, re-run first after any change here. AW-1's guarantee is the commanded range; the last unused window codes (below about -1.95 V) clip on the weak
 negative rail, and the calibration sweep must drop any level whose sense reading stops following the DAC code (spec lead). **One reading is not met:** against the flat 110 ohm bound
@@ -36,6 +36,46 @@ on the reference's output impedance (1-3 kHz) the coupling is 2.99 LSB; against 
 **PA-4 and SC-7.** The sense divider sees the whole DC window (-1.923 .. +2.18 V sweep, hardware unchanged), so k = 0.4, the tap range and the PA-4 tracking figure (0.050 % / 1.73 mV) are unchanged; `../powercal/sc7.py` now reads the guaranteed top as 1.6 V and its extrapolation rows move by 0.04 mV (cubic 1.2 LSB, tee fit alone: 1.29 mV; knots 1.2 LSB 2.37 mV against 3.5 mV) and the block sum stays 0.42 % linear (0.27 % RSS), 2.5 mV.
 
 **The swing at the weak rail, with the datasheet.** `../../models/tph2502/tph2502.pdf` (3PEAK TPH2501/2/3/4, Rev. A, 18 pages; manifest entry, `models/SOURCES.md`). **Rev. A cites "Output Voltage Swing vs Output Current" on p. 9 (Output Drive Capability: continuous +-100 mA with approximately 2.7 V of swing on a 5 V supply) and does not contain the curve**: none of the typical-characteristic figures on pp. 5-8 is a swing curve, and the table on p. 4 gives only 2 mV typ / 30 mV max from the rail at 100 kohm. So the 11.5 ohm per rail (1.15 V at 100 mA) stays derived, linear in current *(check: the real curve, a later revision or a bench measurement)*. At +-0.8 V into 50 ohm the op-amp output current is 16 mA (+-1.6 V over the 100 ohm of back-termination plus load), the model's 16.8 mA sunk at -1.6 V (with the feedback). Two bounds on the bottom reach at the weak -1.9549 V rail (the macro stops 0.0323 V short): the two halves sharing the current, as the model does, -1.835 V (+0.235 V of margin); **one half carrying all of it** (R8/R9 are 1 ohm against 11.5 ohm, so sharing is close, but unmatched halves are not excluded), -1.9549 + 0.0323 + 11.5 ohm x 17 mA = **-1.727 V, +0.127 V of margin**. Into high impedance only the 0.3 mA through Rf flows and the reach is the -1.946 V of the model.
+
+### The final values (2026-11-13, owner): +-1.5 V, Rvr 150 ohm, R6 3.0 kohm
+
+**This supersedes the +-1.6 V / Rvr 100, the 130 ohm series pair and the +-1.55 V search below, which stay as history.** The AWG's guaranteed range is **+-1.5 V into high impedance (+-0.75 V into 50 ohm)**, `design.OUT_LO, OUT_HI = -1.5, +1.5`. Rvr (R5) is **one 150 ohm part, C22808, 0603 Basic**, to cut the AWG's current into the reference (SC-9 at the scope's +-5 V). With R6 at 2.7 kohm that fails: the AC top end is a property of the window, not of the range, so it stayed at 2.234 V (limit 2.2275 V) and the supply-pin peak at 60.1 mA at every range from 1.2 V to 1.6 V. **R6 (Rbin, the divider's upper arm) goes from 2.7 kohm C13167 to 3.0 kohm C4211**, the part Rf and Rg2 already use; R7 stays 27 kohm, so the divider ratio is 0.900 (was 0.909). The AC top end falls to 2.185 V and the supply pin to 59.1 mA. No other value changes. Hard-corner position-aware use at +-1.5 V is 0.870 and the largest symmetric range this set allows is about +-1.595 V (not used).
+
+Every row, old (+-1.6 V, Rvr 100, R6 2.7k) -> new (+-1.5 V, Rvr 150, R6 3.0k); `run.py`: 99 rows, 0 FAIL, 15 guards each fail broken and pass restored:
+
+| Row | Limit | Old | New |
+|---|---|---|---|
+| AW-1 position-aware use, hard corners | <= 92 % | 90.4 % (+1.6) | 86.9 % (+5.1) |
+| AW-1 position-aware use, MC A / B | <= 92 % | 90.1 / 89.7 % | 86.6 / 85.7 % |
+| AW-1 width use, hard corners | <= 92 % | 84.8 % | 81.0 % |
+| commanded bottom inside the window (4 % kept), A / B | <= -1.5 V | +0.064 / +0.044 V | +0.139 / +0.121 V |
+| AW-1 window top end, DC hard corners | <= 2.2275 V | 2.133 V | 2.092 V |
+| AW-1 window top end, AC hard corners | <= 2.2275 V | 2.197 V (+30 mV) | **2.185 V (+43 mV)** |
+| PW-3 AC peak, supply pin | <= 60 mA | 59.4 mA (+0.6) | **59.1 mA (+0.9)** |
+| PW-3 DC short, + pin / - pin | <= 60 mA | 58.0 / 50.7 mA | 57.1 / 50.7 mA |
+| AW-2 one DAC code | <= 1.5 mV | 0.978 mV | 0.961 mV |
+| AW-3 -3 dB, hi-Z 15 pF | >= 8 MHz | 9.56 MHz | 9.22 MHz |
+| AW-3 worst corner (Cf +-5 %, Rout +-1 %, Rbin +-1 %) | >= 8 MHz | 8.99 MHz (+0.99) | **8.70 MHz (+0.70)** |
+| AW-3 into 50 ohm / into 100 pF (information) | >= 8 MHz | 9.5 / 8.72 MHz | 9.2 / 8.49 MHz |
+| AW-3 slew | no limiting | 10.6 V/us | 10.5 V/us |
+| AN-1 PM, BEH60 / BEH21 / vendor | >= 45 deg | 47.8 / 56.6 / 61.9 | 48.8 / 57.7 / 62.5 deg |
+| AW-5 DAC pin load at its top code | <= 0.1 mA | 94.3 uA | 93.3 uA |
+| AW-6 (with the reference's noise) | <= 300 uV | 213.0 uV | 213.2 uV |
+| AW-7 gain shelf / filter corner | information | +1.64 % / 114 Hz | +2.44 % / 76 Hz |
+| AW-8 extremes | within the rails | -2.043 .. +3.409 V | -2.042 .. +3.409 V |
+| PA-2 source current | <= 10 mA | 2.72 mA | 2.70 mA |
+| PR-4 restated level, + / - | | +0.17 / -0.09 V (36 / 34 mA) | +0.20 / -0.14 V (35 / 33 mA) |
+| weak-rail reach into 50 ohm vs the commanded bottom | <= commanded | -1.835 V (+0.235 vs -1.6) | -1.835 V (+0.335 vs -1.5) |
+| SC-9 through the reference, this study's constants | <= 2 LSB | 3.66 mV on the reference, 1.69 LSB | **2.29 mV at 1885 Hz, 1.06 LSB** |
+| PW-1 (`../powercal/pw1_awg.py`) | <= 100 mA / 450 mA | 71.6 mA / 412.7 mA | 70.4 mA / 412.7 mA |
+
+The three guards that had stopped discriminating were re-derived, none weakened. **window top end**: Rbpl 33 kohm still fails (2.275 V against 2.2275 V). **guaranteed range**: it now breaks at +1.6 V, the next 0.1 V level (position-aware use 0.922 against 0.92), and passes at +1.5 V. **reference coupling, resistors**: the old break (Rg2 390 ohm with Rf left at 3 kohm) reads 1.87 LSB and passes at Rvr 150, so it now breaks with the filter-alone resistor set of option A (Rf 470, Rg2 390 ohm; 7.4 LSB, fails); Rf = Rg2 = 3 kohm passes.
+
+PA-4 and the sense divider are unchanged: k = 0.4, and the AWG window (hard corners -2.03 .. +2.09 V, `raw/reach.json`) sits inside the sense sweep (-1.923 .. +2.18 V), so the tap range and the 0.050 % / 1.73 mV tracking figure hold; the DAC code window is unchanged (the range is a guarantee, not a hardware limit).
+
+**AW-1 note, beyond the guaranteed range: ...** The guarantee is +-1.5 V into high impedance (+-0.75 V into 50 ohm). Driving raw DAC codes past it is **typical, not guaranteed**: nominal parts, AREF 3.27 V, ngspice with the derived 11.5 ohm per rail output saturation *(check: the datasheet's swing-versus-current curve is not in Rev. A)*, `reach.py` and `raw/reach.json`. *Top:* the DAC's own top code (2.771 V at AREF 3.27 V) gives **+2.01 V into high impedance (+1.91 V at AREF 3.20 V, +2.06 V at 3.30 V)** and +1.01 V at the BNC into 50 ohm, with no compression (within 0.1 mV of the linear map); at the hard corners the window top end is **+1.75 V on the lowest board to +2.09 V DC (+2.19 V as a pulse-train peak)**, so a board's actual top is known only from its calibration. *Bottom:* compression is where the stage output departs more than 5 mV from the linear map. At nominal rails it does not occur inside the DAC's span (the lowest code, 0.578 V, gives **-1.84 V** into high impedance and -0.92 V at the BNC into 50 ohm). At the weak -1.9549 V rail it starts below DAC 0.59 V into high impedance (stage **-1.82 V**) and below 0.60 V into 50 ohm (stage -1.80 V, **-0.90 V at the BNC**), and the lowest code is 9 mV (high impedance) to 12 mV (50 ohm) off the line; the hard-corner window bottom is -1.77 to -2.03 V, of which the last codes clip. All of it assumes the derived saturation; none of it is a requirement.
+
+(History below: the options considered before the final values.)
 
 ### Rvr 130 ohm (2026-11-13): SC-9 through the reference at the scope's +-5 V
 
@@ -90,9 +130,9 @@ Transfer (design.py): DC `Vout = Gs0 * kin * Vdac - K * Vref`, `Gs0 = 1 + Rf/(Rg
 | R1, R2 | 100 ohm 1 % 1206, in parallel | C17901 | AW-4 50 ohm back-termination; 110 mW each at the 44 mA short top, rated 250 mW |
 | R3 (Rf) | 3 kohm 1 % 0603 | C4211 | feedback |
 | R4 (Rg2) | 3 kohm 1 % 0603 | C4211 | inverting node to the filter node; no Rg1 |
-| R5 (Rvr) | 100 ohm 1 % 0603; **now R5 120 ohm C22787 + R5b 10 ohm C22859 in series = 130 ohm** (section Rvr 130 ohm) | C22775 | offset filter resistor, REF3030E output to the filter node |
+| R5 (Rvr) | 100 ohm 1 % 0603, **now 150 ohm C22808** (section The final values) | C22775 | offset filter resistor, REF3030E output to the filter node |
 | C3, C4 | 10 uF X5R 0805 25 V, in parallel | C15850 | offset filter capacitor (about 14 uF effective at 3 V bias *(check)*) |
-| R6 (Rbin) | 2.7 kohm 1 % 0603 | C13167 | DAC0 series resistor and the divider's upper arm |
+| R6 (Rbin) | 2.7 kohm 1 % 0603, **now 3.0 kohm C4211** | C13167 | DAC0 series resistor and the divider's upper arm |
 | R7 (Rbpl) | 27 kohm 1 % 0603 | C22967 | divider lower arm; an undriven DAC0 commands ground |
 | R8, R9 | 1 ohm 1 % 0603 | C22936 | output balancing of the two halves |
 | C1 (Cf) | 10 pF C0G 5 % 0603 | C1634 | across Rf: the stability capacitor, the smallest Basic C0G |

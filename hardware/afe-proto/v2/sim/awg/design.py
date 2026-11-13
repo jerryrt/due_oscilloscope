@@ -32,13 +32,13 @@ AREF = (3.20, 3.30)
 # DAC window: scenario A = theory 1/6..5/6 of AREF with +-30 mV centring uncertainty (sim/awg/run.py dc_mc, kept);
 # scenario B = the board as measured, 0.578..2.771 V at AREF 3.27 V (docs/hardware.md), scaled with AREF, +-5 mV residual.
 # Section limits: AW-1 <= 92 %, AW-2 <= 1.5 mV per code.
-OUT_LO, OUT_HI = -1.6, 1.6        # AW-1 (owner ruling 2026-11-13): +-1.6 V symmetric, guaranteed.  It was -1.5 .. +1.63 V; the +-1.75 V request was refused by this same arithmetic (design.md section 'The +-1.75 V request'); commandable top with 4 % kept free at the hard corners 1.631 V
+OUT_LO, OUT_HI = -1.5, 1.5        # AW-1 (owner ruling 2026-11-13): +-1.5 V symmetric, guaranteed.  It was -1.5 .. +1.63 V, then +-1.6 V; +-1.75 V was refused and +-1.6 V needs a smaller Rvr (design.md, 'The final values')
 TOP_END_LIM = (0.060 - 0.015) * 49.5  # PW-3: window top end <= (60 mA supply pin - 15 mA IQ max of the dual) x 49.5 ohm = 2.2275 V
 RAIL_REACH_LO = -1.9226                 # ngspice (run.py): where the stage clips into high impedance at the weak negative rail -1.9549 V (the macro stops 32 mV short of it)
 USE_LIM, LSB_LIM = 0.92, 1.5e-3
 VOS_MAX = 0.5e-3          # TPH2502 VOS max (datasheet p3)
 
-VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=130.0, Rbin=2700.0, Rbpl=27e3)   # the design (design.md)
+VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=150.0, Rbin=3000.0, Rbpl=27e3)   # the design (design.md)
 
 
 def catalogue(kind='resistor'):

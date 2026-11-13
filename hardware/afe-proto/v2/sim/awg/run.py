@@ -710,17 +710,18 @@ def run_guards():
 
     def g_range(th):
         return design.corner_stats(V, th=th)['edge'] <= 0.92
-    guard('guaranteed range', 'commanding +1.75 V (the refused +-1.75 V request) must fail the position-aware 92 % at the hard corners; the guaranteed +1.6 V passes', g_range, dict(th=1.75), dict(th=design.OUT_HI))
+    guard('guaranteed range', 'commanding +1.6 V (the next level above the guarantee, over what the window allows) must fail the position-aware 92 % at the hard corners; the guaranteed +1.5 V passes', g_range, dict(th=1.6), dict(th=design.OUT_HI))
 
     def g_sc9(Rflt, C):
         m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / V['Rg2']), V['Rg2'], Rflt, C)[0]
         return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
     guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); %g ohm + 14 uF passes' % V['Rvr'], g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
 
-    def g_sc9b(Rg2):
-        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / Rg2), Rg2, V['Rvr'], D['Cvr'])[0]
+    def g_sc9b(rs):
+        Rf_, Rg2_ = rs
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + Rf_ / Rg2_), Rg2_, V['Rvr'], D['Cvr'])[0]
         return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
-    guard('reference coupling, resistors', 'the filter-alone 390 ohm Rg2 must fail SC-9; 3 kohm passes', g_sc9b, dict(Rg2=390.0), dict(Rg2=V['Rg2']))
+    guard('reference coupling, resistors', 'the filter-alone resistor set (Rf 470, Rg2 390 ohm, the small values of option A) must fail SC-9; Rf = Rg2 = 3 kohm passes', g_sc9b, dict(rs=(470.0, 390.0)), dict(rs=(V['Rf'], V['Rg2'])))
 
     def g_reach(vn):
         return reach_bottom(vn, 'r50') <= design.OUT_LO
@@ -738,14 +739,12 @@ def run_guards():
     guard('supply-pin current, simulated', 'ngspice short with the stage commanded to +3.0 V must fail 60 mA; commanded to the 2.2275 V window top end it passes', g_short_sim, dict(cmd=3.0), dict(cmd=lim - 0.015))
 
 
-# Rvr per value: a single Basic 0603 part where there is one (../../jlc-basic.csv has 100, 120, 150 ohm and no 130), else two in series.
+# Rvr per value: a single Basic 0603 part (../../jlc-basic.csv has 100, 120, 150 and 200 ohm; there is no 130 ohm part).
 _R5_NOTE = 'offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = %.0f Hz at 10 uF)'
 R5_ROWS = {
     100.0: [('R5', '100 ohm 1 % 0603', 'C22775', 'Rvr: ' + _R5_NOTE % 160, 1)],
     150.0: [('R5', '150 ohm 1 % 0603', 'C22808', 'Rvr: ' + _R5_NOTE % 110, 1)],
     120.0: [('R5', '120 ohm 1 % 0603', 'C22787', 'Rvr: ' + _R5_NOTE % 130, 1)],
-    130.0: [('R5', '120 ohm 1 % 0603', 'C22787', 'Rvr = R5 + R5b = 130 ohm: ' + _R5_NOTE % 120 + '; there is no single 130 ohm Basic part', 1),
-            ('R5b', '10 ohm 1 % 0603', 'C22859', 'Rvr, in series with R5 (the same footprint size; one extra placement)', 1)],
 }
 
 
@@ -759,8 +758,8 @@ def write_outputs(out_dir):
         ('R4', f'{q["Rg2"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rg2, inverting node to the offset filter node (D-V2-12)', 1),
         *R5_ROWS[q['Rvr']],
         ('C3,C4', '10 uF X5R 10 % 0805 25 V', 'C15850', 'offset filter capacitor, filter node to ground, two in parallel (about 14 uF effective at 3 V bias *(check)*): they keep the AWG current out of the reference at 1-3 kHz where its output impedance peaks', 2),
-        ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', 'C13167', 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
-        ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by 0.909 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground', 1),
+        ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', {2700.0: 'C13167', 3000.0: 'C4211'}[q['Rbin']], 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
+        ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by %.3f so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground' % (q['Rbpl'] / (q['Rbin'] + q['Rbpl'])), 1),
         ('R8,R9', '1 ohm 1 % 0603', 'C22936', 'output balancing resistors of the two halves', 2),
         ('C1', '10 pF C0G 5 % 0603', 'C1634', 'Cf, across Rf: the stability capacitor (AN-1, design.md); the smallest Basic C0G', 1),
         ('C5,C6', '100 nF X7R 10 % 0603', 'C14663', 'supply decoupling at the op-amp, one per supply pin', 2),

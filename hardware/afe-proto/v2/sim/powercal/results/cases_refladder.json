@@ -3,12 +3,12 @@
   "case": "REF3030E source current, every load at once (ladder, both scope centres at -12 V, sense default tie with the AWG at the window bottom, ADS inputs, and the AWG's offset path Rg2 + Rvr, computed from ../awg/design.py: 0.98 mA worst)",
   "id": "REF/src",
   "limit": "<= 10 mA (6.3)",
-  "margin": "+7.29 mA",
+  "margin": "+7.30 mA",
   "note": "",
   "ok": true,
   "req": "PA-2, D-V2-10",
   "sect": "ref",
-  "value": "2.706 mA"
+  "value": "2.700 mA"
  },
  {
   "case": "REF3030E sink current in the clamped-input case: both scope inputs at +12 V (node clamped past the rail) and the AWG forced +5 V through the sense divider (PR-4)",
@@ -30,7 +30,7 @@
   "ok": true,
   "req": "SC-7",
   "sect": "ref",
-  "value": "0.802 mA -> 36.1 uV"
+  "value": "0.791 mA -> 35.6 uV"
  },
  {
   "case": "the scope's signal current in the reference the ADS1115 reads: both inputs swept from -12 V to +12 V, 5.4 uA to -1.4 uA each",

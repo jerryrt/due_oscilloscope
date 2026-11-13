@@ -1,50 +1,50 @@
 [
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.6 V covers 64 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.5 V covers 60 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +3.0 / B -0.4 mV",
+  "margin": "A +2.9 / B -0.4 mV",
   "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.6 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 0.54 mV (0.015 %), B 3.86 mV (0.110 %)"
+  "value": "A 0.61 mV (0.017 %), B 3.94 mV (0.112 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.6 V covers 64 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.5 V covers 60 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +2.2 / B -0.8 mV",
-  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.2 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +2.0 / B -0.9 mV",
+  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.1 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 1.29 mV (0.037 %), B 4.34 mV (0.124 %)"
+  "value": "A 1.46 mV (0.042 %), B 4.36 mV (0.125 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.6 V covers 64 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.5 V covers 60 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +1.4 / B -0.4 mV",
-  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.6 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +1.3 / B -0.5 mV",
+  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.5 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 2.09 mV (0.060 %), B 3.90 mV (0.111 %)"
+  "value": "A 2.16 mV (0.062 %), B 4.03 mV (0.115 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.6 V covers 64 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.5 V covers 60 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +1.1 / B -3.3 mV",
-  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 15.7 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +0.9 / B -3.4 mV",
+  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 15.6 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 2.37 mV (0.068 %), B 6.79 mV (0.194 %)"
+  "value": "A 2.56 mV (0.073 %), B 6.92 mV (0.198 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.785 V covers 68 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.747 V covers 65 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +3.1 / B -0.2 mV",
@@ -52,21 +52,21 @@
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 0.42 mV (0.012 %), B 3.70 mV (0.106 %)"
+  "value": "A 0.45 mV (0.013 %), B 3.73 mV (0.107 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.785 V covers 68 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.747 V covers 65 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +2.5 / B -0.8 mV",
+  "margin": "A +2.4 / B -0.8 mV",
   "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 18.2 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 1.01 mV (0.029 %), B 4.28 mV (0.122 %)"
+  "value": "A 1.07 mV (0.031 %), B 4.29 mV (0.123 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.785 V covers 68 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.747 V covers 65 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +1.5 / B -0.2 mV",
@@ -74,32 +74,32 @@
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 1.96 mV (0.056 %), B 3.65 mV (0.104 %)"
+  "value": "A 1.99 mV (0.057 %), B 3.70 mV (0.106 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.785 V covers 68 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 1.747 V covers 65 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +1.2 / B -2.7 mV",
-  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 16.3 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +1.2 / B -2.9 mV",
+  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 16.1 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 2.33 mV (0.067 %), B 6.25 mV (0.179 %)"
+  "value": "A 2.32 mV (0.066 %), B 6.36 mV (0.182 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 75 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.092 V covers 72 % of the range), INL cubic 0.5 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +3.3 / B +0.1 mV",
+  "margin": "A +3.2 / B +0.1 mV",
   "note": "B passes the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 19.1 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 0.24 mV (0.007 %), B 3.38 mV (0.097 %)"
+  "value": "A 0.26 mV (0.007 %), B 3.42 mV (0.098 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 75 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.092 V covers 72 % of the range), INL cubic 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
   "margin": "A +2.9 / B -0.6 mV",
@@ -107,32 +107,32 @@
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 0.58 mV (0.017 %), B 4.08 mV (0.117 %)"
+  "value": "A 0.62 mV (0.018 %), B 4.11 mV (0.117 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 75 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.092 V covers 72 % of the range), INL parab 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +1.8 / B +0.3 mV",
-  "note": "B passes the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 19.3 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +1.8 / B +0.2 mV",
+  "note": "B passes the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 19.2 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 1.72 mV (0.049 %), B 3.20 mV (0.091 %)"
+  "value": "A 1.75 mV (0.050 %), B 3.25 mV (0.093 %)"
  },
  {
-  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.133 V covers 75 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
+  "case": "fit extrapolated to +3.5 V (AWG window -1.923 .. 2.092 V covers 72 % of the range), INL knots 1.2 LSB, 1024 points: A = the tee fit alone (the design, D-V2-13), B = with ladder anchors (information only, NOT used), 99.9th pct",
   "id": "SC-7/ext",
   "limit": "<= 3.5 mV (0.1 % of 3.5 V)",
-  "margin": "A +1.2 / B -2.0 mV",
-  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 17.0 mV. One Due LSB is 1.73 mV at the input",
+  "margin": "A +1.2 / B -2.1 mV",
+  "note": "B fails the share; against SC-7's whole 0.5 % + 5 mV = 22.5 mV both leave 16.9 mV. One Due LSB is 1.73 mV at the input",
   "ok": true,
   "req": "SC-7, PA-3, VT-23",
   "sect": "ext",
-  "value": "A 2.30 mV (0.066 %), B 5.53 mV (0.158 %)"
+  "value": "A 2.27 mV (0.065 %), B 5.63 mV (0.161 %)"
  },
  {
-  "case": "the same (cubic 1.2 LSB, top 1.785 V) with perfect anchors (no ADS channel mismatch, no offset, no pin offset)",
+  "case": "the same (cubic 1.2 LSB, top 1.747 V) with perfect anchors (no ADS channel mismatch, no offset, no pin offset)",
   "id": "SC-7/ext-ideal",
   "limit": "information",
   "margin": "",
@@ -140,7 +140,7 @@
   "ok": null,
   "req": "SC-7",
   "sect": "ext",
-  "value": "A 1.01 mV, B 1.78 mV at +3.5 V"
+  "value": "A 1.07 mV, B 1.76 mV at +3.5 V"
  },
  {
   "case": "this block's gain terms alone, linear sum (RSS in the note), and its offset, against \u00b10.5 % of reading \u00b1 5 mV",

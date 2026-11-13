@@ -108,11 +108,11 @@
   "t0_min": 0.3765166466083346
  },
  "clip": {
-  "bottom": -1.92482421875,
-  "dropped": 36,
-  "first_dropped": -2.06,
-  "gain_err_pct": -9.943520031807651e-05,
-  "kept": 989
+  "bottom": -1.9276953125,
+  "dropped": 28,
+  "first_dropped": -2.031,
+  "gain_err_pct": -0.000738521582954732,
+  "kept": 997
  },
  "common_z": {
   "err_mV": 2.5240067937535264,
