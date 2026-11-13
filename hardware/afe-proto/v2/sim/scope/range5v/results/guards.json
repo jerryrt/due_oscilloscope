@@ -1,0 +1,105 @@
+{
+ "margin_check_with_R3_open": {
+  "lo_mV": -2857.675800918243,
+  "hi_mV": 116.53786692660617,
+  "fails": true
+ },
+ "shelf_check_with_C1_12pF": {
+  "p95_abs_pct": 51.32589255885525,
+  "fails": true
+ },
+ "shelf_check_Cn22_with_Cpx": {
+  "p95_abs_pct": 71.57919378888873,
+  "mean_pct": 63.48013425360087,
+  "fails": true
+ },
+ "pm_check_noRiso_1nF_BEH60": {
+  "fc_MHz": 16.0986735,
+  "pm_deg": 35.61836600000001,
+  "gm_dB": 0.0904615086,
+  "fails": true
+ },
+ "pm_check_noCpx_BEH60": {
+  "fc_MHz": 74.90909540000001,
+  "pm_deg": 37.124685,
+  "gm_dB": 4.8616825,
+  "fails": true
+ },
+ "thd_check_40MHz": {
+  "thd_5MHz_pct": 0.0013440715483223845,
+  "thd_40MHz_pct": 0.8420018464147475,
+  "fails": true
+ },
+ "settling_check_20k": {
+  "err_lsb": 99.01671638677023,
+  "fails": true
+ },
+ "xtalk_check_Cx_0p2pF": {
+  "lsb": 5.769200321416618,
+  "fails": true
+ },
+ "xtalk_check_pad_0p2pF": {
+  "lsb": 9.294897895430053,
+  "fails": true
+ },
+ "xtalk_check_combined_0p03": {
+  "lsb": 2.17078673648274,
+  "fails": true
+ },
+ "rail_check_no_bleed": {
+  "rail_V": 2.377497,
+  "fails": true
+ },
+ "edge_check_no_Rnp": {
+  "peak_mA": 4.75746645,
+  "fails": true,
+  "replaced_by": "edge_check_no_Rnp_30V"
+ },
+ "edge_check_no_Rnp_30V": {
+  "peak_mA": 71.3383944,
+  "fails": true
+ },
+ "bw_check_Rnp4k7": {
+  "f3dB_MHz": 3.98647063,
+  "fails": true
+ },
+ "d17_check_network_detached": {
+  "with_network_uV": 50.13689414149967,
+  "detached_uV": 763.1984090952178,
+  "fails": true
+ },
+ "d17_check_ktc": {
+  "kTC_uV": 26.27402709901929,
+  "added_uV": 26.142403525116436,
+  "rel_err": 0.0050096459673578675,
+  "passes_as_positive_control": true
+ },
+ "d17_pipeline_vs_vendor_10MHz": {
+  "vendor_uV": 38.598977484416764,
+  "beh21_9p3_uV": 37.6815277727494,
+  "rel_err": 0.023768756880613195,
+  "passes_as_positive_control": true
+ },
+ "d17_check_injection_disconnected": {
+  "amp_uV_connected": 20.873475831146937,
+  "amp_uV_disconnected": 0.0,
+  "fails": true
+ },
+ "d17_integrator_fine": {
+  "rel_err": 0.002231693055287143,
+  "passes_as_positive_control": true
+ },
+ "d17_integrator_mutant": {
+  "rel_err": 0.1081195632683365,
+  "fails": true
+ },
+ "d17_check_noisy_amp_100nV": {
+  "total_uV": 322.5200363934485,
+  "fails": true
+ },
+ "static_check_voltage_dependent_caps": {
+  "spread_pp": 72.86318024496931,
+  "fails": true
+ },
+ "all_fail_as_intended": true
+}

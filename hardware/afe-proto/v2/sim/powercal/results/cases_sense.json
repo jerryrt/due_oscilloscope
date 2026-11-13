@@ -180,10 +180,10 @@
   "id": "CAL/clip",
   "limit": "the clipped levels dropped, the fit unchanged",
   "margin": "",
-  "note": "cost: the AWG's hard-corner window bottom is -2.06 V (../awg/design.md, information) but the weak -rail clips the output below about -1.923 V, so the kept sweep starts at -1.923 V: 0.14 V of the window (about 36 of 1025 levels) is lost; the coverage of the scope's -1.5 .. +3.5 V does not change, the margin below -1.5 V is 0.42 V",
+  "note": "cost: the AWG's hard-corner window bottom is -2.06 V (../awg/design.md, information) but the weak -rail clips the output below about -1.923 V, so the kept sweep starts at -1.923 V: 0.14 V of the window (about 28 of 1025 levels) is lost; the coverage of the scope's -1.5 .. +3.5 V does not change, the margin below -1.5 V is 0.42 V",
   "ok": true,
   "req": "D23, AW-1",
   "sect": "sense",
-  "value": "first dropped level -2.060 V (the sweep's window bottom -2.06 V), 36 of 1025 dropped, bottom of the kept range -1.925 V, fit gain error -0.0001 %"
+  "value": "first dropped level -2.031 V (the sweep's window bottom -2.06 V), 28 of 1025 dropped, bottom of the kept range -1.928 V, fit gain error -0.0007 %"
  }
 ]

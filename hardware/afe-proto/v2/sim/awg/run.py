@@ -125,8 +125,8 @@ def case_mc():
         add('AW-1', f'window use, position-aware (+{design.OUT_HI} / {design.OUT_LO} V ends against the window ends, 4 % kept at each end) [{scen}]', '<= 92 %', f'{w["edge"]*100:.1f} %', f'{(0.92-w["edge"])*100:+.1f} %', w['edge'] <= 0.92, 'the guaranteed range is the one this row passes at; +1.71 V (before the offset filter) would not')
         info('AW-1', f'highest top the stage can command with 4 % of the window kept free, every draw [{scen}]', f'{tg.min():.3f} V at the worst draw; window top end {w["topmin"]:.3f}..{w["top"]:.3f} V', f'{(tg >= design.OUT_HI).mean()*100:.1f} % of draws reach {design.OUT_HI} V inside the 92 % band; each board\'s actual top is measured at calibration')
         info('AW-1', f'window bottom end against the negative rail reach into high impedance ({design.RAIL_REACH_LO:.4f} V, ngspice, weak rail -1.9549 V) [{scen}]', f'{w["bot"]:.3f} V ({w["bot"]-design.RAIL_REACH_LO:+.3f} V)',
-             'information (spec lead, rail-corner decision): the last unused window codes clip on the weak rail; AW-1 is judged on the commanded -1.5 V into 50 ohm (row below)')
-        add('AW-1', f'commanded bottom -1.5 V stays inside the window with 4 % kept at its bottom end [{scen}]', '<= -1.5 V', f'{w["botg"]:.3f} V (highest window bottom + 4 % of the window)', f'{-1.5-w["botg"]:+.3f} V', w['botg'] <= -1.5, 'the position-aware row\'s other half')
+             f'information (spec lead, rail-corner decision): the last unused window codes clip on the weak rail; AW-1 is judged on the commanded {design.OUT_LO} V into 50 ohm (row below)')
+        add('AW-1', f'commanded bottom {design.OUT_LO} V stays inside the window with 4 % kept at its bottom end [{scen}]', f'<= {design.OUT_LO} V', f'{w["botg"]:.3f} V (highest window bottom + 4 % of the window)', f'{design.OUT_LO-w["botg"]:+.3f} V', w['botg'] <= design.OUT_LO, 'the position-aware row\'s other half')
         add('AW-2', f'one DAC code at the output, ideal 12-bit [{scen}]', '<= 1.5 mV', f'{w["lsb"]*1e3:.3f} mV', f'{(1.5e-3-w["lsb"])*1e3:+.3f} mV', w['lsb'] <= 1.5e-3)
         info('AW-7', f'gain and output at the window centre [{scen}]', f'gain {w["g"][0]:.3f}..{w["g"][1]:.3f}, centre {w["off"][0]*1e3:.0f}..{w["off"][1]*1e3:.0f} mV', 'no calibration; the precision ADC calibrates both (AW-7)')
     OUT['mc'] = {k: dict(use=float(v['use']), edge=float(v['edge']), lsb=float(v['lsb']), g=[float(x) for x in v['g']], off=[float(x) for x in v['off']], top=float(v['top']), topmin=float(v['topmin']), bot=float(v['bot'])) for k, v in worst.items()}
@@ -209,15 +209,15 @@ def case_swing():
     iout = ia + ib
     info('AW-1', 'op-amp output at the window top end into 50 ohm (weak rail, Rout 49.5 ohm)', f'{vo:.3f} V at {iout*1e3:.1f} mA, {RAILS["weak"][0]-vo:.2f} V under the +rail (the 50 ohm swing limit, D-V2-8, no longer binds)', f'BNC {bnc:.3f} V')
     r = res[('weak', 49.5, 'r50', 'bot')][0]
-    info('AW-1', 'op-amp output at the commanded bottom -1.5 V into 50 ohm (weak negative rail)', f'{r[0]:.3f} V at {-(r[2]+r[3])*1e3:.1f} mA sunk, {r[0]-RAILS["weak"][1]:.2f} V above the -rail', f'BNC {r[1]:.3f} V')
+    info('AW-1', f'op-amp output at the commanded bottom {design.OUT_LO} V into 50 ohm (weak negative rail)', f'{r[0]:.3f} V at {-(r[2]+r[3])*1e3:.1f} mA sunk, {r[0]-RAILS["weak"][1]:.2f} V above the -rail', f'BNC {r[1]:.3f} V')
     OUT['swing'] = {f'{k[0]}|{k[1]}|{k[2]}|{k[3]}': [[float(x) for x in v[0]], [float(x) for x in v[1]]] for k, v in res.items()}
     # negative-rail reach on the 1 % feedback corners (../powercal/design.md), and the proposal that restores the window bottom
     reach = reach_bottom
     r50 = reach(RAILS['weak'][1], 'r50')
-    add('AW-1', 'commanded bottom -1.5 V reachable into 50 ohm at the weak negative rail -1.9549 V: the stage output clips at', f'<= {design.OUT_LO} V', f'{r50:.3f} V', f'{design.OUT_LO-r50:+.3f} V', r50 <= design.OUT_LO,
+    add('AW-1', f'commanded bottom {design.OUT_LO} V reachable into 50 ohm at the weak negative rail -1.9549 V: the stage output clips at', f'<= {design.OUT_LO} V', f'{r50:.3f} V', f'{design.OUT_LO-r50:+.3f} V', r50 <= design.OUT_LO,
         'the pass/fail row for the bottom end (spec lead): 11.5 ohm per rail is derived *(check)*; into high impedance the clip is -1.923 V')
     info('AW-1', 'negative-rail reach of the stage output at the weak rail -1.9549 V (derived 11.5 ohm per rail): high impedance / into 50 ohm', f'{reach(RAILS["weak"][1], "hiz"):.3f} V / {reach(RAILS["weak"][1], "r50"):.3f} V',
-         f'commanded -1.5 V needs {abs(design.OUT_LO):.1f} V: {design.OUT_LO-reach(RAILS["weak"][1], "r50"):+.2f} V to spare into 50 ohm; the power stream\'s -1.69 V into 50 ohm figure used 22 mA and no macro offset')
+         f'commanded {design.OUT_LO} V needs {abs(design.OUT_LO):g} V: {design.OUT_LO-reach(RAILS["weak"][1], "r50"):+.2f} V to spare into 50 ohm; the power stream\'s -1.69 V into 50 ohm figure used 22 mA and no macro offset')
     vn_prop = -1.22 * (1 + 0.66) * (1.9549 / 2.0032)     # PROPOSAL, not the design: R3 = 56k + 10k = 66k (nominal -2.0252 V), weak corner scaled as the power stream's
     info('AW-1', 'PROPOSAL (not in the design): LM27762 R3 = 56k + 10k = 66k (nominal V- -2.0252 V): weak rail %.4f V, strong %.4f V, strong sum with +3.4172 V = %.4f V' % (vn_prop, -1.22 * 1.66 * (2.0525 / 2.0032), 3.4172 + 1.22 * 1.66 * (2.0525 / 2.0032)),
          f'reach into high impedance {reach(vn_prop, "hiz"):.4f} V (window bottom {design.corner_stats(V)["bot"]:.3f} V: {design.corner_stats(V)["bot"]-reach(vn_prop, "hiz"):+.3f} V), into 50 ohm {reach(vn_prop, "r50"):.3f} V', 'restores the window-bottom rows; costs 22 mV of the 5.5 V sum margin (30 mV -> 7.6 mV); the weak +rail and PR-2 are unchanged')
@@ -558,7 +558,7 @@ def case_forced():
     iun = max(imax(1.8, 'unpowered'), imax(-1.8, 'unpowered'))
     add('PR-4', 'forced +-1.8 V at the BNC, unpowered rails (0 V): current through the 50 ohm into the op-amp output', '<= 160 mA (abs max output current)', f'{iun*1e3:.0f} mA', f'{(160-iun*1e3):+.0f} mA', iun <= 0.160,
         '*(check)* the macromodel clamps the output to the rails through its diodes; the real output structure is not in the datasheet; the supply-pin limit does not apply with no supply, the input and ESD structures do')
-    info('PR-4', 'level restated by the rule: 45 mA x 49.5 ohm minus the largest output the stage commands at the opposite end (positive: the lowest commanded -1.5 V / window bottom end; negative: the commanded top / window top end)',
+    info('PR-4', 'level restated by the rule: 45 mA x 49.5 ohm minus the largest output the stage commands at the opposite end (positive: the lowest commanded bottom / window bottom end; negative: the commanded top / window top end)',
          f'+{lev_pos_c:.2f} V (+{lev_pos:.2f} V with the window bottom end {e["bot"]:.2f} V) and {-lev_neg_c:+.2f} V (0 at the window top end {e["top"]:.3f} V)', 'against version 1\'s +-1.8 V: the lowered top end took the headroom the rule spends; accepted (D-V2-12). At the earlier +2.05 V top the figures were +0.73 / -0.18 V; at the guaranteed top they are +0.73 / %.2f V' % (-lev_neg_c))
     OUT['forced'] = [list(r) for r in rows]
     OUT['pr4'] = dict(lev_pos=float(lev_pos), lev_neg=float(lev_neg), lev_pos_c=float(lev_pos_c), lev_neg_c=float(lev_neg_c))
@@ -644,7 +644,7 @@ def case_ref():
         m, fpk, ipk = ref_move(dV_, Rg2_, Rflt_, C_, mode)
         res[lab] = (m, fpk, ipk, m * SCOPE_REF_TO_INPUT, m * SCOPE_REF_TO_INPUT / LSB_IN)
     r = res['chosen, graph']
-    add('SC-9', 'AWG-to-scope coupling through the reference, 1-3 kHz, the full commanded swing (%.2f V pp at the inverting node), REF3030E output impedance as the graph (peak 115 ohm), with the offset filter (100 ohm + %.0f uF effective)' % (dV, D['Cvr'] * 1e6), '<= 2 LSB at the scope input (%.2f mV)' % (2 * LSB_IN * 1e3),
+    add('SC-9', 'AWG-to-scope coupling through the reference, 1-3 kHz, the full commanded swing (%.2f V pp at the inverting node), REF3030E output impedance as the graph (peak 115 ohm), with the offset filter (%g ohm + %.0f uF effective)' % (dV, D['Rvr'], D['Cvr'] * 1e6), '<= 2 LSB at the scope input (%.2f mV)' % (2 * LSB_IN * 1e3),
         f'{r[0]*1e3:.2f} mV on the reference at {r[1]:.0f} Hz, {r[3]*1e3:.2f} mV at the scope input = {r[4]:.2f} LSB', f'{2-r[4]:+.2f} LSB', r[4] <= 2.0, 'Fig. 6-14 is read by eye and is for the 1.25 V and 5 V parts, load and output capacitance unstated *(check)*; the scope input factor is 0.806 (sim/scope/design.md)')
     for lab in ('chosen, 110 ohm bound', 'chosen, 28 ohm loaded', 'no filter, graph', 'no filter, 110 ohm bound', 'filter alone (Rf 470, Rg2 390, 7 uF), graph', 'filter alone, 110 ohm bound', 'one 10 uF (7 uF), chosen resistors, graph'):
         q = res[lab]
@@ -710,21 +710,22 @@ def run_guards():
 
     def g_range(th):
         return design.corner_stats(V, th=th)['edge'] <= 0.92
-    guard('guaranteed range', 'commanding +1.71 V (the earlier guarantee, before the offset filter) must fail the position-aware 92 %; the guaranteed +1.63 V passes', g_range, dict(th=1.71), dict(th=1.63))
+    guard('guaranteed range', 'commanding +1.6 V (the next level above the guarantee, over what the window allows) must fail the position-aware 92 % at the hard corners; the guaranteed +1.5 V passes', g_range, dict(th=1.6), dict(th=design.OUT_HI))
 
     def g_sc9(Rflt, C):
         m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / V['Rg2']), V['Rg2'], Rflt, C)[0]
         return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
-    guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); 100 ohm + 14 uF passes', g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
+    guard('reference coupling', 'no offset filter (Rvr 0, no capacitor) must fail SC-9 at the scope input (graph impedance); %g ohm + 14 uF passes' % V['Rvr'], g_sc9, dict(Rflt=0.0, C=0.0), dict(Rflt=V['Rvr'], C=D['Cvr']))
 
-    def g_sc9b(Rg2):
-        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / Rg2), Rg2, V['Rvr'], D['Cvr'])[0]
+    def g_sc9b(rs):
+        Rf_, Rg2_ = rs
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + Rf_ / Rg2_), Rg2_, V['Rvr'], D['Cvr'])[0]
         return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
-    guard('reference coupling, resistors', 'the filter-alone 390 ohm Rg2 must fail SC-9; 3 kohm passes', g_sc9b, dict(Rg2=390.0), dict(Rg2=V['Rg2']))
+    guard('reference coupling, resistors', 'the filter-alone resistor set (Rf 470, Rg2 390 ohm, the small values of option A) must fail SC-9; Rf = Rg2 = 3 kohm passes', g_sc9b, dict(rs=(470.0, 390.0)), dict(rs=(V['Rf'], V['Rg2'])))
 
     def g_reach(vn):
         return reach_bottom(vn, 'r50') <= design.OUT_LO
-    guard('bottom reach', 'a negative rail that does not reach -1.5 V into 50 ohm (-1.5 V: clips at -1.4 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.5), dict(vn=-1.9549))
+    guard('bottom reach', 'a negative rail that does not reach the commanded bottom into 50 ohm (-1.5 V: clips at -1.4 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.5), dict(vn=-1.9549))
 
     OLD = dict(Rf=560.0, Rg1=1000.0, Rg2=510.0, Rvr=2.2, Rbin=680.0, Rbpl=330e3)     # version 1's values, the +3.0 V top
     def g_oldtop(vals):
@@ -738,6 +739,15 @@ def run_guards():
     guard('supply-pin current, simulated', 'ngspice short with the stage commanded to +3.0 V must fail 60 mA; commanded to the 2.2275 V window top end it passes', g_short_sim, dict(cmd=3.0), dict(cmd=lim - 0.015))
 
 
+# Rvr per value: a single Basic 0603 part (../../jlc-basic.csv has 100, 120, 150 and 200 ohm; there is no 130 ohm part).
+_R5_NOTE = 'offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = %.0f Hz at 10 uF)'
+R5_ROWS = {
+    100.0: [('R5', '100 ohm 1 % 0603', 'C22775', 'Rvr: ' + _R5_NOTE % 160, 1)],
+    150.0: [('R5', '150 ohm 1 % 0603', 'C22808', 'Rvr: ' + _R5_NOTE % 110, 1)],
+    120.0: [('R5', '120 ohm 1 % 0603', 'C22787', 'Rvr: ' + _R5_NOTE % 130, 1)],
+}
+
+
 def write_outputs(out_dir):
     # the reference netlist (nominal, hi-Z load) and the parts list generated from the same dictionary
     open(os.path.join(out_dir, 'awg.cir'), 'w').write(core.build(dict(load='hiz', macro_name='TPH2501_ngspice.mdl'), analysis='.op'))
@@ -746,10 +756,10 @@ def write_outputs(out_dir):
         ('R1,R2 (parallel)', '100 ohm 1 % 1206', 'C17901', 'AW-4 50 ohm back-termination: vo-side Rout, two in parallel = 50.0 ohm +-1 %, 110 mW each at the 44 mA short top (rated 250 mW)', 2),
         ('R3', f'{q["Rf"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rf, feedback', 1),
         ('R4', f'{q["Rg2"]/1e3:g} kohm 1 % 0603', 'C4211', 'Rg2, inverting node to the offset filter node (D-V2-12)', 1),
-        ('R5', f'{q["Rvr"]:g} ohm 1 % 0603', 'C22775', 'Rvr: offset filter resistor, REF3030E output to the filter node (corner 1/(2 pi Rvr Cvr) = 160 Hz at 10 uF)', 1),
+        *R5_ROWS[q['Rvr']],
         ('C3,C4', '10 uF X5R 10 % 0805 25 V', 'C15850', 'offset filter capacitor, filter node to ground, two in parallel (about 14 uF effective at 3 V bias *(check)*): they keep the AWG current out of the reference at 1-3 kHz where its output impedance peaks', 2),
-        ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', 'C13167', 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
-        ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by 0.909 so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground', 1),
+        ('R6', f'{q["Rbin"]/1e3:g} kohm 1 % 0603', {2700.0: 'C13167', 3000.0: 'C4211'}[q['Rbin']], 'DAC0 series resistor: back-feed limit and the upper arm of the divider', 1),
+        ('R7', f'{q["Rbpl"]/1e3:g} kohm 1 % 0603', 'C22967', 'DAC0 divider lower arm: attenuates the DAC by %.3f so the offset path can pull the window down (design.md), and an undriven DAC0 commands ground' % (q['Rbpl'] / (q['Rbin'] + q['Rbpl'])), 1),
         ('R8,R9', '1 ohm 1 % 0603', 'C22936', 'output balancing resistors of the two halves', 2),
         ('C1', '10 pF C0G 5 % 0603', 'C1634', 'Cf, across Rf: the stability capacitor (AN-1, design.md); the smallest Basic C0G', 1),
         ('C5,C6', '100 nF X7R 10 % 0603', 'C14663', 'supply decoupling at the op-amp, one per supply pin', 2),

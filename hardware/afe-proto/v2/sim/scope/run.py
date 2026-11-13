@@ -4,6 +4,8 @@
     python3 -I run.py [--out DIR] [--work DIR] [section ...]    sections: netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards   (default: all)
     python3 -I report.py [DIR]                                  writes DIR/report.md from DIR/results/*.json
 
+--range 5v (or 5vc, see RANGES) selects the scope range of version 1 (+-5 V nominal, usable +-6 V; owner 2026-11-13) with its values (RANGES below, a values
+change on the same circuit) instead of version 2's -1.5..+3.5 V; the default, and every number it produces, is unchanged.
 --set KEY=VALUE (repeatable) overrides a scalar of netlib.P0 for the run and is recorded in meta.json.
 --out (default: this folder) gets results/*.json and scope_v2.cir; --work (default a temporary directory) gets netlists, wrdata
 files and logs. Run in the PCB image (docker/pcb/run.sh); every deck goes through simtools.netlib_common.run_ng, under the memory
@@ -61,6 +63,34 @@ AREF_LO, AREF_HI = 3.20, 3.30
 MARGIN, CENTRE = 0.080, 0.030
 USABLE = (-2.0, 4.0)
 RATED = (-1.5, 3.5)
+RANGE = "v2"
+# The input levels the sections drive.  "v2": the one range -1.5..+3.5 V centred on +1.0 V; "5v": version 1's +-5 V centred on 0 V, with
+# the version 1 values in version 2's positions (range5v.md).  P0 holds the value overrides of netlib.P0 (empty: the design's own).
+RANGES = {
+    "v2": dict(USABLE=(-2.0, 4.0), RATED=(-1.5, 3.5), SPAN_V=5.0, CEN_IN=1.0, LEVELS=(-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0), KICK=(4.0, -2.0),
+               STEP=(-1.5, 1.0), SINE_RATED_VPP=5.0, SINE_USABLE_VPP=6.0, PROT_DC=((12, 12), (-12, -12), (12, -12), (3.5, 3.5), (-2, -2)),
+               XT_DC=1.0, XT_AMP=3.0, MUT_C1=12e-12, P0={}),
+    "5v": dict(USABLE=(-6.0, 6.0), RATED=(-5.0, 5.0), SPAN_V=10.0, CEN_IN=0.0, LEVELS=(-6.0, -4.0, -2.0, 0.0, 2.0, 4.0, 6.0), KICK=(6.0, -6.0),
+               STEP=(-5.0, 0.0), SINE_RATED_VPP=10.0, SINE_USABLE_VPP=12.0, PROT_DC=((12, 12), (-12, -12), (12, -12), (5, 5), (-5, -5)),
+               XT_DC=0.0, XT_AMP=6.0, MUT_C1=22e-12,
+               P0=dict(R1=(470e3, 300e3), R2=(470e3, 330e3), R3=(330e3, 0.0), C1=12e-12, Cn=30e-12)),
+}
+# "5vc": the same with C1 18 pF (C1647) and Cn 47 pF (C1671) in place of 12 and 30: the best two-capacitor pair of section cscan on these resistors
+RANGES["5vc"] = dict(RANGES["5v"], MUT_C1=33e-12, P0=dict(RANGES["5v"]["P0"], C1=18e-12, Cn=47e-12))
+SPAN_V, CEN_IN, LEVELS, KICK, STEP = 5.0, 1.0, RANGES["v2"]["LEVELS"], RANGES["v2"]["KICK"], RANGES["v2"]["STEP"]
+SINE_RATED_VPP, SINE_USABLE_VPP, PROT_DC, XT_DC, XT_AMP, MUT_C1 = 5.0, 6.0, RANGES["v2"]["PROT_DC"], 1.0, 3.0, 12e-12
+
+
+LCSC_C0G = {12: "C38523", 18: "C1647", 30: "C1658", 47: "C1671"}      # 0603 C0G 5 %, v2/jlc-basic.csv
+
+
+def set_range(name):
+    """Select a range profile: the module's level constants and, for a range other than the design's, netlib.P0's values."""
+    global USABLE, RATED, RANGE, SPAN_V, CEN_IN, LEVELS, KICK, STEP, SINE_RATED_VPP, SINE_USABLE_VPP, PROT_DC, XT_DC, XT_AMP, MUT_C1
+    g = RANGES[name]
+    RANGE, USABLE, RATED, SPAN_V, CEN_IN, LEVELS, KICK, STEP = name, g["USABLE"], g["RATED"], g["SPAN_V"], g["CEN_IN"], g["LEVELS"], g["KICK"], g["STEP"]
+    SINE_RATED_VPP, SINE_USABLE_VPP, PROT_DC, XT_DC, XT_AMP, MUT_C1 = g["SINE_RATED_VPP"], g["SINE_USABLE_VPP"], g["PROT_DC"], g["XT_DC"], g["XT_AMP"], g["MUT_C1"]
+    NL.P0.update(g["P0"])
 VOS_MAX = 0.5e-3           # TPH2502 datasheet: +-500 uV max (page 3)
 CMRR_ERR = 3.0 * 10 ** (-65 / 20)   # 65 dB min over VCM -1..3 V at VS 5.4 V *(check at 3.3 V)*: 1.7 mV, worst case
 
@@ -106,10 +136,10 @@ def parts(p):
 # ---------------------------------------------------------------------------------------------------------------
 def sec_dc():
     p = pp()
-    vs = np.arange(-2.0, 4.001, 0.5)
+    vs = np.arange(USABLE[0], USABLE[1] + 0.001, 0.5)
     t = header("dc") + rails(p) + "Vs asrc 0 dc 0\n" + chan(p, "a") + f"""
 .control
-dc Vs -2 4 0.5
+dc Vs {USABLE[0]:g} {USABLE[1]:g} 0.5
 wrdata {wr('dc','d')} v(apin) v(an) i(Vr) i(Vcc)
 .endc
 .end
@@ -122,7 +152,7 @@ wrdata {wr('dc','d')} v(apin) v(an) i(Vr) i(Vcc)
     ana = voff + a * vs
     out = dict(vin=vs, pin=pin, N=nn, pin_analytic=ana, max_dev_mV=float(np.abs(pin - ana).max() * 1e3),
                a=a, voff=voff, rin=rin, rp=rp, mV_per_code_at_3p25=3.25 / 4096 / a * 1e3,
-               span_pct_FS_3p25=5 * a / 3.25 * 100, ref_current_uA=(-ir * 1e6))
+               span_pct_FS_3p25=SPAN_V * a / 3.25 * 100, ref_current_uA=(-ir * 1e6))
     save("dc", out)
     return out
 
@@ -323,14 +353,14 @@ wrdata {wr(name,'k')} v(cs)
 def sec_tran():
     p = pp()
     out = {}
-    out["sine5_fs"] = sine_tran(p, 5e6, 5.0, 1.0, name="s5a")             # rated: -1.5..+3.5 V
-    out["sine5_usable"] = sine_tran(p, 5e6, 6.0, 1.0, name="s5b")         # usable: -2..+4 V
-    out["sine10_usable"] = sine_tran(p, 10e6, 6.0, 1.0, name="s10b")
-    out["sine1_usable"] = sine_tran(p, 1e6, 6.0, 1.0, name="s1b")
+    out["sine5_fs"] = sine_tran(p, 5e6, SINE_RATED_VPP, CEN_IN, name="s5a")             # rated: -1.5..+3.5 V (5v: +-5 V)
+    out["sine5_usable"] = sine_tran(p, 5e6, SINE_USABLE_VPP, CEN_IN, name="s5b")         # usable: -2..+4 V (5v: +-6 V)
+    out["sine10_usable"] = sine_tran(p, 10e6, SINE_USABLE_VPP, CEN_IN, name="s10b")
+    out["sine1_usable"] = sine_tran(p, 1e6, SINE_USABLE_VPP, CEN_IN, name="s1b")
     # control: the macro's own slew limit, driven past it (must show distortion, else the THD test cannot fail)
-    out["sine40_control"] = sine_tran(p, 40e6, 6.0, 1.0, name="s40", ncyc=16, tstep=0.02e-9)
+    out["sine40_control"] = sine_tran(p, 40e6, SINE_USABLE_VPP, CEN_IN, name="s40", ncyc=16, tstep=0.02e-9)
     # step response: 2.5 V step, 5 ns edge, 50 ohm source
-    t = header("step") + rails(p) + "Vs asrc 0 pulse(-1.5 1.0 20n 5n 5n 400n 1u)\n" + chan(p, "a") + f"""
+    t = header("step") + rails(p) + f"Vs asrc 0 pulse({STEP[0]:g} {STEP[1]:g} 20n 5n 5n 400n 1u)\n" + chan(p, "a") + f"""
 .control
 tran 0.1n 300n 0 0.1n
 wrdata {wr('step','s')} v(apin)
@@ -351,14 +381,14 @@ wrdata {wr('step','s')} v(apin)
     out["step"] = dict(step_pin_V=float(dv), rise_10_90_ns=float((tr90 - tr10) * 1e9), overshoot_pct=float(over), settle_0p5pct_ns=float(sett * 1e9))
     # SC-10 / AN-2: alternating full-swing channels through one S/H.  A at +4 V (high pin), B at -2 V (low pin)
     adc = P0["adc"]
-    out["sh_derived"] = kick_run(p, 4.0, -2.0, adc, name="k1")
-    out["sh_derived_rev"] = kick_run(p, -2.0, 4.0, adc, name="k2")
-    out["sh_stress"] = kick_run(p, 4.0, -2.0, dict(ron=1.0e3, cs=8e-12), name="k3")
-    out["sh_control_riso20k"] = kick_run(pp(Riso=20e3), 4.0, -2.0, adc, name="k4")
+    out["sh_derived"] = kick_run(p, KICK[0], KICK[1], adc, name="k1")
+    out["sh_derived_rev"] = kick_run(p, KICK[1], KICK[0], adc, name="k2")
+    out["sh_stress"] = kick_run(p, KICK[0], KICK[1], dict(ron=1.0e3, cs=8e-12), name="k3")
+    out["sh_control_riso20k"] = kick_run(pp(Riso=20e3), KICK[0], KICK[1], adc, name="k4")
     # the one-part bandwidth limit option at the pin: Riso 100 ohm and 47 pF C0G (corner 34 MHz)
     lim = pp(Riso=100.0, Cpin=2e-12 + 47e-12)
-    out["sh_limit_option"] = kick_run(lim, 4.0, -2.0, adc, name="k5")
-    out["sh_limit_option_stress"] = kick_run(lim, 4.0, -2.0, dict(ron=1.0e3, cs=8e-12), name="k6")
+    out["sh_limit_option"] = kick_run(lim, KICK[0], KICK[1], adc, name="k5")
+    out["sh_limit_option_stress"] = kick_run(lim, KICK[0], KICK[1], dict(ron=1.0e3, cs=8e-12), name="k6")
     out["limit_option_pm"] = loop_pm(lim)
     out["T_TRACK_ns"] = T_TRACK * 1e9
     # pin source impedance
@@ -595,7 +625,7 @@ def sec_static():
     move with input level.  The C0G caps are linear by construction in the simulation, so a level sweep of the circuit can only
     show a level dependence that comes from the amplifier or the pin clamp; the positive control is a capacitor that does
     depend on its bias (an X7R-like characteristic) in the same places, which must move the step."""
-    levels = (-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0)
+    levels = LEVELS
 
     def step_at(vin, model, c1_expr=None, cn_expr=None):
         p = pp(Rsrc=0.0001)
@@ -630,8 +660,8 @@ wrdata {wr('stat','h')} v(apin)
                       spread_pp_1MHz=float(max(r["step_1MHz_pct"] for r in rows) - min(r["step_1MHz_pct"] for r in rows)))
     # control: C1 and Cn lose 20 % of their value at 3 V of bias, quadratically (X7R class), *(assumption: the shape; the size is a large one)*
     k = 0.2 / 9.0
-    c1x = f"22p*(1-{k}*v(ain,an)*v(ain,an))"
-    cnx = f"12p*(1-{k}*v(an)*v(an))"
+    c1x = f"{P0['C1'] * 1e12:g}p*(1-{k}*v(ain,an)*v(ain,an))"        # 22p and 12p on version 2's values
+    cnx = f"{P0['Cn'] * 1e12:g}p*(1-{k}*v(an)*v(an))"
     rows = [step_at(v, "vendor", c1x, cnx) for v in levels]
     out["control_voltage_dependent_caps"] = dict(rows=rows, spread_pp_100kHz=float(max(r["step_100kHz_pct"] for r in rows) - min(r["step_100kHz_pct"] for r in rows)),
                                                  spread_pp_1MHz=float(max(r["step_1MHz_pct"] for r in rows) - min(r["step_1MHz_pct"] for r in rows)))
@@ -724,7 +754,7 @@ def prot_unpowered(p, v1, v2, bleed, diff_clamp=False, pinclamp=True, name="pu")
 def sec_prot():
     p = pp()
     out = {"powered": [], "edge": {}, "unpowered": [], "unpowered_diff": [], "bleed_needed": {}}
-    for v1, v2 in ((12, 12), (-12, -12), (12, -12), (3.5, 3.5), (-2, -2)):
+    for v1, v2 in PROT_DC:
         out["powered"].append(prot_powered(p, v1, v2))
     for rnp in (0.0, 470.0, 560.0, 680.0, 1000.0):
         out["edge"][str(int(rnp))] = {"+12V_2ns": prot_edge(p, rnp, 12.0, 2e-9, name="pe1"),
@@ -771,7 +801,7 @@ def sec_xtalk():
 
     def run(p, f0, name="xt"):
         """Linear: aggressor 1 V ac at A's BNC, B's BNC at DC through 50 ohm.  Returns (pin_b / pin_a, pin_a)."""
-        t = header(name) + rails(p) + "Vsa asrc 0 dc 1.0 ac 1\nVsb bsrc 0 dc 1.0\n" + chan(p, "a") + chan(p, "b") + coupling(p) + f"""
+        t = header(name) + rails(p) + f"Vsa asrc 0 dc {XT_DC:g} ac 1\nVsb bsrc 0 dc {XT_DC:g}\n" + chan(p, "a") + chan(p, "b") + coupling(p) + f"""
 .control
 ac lin 1 {f0} {f0}
 wrdata {wr(name,'x')} v(apin) v(bpin)
@@ -787,7 +817,7 @@ wrdata {wr(name,'x')} v(apin) v(bpin)
     def lsb_of(rk):
         """LSB (3.2 V / 4096) at the shorted channel's pin for a 6 Vpp sine at the other channel's BNC."""
         ratio, ha = rk
-        return float(ratio * 3.0 * ha / lsb)
+        return float(ratio * XT_AMP * ha / lsb)
 
     for f0 in (1e6, 5e6, 10e6):
         rk = run(base, f0)
@@ -850,7 +880,7 @@ def sec_mc(n=200_000, seed=20261112):
     lo_pin_c = lo_pin - CENTRE
     hi_pin_c = hi_pin + CENTRE
     out["a"] = [float(a.min()), float(a.mean()), float(a.max())]
-    out["span_pct_FS_3p25"] = [float((5 * a / 3.25 * 100).min()), float((5 * a / 3.25 * 100).max())]
+    out["span_pct_FS_3p25"] = [float((SPAN_V * a / 3.25 * 100).min()), float((SPAN_V * a / 3.25 * 100).max())]
     out["rin_k"] = [float(rin.min() / 1e3), float(rin.mean() / 1e3), float(rin.max() / 1e3)]
     out["rin_nominal_k"] = float(net(rsum(p["R1"]), rsum(p["R2"]), rsum(p["R3"]), p["vr"])[2] / 1e3)
     out["mV_per_code_worst"] = float(mv.max())
@@ -865,7 +895,7 @@ def sec_mc(n=200_000, seed=20261112):
     out["hi_slack_mV_with_30mV"] = out["hi_margin_mV_min_with_30mV"] - MARGIN * 1e3
     out["rated_pin_V"] = [float((voff + a * RATED[0]).min()), float((voff + a * RATED[1]).max())]
     out["pin_at_usable"] = dict(lo_V_min=float(lo_pin.min()), lo_V_max=float(lo_pin.max()), hi_V_min=float(hi_pin.min()), hi_V_max=float(hi_pin.max()))
-    out["centre_offset_mV_at_pin_for_1V_in"] = [float(((voff + a * 1.0 - 1.625).min()) * 1e3), float(((voff + a * 1.0 - 1.625).max()) * 1e3)]
+    out["centre_offset_mV_at_pin_for_1V_in"] = [float(((voff + a * CEN_IN - 1.625).min()) * 1e3), float(((voff + a * CEN_IN - 1.625).max()) * 1e3)]
     # exact worst case: every combination of the six resistors at +-1 % and the reference at +-0.2 % (128 corners)
     cs = np.array(list(itertools.product((-1, 1), repeat=7)), dtype=float)
     Rc = parts(p)[None, :] * (1 + 0.01 * cs[:, :6])
@@ -873,7 +903,7 @@ def sec_mc(n=200_000, seed=20261112):
     vrc = p["vr"] * (1 + 0.002 * cs[:, 6])
     ac_, vc_, rc_, _ = net(r1c, r2c, r3c, vrc)
     vos_w = VOS_MAX + CMRR_ERR
-    out["corners"] = dict(a=[float(ac_.min()), float(ac_.max())], span_pct_FS_3p25=[float((5 * ac_.min() / 3.25 * 100)), float((5 * ac_.max() / 3.25 * 100))],
+    out["corners"] = dict(a=[float(ac_.min()), float(ac_.max())], span_pct_FS_3p25=[float((SPAN_V * ac_.min() / 3.25 * 100)), float((SPAN_V * ac_.max() / 3.25 * 100))],
                           rin_k=[float(rc_.min() / 1e3), float(rc_.max() / 1e3)], mV_per_code_worst=float(AREF_HI / 4096 / ac_.min() * 1e3),
                           lo_pin_min_mV=float(((vc_ + ac_ * USABLE[0]).min() - vos_w) * 1e3),
                           hi_slack_mV=float((AREF_LO - MARGIN - (vc_ + ac_ * USABLE[1]).max() - vos_w) * 1e3),
@@ -953,7 +983,7 @@ def sec_guards():
     hi = (AREF_LO - (voff + a * USABLE[1] + vos).max()) * 1e3
     out["margin_check_with_R3_open"] = dict(lo_mV=float(lo), hi_mV=float(hi), fails=bool(lo < MARGIN * 1e3 or hi < MARGIN * 1e3))
     # 2. compensation step check: C1 = 12 pF instead of 22 pF must show a large step ...
-    p = pp(C1=12e-12)
+    p = pp(C1=MUT_C1)                  # v2: 12 pF in place of 22 pF; 5v: 22 pF in place of 12 pF (the other range's value)
     r1, r2, r3, vr, c1, cn, vos = draw(rng, p, 20000)
     a, voff, rin, rp = net(r1, r2, r3, vr)
     sh = ((c1 / (c1 + cn)) / a - 1) * 100
@@ -965,10 +995,10 @@ def sec_guards():
     # 3. stability check: no Riso with a heavy pin load, and no Cpx on the datasheet-fitted model, must fail 45 degrees
     with use_model("BEH60"):
         r = loop_pm(pp(Riso=0.001), cload=1000e-12)
-    out["pm_check_noRiso_1nF_BEH60"] = dict(**r, fails=bool(r["pm_deg"] is not None and r["pm_deg"] < 45))
+    out["pm_check_noRiso_1nF_BEH60"] = dict(**r, fails=bool(r.get("pm_deg") is not None and r["pm_deg"] < 45))
     with use_model("BEH60"):
         r = loop_pm(pp(Cpx=0.0))
-    out["pm_check_noCpx_BEH60"] = dict(**r, fails=bool(r["pm_deg"] is not None and r["pm_deg"] < 45))
+    out["pm_check_noCpx_BEH60"] = dict(**r, fails=bool(r.get("pm_deg") is not None and r["pm_deg"] < 45))
     # 4. THD/slew check: a 40 MHz sine must show the slew limit (done in tran), repeat and compare to a 5 MHz one
     t = loadj("tran")
     out["thd_check_40MHz"] = dict(thd_5MHz_pct=t["sine5_usable"]["thd_pct"], thd_40MHz_pct=t["sine40_control"]["thd_pct"],
@@ -988,6 +1018,11 @@ def sec_guards():
     out["rail_check_no_bleed"] = dict(rail_V=q["rail"], fails=bool(q["rail"] > 0.5))
     e = prot_edge(pp(), 0.0, 12.0, 2e-9, name="ge")
     out["edge_check_no_Rnp"] = dict(peak_mA=e["peak_mA"], fails=bool(e["peak_mA"] > 10))
+    if RANGE != "v2":      # on +-5 V values C1 is small and the 12 V edge reads under 10 mA even with no Rnp (range5v.md): the control is the 30 V / 5 ns edge
+        e = prot_edge(pp(), 0.0, 30.0, 5e-9, name="ge3")
+        out["edge_check_no_Rnp_30V"] = dict(peak_mA=e["peak_mA"], fails=bool(e["peak_mA"] > 10))
+        out["edge_check_no_Rnp"]["fails"] = True                    # not a control on this range: replaced by the 30 V one above, said so here
+        out["edge_check_no_Rnp"]["replaced_by"] = "edge_check_no_Rnp_30V"
     # 8. SM-3 check: a 4.7 kohm Rnp (pole with Cpx at about 3 MHz) must put the pin's -3 dB under 8 MHz
     p = pp(Rnp=4700.0, Rsrc=50.0)
     t_ = header("gbw") + rails(p) + "Vs asrc 0 dc 0 ac 1\n" + chan(p, "a") + f"""
@@ -1118,7 +1153,13 @@ ac dec 20 1k 1g
 .endc
 .end
 """
-    with open(os.path.join(OUT_DIR, "scope_v2.cir"), "w") as f:
+    if RANGE != "v2":
+        txt = txt.replace("AFE version 2 scope channels", "AFE version 2 scope channels, range 5v (version 1's +-5 V values, range5v.md)")
+        txt = txt.replace("R1a 510k C23192 + R1b 30k C22984", "R1a 470k C23178 + R1b 300k C23024").replace("C1 22p C0G C1653", "C1 %gp C0G %s" % (round(P0["C1"] * 1e12), LCSC_C0G[round(P0["C1"] * 1e12)]))
+        txt = txt.replace("R2a 1M C22935 + R2b 510k C23192", "R2a 470k C23178 + R2b 330k C23137").replace("Cn 12p C0G C38523", "Cn %gp C0G %s" % (round(P0["Cn"] * 1e12), LCSC_C0G[round(P0["Cn"] * 1e12)]))
+        txt = txt.replace("R3a 470k C23178 + R3b 200k C25811", "R3a 330k C23137 + R3b 0R C21189")
+        txt = txt.replace("Vsa asrc 0 dc 1.0 ac 1\nVsb bsrc 0 dc 1.0\n", "Vsa asrc 0 dc 0 ac 1\nVsb bsrc 0 dc 0\n")
+    with open(os.path.join(OUT_DIR, "scope_v2.cir" if RANGE == "v2" else f"scope_{RANGE}.cir"), "w") as f:
         f.write(txt.replace(OPAMP_INC, os.path.basename(OPAMP_MDL)))          # the committed copy names the macro, not this machine's path
     out = run_ng("scope_v2", txt)                                              # netlists/scope_v2.cir, run under the cap
     return dict(ok=("v(apin)" in out and "Error" not in out), tail=out[-200:])
@@ -1129,11 +1170,15 @@ SECTIONS = dict(netlist=sec_netlist, cscan=sec_cscan, dc=sec_dc, ac=sec_ac, bw=s
 
 def main(argv):
     work, want, it, overrides = None, [], iter(argv), {}
+    if "--range" in argv:
+        set_range(argv[argv.index("--range") + 1])
     for a in it:
         if a == "--out":
             set_out(next(it))
         elif a == "--work":
             work = next(it)
+        elif a == "--range":                               # applied first (below): a --set after it still wins
+            next(it)
         elif a == "--set":                                 # a sensitivity case: --set Cn_par=4.31e-12 (any key of netlib.P0, scalar)
             k, v = next(it).split("=", 1)
             if k not in NL.P0 or isinstance(NL.P0[k], (tuple, dict)):
@@ -1149,6 +1194,9 @@ def main(argv):
     h = check_model()
     meta = dict(ngspice=ngspice_version(), model_sha256=h, model="TPH2501_ngspice.mdl (simtools.vendor)", beh_lib_sha256=beh_sha(),
                 beh_lib="models-open/tph2502-beh/tph2502_beh.lib")
+    if RANGE != "v2":
+        meta["range"] = RANGE                               # a run on another range says so, and names the values it ran
+        meta["range_values"] = {k: (list(v) if isinstance(v, tuple) else v) for k, v in RANGES[RANGE]["P0"].items()}
     if overrides:
         meta["overrides"] = overrides                       # a run that is not the baseline says so in its meta.json
     save("meta", meta)

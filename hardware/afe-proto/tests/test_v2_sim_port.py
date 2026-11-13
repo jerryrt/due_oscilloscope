@@ -63,6 +63,35 @@ def mutant_tree(tmp, edits=()):
 
 
 # ------------------------------------------------------------------------------------------------ the AWG study
+# The golden is the OLD study at its old guaranteed range, -1.5 V to +1.63 V. The owner's ruling of 2026-11-13 made the range +-1.6 V (design.OUT_LO,
+# OUT_HI, and four texts in run.py that name the range or the broken-on-purpose level), which changes the numbers on purpose and is not a porting
+# difference. The equivalence is therefore taken with the range put back to the old one in a copy of the code: these edits are the whole of the
+# difference between the golden and the tree (the filter resistor Rvr, the divider arm R6 and two guard bodies, below), and a port that drifts anywhere else still fails.
+OLD_RANGE_EDITS = [
+    ("v2/sim/awg/design.py", "OUT_LO, OUT_HI = -1.5, 1.5 ", "OUT_LO, OUT_HI = -1.5, 1.63 "),
+    # the filter resistor Rvr is 150 ohm and the divider's upper arm R6 (Rbin) 3.0 kohm now (SC-9 through the reference at the scope's +-5 V,
+    # and the AC top end that the larger Rvr raises); the golden has 100 ohm and 2.7 kohm
+    ("v2/sim/awg/design.py", "Rg2=3000.0, Rvr=150.0, Rbin=3000.0,", "Rg2=3000.0, Rvr=100.0, Rbin=2700.0,"),
+    ("v2/sim/awg/params.py", "Rvr=150.0, Cvr=14e-6", "Rvr=100.0, Cvr=14e-6"),
+    ("v2/sim/awg/params.py", "Rbin=3000.0,", "Rbin=2700.0,"),
+    ("v2/sim/awg/run.py", "'commanding +1.6 V (the next level above the guarantee, over what the window allows) must fail the position-aware 92 % at the hard corners; the guaranteed +1.5 V passes', g_range, dict(th=1.6), dict(th=design.OUT_HI))",
+     "'commanding +1.71 V (the earlier guarantee, before the offset filter) must fail the position-aware 92 %; the guaranteed +1.63 V passes', g_range, dict(th=1.71), dict(th=1.63))"),
+    ("v2/sim/awg/run.py", """    def g_sc9b(rs):
+        Rf_, Rg2_ = rs
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + Rf_ / Rg2_), Rg2_, V['Rvr'], D['Cvr'])[0]
+        return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
+    guard('reference coupling, resistors', 'the filter-alone resistor set (Rf 470, Rg2 390 ohm, the small values of option A) must fail SC-9; Rf = Rg2 = 3 kohm passes', g_sc9b, dict(rs=(470.0, 390.0)), dict(rs=(V['Rf'], V['Rg2'])))
+""", """    def g_sc9b(Rg2):
+        m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / Rg2), Rg2, V['Rvr'], D['Cvr'])[0]
+        return m * SCOPE_REF_TO_INPUT / LSB_IN <= 2.0
+    guard('reference coupling, resistors', 'the filter-alone 390 ohm Rg2 must fail SC-9; 3 kohm passes', g_sc9b, dict(Rg2=390.0), dict(Rg2=V['Rg2']))
+"""),
+    ("v2/sim/awg/run.py", "'a negative rail that does not reach the commanded bottom into 50 ohm (-1.5 V: clips at -1.4 V) must fail",
+     "'a negative rail that does not reach -1.5 V into 50 ohm (-1.5 V: clips at -1.4 V) must fail"),
+    ("v2/sim/awg/run.py", "the lowest commanded bottom / window", "the lowest commanded -1.5 V / window"),
+]
+
+
 def run_awg(root, out, work, check=True):
     return _run([root / "v2/sim/awg/run.py", "--out", out, "--work", work], cwd=root / "v2/sim/awg", check=check)
 
@@ -87,7 +116,8 @@ def awg_diffs(out, golden=GOLD / "awg"):
 @pytest.fixture(scope="module")
 def awg_run(tmp_path_factory):
     d = tmp_path_factory.mktemp("awg")
-    stdout = run_awg(AFE, d / "out", d / "work")
+    root = mutant_tree(d / "tree", OLD_RANGE_EDITS)
+    stdout = run_awg(root, d / "out", d / "work")
     return d / "out", stdout
 
 
@@ -229,13 +259,13 @@ AWG_ARMS = {
 class TestMutationArms:
     def test_the_control_arm_a_copy_with_no_edit_reproduces(self, tmp_path):
         """without this a failing mutant could be a broken copy, not a broken computation"""
-        root = mutant_tree(tmp_path)
+        root = mutant_tree(tmp_path, OLD_RANGE_EDITS)
         run_awg(root, tmp_path / "out", tmp_path / "work")
         assert awg_diffs(tmp_path / "out") == []
 
     @pytest.mark.parametrize("arm", list(AWG_ARMS))
     def test_awg_arm(self, tmp_path, arm):
-        root = mutant_tree(tmp_path, [AWG_ARMS[arm]])
+        root = mutant_tree(tmp_path, [*OLD_RANGE_EDITS, AWG_ARMS[arm]])
         r = run_awg(root, tmp_path / "out", tmp_path / "work", check=False)
         # noticed = the study's own guards refuse to run on the broken code (exit 1, 'does not discriminate'), or its numbers differ
         noticed = r.returncode != 0 and "Traceback" in r.stderr or (r.returncode == 0 and awg_diffs(tmp_path / "out") != [])

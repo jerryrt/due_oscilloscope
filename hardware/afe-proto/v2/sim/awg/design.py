@@ -32,13 +32,13 @@ AREF = (3.20, 3.30)
 # DAC window: scenario A = theory 1/6..5/6 of AREF with +-30 mV centring uncertainty (sim/awg/run.py dc_mc, kept);
 # scenario B = the board as measured, 0.578..2.771 V at AREF 3.27 V (docs/hardware.md), scaled with AREF, +-5 mV residual.
 # Section limits: AW-1 <= 92 %, AW-2 <= 1.5 mV per code.
-OUT_LO, OUT_HI = -1.5, 1.63        # AW-1 after the offset filter: -1.5 V to the guaranteed top, 1.63 V = the worst-corner commandable top with 4 % of the window kept free (hard corners 1.6311 V)
+OUT_LO, OUT_HI = -1.5, 1.5        # AW-1 (owner ruling 2026-11-13): +-1.5 V symmetric, guaranteed.  It was -1.5 .. +1.63 V, then +-1.6 V; +-1.75 V was refused and +-1.6 V needs a smaller Rvr (design.md, 'The final values')
 TOP_END_LIM = (0.060 - 0.015) * 49.5  # PW-3: window top end <= (60 mA supply pin - 15 mA IQ max of the dual) x 49.5 ohm = 2.2275 V
 RAIL_REACH_LO = -1.9226                 # ngspice (run.py): where the stage clips into high impedance at the weak negative rail -1.9549 V (the macro stops 32 mV short of it)
 USE_LIM, LSB_LIM = 0.92, 1.5e-3
 VOS_MAX = 0.5e-3          # TPH2502 VOS max (datasheet p3)
 
-VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=100.0, Rbin=2700.0, Rbpl=27e3)   # the design (design.md)
+VALUES = dict(Rf=3000.0, Rg1=float('inf'), Rg2=3000.0, Rvr=150.0, Rbin=3000.0, Rbpl=27e3)   # the design (design.md)
 
 
 def catalogue(kind='resistor'):
@@ -160,7 +160,7 @@ def search(top=10, tol=0.01, rvr=100.0, rf_rng=(1000, 5100), rg2_rng=(1000, 5100
     """Basic 1 % values, the topology of design.md (no Rg1, offset from the REF3030E through Rvr = 100 ohm and the filter capacitor): Rbin 1.8-3.3 kohm,
     Rbpl 22-56 kohm with Rbin + Rbpl >= 28 kohm (AW-5), Rf and Rg2 in the given ranges.  Keeps the sets whose hard-corner AC window top end (a pulse
     train: DC mean at the window bottom, peaks at the top code, amplified by the AC gain 1 + Rf/Rg2 that holds above the filter corner) is <= TOP_END_LIM and
-    whose commanded -1.5 V sits inside the window with 4 % kept free, sorted by the highest commandable top ('tg') they guarantee.  Returns (rows, kept)."""
+    whose commanded bottom (OUT_LO) sits inside the window with 4 % kept free, sorted by the highest commandable top ('tg') they guarantee.  Returns (rows, kept)."""
     cat = sorted(catalogue()); rows = []
     for Rbin in (1800, 2000, 2200, 2400, 2700, 3000, 3300):
         for Rbpl in [x for x in cat if 22e3 <= x <= 56e3]:
@@ -180,7 +180,7 @@ def search(top=10, tol=0.01, rvr=100.0, rf_rng=(1000, 5100), rg2_rng=(1000, 5100
 if __name__ == '__main__':
     for lab, rr in (('large Rf/Rg2 (1-5.1 kohm)', (1000, 5100)), ('small Rf/Rg2 (0.22-0.68 kohm, the earlier values)', (220, 680))):
         rows, n = search(rf_rng=rr, rg2_rng=(100, 1200) if rr[0] < 1000 else rr)
-        print(f'{lab}: {n} Basic sets keep the hard-corner AC window top end <= {TOP_END_LIM:.4f} V with -1.5 V inside the window; best by guaranteed top:')
+        print(f'{lab}: {n} Basic sets keep the hard-corner AC window top end <= {TOP_END_LIM:.4f} V with OUT_LO inside the window; best by guaranteed top:')
         for tg, Rf, Rg2, Rbin, Rbpl, G, e in rows[:6]:
             print(f'  Rf {Rf:g} Rg2 {Rg2:g} Rbin {Rbin:g} Rbpl {Rbpl:g}  G {G:.3f}  DC top {e["top"]:.3f}  AC top {e["top_ac"]:.3f}  lowest top {e["topmin"]:.3f}  guaranteed top {tg:.3f}')
     e = corner_stats(VALUES)

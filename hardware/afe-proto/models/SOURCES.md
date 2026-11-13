@@ -96,3 +96,10 @@ Terms: TI datasheets and models are TI copyright; models are provided 'as is' wi
 - **cl21a106kaynnne** (Samsung C15850 product page): REMOVED from the manifest. The site serves different bytes than the pinned page
   (sha256 4b7cf7d8...), so re-pinning it would change under us. The DC-bias points and ESR points the studies read from it are
   committed as numbers with their provenance in `models-open/cl21a106kaynnne/`.
+- **tph2502** (3PEAK TPH2501/2/3/4 datasheet Rev. A, 18 pages, the v2 AWG's op-amp): `tph2502/tph2502.pdf` from
+  `https://static.chipdip.ru/lib/986/DOC012986131.pdf` (a distributor copy: 3peakic.com's own file was not found, and the Rev. B.4 copy
+  at promelec.ru returned 404), 943721 bytes, sha256 774114f8...d40c, computed on the bytes downloaded 2026-11-13. Never committed (MC-6).
+  **Rev. A cites "Output Voltage Swing vs Output Current" (p. 9, Output Drive Capability) and does not contain it**: no typical-
+  characteristic figure on pp. 5-8 is a swing curve. Its only swing data are that sentence (continuous +-100 mA with about 2.7 V of
+  swing on 5 V) and 2 mV typ / 30 mV max from the rail at 100 kohm (p. 4). Supply-pin rating +-60 mA, ISC 100 mA min, IQ 6.5/7.5 mA
+  per amplifier, thermal shutdown, short-circuit duration "Infinite" (p. 2-4).

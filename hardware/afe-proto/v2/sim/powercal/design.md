@@ -47,6 +47,32 @@ as above. `report.md` lists R3 alternatives: 62.2k (56k + 6.2k) gives 56 mV of r
 | fault: BNC shorted, DAC at the 3.3 V reset level (the model lets the output clip 0.1 V under the rail: the AWG's own figure with its derived saturation is 76 mA at its + pin, mine is 84) | 102.3 | 15.0 | **119.2** (exempt from 100; total with the Due 419.2 of 450) |
 
 The worst normal state is **74.0 mA** (the AWG into 50 ohm at its -1.81 V reach); the AWG's offset path is under 1 mA with its 3k resistors.
+
+**PW-1 re-derived for the +-1.5 V AWG (2026-11-13; `pw1_awg.py`, `results/pw1_awg.json`).** A separate, hand-built budget that imports nothing from `power.py`, with the AWG output at its +-0.75 V into 50 ohm load, which is **15 mA at the op-amp output** (1.5 V / (49.5 + 50 ohm); 14.83 mA sourcing at +1.5 V, 15.81 mA sinking at -1.5 V with the feedback share). Terms, strong +rail 3.4177 V, every IQ at its maximum where one exists:
+
+| Term | Value | Source |
+|---|---|---|
+| AWG dual, IQ | 15.0 mA on each rail (2 x 7.5 mA max) | TPH2502 Rev. A p. 4, 6.5 mA typ / 7.5 mA max per amplifier |
+| AWG output current | 14.83 mA from OUT+ at +1.5 V; 15.81 mA into OUT- at -1.5 V | 1.5 V over 49.5 + 50 ohm (back-termination at its low corner), plus Rf / Rg2 feedback |
+| AWG offset path | 0.25 mA at +1.5 V, 0.73 mA at -1.5 V, from the reference (so from OUT+) | (3.009 V - V_inv) / (Rg2 + Rvr) |
+| scope dual, IQ | 15.0 mA on OUT+ (2 halves, as in `power.py`) | same datasheet. The +-5 V change is values only: the scope still uses the one shared dual (U101, both halves) and the AWG its own dual (U301), so power.py's two scope halves stand. |
+| ADS1115 | 0.300 mA | SBAS444E 5.5, 300 uA over temperature |
+| REF3030E IQ | 0.037 mA | SBVS032K, 37 uA max over temperature |
+| ladder | 1.53 mA | 6 x 330 ohm at -1 %, 3.009 V |
+| sense default tie | at most 0.3 mA | |V_ref - node| / 20 kohm |
+| bleed (PR-3) | 1.90 mA | 3.4177 V / 1.8 kohm |
+| I2C pull-ups | 1.46 mA | 2 x 3.4177 V / 4.7 kohm, if fitted on the AFE |
+| scope centres | 0.011 mA | 2 x 5.4 uA |
+| LM27762 | OUT+ x 1 + OUT- x 1.10 + 0.39 mA | SNVSAF7C IQ **typical, no maximum** *(check)*; the 10 % pump allowance is an allowance *(check: no efficiency table in the PDF text)* |
+
+| State | OUT+ mA | OUT- mA | 5V pin mA |
+|---|---|---|---|
+| hi-Z, +1.5 V | 35.6 | 15.2 | 52.7 |
+| hi-Z, -1.5 V | 36.2 | 15.7 | 53.9 |
+| 50 ohm, +1.5 V | 50.4 | 15.0 | 67.3 |
+| **50 ohm, -1.5 V** | 36.2 | 30.8 | **70.4** |
+
+Worst normal state **70.4 mA against 100 mA: +29.6 mA**. The 15 mA load by itself adds 15.1 mA to the 5V pin at +1.5 V (OUT+) and 16.6 mA at -1.5 V (OUT- x 1.10). Another 3.9 op-amp halves (7.5 mA each from OUT+) would still fit under 100 mA. Faults, the indefinite short (exempt from the 100 mA, not from the 450 mA total with the Due at 300 mA): at the window top (AC top end 2.185 V) 96.3 mA AFE, **396.3 mA total**; at the window bottom (-1.73 V, the weak-rail clip) 92.4 mA, 392.4 mA; at the 3.3 V reset level (stage output about 3.0 V with the AWG study's derived saturation, accepted transient D-V2-12) 112.7 mA, **412.7 mA total, +37.3 mA against 450** (`power.py` clips the output at 0.1 V under the rail and reads 119.2 mA, 419.2 mA; the difference is that assumption). The check is broken on purpose by lowering the limit to 40 mA (it fails; the real 100 mA passes, an assertion in the script).
 LM27762 dissipation at 5.25 V in the worst state is 277 mW, 102 C junction at 85 C ambient on the datasheet's 62.2 C/W (limit 125) *(check on the board)*.
 PW-6: at the 4.50 V minimum the +LDO keeps 1.08 V and the pump 2.35 V of headroom.
 

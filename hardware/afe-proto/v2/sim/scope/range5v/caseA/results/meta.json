@@ -1,0 +1,28 @@
+{
+ "ngspice": "ngspice-45.2 : Circuit level simulation program",
+ "model_sha256": "256eeb242fe2d960625eb2c8b8d94d71a3e982730a617f01eb8cfcf90322fae1",
+ "model": "TPH2501_ngspice.mdl (simtools.vendor)",
+ "beh_lib_sha256": "e5d30338104d9389b942d8c1b708f02e8850c0f4a7a8caba0815ce47856e8d4e",
+ "beh_lib": "models-open/tph2502-beh/tph2502_beh.lib",
+ "range": "5v",
+ "range_values": {
+  "R1": [
+   470000.0,
+   300000.0
+  ],
+  "R2": [
+   470000.0,
+   330000.0
+  ],
+  "R3": [
+   330000.0,
+   0.0
+  ],
+  "C1": 1.2e-11,
+  "Cn": 3e-11
+ },
+ "overrides": {
+  "Cn_par": 4.31e-12,
+  "Cx": 5e-17
+ }
+}
