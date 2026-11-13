@@ -39,7 +39,12 @@ def test_one_command_regenerates_the_committed_files_byte_identically(tmp_path):
             assert want.exists(), want
             assert got.read_bytes() == want.read_bytes(), "%s differs: rerun `python3 -I hardware/afe-proto/v2/bom/bom.py --order`" % want
             n += 1
-    assert n == 4
+    for d, nm in (("v2", "jlc-bom.csv"), ("v2", "jlc-cpl.csv"), ("v1", "jlc-bom.csv")):
+        got, want = out[d].parent / nm, COMMITTED[d].parent / nm
+        assert got.read_bytes() == want.read_bytes(), want
+        n += 1
+    assert n == 7
+    assert not (COMMITTED["v1"].parent / "jlc-cpl.csv").exists()      # v1: no final board, no position source
 
 
 def rows(path):
@@ -82,7 +87,7 @@ def test_order_agrees_with_the_engines_own_cost_model(design, tmp_path):
 
 def test_v1_adapter_reports_design_and_bom_txt_equal_and_the_current_design():
     flags = []
-    L, dis, bt = order.v1_lines(bom.Data(bom.HERE, {}), flags)
+    L, dis, bt, _jlc = order.v1_lines(bom.Data(bom.HERE, {}), flags)
     assert dis[0].startswith("none:"), dis
     j = [x for x in L if x["block"] != "owner"]
     assert sum(x["qty"] for x in j) == 99 and len(j) == 33
@@ -103,3 +108,64 @@ def test_regeneration_detects_a_price_change(tmp_path):
     L0, L1 = bom.lines(d0, []), bom.lines(d1, [])
     a, b = order.build(d0, L0, 5, bom.PCB_RATE), order.build(d1, L1, 5, bom.PCB_RATE)
     assert abs(b["grand"] - a["grand"] - 1.0 * 2 * 5) < 1e-6      # 1 CNY x 2 pieces per board x 5 boards, tier unchanged
+
+
+# ---- the board is the source: independent count, written with a different method from order.read_board
+BOARD = AFE / "v2" / "layout" / "integrated" / "afe-v2-integrated.kicad_pcb"
+
+
+def board_smt_refs():
+    import re
+    refs = []
+    for blk in BOARD.read_text().split("\n\t(footprint ")[1:]:
+        if '(property "Fitted by" "JLC"' not in blk: continue
+        attr = re.search(r"\(attr ([^)]*)\)", blk)
+        if attr and "dnp" in attr.group(1): continue
+        refs.append(re.search(r'\(property "Reference" "([^"]*)"', blk).group(1))
+    return sorted(refs)
+
+
+def placements_equal_board(o, refs):
+    return o["placements"] == len(refs)
+
+
+def test_order_placements_equal_the_boards_smt_footprints():
+    data = bom.Data(bom.HERE, {})
+    refs = board_smt_refs()
+    assert len(refs) >= 90 and any(r.startswith("BR") for r in refs)
+    o = order.build(data, order.lines_from_rows(order.smt_rows(order.read_board(str(BOARD))))
+                    + order.owner_lines(data, []), 5, bom.PCB_RATE)
+    assert placements_equal_board(o, refs)
+    # every board designator is in the order lines, in the board's numbering
+    listed = sorted(r for j in o["jlc"] for r in j["refs"].split(","))
+    assert listed == refs
+
+
+def test_the_count_check_fails_when_the_bridges_are_dropped():
+    """Broken on purpose: the engine's schematic-era list (no bridges) must NOT equal the board; this is the defect the check exists for."""
+    data = bom.Data(bom.HERE, {})
+    L = [x for x in bom.lines(data, []) if x["block"] != "owner"]
+    o = order.build(data, L, 5, bom.PCB_RATE)
+    refs = board_smt_refs()
+    assert not placements_equal_board(o, refs) and len(refs) - o["placements"] == 13
+
+
+def test_every_smt_footprint_is_in_the_bom_and_cpl_uploads():
+    refs = board_smt_refs()
+    bomrows = list(csv.reader(open(BOMDIR / "jlc-bom.csv", newline="")))
+    assert bomrows[0] == ["Comment", "Designator", "Footprint", "LCSC Part #"]
+    in_bom = sorted(r for row in bomrows[1:] for r in row[1].split(","))
+    cpl = list(csv.reader(open(BOMDIR / "jlc-cpl.csv", newline="")))
+    assert cpl[0] == ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
+    in_cpl = sorted(r[0] for r in cpl[1:])
+    assert in_bom == refs and in_cpl == refs
+    assert all(r[3] == "Top" for r in cpl[1:])
+    # owner-fitted and DNP footprints are in neither
+    for bad in ("J101", "J601", "MH601", "R514", "TP101"):
+        assert bad not in in_bom and bad not in in_cpl
+
+
+def test_v1_bom_upload_is_the_designs_jlc_list():
+    rows = list(csv.reader(open(AFE / "bom" / "v1" / "jlc-bom.csv", newline="")))
+    refs = [r for row in rows[1:] for r in row[1].split(",")]
+    assert len(refs) == 99 and "R109" not in refs and "R510" not in refs and len([r for r in refs if r in ("R110", "R520", "R410")]) == 3

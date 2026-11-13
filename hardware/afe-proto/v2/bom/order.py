@@ -26,6 +26,91 @@ OUT_V1 = os.path.join(AFE, "bom", "v1", "order-5-100")
 READ_NOTE = "prices: catalog.csv / intl.csv ladders, source and read date per part in the Sources table; read dates 2026-11-11 to 2026-11-13"
 
 
+# ------------------------------------------------------------------------------------------------ the board as the source
+BOARD_V2 = os.path.join(AFE, "v2", "layout", "integrated", "afe-v2-integrated.kicad_pcb")
+
+
+def read_board(path):
+    """Every footprint of a KiCad 10 board, parsed from its text: dict(ref, value, lcsc, fitted, fp, x, y, rot, layer, dnp). Read-only."""
+    t = open(path).read()
+    out = []
+    for f in re.split(r"\n\t\(footprint ", t)[1:]:
+        g = lambda k: (re.search(r'\(property "%s" "([^"]*)"' % k, f) or [None, ""])[1]
+        at = re.search(r"\n\t\t\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", f)
+        attr = re.search(r"\(attr ([^)]*)\)", f)
+        out.append(dict(ref=g("Reference"), value=g("Value"), lcsc=g("LCSC"), fitted=g("Fitted by"), fp=f.split('"')[1],
+                        x=float(at.group(1)), y=float(at.group(2)), rot=float(at.group(3) or 0), layer=re.search(r'\(layer "([^"]*)"', f).group(1),
+                        dnp="dnp" in (attr.group(1).split() if attr else [])))
+    return out
+
+
+def smt_rows(fps):
+    """The footprints JLC assembles: Fitted by JLC and not DNP."""
+    return sorted((p for p in fps if p["fitted"] == "JLC" and not p["dnp"]), key=lambda p: natkey(p["ref"]))
+
+
+def lines_from_rows(rows):
+    """Engine-format lines grouped by LCSC number; refs are the board's own designators."""
+    by = {}
+    for r in rows: by.setdefault(r["lcsc"], []).append(r)
+    L = []
+    for c, rs in by.items():
+        rs.sort(key=lambda r: natkey(r["ref"]))
+        vals = []
+        for r in rs:
+            if r["value"] not in vals: vals.append(r["value"])
+        L.append(dict(stream="board", ref=",".join(r["ref"] for r in rs), value=" / ".join(vals), lcsc=c, role="", qty=len(rs), block="other", include=True,
+                      fixed_usd=None, replaces=""))
+    return L
+
+
+def owner_lines(data, own):
+    """Owner-fitted lines from footprints (rows with ref, fp, lcsc): BNC by its LCSC ladder, Due-socket headers as version 2's header rows, the rest unpriced."""
+    ex = {r["ref"]: r for r in data.extra}
+    L = []
+    def grp(pred): return sorted((r["ref"] for r in own if pred(r)), key=natkey)
+    def hdr(ref_v2, refs):
+        e = ex[ref_v2]
+        if refs: L.append(dict(stream="board", ref=",".join(refs), value=e["value"], lcsc="", role=e["role"], qty=len(refs), block="owner", include=True,
+                               fixed_usd=float(e["fixed_usd"]), replaces="", note=e["note"]))
+    bnc = grp(lambda r: r["lcsc"] == "C2837587")
+    L.append(dict(stream="board", ref=",".join(bnc), value="BNC 50 ohm right-angle THT KH-BNC50-3511", lcsc="C2837587", role="CH1, CH2 and AWG BNCs (owner-fitted)",
+                  qty=len(bnc), block="owner", include=True, fixed_usd=None, replaces=""))
+    hdr("J-hdr8", grp(lambda r: "1x08" in r["fp"])); hdr("J-hdr10", grp(lambda r: "1x10" in r["fp"])); hdr("J-hdr36", grp(lambda r: "2x18" in r["fp"]))
+    cal = grp(lambda r: "PinHeader_1x03" in r["fp"])
+    L.append(dict(stream="board", ref=",".join(cal), value="CAL ratio header 1x3 pin strip", lcsc="", role="J501 (TAP4 | B | TAP3); a pin strip piece", qty=len(cal),
+                  block="owner", include=True, fixed_usd=None, replaces="", note="UNPRICED: part and price not in any repo file; the shunt is fitted by the user *(check)*"))
+    mh = grp(lambda r: r["ref"].startswith("MH"))
+    for ref_v2 in ("MH-so25", "MH-sc25"):
+        e = ex[ref_v2]
+        L.append(dict(stream="board", ref=",".join(mh), value=e["value"], lcsc="", role=e["role"], qty=len(mh), block="owner", include=True, fixed_usd=None,
+                      replaces="", note=e["note"]))
+    return L
+
+
+def pkgname(fp): return fp.split(":")[-1]
+
+
+def jlc_bom_csv(rows):
+    """JLC's BOM upload: Comment, Designator, Footprint, LCSC Part #, one line per (value, footprint, LCSC)."""
+    g = {}
+    for r in rows: g.setdefault((r["value"], pkgname(r["fp"]), r["lcsc"]), []).append(r["ref"])
+    out = ["Comment,Designator,Footprint,LCSC Part #"]
+    for (v, fp, c), refs in sorted(g.items(), key=lambda kv: natkey(sorted(kv[1], key=natkey)[0])):
+        out.append(",".join(['"%s"' % x.replace('"', '""') for x in (v, ",".join(sorted(refs, key=natkey)), fp, c)]))
+    return "\n".join(out) + "\n"
+
+
+def jlc_cpl_csv(rows):
+    """JLC's CPL upload: Designator, Mid X, Mid Y, Layer, Rotation. Positions in mm as the board stores them with Y negated (the KiCad position-file
+    and Fabrication Toolkit convention) and the board's absolute origin (its Gerbers use it too, no aux origin); rotation is KiCad's, counter-clockwise,
+    0-360, unmodified. JLC corrects some packages from its own rotation database, so the preview in JLC's viewer must be checked *(check)*."""
+    out = ["Designator,Mid X,Mid Y,Layer,Rotation"]
+    for r in sorted(rows, key=lambda r: natkey(r["ref"])):
+        out.append("%s,%.4fmm,%.4fmm,%s,%g" % (r["ref"], r["x"], -r["y"], "Top" if r["layer"] == "F.Cu" else "Bottom", r["rot"] % 360))
+    return "\n".join(out) + "\n"
+
+
 # ------------------------------------------------------------------------------------------------ version 1 adapter
 def refresh_v1_design(design_dir, out=None):
     """Write v1-input/design-parts.csv from a version 1 kicad/ folder (reads design.py, which defines PARTS; read-only)."""
@@ -67,34 +152,9 @@ def v1_lines(data, flags, bomtxt=None, design_csv=None):
     dnp = [r for r in rows if r["fitted_by"] == "JLC" and r["dnp"] != "0"]
     by = {}
     for r in jlc: by.setdefault(r["lcsc"], []).append(r)
-    L = []
-    for c, rs in by.items():
-        rs.sort(key=lambda r: natkey(r["ref"]))
-        vals = []
-        for r in rs:
-            if r["value"] not in vals: vals.append(r["value"])
-        L.append(dict(stream="v1", ref=",".join(r["ref"] for r in rs), value=" / ".join(vals), lcsc=c, role="", qty=len(rs), block="other", include=True,
-                      fixed_usd=None, replaces=""))
-    # owner-fitted: BNCs priced from their LCSC ladder; the Due-socket headers priced as version 2's header rows; the rest unpriced (as version 2)
-    ex = {r["ref"]: r for r in data.extra}
+    L = lines_from_rows(jlc)
     own = [r for r in rows if r["fitted_by"] == "owner"]
-    def grp(pred): return sorted((r["ref"] for r in own if pred(r)), key=natkey)
-    def hdr(ref_v2, refs):
-        e = ex[ref_v2]
-        L.append(dict(stream="v1", ref=",".join(refs), value=e["value"], lcsc="", role=e["role"], qty=len(refs), block="owner", include=True,
-                      fixed_usd=float(e["fixed_usd"]), replaces="", note=e["note"]))
-    bnc = grp(lambda r: r["lcsc"] == "C2837587")
-    L.append(dict(stream="v1", ref=",".join(bnc), value="BNC 50 ohm right-angle THT KH-BNC50-3511", lcsc="C2837587", role="CH1, CH2 and AWG BNCs (owner-fitted)",
-                  qty=len(bnc), block="owner", include=True, fixed_usd=None, replaces=""))
-    hdr("J-hdr8", grp(lambda r: "1x08" in r["fp"])); hdr("J-hdr10", grp(lambda r: "1x10" in r["fp"])); hdr("J-hdr36", grp(lambda r: "2x18" in r["fp"]))
-    cal = grp(lambda r: "PinHeader_1x03" in r["fp"])
-    L.append(dict(stream="v1", ref=",".join(cal), value="CAL ratio header 1x3 pin strip", lcsc="", role="J501 (TAP4 | B | TAP3); a pin strip piece", qty=len(cal),
-                  block="owner", include=True, fixed_usd=None, replaces="", note="UNPRICED: part and price not in any repo file; the shunt is fitted by the user *(check)*"))
-    mh = grp(lambda r: r["ref"].startswith("MH"))
-    for ref_v2 in ("MH-so25", "MH-sc25"):
-        e = ex[ref_v2]
-        L.append(dict(stream="v1", ref=",".join(mh), value=e["value"], lcsc="", role=e["role"], qty=len(mh), block="owner", include=True, fixed_usd=None,
-                      replaces="", note=e["note"]))
+    L += owner_lines(data, own)
     known = {"C2837587"}
     for r in own:
         if r["lcsc"] and r["lcsc"] not in known: flags.append("v1 owner-fitted part %s has an LCSC number the adapter does not price" % r["ref"])
@@ -115,7 +175,7 @@ def v1_lines(data, flags, bomtxt=None, design_csv=None):
         if "R109" in listed: dis.append("R109 still listed in bom.txt as a bridge although the design removed it")
     d0 = [r["ref"] for r in by.get("C21189", [])]
     dis.append("0 ohm bridges: design.py lists %d (%s)" % (len(d0), ", ".join(sorted(d0, key=natkey))))
-    return L, dis, bt
+    return L, dis, bt, jlc
 
 
 # ------------------------------------------------------------------------------------------------ the order computation
@@ -320,20 +380,44 @@ def write_design(name, title, data, L, pcb_rate, md_path, extra_notes, dis=None)
     return outs
 
 
-def write_all(data, out_v2=None, out_v1=None):
-    """Regenerate every order file. Returns {design: {B: order}}."""
+def write_all(data, out_v2=None, out_v1=None, board=None):
+    """Regenerate every order file and JLC upload file. Returns {design: {B: order}}."""
     import bom
-    flags = []
-    L2 = bom.lines(data, flags)
-    notes2 = ["Version 2 lines are the three streams' `parts.csv` plus `extra.csv` (rows with `include = no` are not ordered: %s)." % (
-        ", ".join("%s %s" % (x["ref"], x["value"]) for x in L2 if not x["include"]) or "none"),
-        "Owner-fitted headers are a retail listing (EUR, no quantity break, shipping excluded), the BNC a domestic ladder; the M2.5 standoffs and screws, and the "
-        "calibration jumper pins, have no priced part in the repo and are unpriced.",
-        "PCB at 410 CNY/m2 (jlc.com notice of 2026-09-21, read 2026-11-12) + 20 CNY engineering fee over the 100 x 58.34 mm outline. A special 20 CNY prototype order "
-        "(<= 10 cm, 5-10 boards, `server_guide_4114`) was read for v1 but its fit with an SMT order is not stated, so it is not used *(check)*."]
-    r2 = write_design("v2", "AFE version 2", data, L2, bom.PCB_RATE, out_v2 or OUT_V2, notes2)
+    board = board or BOARD_V2
+    o2 = out_v2 or OUT_V2
+    o1 = out_v1 or OUT_V1
+    fps = read_board(board)
+    smt = smt_rows(fps)
+    own = [p for p in fps if p["fitted"] == "owner"]
+    L2 = lines_from_rows(smt) + owner_lines(data, own)
+    # root cause, disclosed: the engine's own v2 lists (stream parts.csv + extra.csv) against the board, per LCSC
+    eng = {}
+    for x in bom.lines(data, []):
+        if x["include"] and x["lcsc"] and x["block"] != "owner": eng[x["lcsc"]] = eng.get(x["lcsc"], 0) + x["qty"]
+    brd = {}
+    for p in smt: brd[p["lcsc"]] = brd.get(p["lcsc"], 0) + 1
+    diffs = ["%s: board %d, engine lists %d (%+d)" % (c, brd.get(c, 0), eng.get(c, 0), brd.get(c, 0) - eng.get(c, 0)) for c in sorted(set(brd) | set(eng), key=lambda c: int(c[1:]))
+             if brd.get(c, 0) != eng.get(c, 0)]
+    dnp = [p for p in fps if p["fitted"] == "JLC" and p["dnp"]]
+    notes2 = ["**Source: the final board.** Lines are the footprints of `v2/layout/integrated/afe-v2-integrated.kicad_pcb` with `Fitted by = JLC` and not DNP (%d footprints), "
+              "grouped by the board's LCSC field, designators in the board's own numbering. Owner-fitted footprints (`Fitted by = owner`, %d) are the owner table; test points are not parts. "
+              "DNP, not ordered: %s." % (len(smt), len(own), ", ".join("%s %s" % (p["ref"], p["value"]) for p in dnp) or "none"),
+              "**Why the earlier order table lacked the 13 bridges:** the engine's v2 lists (the three streams' `parts.csv` plus `extra.csv`) are the schematic-era block lists and "
+              "carry no 0 ohm bridge BR101-BR511 (they are layout objects, `v2/kicad/design.py` `BRIDGES`), so C21189 was never summed. The order now comes from the board. "
+              "Engine lists against the board, per LCSC (the schematic-era lists differ from the board in): %s." % ("; ".join(diffs) or "no difference"),
+              "Prices and fees are the engine's (ladders in `catalog.csv` / `intl.csv`, fee model in `bom.py`); only the part list changed.",
+              "Owner-fitted headers are a retail listing (EUR, no quantity break, shipping excluded), the BNC a domestic ladder; the M2.5 standoffs and screws, and J501 (CAL pin strip), "
+              "have no priced part in the repo and are unpriced.",
+              "PCB at 410 CNY/m2 (jlc.com notice of 2026-09-21, read 2026-11-12) + 20 CNY engineering fee over the 100 x 58.34 mm outline. A special 20 CNY prototype order "
+              "(<= 10 cm, 5-10 boards, `server_guide_4114`) was read for v1 but its fit with an SMT order is not stated, so it is not used *(check)*.",
+              "**JLC upload files** from the same board: `jlc-bom.csv` (Comment, Designator, Footprint, LCSC Part #) and `jlc-cpl.csv` (Designator, Mid X, Mid Y, Layer, Rotation); owner-fitted, "
+              "DNP and test-point footprints are in neither. CPL: positions in mm with Y negated and the board's absolute origin (KiCad position-file / Fabrication Toolkit convention), rotation KiCad's "
+              "unmodified; JLC's per-package rotation corrections and the Mid X/Y origin were not verified against JLC's viewer *(check)*."]
+    r2 = write_design("v2", "AFE version 2", data, L2, bom.PCB_RATE, o2, notes2)
+    for nm, txt in (("jlc-bom.csv", jlc_bom_csv(smt)), ("jlc-cpl.csv", jlc_cpl_csv(smt))):
+        with open(os.path.join(os.path.dirname(o2), nm), "w", newline="") as f: f.write(txt)
     f1 = []
-    L1, dis, bt = v1_lines(data, f1)
+    L1, dis, bt, v1jlc = v1_lines(data, f1)
     # held against bom.txt: its own unit prices at 20 and 100 boards against the engine's ladders at the same tiers
     for c, b in sorted(bt.items(), key=lambda kv: int(kv[0][1:])):
         p = bom.Part(data, c, [])
@@ -346,12 +430,14 @@ def write_all(data, out_v2=None, out_v1=None):
     dis.append("bom.txt prices the owner-fitted standoff as M3 x 8 (C66568) and screws M3 x 5 (C357542), and the headers at a $2.50 placeholder; the design has MH601 and MH602 as "
                "M2.5 standoffs. The order files follow the design: M2.5 standoff and screw unpriced, the headers priced as in the version 2 order (retail listing).")
     dis.append("bom.txt's first header lines say its totals 'predate the 3 REFCAL bridges' (stale); its per-line quantities already carry all 16 0 ohm bridges and match the design.")
-    notes1 = ["Version 1 lines come from `v1-input/design-parts.csv` (kicad/design.py of the version 1 landing branch, R109 removed, 16 pieces of 0 ohm Rb, 99 JLC placements); "
-              "`v1-input/bom.txt` is a copy of that branch's bom.txt, used only for the disagreement check. Copied inputs: the version 1 landing's `bom/v1/` files are "
-              "read-only to this work and are not edited.",
+    notes1 = ["Version 1 lines come from `v1-input/design-parts.csv` (kicad/design.py of the version 1 landing branch, whose designators are the board's; R109 removed, 16 pieces of 0 ohm Rb, 99 JLC placements); "
+              "`v1-input/bom.txt` is a copy of that branch's bom.txt, used only for the disagreement check. The version 1 landing's `bom/v1/` files are read-only to this work and are not edited.",
+              "**JLC upload files:** `jlc-bom.csv` (Comment, Designator, Footprint, LCSC Part #) is generated from design.py. **No `jlc-cpl.csv`: unavailable.** Version 1's final board is not on main or the "
+              "landing branch yet (`kicad/wip/v1_merge5.kicad_pcb` still has R109), so there is no position source; it will be generated from the final board when it lands.",
               "The 0 ohm bridge C21189 now has a domestic ladder read 2026-11-13 (0.0124 CNY at 1 piece); version 1's bom.txt priced it at the 1 ohm ladder (0.0186) as a placeholder.",
               "Nine version 1 Basic resistor/capacitor ladders (C23024, C22978, C23046, C23196, C4190, C31850, C22797, C23242, C1658) are copied from version 1's bom.md (read "
               "2026-11-12); a re-read on 2026-11-13 met the bot challenge and stopped *(check)*.",
               "Stock was not read for any part *(check before ordering, ADS1115 and TPH2502 first)*."]
-    r1 = write_design("v1", "AFE version 1", data, L1, bom.PCB_RATE, out_v1 or OUT_V1, notes1, dis)
-    return dict(v2=r2, v1=r1, v1_disagreements=dis)
+    r1 = write_design("v1", "AFE version 1", data, L1, bom.PCB_RATE, o1, notes1, dis)
+    with open(os.path.join(os.path.dirname(o1), "jlc-bom.csv"), "w", newline="") as f: f.write(jlc_bom_csv(v1jlc))
+    return dict(v2=r2, v1=r1, v1_disagreements=dis, v2_smt=smt, v2_engine_diffs=diffs)
