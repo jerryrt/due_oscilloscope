@@ -92,6 +92,12 @@ class Editor:
         r.SetPosition(self._pt(x, y))
         r.SetTextAngleDegrees(0)
 
+    def set_ref_pose(self, ref, x, y, angle):
+        """move and rotate the designator text only (position in Due mm, angle in degrees); layer, size and visibility stay"""
+        r = self._fp(ref).Reference()
+        r.SetPosition(self._pt(x, y))
+        r.SetTextAngleDegrees(float(angle))
+
     def add_text(self, text, x, y, h=1.0, layer='F.SilkS', t=0.15):
         tx = self.pcb.PCB_TEXT(self.b)
         tx.SetText(str(text))
@@ -136,6 +142,8 @@ class Editor:
             self._give(t)
 
     def add_vias(self, net, x, y, dia=0.6, drill=0.3):
+        """vias at (x, y), Due mm. NB: KiCad gives a via that lands on a pad the PAD's net when the board is saved and read
+        back, whatever net was asked for: place vias off other nets' pads."""
         x, y, dia, drill = np.broadcast_arrays(*(np.atleast_1d(np.asarray(v, np.float64)) for v in (x, y, dia, drill)))
         n = self._net(net)
         for i in range(x.size):
