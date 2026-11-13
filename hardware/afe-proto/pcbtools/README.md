@@ -161,6 +161,24 @@ direct solve (SuperLU) took 0.48 s at 19 k unknowns against 0.1 s for plain CG a
 rounded to a nanometre in KiCad mm before rasterising so every cell decision equals the old tool's (a 0.2 mm track on a 0.1 mm grid
 puts cell centres exactly on its edge). `python tests/pcbtools/mutate_cap.py` is the mutation proof.
 
+**Grid convergence** (`report(b, cfg, converge=True)`, `python -m pcbtools.cap BOARD|NPZ --converge`; `converge_pair`, `converge_self`,
+`extrapolate`). The single-cell-size figures above are not converged (about 9 % apart between 0.2 and 0.1 mm for the pour figures), so
+each figure can also be solved at 0.2, 0.1 and 0.05 mm and Richardson-extrapolated: the observed order is `p = log2((C1 - C2) /
+(C2 - C3))`, and only a strictly monotone sequence with 0.5 <= p <= 2.5 is extrapolated (`C0 = C3 - (C2 - C3) / (2^p - 1)`,
+uncertainty = how far that moved the finest value); otherwise the finest value stands, the full spread is its uncertainty and the status
+reads "not converging monotonically". Three identical values are converged with uncertainty 0. The five old report lines are unchanged;
+the converged lines are extra output, and self capacitance is marked *not validated against a field solver*. **The finest level does not
+fit the window**: a 0.05 mm cell makes 114 cells in z, so MAX_CELLS = 3,000,000 (about 530 B per cell, 1.5-1.7 GB peak, measured)
+allows 26 k cells in x-y. The step lowers the window pad in 0.25 mm steps until it fits (`pad_used` against `pad_requested`, the same
+window at all three levels so that only the cell size varies), refuses with `GridTooLarge` if even pad 0 does not fit, and reports
+`pad_effect` (C at the requested pad minus C at the used pad, at 0.2 mm) and `extrapolated_padcorrected`. On the v2 integrated
+board the used pads are 0.5 (N-N), 1.0 (NP-NP, AWG_FB) and 2.25 mm (CH1_N, CH2_N) against 3.0 requested, and the pad effect is
+not small (CH2_N with pour: -0.043 pF at 0.2 mm), so read the `extrapolated_padcorrected` figure, not the raw one, next to a
+full-window number. The measured table is `cap_converged_v2_integrated.json` (image digest, wall time and peak RSS per run); most
+sequences are *not* monotone, which is the finding: at these cell sizes a 0.2 mm track and the 0.3 mm pour keep-back (`round(0.3 / h)`
+cells: 2 at 0.2 mm, i.e. 0.4 mm) change by whole cells between levels, so the figures carry a spread, not a converged limit.
+`mutate_cap.py --converge-only` is the mutation proof of the extrapolation and the guard.
+
 
 # Write path and generators (kvm_01): editor, sexpr, schematic, build, renumber, floorplan, merge
 

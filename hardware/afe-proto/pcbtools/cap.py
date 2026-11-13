@@ -277,13 +277,13 @@ def _fixed(cond, nzb):
 
 
 # ------------------------------------------------------------------------------------------------- the figures
-def pair_caps(b, nets, win, pour, h=0.1, stack=STACK, tol=1e-6, gnd=None):
+def pair_caps(b, nets, win, pour, h=0.1, stack=STACK, tol=1e-6, gnd=None, max_cells=None):
     """{(i, j): pF}: charge on conductor j with conductor i at 1 V, for every ordered pair of `nets`; `win` in KiCad mm"""
     cu = copper(b, tuple(nets), gnd)
     x0, y0, x1, y1 = win
     nx, ny = int(round((x1 - x0) / h)), int(round((y1 - y0) / h))
     nzb, nz = _grid(h, stack)
-    check_grid(nx, ny, nz)
+    check_grid(nx, ny, nz, max_cells)
     eps = _eps((nz, ny, nx), nzb, stack)
     masks = {n: raster(cu, n, x0, y0, nx, ny, h) for n in nets}
     other = raster(cu, '__other__', x0, y0, nx, ny, h)
@@ -315,7 +315,7 @@ def _at(nzb, m2, shape):
     return m
 
 
-def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6, gnd=None):
+def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6, gnd=None, max_cells=None):
     """{False: pF, True: pF}: capacitance of one net's top copper to everything else (held at 0 V), without and with the
     top pour (kept `pour_clear` off the copper); the window is the net's own items grown by `pad`"""
     cu = copper(b, (net,), gnd)
@@ -327,7 +327,7 @@ def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6, gnd=None):
     x0, y0, x1, y1 = xs.min() - pad, ys.min() - pad, xs.max() + pad, ys.max() + pad
     nx, ny = int(round((x1 - x0) / h)), int(round((y1 - y0) / h))
     nzb, nz = _grid(h, stack)
-    check_grid(nx, ny, nz)
+    check_grid(nx, ny, nz, max_cells)
     eps = _eps((nz, ny, nx), nzb, stack)
     m = raster(cu, net, x0, y0, nx, ny, h)
     other = raster(cu, '__other__', x0, y0, nx, ny, h)
@@ -346,10 +346,138 @@ def self_cap(b, net, pad=3.0, h=0.1, stack=STACK, tol=1e-6, gnd=None):
     return out
 
 
+# ------------------------------------------------------------------------------------------- grid convergence
+CONVERGE_H = (0.2, 0.1, 0.05)     # the three cell sizes of the convergence step, mm, each half the one before
+ORDER_RANGE = (0.5, 2.5)          # an observed order outside this is not believed (the fallback is the finest value and the spread)
+NOT_VALIDATED = 'not validated against a field solver'
+PAD_STEP = 0.25                   # mm: the window pad is lowered in steps of this until the finest level fits MAX_CELLS
+
+
+def extrapolate(values, hs=CONVERGE_H):
+    """Richardson extrapolation of a capacitance computed at three cell sizes `hs` (coarse to fine, a constant ratio r).
+    Assumes C(h) = C0 + A h^p. With d1 = C(h1) - C(h2) and d2 = C(h2) - C(h3) the observed order is
+        p = log(d1 / d2) / log(r)            (r = 2: p = log2(d1 / d2))
+    and, when the sequence is strictly monotone and 0.5 <= p <= 2.5,
+        C0 = C(h3) - d2 / (r^p - 1),   uncertainty = |C0 - C(h3)|  (what the extrapolation moved the finest value by).
+    Otherwise (not monotone, or the order is out of range, or d2 = 0 with d1 != 0) the finest value stands and the full spread
+    max - min of the three is its uncertainty, flagged 'not converging monotonically'. Three identical values are converged:
+    C0 = the value, uncertainty 0, no order. -> dict(values, hs, order, extrapolated, uncertainty, spread, status)."""
+    v = [float(x) for x in values]
+    h = [float(x) for x in hs]
+    if len(v) != 3 or len(h) != 3:
+        raise ValueError('three values and three cell sizes are needed')
+    r = h[0] / h[1]
+    if not (h[2] > 0 and r > 1 and math.isclose(h[1] / h[2], r, rel_tol=1e-9)):
+        raise ValueError(f'the cell sizes must shrink by a constant ratio, got {h}')
+    d1, d2 = v[0] - v[1], v[1] - v[2]
+    spread = max(v) - min(v)
+    out = dict(values=v, hs=h, order=None, extrapolated=v[2], uncertainty=spread, spread=spread, status='')
+    scale = max(abs(x) for x in v) or 1.0
+    if abs(d1) <= 1e-12 * scale and abs(d2) <= 1e-12 * scale:
+        out.update(extrapolated=v[2], uncertainty=0.0, status='converged: the three values are identical')
+        return out
+    if d1 * d2 <= 0:
+        out['status'] = 'not converging monotonically'
+        return out
+    p = math.log(d1 / d2) / math.log(r)
+    out['order'] = p
+    if not (ORDER_RANGE[0] - 1e-9 <= p <= ORDER_RANGE[1] + 1e-9):          # the edges are inside, to rounding
+        out['status'] = f'not converging monotonically (observed order {p:.2f} outside {ORDER_RANGE[0]} to {ORDER_RANGE[1]})'
+        return out
+    c0 = v[2] - d2 / (r ** p - 1)
+    out.update(extrapolated=c0, uncertainty=abs(c0 - v[2]), status=f'converging, observed order {p:.2f}')
+    return out
+
+
+def _fit_pad(pad, hfine, size_of_pad, stack, max_cells):
+    """the largest pad <= `pad` (lowered in PAD_STEP) whose window fits max_cells at cell size hfine; GridTooLarge if even
+    pad 0 does not. `size_of_pad(p)` -> window (x, y) mm"""
+    lim = MAX_CELLS if max_cells is None else max_cells
+    nzb, nz = _grid(hfine, stack)
+    p = float(pad)
+    while True:
+        wx, wy = size_of_pad(p)
+        n = int(round(wx / hfine)) * int(round(wy / hfine)) * nz
+        if n <= lim:
+            return p
+        if p <= 0:
+            raise GridTooLarge(f'even with the window pad at 0 the {wx:.2f} x {wy:.2f} mm window at {hfine} mm is {n:,} cells, over '
+                               f'the limit of {lim:,}: the finest level of the convergence step does not fit')
+        p = max(p - PAD_STEP, 0.0)
+
+
+def _conv_result(vals_by_pour, hs, pad, pad_used, extra):
+    r = extrapolate(vals_by_pour, hs)
+    r.update(pad_requested=pad, pad_used=pad_used, window_limited=pad_used < pad, **extra)
+    return r
+
+
+def converge_pair(b, nets, pad, pour, hs=CONVERGE_H, stack=STACK, tol=1e-6, gnd=None, max_cells=None):
+    """grid convergence of the mutual capacitance of `nets` (two): the same window at every level in `hs`; if the finest level
+    would not fit MAX_CELLS the pad is lowered (the reported dict says so: pad_requested, pad_used, window_limited), and when
+    it was, `pad_effect` is C(requested pad) - C(used pad) at the coarsest level, and `extrapolated_padcorrected` adds it."""
+    def size(p):
+        w = window(b, nets, p)
+        return w[2] - w[0], w[3] - w[1]
+    used = _fit_pad(pad, min(hs), size, stack, max_cells)
+    vals = [pair_caps(b, list(nets), window(b, nets, used), pour, h, stack, tol, gnd, max_cells)[(nets[0], nets[1])] for h in hs]
+    extra = {}
+    if used < pad:
+        full = pair_caps(b, list(nets), window(b, nets, pad), pour, hs[0], stack, tol, gnd, max_cells)[(nets[0], nets[1])]
+        extra = dict(pad_effect=full - vals[0])
+    r = _conv_result(vals, hs, pad, used, extra)
+    if extra:
+        r['extrapolated_padcorrected'] = r['extrapolated'] + extra['pad_effect']
+    return r
+
+
+def _self_extent(b, net, gnd):
+    cu = copper(b, (net,), gnd)
+    r, s = cu.rects[net], cu.segs[net]
+    xs = np.concatenate([r[:, [0, 2]].ravel(), s[:, [0, 2]].ravel()])
+    ys = np.concatenate([r[:, [1, 3]].ravel(), s[:, [1, 3]].ravel()])
+    if not len(xs):
+        raise ValueError(f'no top copper on {net}')
+    return xs.max() - xs.min(), ys.max() - ys.min()
+
+
+def converge_self(b, net, pad, hs=CONVERGE_H, stack=STACK, tol=1e-6, gnd=None, max_cells=None):
+    """grid convergence of one net's self capacitance, {False: result, True: result} (without and with the pour; see
+    converge_pair). Each result carries `validated`: self capacitance is 'not validated against a field solver'"""
+    ex, ey = _self_extent(b, net, gnd)
+    used = _fit_pad(pad, min(hs), lambda p: (ex + 2 * p, ey + 2 * p), stack, max_cells)
+    lv = [self_cap(b, net, used, h, stack, tol, gnd, max_cells) for h in hs]
+    full = self_cap(b, net, pad, hs[0], stack, tol, gnd, max_cells) if used < pad else None
+    out = {}
+    for pour in (False, True):
+        extra = dict(validated=NOT_VALIDATED)
+        if full is not None:
+            extra['pad_effect'] = full[pour] - lv[0][pour]
+        r = _conv_result([x[pour] for x in lv], hs, pad, used, extra)
+        if full is not None:
+            r['extrapolated_padcorrected'] = r['extrapolated'] + extra['pad_effect']
+        out[pour] = r
+    return out
+
+
+def converged_line(key, r):
+    name, pour = key
+    v = '  '.join(f'{h:g} mm: {x:.4f}' for h, x in zip(r['hs'], r['values']))
+    o = 'order n/a' if r['order'] is None else f'order {r["order"]:.2f}'
+    s = (f'{name:20s} pour={pour!s:5s} converge  {v} pF  {o}  extrapolated {r["extrapolated"]:.4f} +- {r["uncertainty"]:.4f} pF  '
+         f'[{r["status"]}]')
+    if r['window_limited']:
+        s += f'  [window pad {r["pad_used"]:g} of {r["pad_requested"]:g} mm: the finest level does not fit; pad effect {r["pad_effect"]:+.4f} pF at {r["hs"][0]:g} mm]'
+    if 'validated' in r:
+        s += f'  [{r["validated"]}]'
+    return s
+
+
 @dataclasses.dataclass
 class Report:
     pairs: dict        # (label, pour) -> {'c': pF, 'reverse': pF, 'window': (w, h) mm, 'cell': mm}
     selfs: dict        # net -> {False: pF, True: pF}
+    converged: dict = None     # only with report(converge=True): (label or net, pour) -> converge_* result (see `extrapolate`)
 
     def lines(self):
         """the old tool's printed lines"""
@@ -359,9 +487,14 @@ class Report:
                 f'with the top pour (kept 0.3 mm off) {r[True]:.3f} pF' for n, r in self.selfs.items()]
         return out
 
+    def converged_lines(self):
+        """one line per converged figure; additional output, the five lines of `lines()` are not touched"""
+        return [converged_line(k, r) for k, r in (self.converged or {}).items()]
 
-def report(b, cfg, stack=STACK, tol=1e-6, h_override=None):
-    """the old main(): every CAP_PAIRS entry without and with the pour, every CAP_SELF net; `h_override` replaces all cell sizes"""
+
+def report(b, cfg, stack=STACK, tol=1e-6, h_override=None, converge=False, hs=CONVERGE_H, max_cells=None):
+    """the old main(): every CAP_PAIRS entry without and with the pour, every CAP_SELF net; `h_override` replaces all cell sizes.
+    `converge=True` also solves every figure at the three cell sizes `hs` and fills `Report.converged` (see `extrapolate`)"""
     pairs, selfs = {}, {}
     for label, nets, pad, h in cfg.CAP_PAIRS:
         h = h_override or h
@@ -371,7 +504,16 @@ def report(b, cfg, stack=STACK, tol=1e-6, h_override=None):
             pairs[(label, pour)] = dict(c=r[(nets[0], nets[1])], reverse=r[(nets[1], nets[0])], window=(w[2] - w[0], w[3] - w[1]), cell=h)
     for net, pad, h in cfg.CAP_SELF:
         selfs[net] = self_cap(b, net, pad, h_override or h, stack, tol, cfg.GND)
-    return Report(pairs, selfs)
+    conv = None
+    if converge:
+        conv = {}
+        for label, nets, pad, h in cfg.CAP_PAIRS:
+            for pour in (False, True):
+                conv[(label, pour)] = converge_pair(b, list(nets), pad, pour, hs, stack, tol, cfg.GND, max_cells)
+        for net, pad, h in cfg.CAP_SELF:
+            for pour, r in converge_self(b, net, pad, hs, stack, tol, cfg.GND, max_cells).items():
+                conv[(net, pour)] = r
+    return Report(pairs, selfs, conv)
 
 
 # --------------------------------------------------------------------------------------------------- selftests
@@ -479,6 +621,9 @@ def main(argv=None):
     ap.add_argument('board', help="BOARD.kicad_pcb, CACHE.npz, or 'selftest'")
     ap.add_argument('--config', default='v2')
     ap.add_argument('--tol', type=float, default=1e-6)
+    ap.add_argument('--converge', action='store_true', help='also solve every figure at 0.2, 0.1 and 0.05 mm and print the '
+                    'Richardson-extrapolated value with its uncertainty (extra lines after the old five)')
+    ap.add_argument('--max-cells', type=int, default=None, help='override MAX_CELLS for the convergence step')
     a = ap.parse_args(argv)
     if a.board == 'selftest':
         worst = 0.0
@@ -493,7 +638,8 @@ def main(argv=None):
               f'{r["gb"]:.2f} pF/m ({r["c21_dev"] * 100:+.1f} %)')
         return 0 if worst < 0.08 else 1
     cfg = importlib.import_module(f'pcbtools.boards.{a.config}')
-    for ln in report(check.load(a.board), cfg, tol=a.tol).lines():
+    rep = report(check.load(a.board), cfg, tol=a.tol, converge=a.converge, max_cells=a.max_cells)
+    for ln in rep.lines() + rep.converged_lines():
         print(ln, flush=True)
     return 0
 

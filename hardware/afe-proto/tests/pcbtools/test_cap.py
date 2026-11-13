@@ -437,3 +437,140 @@ def test_the_real_windows_are_under_the_limit():
         x0, y0, x1, y1 = cap.window(b, nets, pad)
         nzb, nz = cap._grid(h, cap.STACK)
         assert cap.check_grid(round((x1 - x0) / h), round((y1 - y0) / h), nz) < cap.MAX_CELLS
+
+
+# ------------------------------------------------------------------------------------------ grid convergence step
+def _geometric(c0, a, p, hs=(0.2, 0.1, 0.05)):
+    return [c0 + a * h ** p for h in hs]
+
+
+@pytest.mark.parametrize('p', (0.5, 1.0, 1.7, 2.0, 2.5))
+@pytest.mark.parametrize('sign', (+1, -1))
+def test_extrapolate_recovers_the_limit_of_a_known_order(p, sign):
+    """C(h) = C0 + A h^p at 0.2/0.1/0.05: the observed order is p and the limit is C0 exactly (either sign of A)"""
+    r = cap.extrapolate(_geometric(0.77, sign * 0.4, p))
+    assert r['order'] == pytest.approx(p, abs=1e-9)
+    assert r['extrapolated'] == pytest.approx(0.77, abs=1e-12)
+    assert r['uncertainty'] == pytest.approx(abs(0.77 - r['values'][2]), abs=1e-12)
+    assert r['status'].startswith('converging')
+
+
+def test_extrapolate_uses_the_actual_cell_ratio():
+    """a ratio of 3 (0.3/0.1/0.0333) is not mistaken for 2"""
+    hs = (0.3, 0.1, 0.1 / 3)
+    r = cap.extrapolate([1.5 + 2.0 * h ** 1.3 for h in hs], hs)
+    assert r['order'] == pytest.approx(1.3, abs=1e-9) and r['extrapolated'] == pytest.approx(1.5, abs=1e-12)
+    with pytest.raises(ValueError):
+        cap.extrapolate([1, 2, 3], (0.2, 0.1, 0.07))                                # not a constant ratio
+
+
+def test_extrapolate_falls_back_when_not_monotone():
+    for v in ([0.526, 0.5166, 0.5208], [1.0, 1.2, 1.1]):
+        r = cap.extrapolate(v)
+        assert r['status'].startswith('not converging monotonically')
+        assert r['order'] is None
+        assert r['extrapolated'] == v[2]                                            # the finest value stands
+        assert r['uncertainty'] == pytest.approx(max(v) - min(v))                   # with the full spread
+
+
+def test_extrapolate_falls_back_when_the_order_is_out_of_range():
+    steep = cap.extrapolate([0.8084, 0.6843, 0.6832])                               # order ~ 6.9
+    assert steep['order'] > 2.5 and steep['status'].startswith('not converging monotonically')
+    assert steep['extrapolated'] == 0.6832 and steep['uncertainty'] == pytest.approx(0.8084 - 0.6832)
+    flat = cap.extrapolate(_geometric(1.0, 1.0, 0.2))                               # order 0.2: too slow to believe
+    assert flat['order'] == pytest.approx(0.2) and flat['extrapolated'] == flat['values'][2]
+    stuck = cap.extrapolate([1.0, 0.9, 0.9])                                        # d2 = 0, d1 != 0: infinite order
+    assert stuck['status'].startswith('not converging monotonically') and stuck['extrapolated'] == 0.9
+
+
+def test_extrapolate_equal_values_are_converged_with_zero_uncertainty():
+    r = cap.extrapolate([0.5, 0.5, 0.5])
+    assert r['extrapolated'] == 0.5 and r['uncertainty'] == 0.0 and r['order'] is None and r['status'].startswith('converged')
+
+
+def test_extrapolate_needs_three_values():
+    with pytest.raises(ValueError):
+        cap.extrapolate([1.0, 2.0])
+
+
+def _plate_pF(h, t=((1.6, 1.0), (1.6, 4.5)), side=2.0):
+    """physical parallel plates, 2 mm square, an air layer 1.6 mm under a 1.6 mm FR4 layer, at cell size h"""
+    return cap.plates(tuple((round(d / h), er) for d, er in t), nxy=round(side / h), h=h)[0]
+
+
+@pytest.fixture(scope='module')
+def plate_levels():
+    return [_plate_pF(h) for h in cap.CONVERGE_H]
+
+
+def test_plate_discretisation_error_is_visible_at_every_level(plate_levels):
+    analytic = cap.E0 * (2e-3 * 2e-3) / (1.6e-3 / 1.0 + 1.6e-3 / 4.5) * 1e12
+    errs = [abs(c / analytic - 1) for c in plate_levels]
+    assert errs[0] > 0.03 and errs[1] > 0.015 and errs[2] > 0.007                  # first order: 4 %, 2 %, 1 %, all visible
+    assert errs[0] > errs[1] > errs[2]
+
+
+def test_plate_extrapolation_lands_closer_to_the_analytic_answer_than_the_finest_grid(plate_levels, capsys):
+    """the interface sits half a cell off, so the error is first order in h; the extrapolation must beat the 0.05 mm figure"""
+    analytic = cap.E0 * (2e-3 * 2e-3) / (1.6e-3 / 1.0 + 1.6e-3 / 4.5) * 1e12
+    r = cap.extrapolate(plate_levels)
+    fine_err, ext_err = abs(r['values'][2] - analytic), abs(r['extrapolated'] - analytic)
+    with capsys.disabled():
+        print(f'\nplates 1.6 mm air + 1.6 mm er 4.5, 2 x 2 mm: analytic {analytic * 1e3:.4f} fF; '
+              f'0.2/0.1/0.05 mm {[round(c * 1e3, 4) for c in plate_levels]} fF; observed order {r["order"]:.3f}; '
+              f'finest error {fine_err / analytic * 100:.3f} %, extrapolated {r["extrapolated"] * 1e3:.4f} fF '
+              f'error {ext_err / analytic * 100:.4f} %')
+    assert ext_err < fine_err
+    assert r['order'] == pytest.approx(1.0, abs=0.05)
+    assert ext_err / analytic < 1e-3
+
+
+def test_fit_pad_shrinks_the_window_until_the_finest_level_fits():
+    size = lambda p: (4 + 2 * p, 4 + 2 * p)
+    st = cap.Stack(t_air=2.0)
+    nz = cap._grid(0.05, st)[1]
+    full = int(round(10 / 0.05)) ** 2 * nz
+    assert cap._fit_pad(3.0, 0.05, size, st, full) == 3.0                           # fits: untouched
+    used = cap._fit_pad(3.0, 0.05, size, st, full - 1)
+    assert 0 <= used < 3.0
+    wx, wy = size(used)
+    assert int(round(wx / 0.05)) * int(round(wy / 0.05)) * nz <= full - 1
+
+
+def test_fit_pad_raises_grid_too_large_when_even_no_pad_fits():
+    with pytest.raises(cap.GridTooLarge, match='pad at 0'):
+        cap._fit_pad(3.0, 0.05, lambda p: (4 + 2 * p, 4 + 2 * p), cap.Stack(t_air=2.0), 1000)
+
+
+def test_converge_pair_reports_a_shrunk_window_and_its_pad_effect():
+    b = two_tracks(gap=0.4)
+    st = cap.Stack(t_air=1.0, t_board=0.8)
+    hs = (0.4, 0.2, 0.1)
+    win = cap.window(b, ['/A', '/B'], 1.5)
+    nz = cap._grid(0.1, st)[1]
+    cells = int(round((win[2] - win[0]) / 0.1)) * int(round((win[3] - win[1]) / 0.1)) * nz
+    r = cap.converge_pair(b, ['/A', '/B'], 1.5, False, hs, st, max_cells=cells // 2)
+    assert r['window_limited'] and r['pad_used'] < 1.5 and r['pad_requested'] == 1.5
+    assert 'pad_effect' in r and r['extrapolated_padcorrected'] == pytest.approx(r['extrapolated'] + r['pad_effect'])
+    assert len(r['values']) == 3 and all(v > 0 for v in r['values'])
+    with pytest.raises(cap.GridTooLarge):
+        cap.converge_pair(b, ['/A', '/B'], 1.5, False, hs, st, max_cells=1000)
+    assert not cap.converge_pair(b, ['/A', '/B'], 1.5, False, hs, st)['window_limited']
+
+
+def test_converge_self_is_marked_not_validated_and_the_report_lines_are_extra():
+    b = two_tracks()
+    st = cap.Stack(t_air=1.0, t_board=0.8)
+    r = cap.converge_self(b, '/A', 1.0, (0.4, 0.2, 0.1), st, gnd='/GND')
+    assert set(r) == {False, True} and all(x['validated'] == 'not validated against a field solver' for x in r.values())
+    line = cap.converged_line(('/A', True), r[True])
+    assert 'not validated against a field solver' in line and 'extrapolated' in line
+
+    class Cfg:
+        CAP_PAIRS = (('A-B', ('/A', '/B'), 1.0, 0.2),)
+        CAP_SELF = (('/A', 1.0, 0.2),)
+        GND = '/GND'
+    plain = cap.report(b, Cfg, st)
+    conv = cap.report(b, Cfg, st, converge=True, hs=(0.4, 0.2, 0.1))
+    assert conv.lines() == plain.lines() and plain.converged is None and plain.converged_lines() == []
+    assert len(conv.converged_lines()) == 4                                         # 2 pair + 2 self
