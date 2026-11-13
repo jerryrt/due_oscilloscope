@@ -369,6 +369,20 @@ def metrics(c, ramp, f, f_pump):
     return out
 
 
+BANDS_HZ = {"dc_1M": (0.0, 1e6), "1M_10M": (1e6, 10e6), "10M_30M": (10e6, 30e6)}     # PW-4's band is DC-1 MHz
+
+
+def band_figures(c, ramp, f, bands=BANDS_HZ):
+    """rms (about the mean) and pk-pk of the rail's ripple restricted to each band of lines [lo, hi). The DC-1 MHz band carries the
+    ramp that made the window periodic (it is below 10 kHz); the others do not."""
+    out = {}
+    for name, (lo, hi) in bands.items():
+        mk = (f >= lo) & (f < hi)
+        w = lines_to_wave(np.where(mk, c, 0)) + (ramp if lo == 0.0 else 0.0)
+        out[name] = dict(rms=float(np.std(w)), pkpk=pp(w))
+    return out
+
+
 def node_lines(tr):
     """Per node: lines of the window, the injected current I_m = Y_tr(f_m) V_m (Y_tr: the deck's own capacitance and conductance)."""
     out = {}
@@ -399,13 +413,21 @@ def estimate(tr, scales=None, esr=None, cases=None, dl_nh=2.0, fmax=FMAX_HZ):
         c = case_lines(d["I"], d["f"], node, c_each[node], esr, tr["g"][node], l_nh, f_eval / fp, fp, pure_c)
         if fm:
             c = np.where(d["f"] <= fm, c, 0)
-        return metrics(c, d["ramp"], d["f"], fp)
+        m = metrics(c, d["ramp"], d["f"], fp)
+        m["bands"] = band_figures(c, d["ramp"], d["f"])
+        return m
 
-    mv = lambda m: {k: v * 1e3 if not k.startswith("var_share") else v for k, v in m.items()}
+    def mv(m):
+        o = {k: v * 1e3 for k, v in m.items() if k != "bands" and not k.startswith("var_share")}
+        o.update({k: v for k, v in m.items() if k.startswith("var_share")})
+        if "bands" in m:
+            o["bands_mv"] = {b: {k: x * 1e3 for k, x in v.items()} for b, v in m["bands"].items()}
+        return o
     res = dict(f_pump_hz=fp, mean_crossing_hz=mean_cross, burst_duty=mean_cross / fp, frequencies_hz=freqs, cases={}, nodes={}, sensitivity={})
     for node in NODES:
         d = nl[node]
         m0 = metrics(d["V"], d["ramp"], d["f"], fp)
+        m0["bands"] = band_figures(d["V"], d["ramp"], d["f"])
         a = np.abs(d["V"])
         top = np.argsort(a)[::-1][:5]
         res["nodes"][node] = dict(mean_v=d["mean"], pp_transient_mv=pp(np.interp(
@@ -428,6 +450,9 @@ def estimate(tr, scales=None, esr=None, cases=None, dl_nh=2.0, fmax=FMAX_HZ):
     res["l_nh"] = case_l
     ds = [k for k in freqs if k != "model"]
     res["worst_datasheet_mv"] = {case: {n: max(res["cases"][case][fl][n]["phasor"] for fl in ds) for n in NODES} for case in case_l}
+    res["vin_pw4_band"] = pw4_table(res, ds=[k for k in freqs if k != "model"])
+    res["fmax_table_vin_mv"] = {case: {k: v["vin"] for k, v in d.items()} for case, d in res["bandwidth_sweep_mv"].items()}
+    res["notes"] = NOTES
     res["verdict"] = {n: verdict(res["worst_datasheet_mv"]["asbuilt"][n]) for n in PW2_NODES}
     for c in ("C401", "C402", "C403", "C404", "C405", "C406", "C407", "C408"):
         node = next(n for n, cs in NODES.items() if c in cs)
@@ -443,6 +468,33 @@ def estimate(tr, scales=None, esr=None, cases=None, dl_nh=2.0, fmax=FMAX_HZ):
         res["sensitivity"][c] = row
     res["dl_nh"] = dl_nh
     return res
+
+
+def pw4_table(res, ds):
+    """VIN in the bands: the transient, then each case at the model's frequency and the worse of the datasheet range (per figure)."""
+    t = res["nodes"]["vin"]["bands_mv"]
+    out = {"transient": {b: dict(v) for b, v in t.items()}}
+    for case in ("ideal", "asbuilt", "L_x0.5", "L_x2"):
+        row = {}
+        for b in BANDS_HZ:
+            row[b] = {}
+            for k in ("rms", "pkpk"):
+                vals = {fl: res["cases"][case][fl]["vin"]["bands_mv"][b][k] for fl in res["cases"][case]}
+                row[b][k] = dict(model=vals["model"], worse_datasheet=max(vals[fl] for fl in ds), spread_model_to_worse=max(vals[fl] for fl in ds) - vals["model"])
+        out[case] = row
+    return out
+
+
+NOTES = {
+    "pw4": "PW-4 (rms noise rise on the Due 3.3 V pin and AREF <= 0.3 mV over DC-1 MHz) is NOT judged here. The VIN figures are the 5 V "
+           "ripple in that band; how it reaches the Due 3.3 V and AREF through the Due's regulator is a property of the pump itself "
+           "(the ideal layout included) and is VT-8's measurement.",
+    "edge_content": "The 10-30 MHz VIN content is unvalidated: it is the model's switch-edge current, it depends on the band limit (fmax_table_vin_mv), "
+                    "and nothing here checks it against the real part. VT-8's 5 V measurement with a wideband probe is the check.",
+    "out_rails": "The model cannot resolve the cap-distance question on OUT+ and OUT-: it injects 0.3 mA (burst band) and 0.02 mA (pump band) into OUT+ "
+                 "(0.13 / 0.008 mA into OUT-), the rails are insensitive to L, and the real chain's behaviour is VT-8's.",
+    "sensitivity": "Distance acts at the CP and VIN capacitors (C403, C404, C402, C401), not at the output capacitors.",
+}
 
 
 def verdict(mv, limit=LIMIT_MV):

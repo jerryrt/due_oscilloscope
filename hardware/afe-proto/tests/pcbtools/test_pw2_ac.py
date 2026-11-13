@@ -298,6 +298,54 @@ def test_window_lines_roundtrip_and_leak_free_with_a_ramp():
     assert np.abs(c[(f > 10e6)]).max() < 2e-6                                         # no leakage floor from the end mismatch
 
 
+# ---- the PW-4 band figures (DC-1 MHz, 1-10 MHz, 10-30 MHz)
+
+def _lines_for(freqs_amps):
+    f = np.arange(1, pa.NPTS // 2 + 1) / pa.TW
+    c = np.zeros(len(f), complex)
+    for fr, a in freqs_amps:
+        c[np.argmin(np.abs(f - fr))] = a
+    return f, c, np.zeros(pa.NPTS)
+
+
+def test_band_figures_known_answers():
+    f, c, ramp = _lines_for([(0.5e6, 2e-3), (3e6, 1e-3), (20e6, 0.5e-3)])
+    b = pa.band_figures(c, ramp, f)
+    assert b["dc_1M"]["rms"] == pytest.approx(2e-3 / np.sqrt(2), rel=1e-6) and b["dc_1M"]["pkpk"] == pytest.approx(4e-3, rel=1e-3)
+    assert b["1M_10M"]["rms"] == pytest.approx(1e-3 / np.sqrt(2), rel=1e-6)
+    assert b["10M_30M"]["pkpk"] == pytest.approx(1e-3, rel=1e-3)
+
+
+def test_band_edges_are_half_open_at_1_and_10_mhz():
+    f, c, ramp = _lines_for([(1.0e6, 1e-3), (10e6, 1e-3)])
+    b = pa.band_figures(c, ramp, f)
+    assert b["dc_1M"]["rms"] == pytest.approx(0, abs=1e-12)                          # a line AT 1 MHz is in the 1-10 MHz band
+    assert b["1M_10M"]["rms"] == pytest.approx(1e-3 / np.sqrt(2), rel=1e-6)           # and one at 10 MHz is in 10-30
+    assert b["10M_30M"]["rms"] == pytest.approx(1e-3 / np.sqrt(2), rel=1e-6)
+
+
+def test_band_rms_comes_from_the_rail_lines_not_another_array():
+    """A mutant that reads another rail's lines must disagree with the closed answer; the band figure is Parseval's on its lines."""
+    f, c, ramp = _lines_for([(0.3e6, 1e-3), (0.7e6, 3e-3)])
+    b = pa.band_figures(c, ramp, f)
+    assert b["dc_1M"]["rms"] == pytest.approx(np.sqrt((1e-3 ** 2 + 3e-3 ** 2) / 2), rel=1e-6)
+    assert b["dc_1M"]["rms"] != pytest.approx(np.sqrt((1e-3 ** 2) / 2), rel=1e-3)
+
+
+def test_in_band_dc_1mhz_is_blind_to_loop_l_on_a_low_frequency_rail(synth_result):
+    """The synthetic ripple has lines at 90 kHz and 2.14 MHz only: L (nH) cannot move its DC-1 MHz band (a few per cent at most)."""
+    t = synth_result["vin_pw4_band"]
+    ideal, built = t["ideal"]["dc_1M"]["rms"]["model"], t["asbuilt"]["dc_1M"]["rms"]["model"]
+    assert built == pytest.approx(ideal, rel=0.02)
+    assert t["asbuilt"]["1M_10M"]["rms"]["model"] > t["ideal"]["1M_10M"]["rms"]["model"]      # L shows up above 1 MHz
+    assert "NOT judged" in synth_result["notes"]["pw4"]
+
+
+def test_fmax_table_present_for_both_cases(synth_result):
+    t = synth_result["fmax_table_vin_mv"]
+    assert set(t) == {"ideal", "asbuilt"} and set(t["asbuilt"]) == {"5", "10", "20", "30", "40", "83"}
+
+
 # ---- the ngspice-driven validation: the real ideal transient against the AC estimate
 
 def _lib_present():
