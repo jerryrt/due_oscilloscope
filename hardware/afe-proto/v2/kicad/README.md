@@ -22,9 +22,9 @@ docker/pcb/run.sh -m 3G -t 300 bash -c 'cd hardware/afe-proto && python3 -m pcbt
 
 An arm counts as caught only when a row goes from PASS on the regenerated unchanged project to FAIL on the changed one; a row that
 already fails on the clean board makes its arm `NOT TESTABLE`, which fails the `M*` row. The generated header comment now names
-`pcbtools.schematic` (this folder's committed schematic still carries the old script's name until it is regenerated), and **the
-committed `afe-v2.kicad_pro` is stale**: its ERC exclusion is keyed on the pin uuid of `U3` pin 1, the part's name before the
-renumbering to `U401`, so `S1` fails on this folder as it stands and passes on a regenerated one (regenerate it).
+`pcbtools.schematic`. History: the project file committed before this port was stale (its ERC exclusion was keyed on the pin uuid of
+`U3` pin 1, the part's name before the renumbering to `U401`), so the old check printed `FAIL S1` on the committed tree and `ALL PASS`
+only after the generator was run first; it is regenerated now and the checks pass on this folder as committed.
 
 The schematic is flat, one sheet, a net label on every pin, laid out by block (power, scope, AWG, calibration,
 Due headers). It is a connection list for the netlist and the checks, not a drawing to read for signal flow.
@@ -38,36 +38,54 @@ each part's `block` field in `design.py` says the same (`D1` and `D2` check it):
 
 | block field | range | holds |
 |---|---|---|
-| CH1 | 1xx | CH1 chain R101-R108, C101-C103, D101, BNC J101, test point TP101 (A1), and **U101, the TPH2502 dual both channels share, with its two supply capacitors C104, C105**: the shared dual takes the 1xx number |
-| CH2 | 2xx | CH2 chain R201-R208, C201-C203, D201, BNC J201, TP201 (A0) |
+| CH1 | 1xx | CH1 chain R101-R108, C101-C103, D101, bridge BR101, BNC J101, test point TP101 (A1), and **U101, the TPH2502 dual both channels share, with its two supply capacitors C104, C105**: the shared dual takes the 1xx number |
+| CH2 | 2xx | CH2 chain R201-R208, C201-C203, D201, bridge BR201, BNC J201, TP201 (A0) |
 | AWG | 3xx | U301, R301-R309, C301, C303-C306, BNC J301, TP301 (AWG_OUT) |
 | POWER | 4xx | LM27762 U401, R401-R405 feedback, R406 5 V sense, R407 bleed, C401-C409, TP401-TP404 (+3V3A, VNEG, +5V_F, GND) |
-| REFCAL | 5xx | REF3030E U501 with C501 C502, ADS1115 U502 with C503, ladder R501-R506, sense divider R507-R511, CAL header J501, TP501 (VREF); the loose shunt is SH501 (hand-fitted, no symbol) |
-| EDGE | 6xx | Due pass-through headers J601-J607 (POWER0, ADCL0, ADCH0, PWMH0, XIO0, PWML0, COMMUNICATION0), the I2C pull-ups R601 R602, the AREF link R603 (unfitted), the two 0R bridges BR601 BR602, standoffs MH601 MH602 |
+| REFCAL | 5xx | REF3030E U501 with C501 C502, ADS1115 U502 with C503, ladder R501-R506, sense divider R507-R511, the I2C pull-ups R512 (SDA) and R513 (SCL), the AREF link R514 (0R, unfitted), CAL header J501, TP501 (VREF); the loose shunt is SH501 (hand-fitted, no symbol) |
+| EDGE | 6xx | Due pass-through headers J601-J607 (POWER0, ADCL0, ADCH0, PWMH0, XIO0, PWML0, COMMUNICATION0) and the standoffs MH601 MH602 |
 
 Each part's `Sim` field is its name in the studies (`scope.R1a`, `awg.R3`, `pc.R_FB1`). Old-to-new designators of the
 first revision: U1 C1 C2 became U101 C104 C105; J1 J2 J3 became J101 J201 J301; U2 U301; U3 U401; U4 U501; U5 U502;
-C410 C501; C411 C502; C412 C503; R408 R409 R410 became R601 R602 R603; the Due headers
-J4 J601, J5 J602, J6 J603, J7 J606, J8 J607, J9 J604, J10 J605; J11 J501; MH1 MH2 MH601 MH602; TP1..TP6 were replaced
-by the eight test points below. Everything else kept its number.
+C410 C501; C411 C502; C412 C503; R408 R409 R410 became R512 R513 R514 (the pull-ups and the AREF link are in the REFCAL
+block, not EDGE); the Due headers J4 J601, J5 J602, J6 J603, J7 J606, J8 J607, J9 J604, J10 J605; J11 J501; MH1 MH2 MH601
+MH602; TP1..TP6 were replaced by the eight test points below. Everything else kept its number.
 
 **Test points** (`TestPoint_Pad_D1.5mm`, a plain 1.5 mm top pad, unfitted; print the label at 0.8 mm): TP101 `A1`, TP201
 `A0`, TP301 `AWG_OUT` (the stage output net `AWG_VO`, before the back-termination), TP401 `+3V3A`, TP402 `VNEG`, TP403
 `+5V_F` (the LM27762's filtered 5 V feed, after the sense resistor R406), TP404 `GND`, TP501 `VREF`.
 
-**Bridges (placeholders until the layout names the nets).** BR601 joins `+3V3A` and `+3V3A_U` (the scope dual's V+ pad and
-C104, C105 sit on `+3V3A_U`); BR602 joins `CH2_RISO` (Riso R208's output) and `A0` (the Due pin, TP201, the clamp D201).
-Both are Basic 0R 0603 (C21189), in block 6xx because they serve no single block. The netlist comparison treats a
-`BR` part as a short (merging the two segment names) and fails if a bridge is not 0 ohm; the layout agent should tell
-me which nets the bridges really split and only `design.py` changes.
+**Bridges (placeholders until the layout names the nets).** BR101 (block CH1) joins `+3V3A` and `+3V3A_U` (the scope dual's
+V+ pad and C104, C105 sit on `+3V3A_U`); BR201 (block CH2) joins `CH2_RISO` (Riso R208's output) and `A0` (the Due pin,
+TP201). Both are Basic 0R 0603 (C21189), each in the block it serves. The netlist comparison treats a `BR` part as a short
+(merging the two segment names) and fails if a bridge is not 0 ohm; the layout work names the nets the bridges really split
+and only `design.py` changes.
 
-Due header allocation (V03, `docs/due-header-table.md`): POWER0 5 V and ground; ADCL0 A0 (CH2), A1 (CH1), the ladder
-taps on A2..A7 with the reference on A7's pin; ADCH0 DAC0; PWMH0 ground, AREF (through an unfitted 0R, PA-7),
-**SDA1 and SCL1 (pins 9, 10: the SAM3X's TWI0; TWI1 is D20/D21, which have the Due's 1.5k pull-ups) for the ADS1115's I2C**;
-XIO0 ground. Every other pin is declared NC and passes through. No Due 3.3 V pin is used. D5..D9, D16, D39 are free.
+Due header allocation. The source `pcbtools` generates and checks from |
+| `afe-v2.kicad_sch`, `afe-v2.kicad_pro`, `sym-lib-table`, `fp-lib-table`, `lib/afe.kicad_sym` | generated by `pcbtools` from `design.py` (the TPH2502 and ADS1115 symbols are in the project library) |
+| `lib/afe.pretty/` | the BNC and Due XIO socket footprints, copied from version 1, kept by hand |
 
-`block_of_parts()` in `pcbtools/boards/v2_checks.py` returns ref -> block for the layout's containment check; `KEY_PARTS` there is the
-independent list each block must hold exactly.
+The generator, the checks and the SPICE netlist comparison are version-independent code in `../../pcbtools` (`schematic.py`,
+`schematic_rows.py`, `spicecmp.py`) with version 2's data and rows in `pcbtools/boards/v2_sch.py` and `v2_checks.py`; the old
+`build_sch.py`, `check.py`, `spicecmp.py` and `sexpr.py` are gone. Run from `hardware/afe-proto`, in the pcb venv or the image:
+
+```sh
+python -m pcbtools.boards.v2_checks --build OUT          # writes the project into OUT, then kicad-cli sch upgrade
+python -m pcbtools.boards.v2_checks                      # the rows, on a copy of this folder (a few seconds)
+python -m pcbtools.boards.v2_checks --arms               # the rows, then the 24 mutation arms (about 45 s)
+docker/pcb/run.sh -m 3G -t 300 bash -c 'cd hardware/afe-proto && python3 -m pcbtools.boards.v2_checks --arms'     # the same in the pinned image, from the repository root
+```
+
+An arm counts as caught only when a row goes from PASS on the regenerated unchanged project to FAIL on the changed one; a row that
+already fails on the clean board makes its arm `NOT TESTABLE`, which fails the `M*` row. The generated header comment now names
+`pcbtools.schematic`. History: the project file committed before this port was stale (its ERC exclusion was keyed on the pin uuid of
+`U3` pin 1, the part's name before the renumbering to `U401`), so the old check printed `FAIL S1` on the committed tree and `ALL PASS`
+only after the generator was run first; it is regenerated now and the checks pass on this folder as committed.
+
+The schematic is flat, one sheet, a net label on every pin, laid out by block (power, scope, AWG, calibration,
+Due headers). It is a connection list for the netlist and the checks, not a drawing to read for signal flow.
+Footprints come from KiCad's standard libraries (0603, 0805, 1206, SOT-23, SOIC-8 3.9 mm for the SOP-8 dual,
+MSOP-10, WSON-12) plus `afe.pretty`.
 
 ## Checks
 

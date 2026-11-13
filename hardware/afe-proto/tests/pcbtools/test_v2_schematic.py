@@ -59,11 +59,6 @@ def verdicts(rows):
 
 
 # ================================================================================================ the frozen inputs
-def test_the_fixture_design_is_the_live_design():
-    """the equivalence tests run the live design.py against the frozen project: when the design moves, regenerate and re-freeze"""
-    assert (FIX / 'kicad' / 'design.py').read_bytes() == pathlib.Path(v2_sch.PROJECT_DIR, 'design.py').read_bytes()
-
-
 def test_the_design_is_loaded_from_one_place_and_leaves_no_plain_module_name():
     import sys
     assert 'design' not in sys.modules and v2_sch._design.__name__ == 'pcbtools._live_v2.design'

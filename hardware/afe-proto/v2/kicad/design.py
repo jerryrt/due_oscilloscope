@@ -1,13 +1,13 @@
 """The AFE version 2 shield: every part and every pin's net, in one place.
 
-This file is the source build_sch.py generates the schematic from, and the
-reference check.py holds it to.  The circuits and values are the three
+This file is the source pcbtools.schematic generates the schematic from, and the
+reference pcbtools.boards.v2_checks holds it to.  The circuits and values are the three
 v2 studies' (sim/scope, sim/awg, sim/powercal, parts.csv in each) and every
 part carries its study name in `sim` ("scope.R1a", "awg.R3", "pc.R_FB1") so
-check.py can hold its value and LCSC number to that study's parts.csv.
-Connectivity is checked against the studies' SPICE netlists by spicecmp.py
+the checks can hold its value and LCSC number to that study's parts.csv.
+Connectivity is checked against the studies' SPICE netlists by pcbtools.spicecmp
 for the scope and the AWG; the power/reference/calibration block has no
-netlist and is checked by value (check.py, block "cal").
+netlist and is checked by value (pcbtools.boards.v2_checks, block "cal").
 
 A pin left out of a part's map is not connected: it must be listed in the
 part's `nc` (or `nc='rest'` for a stacking header, whose unused pins pass
@@ -174,7 +174,7 @@ two('R513', '4.7k', P33A, 'SCL', 'REFCAL', '', 'I2C pull-up SCL (required)')
 # Top-layer 0 ohm bridges the layout needs (afe.md LR-11 placeholders until the layout names the exact nets):
 # BR101 (CH1) carries +3V3A over the A0 column to the scope dual's V+ pad; BR201 (CH2) carries CH2's route over CH1's run
 # (the gap is in CH2's ADC-pin net, between Riso/the clamp D201 and the A0 pin).  Each joins two segment names of ONE electrical net; the
-# netlist comparison merges them (spicecmp.BR rule: every BR part is a short).  Each sits in the block it serves.
+# netlist comparison merges them (pcbtools.spicecmp BR rule: every BR part is a short).  Each sits in the block it serves.
 two('BR101', '0R', P33A, P33A_U, 'CH1', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
 two('BR201', '0R', 'CH2_RISO', 'A0', 'CH2', '', 'top-layer 0R bridge: CH2 Riso to the A0 pin segment (placeholder net)')
 two('R514', '0R', VREF, 'AREF', 'REFCAL', '', 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
