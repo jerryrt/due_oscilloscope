@@ -1,6 +1,8 @@
 """The JLC fabrication set of a board: Gerbers, Excellon drills, the BOM and CPL, in one deterministic zip, and the checks on it.
 
-    python3 -m pcbtools.fab build BOARD OUTDIR [--bom F --cpl F]     write OUTDIR/<IDENT>-fab.zip and OUTDIR/files/ (needs kicad-cli: run in the image)
+    python3 -m pcbtools.fab build BOARD OUTDIR [--bom F --cpl F] [--design v1|v2]
+                                                                      write OUTDIR/<IDENT>-fab.zip (needs kicad-cli: run in the image); --design picks the identity,
+                                                                      the kicad-cli file stem and the default BOM/CPL of version 1 or 2 (default v2)
     python3 -m pcbtools.fab manifest ZIP                              the manifest (member names, sizes, sha256) as JSON
 
 Options follow docs/jlcpcb.md section 1 ("Files for KiCad"): Gerber with Protel extensions, 4.6 format, F/B.Cu, F/B.Mask, F/B.Silkscreen,
@@ -23,6 +25,19 @@ def _ident():
     return f'{m.NAME}-{m.MODEL}-REV{m.REV}'
 
 
+def design_ident(design):
+    """(IDENT, kicad-cli file stem, directory of the BOM and CPL) of a design: v2 as above; v1 from the literals NAME, MODEL and REV of boards/v1.py (read with ast:
+    that config imports the design data, and the name is written once, there)"""
+    if design == 'v2':
+        return IDENT, STEM, 'v2/bom'
+    import ast
+    lit = {}
+    for n in ast.parse(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'boards', 'v1.py')).read()).body:
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ('NAME', 'MODEL', 'REV'):
+            lit[n.targets[0].id] = ast.literal_eval(n.value)
+    return f"{lit['NAME']}-{lit['MODEL']}-REV{lit['REV']}", 'afe-proto', 'bom/v1'
+
+
 IDENT = _ident()                  # the member and zip prefix, from the config: COPPIA-AFE-2-REVA
 GERBERS = {'F_Cu.gtl': 'top copper', 'B_Cu.gbl': 'bottom copper', 'F_Mask.gts': 'top mask', 'B_Mask.gbs': 'bottom mask',
            'F_Silkscreen.gto': 'top silk', 'B_Silkscreen.gbo': 'bottom silk', 'Edge_Cuts.gm1': 'outline', 'F_Paste.gtp': 'top paste'}
@@ -32,8 +47,8 @@ ZIP_NAME = IDENT + '-fab.zip'
 STAMP = '2000-01-01T00:00:00+00:00'
 
 
-def expected_members():
-    return sorted(f'{IDENT}-{k}' for k in list(GERBERS) + list(DRILLS) + list(ASSEMBLY))
+def expected_members(ident=None):
+    return sorted(f'{ident or IDENT}-{k}' for k in list(GERBERS) + list(DRILLS) + list(ASSEMBLY))
 
 
 def _norm(data):
@@ -42,7 +57,8 @@ def _norm(data):
     return t.encode('utf8')
 
 
-def build(board, outdir, bom, cpl):
+def build(board, outdir, bom, cpl, ident=None, stem=None):
+    ident, stem = ident or IDENT, stem or STEM
     os.makedirs(outdir, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(['kicad-cli', 'pcb', 'export', 'gerbers', '-o', tmp + '/', '-l', LAYERS, '--precision', '6', board],
@@ -52,12 +68,12 @@ def build(board, outdir, bom, cpl):
                         '--excellon-separate-th', board], check=True, capture_output=True)
         members = {}
         for k in list(GERBERS):
-            members[f'{IDENT}-{k}'] = _norm(open(f'{tmp}/{STEM}-{k}', 'rb').read())
+            members[f'{ident}-{k}'] = _norm(open(f'{tmp}/{stem}-{k}', 'rb').read())
         for k in DRILLS:
-            members[f'{IDENT}-{k}'] = _norm(open(f'{tmp}/{STEM}-{k}', 'rb').read())
-    members[f'{IDENT}-bom.csv'] = open(bom, 'rb').read()
-    members[f'{IDENT}-cpl.csv'] = open(cpl, 'rb').read()
-    zp = os.path.join(outdir, ZIP_NAME)
+            members[f'{ident}-{k}'] = _norm(open(f'{tmp}/{stem}-{k}', 'rb').read())
+    members[f'{ident}-bom.csv'] = open(bom, 'rb').read()
+    members[f'{ident}-cpl.csv'] = open(cpl, 'rb').read()
+    zp = os.path.join(outdir, ident + '-fab.zip')
     with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for name in sorted(members):
             zi = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
@@ -73,8 +89,8 @@ def manifest(zp):
 
 
 # ---------------------------------------------------------------------------------------------- the checks (each returns a list of problems)
-def check_members(names):
-    want, got = set(expected_members()), set(names)
+def check_members(names, ident=None):
+    want, got = set(expected_members(ident)), set(names)
     return [f'missing {n}' for n in sorted(want - got)] + [f'unexpected {n}' for n in sorted(got - want)]
 
 
@@ -133,20 +149,22 @@ def check_drills(pth_text, npth_text, board_text):
     return out
 
 
-def verify(zp, board, width, height):
+def verify(zp, board, width, height, ident=None):
+    ident = ident or IDENT
     z = zipfile.ZipFile(zp)
     names = z.namelist()
-    probs = check_members(names)
+    probs = check_members(names, ident)
     if probs: return probs
-    t = lambda k: z.read(f'{IDENT}-{k}').decode('utf8')
+    t = lambda k: z.read(f'{ident}-{k}').decode('utf8')
     return check_outline(t('Edge_Cuts.gm1'), width, height) + check_drills(t('PTH.drl'), t('NPTH.drl'), open(board).read())
 
 
 if __name__ == '__main__':
     if sys.argv[1] == 'build':
         a = sys.argv[2:]
-        bom = a[a.index('--bom') + 1] if '--bom' in a else f'v2/bom/{IDENT}-bom.csv'
-        cpl = a[a.index('--cpl') + 1] if '--cpl' in a else f'v2/bom/{IDENT}-cpl.csv'
-        print(build(a[0], a[1], bom, cpl))
+        ident, stem, bomdir = design_ident(a[a.index('--design') + 1] if '--design' in a else 'v2')
+        bom = a[a.index('--bom') + 1] if '--bom' in a else f'{bomdir}/{ident}-bom.csv'
+        cpl = a[a.index('--cpl') + 1] if '--cpl' in a else f'{bomdir}/{ident}-cpl.csv'
+        print(build(a[0], a[1], bom, cpl, ident, stem))
     elif sys.argv[1] == 'manifest':
         print(json.dumps(manifest(sys.argv[2]), indent=1))

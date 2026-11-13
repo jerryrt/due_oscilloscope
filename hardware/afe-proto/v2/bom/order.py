@@ -3,7 +3,7 @@
 Run through the engine:   python3 -I bom.py --order          (writes the four files named below; stdlib only)
 
   ../bom/order-5-100.md / .csv       version 2   (hardware/afe-proto/v2/bom/)
-  ../../bom/v1/order-5-100.md / .csv version 1   (hardware/afe-proto/bom/v1/; STAGED here, to land with the v1 landing)
+  ../../bom/v1/order-5-100.md / .csv version 1   (hardware/afe-proto/bom/v1/), with the JLC upload files of both boards, named from their configurations
 
 Same cost model as bom.py (JLC China Economic SMT, domestic CNY ladders; see bom.py's header): parts at the ladder tier holding
 (boards in one order) x (pieces per board); an order holds at most 50 boards, so 100 boards are two orders of 50; per order setup,
@@ -11,7 +11,7 @@ a loading fee per Extended type, a fee per SMT joint, X-ray per leadless piece, 
 Economic service. Owner-fitted parts (not assembled by JLC) at the tier for (boards x quantity), no loading or joint fee.
 Everything here is computed from bom.Data; `test_bom_order.py` recomputes the totals with bom.cost() as an independent oracle.
 
-Version 1 is read by an adapter, not edited: its parts list is `v1-input/design-parts.csv` (the JLC/owner part list of version 1's
+Version 1's order is read from its final board like version 2's; the adapter below holds the design against it: its parts list is `v1-input/design-parts.csv` (the JLC/owner part list of version 1's
 kicad/design.py, which is its source of truth; regenerate with `bom.py --refresh-v1-design <dir with design.py>`) and its own
 bom.txt (copied beside it), which the adapter holds against the design, line by line, and reports every disagreement. Prices come
 from catalog.csv / intl.csv (the engine's single price store), not from bom.txt."""
@@ -33,7 +33,21 @@ def _ident():
     return m
 
 
+def _ident_literals(path):
+    """NAME, MODEL, REV, ASSY_REV of a board configuration, read from its source with ast (the v1 config imports the design data, which this stdlib-only
+    script must not): the one place the identity is written stays the configuration"""
+    import ast
+    out = {}
+    for n in ast.parse(open(path).read()).body:
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ("NAME", "MODEL", "REV", "ASSY_REV"):
+            try: out[n.targets[0].id] = ast.literal_eval(n.value)
+            except ValueError: pass
+    return out
+
+
 CFG = _ident()
+CFG1 = _ident_literals(os.path.join(AFE, "pcbtools", "boards", "v1.py"))
+IDENT1 = "%s-%s-REV%s" % (CFG1["NAME"], CFG1["MODEL"], CFG1["REV"])   # the file-name prefix of every v1 upload file: COPPIA-AFE-1-REVA
 IDENT = "%s-%s-REV%s" % (CFG.NAME, CFG.MODEL, CFG.REV)          # the file-name prefix of every v2 order and upload file
 IDENT_TEXT = "%s %s REV %s, assembly revision %s" % (CFG.NAME, CFG.MODEL, CFG.REV, CFG.ASSY_REV or "none (the first assembly of this revision)")
 READ_NOTE = "prices: catalog.csv / intl.csv ladders, source and read date per part in the Sources table; read dates 2026-11-11 to 2026-11-13"
@@ -41,6 +55,7 @@ READ_NOTE = "prices: catalog.csv / intl.csv ladders, source and read date per pa
 
 # ------------------------------------------------------------------------------------------------ the board as the source
 BOARD_V2 = os.path.join(AFE, "v2", "layout", "integrated", "afe-v2-integrated.kicad_pcb")
+BOARD_V1 = os.path.join(AFE, "kicad", "afe-proto.kicad_pcb")
 
 
 def read_board(path):
@@ -396,10 +411,11 @@ def write_design(name, title, data, L, pcb_rate, md_path, extra_notes, dis=None)
     return outs
 
 
-def write_all(data, out_v2=None, out_v1=None, board=None):
+def write_all(data, out_v2=None, out_v1=None, board=None, board_v1=None):
     """Regenerate every order file and JLC upload file. Returns {design: {B: order}}."""
     import bom
     board = board or BOARD_V2
+    board_v1 = board_v1 or BOARD_V1
     o2 = out_v2 or OUT_V2
     o1 = out_v1 or OUT_V1
     fps = read_board(board)
@@ -433,7 +449,17 @@ def write_all(data, out_v2=None, out_v1=None, board=None):
     for nm, txt in (("%s-bom.csv" % IDENT, jlc_bom_csv(smt)), ("%s-cpl.csv" % IDENT, jlc_cpl_csv(smt))):
         with open(os.path.join(os.path.dirname(o2), nm), "w", newline="") as f: f.write(txt)
     f1 = []
-    L1, dis, bt, v1jlc = v1_lines(data, f1)
+    Ld, dis, bt, v1jlc = v1_lines(data, f1)                  # the design (design.py) held against bom.txt; the order itself is read from the final board
+    fps1 = read_board(board_v1)
+    smt1 = smt_rows(fps1)
+    own1 = [p for p in fps1 if p["fitted"] == "owner"]
+    L1 = lines_from_rows(smt1) + owner_lines(data, own1)
+    d_cnt = {}
+    for r in v1jlc: d_cnt[r["lcsc"]] = d_cnt.get(r["lcsc"], 0) + 1
+    b_cnt = {}
+    for p in smt1: b_cnt[p["lcsc"]] = b_cnt.get(p["lcsc"], 0) + 1
+    bd = ["%s: board %d, design.py %d" % (c, b_cnt.get(c, 0), d_cnt.get(c, 0)) for c in sorted(set(b_cnt) | set(d_cnt), key=lambda c: int(c[1:])) if b_cnt.get(c, 0) != d_cnt.get(c, 0)]
+    dis.append("final board against design.py, per LCSC: %s" % ("; ".join(bd) or "no difference (%d JLC placements on both)" % len(smt1)))
     # held against bom.txt: its own unit prices at 20 and 100 boards against the engine's ladders at the same tiers
     for c, b in sorted(bt.items(), key=lambda kv: int(kv[0][1:])):
         p = bom.Part(data, c, [])
@@ -446,14 +472,18 @@ def write_all(data, out_v2=None, out_v1=None, board=None):
     dis.append("bom.txt prices the owner-fitted standoff as M3 x 8 (C66568) and screws M3 x 5 (C357542), and the headers at a $2.50 placeholder; the design has MH601 and MH602 as "
                "M2.5 standoffs. The order files follow the design: M2.5 standoff and screw unpriced, the headers priced as in the version 2 order (retail listing).")
     dis.append("bom.txt's first header lines say its totals 'predate the 3 REFCAL bridges' (stale); its per-line quantities already carry all 16 0 ohm bridges and match the design.")
-    notes1 = ["Version 1 lines come from `v1-input/design-parts.csv` (kicad/design.py of the version 1 landing branch, whose designators are the board's; R109 removed, 16 pieces of 0 ohm Rb, 99 JLC placements); "
-              "`v1-input/bom.txt` is a copy of that branch's bom.txt, used only for the disagreement check. The version 1 landing's `bom/v1/` files are read-only to this work and are not edited.",
-              "**JLC upload files:** `jlc-bom.csv` (Comment, Designator, Footprint, LCSC Part #) is generated from design.py. **No `jlc-cpl.csv`: unavailable.** Version 1's final board is not on main or the "
-              "landing branch yet (`kicad/wip/v1_merge5.kicad_pcb` still has R109), so there is no position source; it will be generated from the final board when it lands.",
-              "The 0 ohm bridge C21189 now has a domestic ladder read 2026-11-13 (0.0124 CNY at 1 piece); version 1's bom.txt priced it at the 1 ohm ladder (0.0186) as a placeholder.",
+    dnp1 = [p for p in fps1 if p["fitted"] == "JLC" and p["dnp"]]
+    notes1 = ["**Source: the final board.** Lines are the footprints of `kicad/afe-proto.kicad_pcb` with `Fitted by = JLC` and not DNP (%d footprints), grouped by the board's LCSC field, "
+              "designators in the board's own numbering; owner-fitted footprints (`Fitted by = owner`, %d) are the owner table. DNP, not ordered: %s. The design (`v1-input/design-parts.csv`, "
+              "kicad/design.py) and `v1-input/bom.txt` are held against it below." % (len(smt1), len(own1), ", ".join("%s %s" % (p["ref"], p["value"]) for p in dnp1) or "none"),
+              "**JLC upload files** from the same board: `%s-bom.csv` (Comment, Designator, Footprint, LCSC Part #) and `%s-cpl.csv` (Designator, Mid X, Mid Y, Layer, Rotation); owner-fitted, "
+              "DNP and test-point footprints are in neither. CPL: positions in mm with Y negated and the board's absolute origin (KiCad position-file / Fabrication Toolkit convention), rotation KiCad's "
+              "unmodified; JLC's per-package rotation corrections and the Mid X/Y origin were not verified against JLC's viewer *(check)*." % (IDENT1, IDENT1),
+              "The 0 ohm bridge C21189 has a domestic ladder read 2026-11-13 (0.0124 CNY at 1 piece); version 1's bom.txt priced it at the 1 ohm ladder (0.0186) as a placeholder.",
               "Nine version 1 Basic resistor/capacitor ladders (C23024, C22978, C23046, C23196, C4190, C31850, C22797, C23242, C1658) are copied from version 1's bom.md (read "
               "2026-11-12); a re-read on 2026-11-13 met the bot challenge and stopped *(check)*.",
               "Stock was not read for any part *(check before ordering, ADS1115 and TPH2502 first)*."]
     r1 = write_design("v1", "AFE version 1", data, L1, bom.PCB_RATE, o1, notes1, dis)
-    with open(os.path.join(os.path.dirname(o1), "jlc-bom.csv"), "w", newline="") as f: f.write(jlc_bom_csv(v1jlc))
-    return dict(v2=r2, v1=r1, v1_disagreements=dis, v2_smt=smt, v2_engine_diffs=diffs)
+    for nm, txt in (("%s-bom.csv" % IDENT1, jlc_bom_csv(smt1)), ("%s-cpl.csv" % IDENT1, jlc_cpl_csv(smt1))):
+        with open(os.path.join(os.path.dirname(o1), nm), "w", newline="") as f: f.write(txt)
+    return dict(v2=r2, v1=r1, v1_disagreements=dis, v2_smt=smt, v1_smt=smt1, v2_engine_diffs=diffs)

@@ -1,0 +1,65 @@
+{
+ "zip_sha256": "fff55287a9bdd444acfeb62ffd7b79e35600b1d38b4d1d941b6a78ed63c4994d",
+ "members": [
+  {
+   "name": "COPPIA-AFE-1-REVA-B_Cu.gbl",
+   "size": 172196,
+   "sha256": "31fed8167e3971038290f2376a0a54012cc11c63385e71ff9d96177b7fb2954b"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-B_Mask.gbs",
+   "size": 3635,
+   "sha256": "95314bfa1ff9745b4b886ca1a36480d74971ae83487709a05cea21b600507513"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-B_Silkscreen.gbo",
+   "size": 4918,
+   "sha256": "339a309bdcd8c75c433d39575acc927fe6cc89e343cfd2bb4db48017327098dd"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-Edge_Cuts.gm1",
+   "size": 723,
+   "sha256": "a6b1ec8a04ecc1bfe3fd6ef61b5224527e4faa38c2927cb8d908d53dab31d0e0"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-F_Cu.gtl",
+   "size": 49926,
+   "sha256": "cdba43fb425700e3d3a6840e9ccee71a2e6a3271ac67273564938080be52d191"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-F_Mask.gts",
+   "size": 15001,
+   "sha256": "b1fc05bb58e6210afaa62b3abe459dac9d003367cda325c74a3687d9cd4773bd"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-F_Paste.gtp",
+   "size": 11412,
+   "sha256": "ca4ad358fc0bcc05c15bd247f498c943f513235d7f57005bc116ee5e57787483"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-F_Silkscreen.gto",
+   "size": 412435,
+   "sha256": "ec4081f0b59cacc35d0e9d67142e30fd126a6e6cd25867d7c2dac80c95a3c137"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-NPTH.drl",
+   "size": 406,
+   "sha256": "8433f1767141aebf92a21a64c246f2e14742f214e53a5f5a6ed4bf8bfdb9fb83"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-PTH.drl",
+   "size": 2926,
+   "sha256": "143a0fa8469df9d8118d0eb9d498c7eac93481062ec6ea5bbfbe9ff91fb4ac14"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-bom.csv",
+   "size": 1916,
+   "sha256": "98776c9c34100a23176f5b0326052ae4a4de305c59da1f67143f15f8a9d930db"
+  },
+  {
+   "name": "COPPIA-AFE-1-REVA-cpl.csv",
+   "size": 3498,
+   "sha256": "1e787e0a81ceff1f61b7b949e24a8ab3e56421f0f67598fb2375729ee585e7ec"
+  }
+ ]
+}

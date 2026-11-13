@@ -39,12 +39,12 @@ def test_one_command_regenerates_the_committed_files_byte_identically(tmp_path):
             assert want.exists(), want
             assert got.read_bytes() == want.read_bytes(), "%s differs: rerun `python3 -I hardware/afe-proto/v2/bom/bom.py --order`" % want
             n += 1
-    for d, nm in (("v2", order.IDENT + "-bom.csv"), ("v2", order.IDENT + "-cpl.csv"), ("v1", "jlc-bom.csv")):
+    for d, nm in (("v2", order.IDENT + "-bom.csv"), ("v2", order.IDENT + "-cpl.csv"), ("v1", order.IDENT1 + "-bom.csv"), ("v1", order.IDENT1 + "-cpl.csv")):
         got, want = out[d].parent / nm, COMMITTED[d].parent / nm
         assert got.read_bytes() == want.read_bytes(), want
         n += 1
-    assert n == 7
-    assert not (COMMITTED["v1"].parent / "jlc-cpl.csv").exists()      # v1: no final board, no position source
+    assert n == 8
+    assert order.IDENT1 == "COPPIA-AFE-1-REVA" and not (COMMITTED["v1"].parent / "jlc-bom.csv").exists()      # the upload files are named from the config
 
 
 def rows(path):
@@ -165,8 +165,8 @@ def test_every_smt_footprint_is_in_the_bom_and_cpl_uploads():
         assert bad not in in_bom and bad not in in_cpl
 
 
-def test_v1_bom_upload_is_the_designs_jlc_list():
-    rows = list(csv.reader(open(AFE / "bom" / "v1" / "jlc-bom.csv", newline="")))
+def test_v1_bom_upload_is_the_final_boards_jlc_list():
+    rows = list(csv.reader(open(AFE / "bom" / "v1" / (order.IDENT1 + "-bom.csv"), newline="")))
     refs = [r for row in rows[1:] for r in row[1].split(",")]
     assert len(refs) == 99 and "R109" not in refs and "R510" not in refs and len([r for r in refs if r in ("R110", "R520", "R410")]) == 3
 
