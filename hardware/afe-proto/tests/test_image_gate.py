@@ -296,6 +296,9 @@ def test_a_gate_run_without_the_vendor_models_fails_rather_than_skips(main_image
 def test_the_host_gate_script_fetches_before_it_runs_and_requires_the_models():
     src = (REPO / "docker" / "pcb" / "gate-host.sh").read_text()
     assert src.index("fetch_models.py") < src.index("docker/pcb/run-gate.sh"), "the fetch must come first"
+    # the host tier: this file's own tests run on the host, after the container gate, under --require-tool=docker
+    assert src.index("docker/pcb/run-gate.sh") < src.index("test_image_gate.py"), "the host tier follows the container gate"
+    assert "hardware/afe-proto/tests/test_image_gate.py --require-tool=docker -q)" in src, "the host tier must fail, not skip, without docker"
     gate = (REPO / "docker" / "pcb" / "run-gate.sh").read_text()
     for tool in ("pcbnew", "ngspice", "freerouting", "networkx", "vendor"):
         assert tool in gate.rsplit("--require-tool=", 1)[1].split()[0], tool
