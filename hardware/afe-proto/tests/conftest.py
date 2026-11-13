@@ -25,6 +25,8 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 
 
 def pytest_addoption(parser):
+    parser.addoption("--memlog", action="store_true",
+                     help="record the process's and the container cgroup's peak memory per test and print the top 30 (gate-host.sh --memlog)")
     parser.addoption("--require-tool", nargs="?", const="pcbnew,ngspice", default="",   # bare flag: the two in-image tools; add docker for the host gate
                      metavar="TOOLS",
                      help="comma list of tools (pcbnew,ngspice,docker,vendor,network,freerouting,networkx) whose marked tests FAIL, not skip, "
@@ -128,6 +130,91 @@ EXPECT = os.environ.get("PCBTOOLS_EXPECT_PCBNEW") == "1"
 def pytest_configure(config):
     config.addinivalue_line("markers", "guard_last: run after every other test")
     config._pcbtools_ran = {"pcbnew_passed": 0, "pcbnew_selected": 0}   # read by tests/pcbtools/test_guard.py
+
+
+def _kb(path, key):
+    try:
+        for line in Path(path).read_text().splitlines():
+            if line.startswith(key):
+                return int(line.split()[1])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def _lines(path):
+    try:
+        return Path(path).read_text().splitlines()
+    except OSError:
+        return []
+
+
+class _Sampler:
+    """Polls the container cgroup every 50 ms: memory.current (what the cap sees, page cache included) and the anon + kernel part
+    of memory.stat (what cannot be reclaimed, so what an OOM kill is made of). memory.peak cannot be reset per test (the cgroup
+    file system is read-only in the container), so the per-test peak is the maximum sampled while the test ran."""
+
+    def __init__(self):
+        import threading
+        self.cur = self.anon = 0
+        self._stop = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self):
+        while not self._stop.wait(0.05):
+            try:
+                c = int(Path("/sys/fs/cgroup/memory.current").read_text()) // 1024
+            except (OSError, ValueError):
+                c = 0
+            stat = {k: int(v) // 1024 for k, v in (l.split() for l in _lines("/sys/fs/cgroup/memory.stat"))
+                    if k in ("anon", "kernel", "shmem")}
+            self.cur = max(self.cur, c)
+            self.anon = max(self.anon, sum(stat.values()))
+
+    def take(self):
+        r = (self.cur, self.anon)
+        self.cur = self.anon = 0
+        return r
+
+
+_SAMPLER = []
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    """--memlog: the pytest process's own peak RSS (VmHWM, reset per test through clear_refs) and the container's sampled peak
+    while each test ran, so the tests that push the gate's peak can be named. The cgroup figures include the child
+    processes (kicad-cli, ngspice, java)."""
+    if not item.config.getoption("--memlog"):
+        yield
+        return
+    if not _SAMPLER:
+        _SAMPLER.append(_Sampler())
+    try:
+        Path("/proc/self/clear_refs").write_text("5")
+    except OSError:
+        pass
+    _SAMPLER[0].take()
+    before = _kb("/proc/self/status", "VmRSS:")
+    yield
+    cur, anon = _SAMPLER[0].take()
+    log = item.config.__dict__.setdefault("_memlog", [])
+    log.append((item.nodeid, _kb("/proc/self/status", "VmHWM:"), before, _kb("/proc/self/status", "VmRSS:"), cur, anon))
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    log = getattr(config, "_memlog", None)
+    if not log:
+        return
+    tr = terminalreporter
+    tr.section("memory per test (kB): cgroup current max, cgroup anon+kernel max, pytest process peak, its rss before->after")
+    for nid, hwm, b, a, cur, anon in sorted(log, key=lambda r: -r[5])[:30]:
+        tr.write_line(f"memlog cg {cur:>9} anon {anon:>9} proc-peak {hwm or 0:>9} rss {b or 0:>9}->{a or 0:<9} {nid}")
+    tr.section("process rss growth per test (kB), the tests that leave memory held in the pytest process")
+    for nid, hwm, b, a, cur, anon in sorted(log, key=lambda r: -((r[3] or 0) - (r[2] or 0)))[:12]:
+        tr.write_line(f"memlog grew {(a or 0) - (b or 0):>9} to {a or 0:>9} {nid}")
+    tr.write_line(f"memlog max cgroup {max(r[4] for r in log)} kB, max anon {max(r[5] for r in log)} kB, max process peak "
+                  f"{max((r[1] or 0) for r in log)} kB, process rss at the end {log[-1][3]} kB, {len(log)} tests")
 
 
 @pytest.hookimpl(hookwrapper=True)

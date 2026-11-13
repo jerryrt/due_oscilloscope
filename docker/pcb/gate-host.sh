@@ -28,4 +28,7 @@ print(f"gate-host: fetching {len(keep)} model files (of {len(m['files'])} in the
 PY
 python3 -I "$repo/hardware/afe-proto/tools/fetch_models.py" --manifest "$tmp/sim-models.json"
 
-exec "$here/run.sh" -m 3G -t 3000 docker/pcb/run-gate.sh "$@"
+# 4G, not 3G: the r5 gate's peak read exactly 3 GiB (the cap itself, so the kernel was reclaiming page cache and the next added
+# test would have been an OOM kill; the run also took 29 min against 11-20). The VMs have 30 GB and run one job at a time.
+# The stacking is measured with --memlog (per-test cgroup and process peaks); see docker/pcb/run-gate.sh, which also runs the heavy pcbnew files in their own processes (peak 2.07 GB measured).
+exec "$here/run.sh" -m 4G -t 3000 docker/pcb/run-gate.sh "$@"
