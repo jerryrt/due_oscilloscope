@@ -163,6 +163,10 @@ EVIDENCE_DATA = (
 EVIDENCE_DERIVED = (
     dict(name='awg', op='find', list='cap.figures', match=dict(figure='/AWG_FB', pour=True)),
     dict(name='top', op='add', args=('awg.extrapolated', 'awg.uncertainty')),
+    dict(name='n1', op='find', list='cap.figures', match=dict(figure='/CH1_N', pour=True)),
+    dict(name='n1top', op='add', args=('n1.extrapolated', 'n1.uncertainty')),
+    dict(name='n2', op='find', list='cap.figures', match=dict(figure='/CH2_N', pour=True)),
+    dict(name='n2top', op='add', args=('n2.extrapolated', 'n2.uncertainty')),
     dict(name='ratio', op='div', a=10.0, b='top'),
     dict(name='an1', op='regex', file=AFE + 'v2/sim/awg/design.md',
          pattern=r'min PM ([\d.]+) deg on BEH21 and \*\*([\d.]+) deg on BEH60\*\*.*?the vendor macro ([\d.]+)',
@@ -173,7 +177,8 @@ EVIDENCE_DERIVED = (
 EVIDENCE = (
     dict(kind='text', text=('**Extracted capacitance** (`pcbtools/cap_converged_v2_integrated.json`; grid-converged over cell sizes 0.2 / 0.1 / 0.05 mm, Richardson-extrapolated where the sequence allows; "+-" is the file\'s own spread). '
                             '**Not validated against a field solver.** The sequences are mostly *not* monotone, which is the file\'s and `pcbtools/README.md`\'s finding: at these cell sizes a 0.2 mm track and the 0.3 mm pour keep-back (`round(0.3 / h)` cells) change by whole cells between levels, so each figure is a value with a spread, not a converged limit. '
-                            'The extraction ran on the fixture board `{cap[board]}`, **not re-run on the current board** (it is heavy: `pcbtools.cap.report(converge=True)`); if the CH2 move changes the N-node copper, rerun it *(check)*.\n')),
+                            'The extraction was **re-run on this board** (`{cap[board]}`, sha256 `{cap[board_sha256]}`, commit `{cap[commit]}`; `python3 -m pcbtools.cap_record`, {cap[env][wall_s]} s, peak {cap[env][peak_rss_kb]} kB), so the figures below are this board\'s.\n\n'
+                            '**The with-pour N self figure is thin against its bar:** its top of spread is {n1top:.3f} pF on /CH1_N and {n2top:.3f} pF on /CH2_N against the 0.81 pF the LR-3 evidence below uses. Nothing in the extraction can settle that margin (self capacitance is not validated against a field solver); the bench measurement does (VT-10, as the spec lead assigned it).\n')),
     dict(kind='cap_table', data='cap'),
     dict(kind='text', text='\n(Pair values are stored in pF and shown here in fF.) Near-zero N-N values (about 1e-17 pF) are numerically zero: the pad-pair rows are the ones that carry information.\n'),
     dict(kind='text', when='awg', text=('**AWG_FB**: {awg[extrapolated]:n3} +- {awg[uncertainty]:n2} pF with pour, so {top:.2f} pF at the top of the spread, against AN-1\'s inverting-node tolerance row of 10 pF '
@@ -228,8 +233,7 @@ COST_TARGET_RESULT = (' Version 2 as above is ${a_lo:.2f} / ${a_hi:.2f} at {a} b
                       '(board-adjusted, bridges included; owner-fitted M2.5 hardware unpriced).')
 GAPS = (
     'Renders are the board agent\'s, not regenerated here; section 1 says whether each is newer than the board.',
-    'Capacitance extraction is read from the committed JSON (fixture board 990d4b03), not re-run on the current board.',
-    'PW-2 AC analysis used earlier as-built capacitor distances; not re-run for this board.',
+        'PW-2 AC analysis used earlier as-built capacitor distances; not re-run for this board.',
     'The spec lead\'s acceptances (power second caps, the owner\'s caliper check of MH602) are the gate brief\'s statements; no repo file in this tree carries them *(check)*. (The 13-bridge count and the D24 update are in `docs/afe.md`, row D24, and cited there in section 4.)',
     'Prices: the PCB is a published rule, not a quote; the stacking headers are retail listings with tail length unchecked; calibration jumper pins are unpriced; no M2.5 standoff or screw part is priced (none in the repo).',
     'No numeric cost target exists in the repo (D-V2-1 is open).',

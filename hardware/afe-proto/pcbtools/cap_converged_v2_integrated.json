@@ -1,6 +1,8 @@
 {
  "description": "Grid convergence of the v2 integrated board capacitance figures, pcbtools.cap.report(converge=True): cell sizes 0.2, 0.1, 0.05 mm, Richardson extrapolation (observed order must be 0.5-2.5 and the sequence monotone, else the finest value with the full spread). Pair values are mutual capacitances in pF; self values are capacitances to everything else in pF. SELF CAPACITANCE IS NOT VALIDATED AGAINST A FIELD SOLVER.",
- "board": "tests/fixtures/arrays/v2-integrated-990d4b03.npz",
+ "board": "v2/layout/integrated/afe-v2-integrated.kicad_pcb",
+ "board_sha256": "44976ab90027354595c0ed433d60e45b8f20ba1a3319e26a35ade1f8e3b111bb",
+ "commit": "9b4fad033d4f8e715f9cc440d6b228d3394f912c",
  "config": "pcbtools/boards/v2.py (CAP_PAIRS, CAP_SELF)",
  "tol": 1e-06,
  "max_cells": 3000000,
@@ -10,13 +12,165 @@
   0.05
  ],
  "env": {
-  "image_digest": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
-  "recipe": "f76136c849c054f5dd31e5642ada6062ac92e7164466afb5a876c94603de19df",
-  "kicad": "10.0.8",
-  "runner": "docker/pcb/run.sh -m 3G"
+  "image": "sha256:69fe5abfb265ffc6c4f1cf85743e8b21b7f9605c452c389239d928a703d80c18",
+  "runner": "docker/pcb/run.sh -m 8G",
+  "wall_s": 243.06,
+  "peak_rss_kb": 1718672,
+  "run": "one process solves every figure"
  },
  "figures": [
+  {
+   "figure": "N-N",
+   "kind": "pair",
+   "pour": false,
+   "values": [
+    1.612805024023088e-07,
+    9.779286584707255e-08,
+    1.342360315342444e-09
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": -0.603313128046031,
+   "extrapolated": 1.342360315342444e-09,
+   "uncertainty": 1.5993814208696635e-07,
+   "spread": 1.5993814208696635e-07,
+   "status": "not converging monotonically (observed order -0.60 outside 0.5 to 2.5)",
+   "pad_requested": 3.0,
+   "pad_used": 0.5,
+   "window_limited": true,
+   "pad_effect": -9.246988539003317e-08,
+   "extrapolated_padcorrected": -9.112752507469072e-08
+  },
+  {
+   "figure": "N-N",
+   "kind": "pair",
+   "pour": true,
+   "values": [
+    1.6417799302240927e-10,
+    1.2380733523841207e-11,
+    6.47359171650201e-20
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": 3.6159770547116907,
+   "extrapolated": 6.47359171650201e-20,
+   "uncertainty": 1.6417799295767337e-10,
+   "spread": 1.6417799295767337e-10,
+   "status": "not converging monotonically (observed order 3.62 outside 0.5 to 2.5)",
+   "pad_requested": 3.0,
+   "pad_used": 0.5,
+   "window_limited": true,
+   "pad_effect": -1.0979729780203441e-10,
+   "extrapolated_padcorrected": -1.0979729773729849e-10
+  },
+  {
+   "figure": "NP-NP (+IN pads)",
+   "kind": "pair",
+   "pour": false,
+   "values": [
+    0.00025568896711343676,
+    0.00025137999562959036,
+    0.00023121612519623645
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": -2.2263571331440053,
+   "extrapolated": 0.00023121612519623645,
+   "uncertainty": 2.447284191720031e-05,
+   "spread": 2.447284191720031e-05,
+   "status": "not converging monotonically (observed order -2.23 outside 0.5 to 2.5)",
+   "pad_requested": 3.0,
+   "pad_used": 1.0,
+   "window_limited": true,
+   "pad_effect": -0.00011092362056918794,
+   "extrapolated_padcorrected": 0.00012029250462704851
+  },
+  {
+   "figure": "NP-NP (+IN pads)",
+   "kind": "pair",
+   "pour": true,
+   "values": [
+    5.6936466211325443e-05,
+    7.237150665774384e-05,
+    7.835885588203595e-05
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": 1.3662199375139965,
+   "extrapolated": 8.215325918023809e-05,
+   "uncertainty": 3.794403298202137e-06,
+   "spread": 2.1422389670710507e-05,
+   "status": "converging, observed order 1.37",
+   "pad_requested": 3.0,
+   "pad_used": 1.0,
+   "window_limited": true,
+   "pad_effect": -2.7371273379229996e-05,
+   "extrapolated_padcorrected": 5.478198580100809e-05
+  },
+  {
+   "figure": "/AWG_FB",
+   "kind": "self",
+   "pour": false,
+   "values": [
+    0.6872884216702488,
+    0.71749754216932,
+    0.7205281070430027
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": 3.317325551416192,
+   "extrapolated": 0.7205281070430027,
+   "uncertainty": 0.0332396853727539,
+   "spread": 0.0332396853727539,
+   "status": "not converging monotonically (observed order 3.32 outside 0.5 to 2.5)",
+   "pad_requested": 3.0,
+   "pad_used": 1.0,
+   "window_limited": true,
+   "validated": "not validated against a field solver",
+   "pad_effect": 0.011759237574374026,
+   "extrapolated_padcorrected": 0.7322873446173768
+  },
+  {
+   "figure": "/AWG_FB",
+   "kind": "self",
+   "pour": true,
+   "values": [
+    0.9316794193785399,
+    0.8514163705681898,
+    0.8849726088067632
+   ],
+   "hs": [
+    0.2,
+    0.1,
+    0.05
+   ],
+   "order": null,
+   "extrapolated": 0.8849726088067632,
+   "uncertainty": 0.08026304881035018,
+   "spread": 0.08026304881035018,
+   "status": "not converging monotonically",
+   "pad_requested": 3.0,
+   "pad_used": 1.0,
+   "window_limited": true,
+   "validated": "not validated against a field solver",
+   "pad_effect": 0.0022882247946260925,
+   "extrapolated_padcorrected": 0.8872608336013893
+  },
   {
    "figure": "/CH1_N",
    "kind": "self",
@@ -41,16 +195,7 @@
    "window_limited": true,
    "validated": "not validated against a field solver",
    "pad_effect": -0.028275909948317968,
-   "extrapolated_padcorrected": 0.4924899327247345,
-   "monotone": false,
-   "run": {
-    "wall_s": 30.41,
-    "peak_rss_kb": 1530616,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
+   "extrapolated_padcorrected": 0.4924899327247345
   },
   {
    "figure": "/CH1_N",
@@ -76,196 +221,16 @@
    "window_limited": true,
    "validated": "not validated against a field solver",
    "pad_effect": -0.04272529867042418,
-   "extrapolated_padcorrected": 0.6405232696366912,
-   "monotone": true,
-   "run": {
-    "wall_s": 30.41,
-    "peak_rss_kb": 1530616,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
+   "extrapolated_padcorrected": 0.6405232696366912
   },
   {
-   "figure": "N-N",
-   "kind": "pair",
-   "pour": false,
-   "values": [
-    3.24724703280921e-08,
-    1.7202190682922321e-09,
-    1.9608822957546883e-17
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": 4.160027837582567,
-   "extrapolated": 1.9608822957546883e-17,
-   "uncertainty": 3.247247030848328e-08,
-   "spread": 3.247247030848328e-08,
-   "status": "not converging monotonically (observed order 4.16 outside 0.5 to 2.5)",
-   "pad_requested": 3.0,
-   "pad_used": 0.5,
-   "window_limited": true,
-   "pad_effect": -2.0819237591025883e-08,
-   "extrapolated_padcorrected": -2.081923757141706e-08,
-   "monotone": true,
-   "run": {
-    "wall_s": 68.7,
-    "peak_rss_kb": 1055260,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves the pour and no-pour cases of this figure (two figures)"
-   }
-  },
-  {
-   "figure": "N-N",
-   "kind": "pair",
-   "pour": true,
-   "values": [
-    4.839527406006057e-13,
-    1.1219415636282175e-16,
-    1.7662595023605147e-33
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": 12.074318423624785,
-   "extrapolated": 1.7662595023605147e-33,
-   "uncertainty": 4.839527406006057e-13,
-   "spread": 4.839527406006057e-13,
-   "status": "not converging monotonically (observed order 12.07 outside 0.5 to 2.5)",
-   "pad_requested": 3.0,
-   "pad_used": 0.5,
-   "window_limited": true,
-   "pad_effect": -5.960892542426835e-14,
-   "extrapolated_padcorrected": -5.960892542426835e-14,
-   "monotone": true,
-   "run": {
-    "wall_s": 68.7,
-    "peak_rss_kb": 1055260,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves the pour and no-pour cases of this figure (two figures)"
-   }
-  },
-  {
-   "figure": "NP-NP (+IN pads)",
-   "kind": "pair",
-   "pour": false,
-   "values": [
-    0.00025436409355777,
-    0.0002500197419186592,
-    0.0002297971802564792
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": -2.2187529728741042,
-   "extrapolated": 0.0002297971802564792,
-   "uncertainty": 2.4566913301290804e-05,
-   "spread": 2.4566913301290804e-05,
-   "status": "not converging monotonically (observed order -2.22 outside 0.5 to 2.5)",
-   "pad_requested": 3.0,
-   "pad_used": 1.0,
-   "window_limited": true,
-   "pad_effect": -0.00010960358224019326,
-   "extrapolated_padcorrected": 0.00012019359801628595,
-   "monotone": true,
-   "run": {
-    "wall_s": 68.08,
-    "peak_rss_kb": 1090028,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves the pour and no-pour cases of this figure (two figures)"
-   }
-  },
-  {
-   "figure": "NP-NP (+IN pads)",
-   "kind": "pair",
-   "pour": true,
-   "values": [
-    5.583621289300742e-05,
-    7.09598914411541e-05,
-    7.677615298550074e-05
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": 1.3786450398487293,
-   "extrapolated": 8.041077023091201e-05,
-   "uncertainty": 3.634617245411263e-06,
-   "spread": 2.0939940092493323e-05,
-   "status": "converging, observed order 1.38",
-   "pad_requested": 3.0,
-   "pad_used": 1.0,
-   "window_limited": true,
-   "pad_effect": -2.6718807391142022e-05,
-   "extrapolated_padcorrected": 5.369196283976999e-05,
-   "monotone": true,
-   "run": {
-    "wall_s": 68.08,
-    "peak_rss_kb": 1090028,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves the pour and no-pour cases of this figure (two figures)"
-   }
-  },
-  {
-   "figure": "/AWG_FB",
+   "figure": "/CH2_N",
    "kind": "self",
    "pour": false,
    "values": [
-    0.6872884216702488,
-    0.71749754216932,
-    0.7205281070430027
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": 3.317325551416192,
-   "extrapolated": 0.7205281070430027,
-   "uncertainty": 0.0332396853727539,
-   "spread": 0.0332396853727539,
-   "status": "not converging monotonically (observed order 3.32 outside 0.5 to 2.5)",
-   "pad_requested": 3.0,
-   "pad_used": 1.0,
-   "window_limited": true,
-   "validated": "not validated against a field solver",
-   "pad_effect": 0.011765906493421241,
-   "extrapolated_padcorrected": 0.732294013536424,
-   "monotone": true,
-   "run": {
-    "wall_s": 32.7,
-    "peak_rss_kb": 1689208,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
-  },
-  {
-   "figure": "/AWG_FB",
-   "kind": "self",
-   "pour": true,
-   "values": [
-    0.9316794193785399,
-    0.8514163705681898,
-    0.8849726088067632
+    0.5262758432241532,
+    0.517154645315833,
+    0.5209881812474099
    ],
    "hs": [
     0.2,
@@ -273,95 +238,42 @@
     0.05
    ],
    "order": null,
-   "extrapolated": 0.8849726088067632,
-   "uncertainty": 0.08026304881035018,
-   "spread": 0.08026304881035018,
-   "status": "not converging monotonically",
-   "pad_requested": 3.0,
-   "pad_used": 1.0,
-   "window_limited": true,
-   "validated": "not validated against a field solver",
-   "pad_effect": 0.0022881953856714876,
-   "extrapolated_padcorrected": 0.8872608041924347,
-   "monotone": false,
-   "run": {
-    "wall_s": 32.7,
-    "peak_rss_kb": 1689208,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
-  },
-  {
-   "figure": "/CH2_N",
-   "kind": "self",
-   "pour": false,
-   "values": [
-    0.5286558611989731,
-    0.5190468133504494,
-    0.5230029007969177
-   ],
-   "hs": [
-    0.2,
-    0.1,
-    0.05
-   ],
-   "order": null,
-   "extrapolated": 0.5230029007969177,
-   "uncertainty": 0.009609047848523677,
-   "spread": 0.009609047848523677,
+   "extrapolated": 0.5209881812474099,
+   "uncertainty": 0.009121197908320222,
+   "spread": 0.009121197908320222,
    "status": "not converging monotonically",
    "pad_requested": 3.0,
    "pad_used": 2.25,
    "window_limited": true,
    "validated": "not validated against a field solver",
-   "pad_effect": -0.028604665180215316,
-   "extrapolated_padcorrected": 0.4943982356167024,
-   "monotone": false,
-   "run": {
-    "wall_s": 29.81,
-    "peak_rss_kb": 1520664,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
+   "pad_effect": -0.027171429575234884,
+   "extrapolated_padcorrected": 0.493816751672175
   },
   {
    "figure": "/CH2_N",
    "kind": "self",
    "pour": true,
    "values": [
-    0.8083886907887614,
-    0.6842576790404973,
-    0.6828697201363318
+    0.8084031521153885,
+    0.6842777313485227,
+    0.6832482123476892
    ],
    "hs": [
     0.2,
     0.1,
     0.05
    ],
-   "order": 6.482754927868898,
-   "extrapolated": 0.6828697201363318,
-   "uncertainty": 0.12551897065242956,
-   "spread": 0.12551897065242956,
-   "status": "not converging monotonically (observed order 6.48 outside 0.5 to 2.5)",
+   "order": 6.913684341421316,
+   "extrapolated": 0.6832482123476892,
+   "uncertainty": 0.1251549397676993,
+   "spread": 0.1251549397676993,
+   "status": "not converging monotonically (observed order 6.91 outside 0.5 to 2.5)",
    "pad_requested": 3.0,
    "pad_used": 2.25,
    "window_limited": true,
    "validated": "not validated against a field solver",
-   "pad_effect": -0.04271593315811517,
-   "extrapolated_padcorrected": 0.6401537869782167,
-   "monotone": true,
-   "run": {
-    "wall_s": 29.81,
-    "peak_rss_kb": 1520664,
-    "cap": "3G",
-    "image": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-    "exit": 0,
-    "note": "one container run solves both pour cases of this figure"
-   }
+   "pad_effect": -0.04272566088922092,
+   "extrapolated_padcorrected": 0.6405225514584683
   }
  ]
 }
