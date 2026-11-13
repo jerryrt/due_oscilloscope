@@ -111,9 +111,17 @@ def test_the_keyword_gates_the_verdict(board):
     assert CK.run_arms(board, v1, [(name, wrong, arm)], no_drc=True, lr10_arm=False) == [name]
 
 
-def test_a_repair_that_repairs_nothing_is_caught(board):
+def test_a_repair_that_repairs_nothing_is_not_testable_never_caught(board):
+    """a repair that does not clear its reason cannot show the rule can pass: NOT TESTABLE (the facet has other causes), not NOT CAUGHT"""
     name, rule, fix = next(a for a in v1_arms.ARMS if a[0].startswith('REPAIR LR-1 '))
-    assert CK.run_arms(board, v1, [(name, rule, lambda b, cfg: b)], no_drc=True, lr10_arm=False) == [name]
+    miss = CK.run_arms(board, v1, [(name, v1_arms._Gone(R.lr1, 'without a via', lambda b, cfg: b), lambda b, cfg: b)], no_drc=True, lr10_arm=False)
+    assert miss == [] and CK.run_arms.untestable == [name]
+
+
+def test_a_repair_where_the_reason_is_not_there_is_not_testable(board):
+    name, rule, fix = next(a for a in v1_arms.ARMS if a[0].startswith('REPAIR LR-1 '))
+    CK.run_arms(board, v1, [(name, v1_arms._Gone(R.lr1, 'no such reason', fix), fix)], no_drc=True, lr10_arm=False)
+    assert CK.run_arms.untestable == [name]
 
 
 def test_a_mutant_is_not_prepared_twice(board):

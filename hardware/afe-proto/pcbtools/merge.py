@@ -45,9 +45,11 @@ def _overlaps(cfg):
     return out
 
 
-def merge(base_path, blocks, out_path, cfg, carry_text=False):
-    """carry_text: also take each owned part's designator height, stroke, layer (silk or fab) and visibility from the block board; the
-    old merge_blocks took only its position and angle (the default, kept so the equivalence with it holds)"""
+def merge(base_path, blocks, out_path, cfg, carry_text=True):
+    """carry_text (default True): take each owned part's designator height, stroke, layer (silk or fab) and visibility from the block
+    board along with its position and angle. The old merge_blocks took position and angle only, so a block's 1.0 mm silk designators
+    came out as the base's 0.5 mm fab text and LR-11 failed: a defect, not behaviour to keep. carry_text=False reproduces the old
+    output (the equivalence test asks for it)"""
     base = boardio.read_board(base_path)
     report = _overlaps(cfg)
     merged, refused, items = [], {}, {}
@@ -120,7 +122,7 @@ def main(argv=None):
     ap.add_argument('--board', required=True, help='board config name in pcbtools/boards (v1, v2)')
     ap.add_argument('--base', required=True)
     ap.add_argument('--out', required=True)
-    ap.add_argument('--carry-text', action='store_true', help="also take the designator's height, stroke and layer from the block board")
+    ap.add_argument('--old-text', action='store_true', help="take the designator's position and angle only, as the old merge_blocks did")
     ap.add_argument('blocks', nargs='+', metavar='BLOCK=PATH')
     a = ap.parse_args(argv)
     cfg = importlib.import_module(f'pcbtools.boards.{a.board}')
@@ -130,7 +132,7 @@ def main(argv=None):
         if not sep or k not in cfg.FENCES:
             ap.error(f'{s!r}: expected BLOCK=PATH with BLOCK one of {sorted(cfg.FENCES)}')
         pairs[k] = v
-    res = merge(a.base, pairs, a.out, cfg, carry_text=a.carry_text)
+    res = merge(a.base, pairs, a.out, cfg, carry_text=not a.old_text)
     print('\n'.join(res.report))
     return 0 if res.ok else 1
 

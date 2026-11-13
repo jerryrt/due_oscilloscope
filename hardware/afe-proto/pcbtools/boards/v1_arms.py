@@ -47,12 +47,32 @@ class _Keyed:
 
 
 class _Gone(_Keyed):
-    """the inverse, for a repair: passes while a reason names `key`, fails when none does"""
+    """a repair, the same wrapper turned round. A repair is evidence that the rule CAN pass only where the repair is the whole story:
+    on the clean board the named reason must be there, and must be gone after the repair. A board where it stays (the facet has
+    other defects, e.g. a rail unrouted outside the block) cannot show it, and the arm then reports NOT TESTABLE (this wrapper
+    fails the clean board, which pcbtools.check reads as 'the clean board fails, so a mutant proves nothing'), never NOT CAUGHT.
+    On a board an arm has already repaired (see `_a`) it passes while the reason is still named, so a repair that did not clear it
+    is the failure"""
+
+    def __init__(self, rule, key, fix):
+        super().__init__(rule, key)
+        self.fix = fix
+
+    def _hit(self, b, cfg):
+        res = self.rule(b, cfg)
+        return [x for x in _reasons(res) if self.key in x], res
 
     def __call__(self, b, cfg):
-        res = self.rule(b, cfg)
-        hit = [x for x in _reasons(res) if self.key in x]
-        return R.Result(bool(hit), '; '.join(hit) or f'no reason names {self.key!r} any more', res.figures)
+        hit, res = self._hit(b, cfg)
+        if id(b) in _MUTANTS:                                  # the repaired board: the reason must be gone
+            return R.Result(bool(hit), '; '.join(hit) or f'no reason names {self.key!r} any more', res.figures)
+        if not hit:
+            return R.Result(False, f'nothing to repair: no reason names {self.key!r} on this board', res.figures)
+        after, _ = self._hit(self.fix(b, cfg), cfg)
+        if after:
+            return R.Result(False, f'not testable here: {self.key!r} is still named after the repair (other causes): ' + '; '.join(after[:2]),
+                            res.figures)
+        return R.Result(True, '; '.join(hit), res.figures)
 
 
 # ---------------------------------------------------------------------------------------------------------- preps
@@ -68,7 +88,8 @@ def _join(b, net, p, q, dia=0.6, drill=0.3):
 
 
 def _rail_groups(b, cfg, net):
-    on = {(b.fp_ref[i], p) for i, p, n in zip(b.p_fp, b.p_pin, b.p_net) if b.nets[n] == net}
+    fam = R.family(cfg, net)                              # the nets a bridge joins are the rail (VNEG | VNEG_O across R410)
+    on = {(b.fp_ref[i], p) for i, p, n in zip(b.p_fp, b.p_pin, b.p_net) if b.nets[n] in fam}
     return {g: sorted(k for k in on if k[0] in refs) for g, refs in cfg.GROUPS[net].items()}
 
 
@@ -364,7 +385,11 @@ ARMS = [
 
 
 def _repair(name, rule, key, fix):
-    return (name, _Gone(rule, key), fix)
+    def run(b, cfg):
+        out = fix(b, cfg)
+        _MUTANTS[id(out)] = out
+        return out
+    return (name, _Gone(rule, key, fix), run)
 
 
 # the old REPAIRS: the repair adds the copper the rule asks for and the named reason must disappear

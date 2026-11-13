@@ -115,7 +115,7 @@ def boards(tmp_path_factory):
 def new_merge(boards):
     out = boards['dir'] / 'new.kicad_pcb'
     res = mg.merge(boards['base'], {'AWG': boards['awg'], 'POWER': boards['pwr'], 'SCOPE': boards['bad'], 'REFCAL': boards['bad2']},
-                   out, cfg)
+                   out, cfg, carry_text=False)          # the old merge_blocks' output: position and angle of the designator only
     return res, out
 
 
@@ -199,7 +199,7 @@ def _text(path, ref):
 
 def test_carry_text_takes_the_designators_height_and_layer_from_the_block(boards, tmp_path):
     """the old merge carried the designator's position and angle only: a block's 1.0 mm silk designators came out as the base's
-    0.5 mm fab text. carry_text=True takes height and layer too; the default stays the old behaviour"""
+    0.5 mm fab text (LR-11 failed on it). carry_text is the default now; carry_text=False is the old output"""
     ref = boards['awg_part']
     blk = tmp_path / 'awg_text.kicad_pcb'
     shutil.copy(boards['awg'], blk)
@@ -208,8 +208,8 @@ def test_carry_text_takes_the_designators_height_and_layer_from_the_block(boards
         e.set_ref(ref, 60.0, 10.0, h=1.3, on_silk=True)
     assert base_h != (1.3, True)                                             # the premise: the base differs
     plain, carried = tmp_path / 'plain.kicad_pcb', tmp_path / 'carried.kicad_pcb'
-    assert mg.merge(str(boards['base']), {'AWG': str(blk)}, str(plain), cfg).ok
-    assert mg.merge(str(boards['base']), {'AWG': str(blk)}, str(carried), cfg, carry_text=True).ok
+    assert mg.merge(str(boards['base']), {'AWG': str(blk)}, str(plain), cfg, carry_text=False).ok
+    assert mg.merge(str(boards['base']), {'AWG': str(blk)}, str(carried), cfg).ok
     assert _text(plain, ref) == base_h
     assert _text(carried, ref) == (1.3, True)
     # an owned part with no text change keeps what its block board had, which here is the base's own
