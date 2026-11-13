@@ -193,6 +193,9 @@ OUTLINE = {k: list(v) for k, v in FENCES.items()}
 for _name, _nets, _at, _x in _floorplan.BRIDGES:                 # the six 0603 bridges straddle the wall, outside every fence:
     _r = _name[_name.index('(') + 1:_name.index(')')]            # each is inside its block's outline at its floorplan point
     OUTLINE[BLOCK[_r]].append((_at[0] - BRIDGE_TOL, _at[1] - BRIDGE_TOL, _at[0] + BRIDGE_TOL, _at[1] + BRIDGE_TOL))
+for _r in ('R411', 'R412', 'R413'):             # the corridor bridges (POWER parts) lie outside every fence: inside POWER's outline at their placed point
+    if _r in PLACE:
+        OUTLINE['POWER'].append((PLACE[_r][0] - 1.5, PLACE[_r][1] - 1.5, PLACE[_r][0] + 1.5, PLACE[_r][1] + 1.5))
 LR_HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
 TEST_BLOCKS = ('SCOPE', 'AWG', 'POWER', 'REFCAL')
 TP_NETS = {p['ref']: _n(p['pins']['1']) for p in PARTS if p['ref'].startswith('TP')}
@@ -246,14 +249,18 @@ SUPPLY_CAPS = list(DECOUP)
 
 RAILS = ('/+3V3A', '/VNEG')
 _CONSUMER = {'AWG': 'AWG', 'SCOPE': 'SCOPE', 'REFCAL': 'REF/ADS'}
+# the 0 ohm bridges that split a rail: (ref, net on pad 1, net on pad 2) from the design (R410: VNEG | VNEG_O; R411-R413: +3V3A | P33_G, P33_RN, P33_SC)
+_RAIL_BRIDGES = [(q['ref'], '/' + q['pins']['1'], '/' + q['pins']['2']) for q in PARTS
+                 if q['ref'] in ('R410', 'R411', 'R412', 'R413') and q['pins']['1'] != q['pins']['2']]
+_FAMILY = {_r: {_r[1:]} | {n[1:] for _, a_, b_ in _RAIL_BRIDGES for n in (a_, b_) if _r in (a_, b_)} for _r in RAILS}
 GROUPS = {}
 for _rail in RAILS:
     GROUPS[_rail] = {}
     for _p in PARTS:
-        if (_rail[1:] in _p['pins'].values() or _rail[1:] + '_O' in _p['pins'].values()) and BLOCK[_p['ref']] in _CONSUMER:
+        if _FAMILY[_rail] & set(_p['pins'].values()) and BLOCK[_p['ref']] in _CONSUMER:
             GROUPS[_rail].setdefault(_CONSUMER[BLOCK[_p['ref']]], set()).add(_p['ref'])
 STAR = {'/+3V3A': [('U401', '11'), ('C407', '1'), ('C408', '1')], '/VNEG': [('U401', '6'), ('C409', '1'), ('C410', '1')]}
-BRIDGES = [('R410', '/VNEG', '/VNEG_O')] if any(q['ref'] == 'R410' and len(set(q['pins'].values())) == 2 for q in PARTS) else []
+BRIDGES = list(_RAIL_BRIDGES)
 BRIDGE_PADS = []
 RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'

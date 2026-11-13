@@ -107,6 +107,9 @@ put('C404', 25.4, 11.2, 90)
 put('C407', 39.6, 12.6, 90)                      # OUT+ (+3.3 V_A) pair beyond the flying capacitor
 put('C408', 41.8, 12.6, 90)
 put('R409', 33.4, 13.8, 180)                     # FB+ divider over FB+ (pin 2): 75k + 100k from OUT+ (R406, R409), 100k to GND (R401)
+put('R411', 48.275, 3.1, 90)                     # +3V3A bridge over the VNEG strip lane, in the pocket between J601 and J602 (the integrator)
+put('R412', 42.0, 47.0, 90)                       # +3V3A bridge over AREF, REFCAL trunk (north of the I2C/AREF bundle)
+put('R413', 40.0, 47.0, 90)                       # +3V3A bridge over AREF, SCOPE branch
 put('R406', 36.0, 13.8, 180)
 put('R401', 30.2, 14.2, 90)
 put('R402', 33.6, 7.0, 0)                         # FB- divider under the chip: R3 = 75k from OUT- (left)

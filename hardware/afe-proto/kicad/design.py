@@ -95,13 +95,18 @@ def other(ref, sym, value, fp, pins, block, note='', fitted_by='owner', dnp=Fals
 
 G, P5, P5F, P33A, VN, P33D = 'GND', '+5V_DUE', '+5V_F', '+3V3A', 'VNEG', '+3V3_DUE'
 VNO = 'VNEG_O'     # VNEG beyond R410 (the far side of the +5V_F column): the AWG's V- pin, its 100 nF and the VNEG test point
-P33E = P33A      # the AWG's +3.3 V_A: the same net, carried to the east on a strip lane under the pad rows (no bridge)
+P33E = 'P33_G'   # the AWG's +3.3 V_A: carried east on a strip lane under the pad rows, beyond the bridge R411 over the VNEG lane
 VREF = 'VREF'   # REF3030E output = ladder top tap = REFP0 (PA-8)
 
 # ------------------------------------------------------------------ power (architecture.md "Power"; sim/powercal)
 B = 'power'
 two('R408', '1R', P5, P5F, B, '5 V feed sense, take only (PW-1)')
 two('R410', '0Rb', VN, VNO, 'power', 'POWER block agent: a 0 ohm link that carries VNEG over the +5V_F column (VNEG | VNEG_O, one net each side so the board connects it through the part): the generator\'s two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop)')
+# +3V3A bridges of the corridors (the integrator, 2026-11-12; spec team's standing rule: a 0603 0R over a net that is not an ADC line, a divider node
+# or a VREF branch; AREF stays continuous on top and the other net bridges it): each splits +3V3A, as R410 splits VNEG
+two('R411', '0Rb', P33A, P33E, 'power', 'bridge over the VNEG strip lane: +3V3A from the generator to the AWG branch (the lane order is the reverse of the generator\'s outputs)')
+two('R412', '0Rb', P33A, 'P33_RN', 'power', 'bridge over AREF: the +3V3A trunk to the ADS side of REFCAL (R517); AREF stays continuous')
+two('R413', '0Rb', P33A, 'P33_SC', 'power', 'bridge over AREF: the scope\'s own +3V3A branch from the star (R109); AREF stays continuous')
 two('C403', '10u', P5F, G, B, '5 V bulk = CIN'); two('C404', '10u', P5F, G, B, '5 V bulk = CIN')
 two('C401', '100n', P5F, G, B, 'LM27762 VIN')
 part('U401', 'LM27762', {'1': G, '2': 'LM_FBP', '3': P5F, '4': G, '5': 'LM_CP', '6': VN, '7': 'LM_FBN',
@@ -169,7 +174,7 @@ two('C306', '10u', 'AWG_X', G, B, 'offset filter, 10 uF')
 two('C302', '100n', P33E, G, B, 'TPH2502 V+ pin')
 # the AWG's +3.3 V branch crosses the A1 and A0 lines (the ADC lines from the channels to the Due's A1 / A0 pins) on two
 # 0 ohm bridges (afe.md D24: a bridge, not a bottom hop, over an ADC trace)
-two('R109', '0Rb', P33A, 'P33_S', 'ch1', 'bridge over the quiet VREF trunk: the scope\'s own +3V3A branch from the star (LR-6), part 1 of 2')
+two('R109', '0Rb', 'P33_SC', 'P33_S', 'ch1', 'bridge over the quiet VREF trunk: the scope\'s own +3V3A branch from the star (LR-6), part 1 of 2')
 two('R110', '0Rb', 'P33_S', 'P33_U', 'ch1', 'bridge over the A1 column: the scope\'s +3V3A branch to the dual V+ and the clamps, part 2 of 2')
 two('R515', '0Rb', VREF, 'VREF_M', 'cal', 'wall bridge over A1 (the CH2 leg of VREF), part 1 of 2')
 two('R111', '0Rb', 'VREF_P', 'VREF_Q', 'ch1', 'SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3')
@@ -225,7 +230,7 @@ two('R509', '4.7k', 'SDA1_A', 'P33_R', B, 'I2C pull-up, SDA1 (the Due has none o
 two('R511', '4.7k', 'SCL1_A', 'P33_R', B, 'I2C pull-up, SCL1')
 # REFCAL's planar cut (the block agent's finding): the VREF tree (legs A south, D1 north, D2 east) splits the fence, and the ADS
 # straddles it. Three 0603 0 ohm bridges carry the nets that must cross: the ADS's +3V3A, SDA and SCL.
-two('R517', '0Rb', P33A, 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)')
+two('R517', '0Rb', 'P33_RN', 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)')
 two('R518', '0Rb', 'SDA1', 'SDA1_A', B, 'bridge over a VREF leg: SDA to the ADS')
 two('R519', '0Rb', 'SCL1', 'SCL1_A', B, 'bridge over a VREF leg: SCL to the ADS')
 
