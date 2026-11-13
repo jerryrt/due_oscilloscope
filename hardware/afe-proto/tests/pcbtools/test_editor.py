@@ -158,3 +158,43 @@ def test_pour_creates_or_refills_a_ground_zone(board):
     b = boardio.read_board(board)
     gnd = b.net_id('/GND')
     assert any(b.z_net[i] == gnd and b.z_layer[i] == 1 and b.z_filled[i] for i in range(len(b.z_layer)))
+
+
+def test_pour_has_the_old_routers_zone_settings(board):
+    import pcbnew
+    pre = pcbnew.LoadBoard(str(board))
+    taken = {(z.GetNetname(), z.GetLayer()) for z in pre.Zones()}
+    net = next(n for n in boardio.read_board(board).nets if n.startswith('/') and (n, pcbnew.F_Cu) not in taken)
+    del pre
+    with edit(board) as e:
+        e.pour(net.lstrip('/'), 'F')          # a net with no zone on F.Cu: an existing zone would only be refilled
+    b = pcbnew.LoadBoard(str(board))
+    zs = [z for z in b.Zones() if z.GetLayer() == pcbnew.F_Cu and z.GetNetname() == net]
+    assert len(zs) == 1
+    z = zs[0]
+    assert z.GetPadConnection() == pcbnew.ZONE_CONNECTION_FULL                      # solid to pads, not spokes
+    assert z.GetLocalClearance() == pcbnew.FromMM(0.25) and z.GetMinThickness() == pcbnew.FromMM(0.2)
+    assert z.GetIslandRemovalMode() == pcbnew.ISLAND_REMOVAL_MODE_ALWAYS and z.IsFilled()
+    del z, zs, b
+
+
+def test_stub_via_runs_from_the_pad_centre_to_the_offset_and_ends_in_a_via(board):
+    b0 = boardio.read_board(board)
+    gnd = b0.net_id('/GND')
+    i = int(next(k for k in range(len(b0.p_pin)) if b0.p_net[k] == gnd and b0.p_pin[k]))
+    ref, pin = b0.fp_ref[b0.p_fp[i]], b0.p_pin[i]
+    s0, v0 = len(b0.s_idx), len(b0.v_idx)
+    with edit(board) as e:
+        assert e.pad_xy(ref, pin) == pytest.approx((b0.p_x[i], b0.p_y[i]), abs=1e-4)
+        end = e.stub_via('GND', ref, pin, 0.0, -1.5, w=0.3)
+    b = boardio.read_board(board)
+    assert end == pytest.approx((b0.p_x[i], b0.p_y[i] - 1.5), abs=1e-4)
+    assert len(b.s_idx) == s0 + 1 and len(b.v_idx) == v0 + 1
+    k = [j for j in range(len(b.s_idx)) if abs(b.s_x0[j] - b0.p_x[i]) < 1e-4 and abs(b.s_y0[j] - b0.p_y[i]) < 1e-4
+         and abs(b.s_y1[j] - (b0.p_y[i] - 1.5)) < 1e-4 and abs(b.s_x1[j] - b0.p_x[i]) < 1e-4]
+    assert len(k) == 1 and b.s_w[k[0]] == pytest.approx(0.3)
+    j = [m for m in range(len(b.v_idx)) if abs(b.v_x[m] - end[0]) < 1e-4 and abs(b.v_y[m] - end[1]) < 1e-4]
+    assert len(j) == 1
+    with pytest.raises(KeyError):
+        with edit(board) as e:
+            e.pad_xy(ref, 'nope')

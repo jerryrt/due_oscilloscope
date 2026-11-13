@@ -174,7 +174,7 @@ class Editor:
     def fill_zones(self):
         self.pcb.ZONE_FILLER(self.b).Fill(self.b.Zones())
 
-    def pour(self, net='GND', layer='B', rect=None, clearance=0.2):
+    def pour(self, net='GND', layer='B', rect=None, clearance=0.25):
         """a copper pour on `layer` for `net`, filled. `rect` = (x0, y0, x1, y1) in Due mm; default: the board outline's
         bounding box. An existing zone of that net and layer is reused (only refilled)."""
         lay = self._layer(layer)
@@ -192,12 +192,35 @@ class Editor:
         z.SetLayer(lay)
         z.SetNet(self._net(net))
         z.SetLocalClearance(self.pcb.FromMM(float(clearance)))
+        z.SetMinThickness(self.pcb.FromMM(0.2))
+        z.SetPadConnection(self.pcb.ZONE_CONNECTION_FULL)     # solid to pads: small fine-pitch GND pads starve on spokes
+        z.SetThermalReliefGap(self.pcb.FromMM(0.25))
+        z.SetThermalReliefSpokeWidth(self.pcb.FromMM(0.3))
+        z.SetIslandRemovalMode(self.pcb.ISLAND_REMOVAL_MODE_ALWAYS)
         for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
             z.AppendCorner(self._pt(px, py), -1)
         self.b.Add(z)
         self._give(z)
         self.fill_zones()
         return z
+
+    def pad_xy(self, ref, pin):
+        """centre of pad `pin` of `ref` in Due mm (the last pad of that number, as boardio reads it)"""
+        hit = [p for p in self._fp(ref).Pads() if p.GetNumber() == str(pin)]
+        if not hit:
+            raise KeyError(f'{ref}.{pin}: no such pad')
+        c = hit[-1].GetPosition()
+        x, y = boardio.to_due(self.pcb.ToMM(c.x), self.pcb.ToMM(c.y))
+        return float(x), float(y)
+
+    def stub_via(self, net, ref, pin, dx, dy, w=0.3, dia=0.6, drill=0.3, layer='F'):
+        """a stub from the centre of pad (ref, pin) to the point (dx, dy) away from it, and a via at its end: what the old
+        router gave every GND pad so the plane on the other layer could take it. The point is the caller's: nothing here
+        searches for free copper."""
+        x, y = self.pad_xy(ref, pin)
+        self.add_tracks(net, layer, [x], [y], [x + dx], [y + dy], w)
+        self.add_vias(net, [x + dx], [y + dy], dia, drill)
+        return x + dx, y + dy
 
     def _release(self):
         """drop everything in the order that keeps pcbnew's objects valid: removed and added items first, board last"""
