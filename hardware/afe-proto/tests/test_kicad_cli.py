@@ -58,6 +58,32 @@ def test_a_render_is_produced(tmp_path):
     assert b[:8] == b"\x89PNG\r\n\x1a\n" and len(b) > 20_000, len(b)
 
 
+SVG2PNG = Path(__file__).resolve().parents[3] / "docker" / "pcb" / "svg2png.sh"
+
+
+def test_a_layer_svg_is_rasterised_and_cropped_in_the_image(tmp_path):
+    """Renders of record are composed in the image: kicad-cli's SVG -> rsvg-convert -> Pillow crop, no ImageMagick."""
+    import shutil
+    if shutil.which("rsvg-convert") is None:
+        if os.environ.get("DUE_PCB_IMAGE_CONTENT"):
+            pytest.fail("rsvg-convert is missing from the PCB image (r5 carries librsvg2-bin)")
+        pytest.skip("needs rsvg-convert (the PCB image, r5 or later)")
+    pcb = staged(tmp_path) / PCB.relative_to(FIX)
+    svg = tmp_path / "r.svg"
+    r = subprocess.run(["kicad-cli", "pcb", "export", "svg", "--mode-single", "--page-size-mode", "2", "-l", "F.Cu,Edge.Cuts",
+                        "-o", str(svg), str(pcb)], capture_output=True, text=True, timeout=250)
+    assert r.returncode == 0 and svg.exists(), r.stdout + r.stderr
+    png = tmp_path / "r.png"
+    r = subprocess.run([str(SVG2PNG), str(svg), str(png), "--dpi", "300", "--crop", "400x300+100+100"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    from PIL import Image
+    im = Image.open(png)
+    assert im.size == (400, 300) and len(set(im.convert("L").getdata())) > 2, (im.size, "the crop must show drawn copper, not a blank page")
+    # control: a crop outside the page is an error, so the size check above is not satisfied by any file
+    r = subprocess.run([str(SVG2PNG), str(svg), str(tmp_path / "x.png"), "--dpi", "300", "--crop", "99999x1+0+0"], capture_output=True, text=True)
+    assert r.returncode == 1 and "outside" in r.stderr
+
+
 MODEL_DIR = Path(os.environ.get("KICAD10_3DMODEL_DIR", "/usr/share/kicad/3dmodels"))
 MODEL_REF = __import__("re").compile(r'\(model "\$\{KICAD\d*_3DMODEL_DIR\}/([^"]+)"')
 

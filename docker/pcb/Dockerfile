@@ -81,6 +81,9 @@ ARG OPENJDK_VERSION=25.0.4+7-1~26.04
 ARG FREEROUTING_VERSION=2.5.0
 ARG FREEROUTING_SHA256=f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7
 ARG WITH_FREEROUTING=1
+# rsvg-convert, the SVG rasteriser for svg2png.sh (kicad-cli has no PNG output for 2D layers). Same version as the librsvg2-2
+# library KiCad already pulls in, so it adds one small binary package and no new library.
+ARG LIBRSVG_BIN_VERSION=2.61.3+dfsg-3
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
@@ -155,6 +158,12 @@ RUN set -eux; \
         java -version; \
     fi
 ENV FREEROUTING_JAR=/opt/freerouting/freerouting.jar
+
+RUN set -eux; \
+    apt-get -o Acquire::Check-Valid-Until=false update -qq; \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends "librsvg2-bin=${LIBRSVG_BIN_VERSION}"; \
+    rm -rf /var/lib/apt/lists/*; \
+    rsvg-convert --version
 
 # The numpy tier's interpreter: a venv on the system 3.14, with system site
 # packages so `import pcbnew` (installed under /usr/lib/python3/dist-packages
