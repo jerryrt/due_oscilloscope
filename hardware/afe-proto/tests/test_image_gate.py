@@ -129,3 +129,27 @@ def test_the_installed_set_hash_is_stable_across_two_asks(main_image):
     a = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
     b = subprocess.run(["bash", str(ids), "installed", main_image], capture_output=True, text=True).stdout.strip()
     assert re.fullmatch(r"[0-9a-f]{64}", a) and a == b
+
+
+def _run_default(*cmd, digest=None, t=60):
+    """run.sh with NO image override: the pinned-digest path."""
+    import os
+    env = {k: v for k, v in os.environ.items() if k != "DUE_PCB_IMAGE"}
+    if digest:
+        env["DUE_PCB_DIGEST"] = digest
+    return subprocess.run(["bash", str(RUN), "-m", "1G", "-t", str(t), *cmd], capture_output=True, text=True,
+                          env=env, timeout=t + 120)
+
+
+def test_the_default_run_uses_the_pinned_digest_and_reports_it(main_image):
+    import json
+    cfg = json.loads((REPO / "docker" / "pcb" / "image-revisions.json").read_text())
+    r = _run_default("python3", "-c", "print('hi')")
+    m = SUMMARY.search(r.stderr)
+    assert r.returncode == 0 and "hi" in r.stdout, r.stderr[-400:]
+    assert m.group(6) == cfg["digest"] and m.group(7) == cfg["installed"], m.groups()
+
+
+def test_a_digest_that_is_not_the_pinned_image_is_refused(main_image):
+    r = _run_default("python3", "-c", "print('ran')", digest="sha256:" + "0" * 64)
+    assert r.returncode == 2 and "ran" not in r.stdout, (r.returncode, r.stderr[-300:])

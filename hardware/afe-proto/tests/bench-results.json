@@ -1,0 +1,613 @@
+{
+ "meta": {
+  "image": "c3fcbf1aeb95fe273df80066e9625336394b1a5ad06c58daa7092db0b0293657",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+  "machine": "jerry-x1gen7",
+  "versions": {
+   "python": "3.14.4",
+   "numpy": "2.3.5",
+   "scipy": "1.18.1",
+   "kicad": "10.0.8",
+   "ngspice": "45.2"
+  },
+  "runs": 5,
+  "provisional": "measured in the locally built r3 image (content c3fcbf1a\u2026), not the pulled digest; retake from the pulled image for the figures of record"
+ },
+ "rows": [
+  {
+   "board": "v1",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.29,
+    "min": 0.28,
+    "max": 0.3
+   },
+   "peak_rss_kb": {
+    "median": 153316,
+    "min": 152232,
+    "max": 153652
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.35,
+    "min": 0.34,
+    "max": 0.36
+   },
+   "peak_rss_kb": {
+    "median": 159704,
+    "min": 158812,
+    "max": 161440
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.33,
+    "min": 0.33,
+    "max": 0.34
+   },
+   "peak_rss_kb": {
+    "median": 159380,
+    "min": 158528,
+    "max": 159604
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.33,
+    "min": 0.32,
+    "max": 0.34
+   },
+   "peak_rss_kb": {
+    "median": 159212,
+    "min": 158808,
+    "max": 159536
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.34,
+    "min": 0.33,
+    "max": 0.35
+   },
+   "peak_rss_kb": {
+    "median": 159324,
+    "min": 158960,
+    "max": 160764
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.35,
+    "min": 0.34,
+    "max": 0.35
+   },
+   "peak_rss_kb": {
+    "median": 159984,
+    "min": 159060,
+    "max": 160592
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.34,
+    "min": 0.34,
+    "max": 0.38
+   },
+   "peak_rss_kb": {
+    "median": 159688,
+    "min": 158504,
+    "max": 160472
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.34,
+    "min": 0.33,
+    "max": 0.35
+   },
+   "peak_rss_kb": {
+    "median": 159460,
+    "min": 158716,
+    "max": 161000
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.52,
+    "min": 0.49,
+    "max": 0.55
+   },
+   "peak_rss_kb": {
+    "median": 172484,
+    "min": 171340,
+    "max": 173684
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.61,
+    "min": 0.57,
+    "max": 0.65
+   },
+   "peak_rss_kb": {
+    "median": 179364,
+    "min": 178932,
+    "max": 179920
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.6,
+    "min": 0.58,
+    "max": 0.63
+   },
+   "peak_rss_kb": {
+    "median": 179368,
+    "min": 178420,
+    "max": 179908
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.59,
+    "min": 0.57,
+    "max": 0.6
+   },
+   "peak_rss_kb": {
+    "median": 180200,
+    "min": 179832,
+    "max": 182668
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.59,
+    "min": 0.58,
+    "max": 0.6
+   },
+   "peak_rss_kb": {
+    "median": 180288,
+    "min": 178360,
+    "max": 181352
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.6,
+    "min": 0.57,
+    "max": 0.6
+   },
+   "peak_rss_kb": {
+    "median": 180228,
+    "min": 178708,
+    "max": 181304
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.59,
+    "min": 0.57,
+    "max": 0.61
+   },
+   "peak_rss_kb": {
+    "median": 180612,
+    "min": 179832,
+    "max": 181988
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "boardio-read",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.59,
+    "min": 0.57,
+    "max": 0.6
+   },
+   "peak_rss_kb": {
+    "median": 178192,
+    "min": 177768,
+    "max": 181556
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.55,
+    "min": 2.53,
+    "max": 2.56
+   },
+   "peak_rss_kb": {
+    "median": 208316,
+    "min": 208164,
+    "max": 209520
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.61,
+    "min": 2.57,
+    "max": 2.64
+   },
+   "peak_rss_kb": {
+    "median": 215444,
+    "min": 213604,
+    "max": 217124
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.64,
+    "min": 2.61,
+    "max": 2.64
+   },
+   "peak_rss_kb": {
+    "median": 215040,
+    "min": 214640,
+    "max": 215752
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.6,
+    "min": 2.59,
+    "max": 2.65
+   },
+   "peak_rss_kb": {
+    "median": 213988,
+    "min": 213452,
+    "max": 216548
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.64,
+    "min": 2.62,
+    "max": 2.69
+   },
+   "peak_rss_kb": {
+    "median": 214548,
+    "min": 214044,
+    "max": 215208
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.64,
+    "min": 2.61,
+    "max": 2.68
+   },
+   "peak_rss_kb": {
+    "median": 215040,
+    "min": 213244,
+    "max": 215896
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.63,
+    "min": 2.61,
+    "max": 2.72
+   },
+   "peak_rss_kb": {
+    "median": 214804,
+    "min": 212644,
+    "max": 215980
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.67,
+    "min": 2.64,
+    "max": 2.69
+   },
+   "peak_rss_kb": {
+    "median": 215196,
+    "min": 213196,
+    "max": 216308
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 1.73,
+    "min": 1.71,
+    "max": 1.75
+   },
+   "peak_rss_kb": {
+    "median": 352140,
+    "min": 351136,
+    "max": 353064
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.43,
+    "min": 2.4,
+    "max": 2.46
+   },
+   "peak_rss_kb": {
+    "median": 372660,
+    "min": 371736,
+    "max": 373268
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.43,
+    "min": 2.39,
+    "max": 2.44
+   },
+   "peak_rss_kb": {
+    "median": 372460,
+    "min": 370956,
+    "max": 372700
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.4,
+    "min": 2.39,
+    "max": 2.46
+   },
+   "peak_rss_kb": {
+    "median": 372092,
+    "min": 370784,
+    "max": 372808
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.47,
+    "min": 2.43,
+    "max": 2.47
+   },
+   "peak_rss_kb": {
+    "median": 372340,
+    "min": 371880,
+    "max": 373160
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.43,
+    "min": 2.4,
+    "max": 2.47
+   },
+   "peak_rss_kb": {
+    "median": 372000,
+    "min": 371580,
+    "max": 373932
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.42,
+    "min": 2.4,
+    "max": 2.47
+   },
+   "peak_rss_kb": {
+    "median": 373060,
+    "min": 372856,
+    "max": 375024
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.47,
+    "min": 2.45,
+    "max": 2.53
+   },
+   "peak_rss_kb": {
+    "median": 372016,
+    "min": 370940,
+    "max": 373136
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "erc-v1-schematic",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 6.75,
+    "min": 6.71,
+    "max": 6.88
+   },
+   "peak_rss_kb": {
+    "median": 1365452,
+    "min": 1365016,
+    "max": 1366068
+   }
+  },
+  {
+   "board": "-",
+   "tool": "ngspice-rc-ladder",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.29,
+    "min": 0.29,
+    "max": 0.3
+   },
+   "peak_rss_kb": {
+    "median": 32368,
+    "min": 32260,
+    "max": 32456
+   }
+  },
+  {
+   "board": "v1+v2",
+   "tool": "netlib-text-v1v2",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.27,
+    "min": 0.2,
+    "max": 0.29
+   },
+   "peak_rss_kb": {
+    "median": 35864,
+    "min": 35684,
+    "max": 36192
+   }
+  }
+ ]
+}

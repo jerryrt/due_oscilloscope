@@ -21,8 +21,23 @@ set -euo pipefail
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo=$(cd -- "$here/../.." && pwd)
 manifest() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$here/image-revisions.json" "$1"; }
-image=${DUE_PCB_IMAGE:-pcb-tools:$(manifest kicad)-r$(manifest current)}
-
+# THE IMAGE OF RECORD IS A DIGEST, NOT A BUILD. image-revisions.json names the
+# registry, the pushed manifest digest, the installed-set hash and the recipe
+# hash. By default this pulls that digest (if it is not already here) and refuses
+# anything else: a different digest, a recipe that is not the tree's, or an
+# installed set that differs. DUE_PCB_IMAGE overrides with an explicit local
+# tag (the gate's no-ngspice control, a rebuild for verification) and skips the
+# digest checks, and says so in the summary line. DUE_PCB_DIGEST overrides the
+# digest, which exists so a test can prove the refusal.
+registry=$(manifest registry)
+digest=${DUE_PCB_DIGEST:-$(manifest digest)}
+pinned=1
+if [ -n "${DUE_PCB_IMAGE:-}" ]; then
+    image=$DUE_PCB_IMAGE
+    pinned=0
+else
+    image="$registry@$digest"
+fi
 M=2G; T=300; C=2
 while getopts "m:t:c:" o; do
     case $o in m) M=$OPTARG;; t) T=$OPTARG;; c) C=$OPTARG;;
@@ -32,9 +47,22 @@ shift $((OPTIND-1))
 [ $# -ge 1 ] || { echo "usage: run.sh [-m MEM] [-t SECONDS] [-c CPUS] cmd..." >&2; exit 2; }
 
 if ! docker image inspect "$image" >/dev/null 2>&1; then
-    echo "no such image: $image" >&2
-    echo "build it:  docker/pcb/build-image.sh" >&2
-    exit 2
+    if [ "$pinned" = 1 ]; then
+        echo "pulling $image" >&2
+        docker pull --quiet "$image" >/dev/null || {
+            echo "cannot pull $image (docker login $(echo "$registry" | cut -d/ -f1)?)" >&2; exit 2; }
+    else
+        echo "no such image: $image" >&2
+        echo "build it:  docker/pcb/build-image.sh" >&2
+        exit 2
+    fi
+fi
+if [ "$pinned" = 1 ]; then
+    # the digest is the identity: the image must really be that manifest
+    if ! docker image inspect "$image" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -qxF "$image"; then
+        echo "image $image is not the pinned digest $digest" >&2
+        exit 2
+    fi
 fi
 # The image must be the one this tree's recipe describes, as run.sh of the
 # firmware image requires: a stale image would certify inputs the commit no
@@ -50,6 +78,15 @@ if [ "$have" != "$want" ]; then
 fi
 content=$("$here/image-id.sh" content "$image")
 installed=$("$here/image-id.sh" installed "$image")
+if [ "$pinned" = 1 ] && [ "$installed" != "$(manifest installed)" ]; then
+    echo "installed set of $image differs from image-revisions.json" >&2
+    echo "  image: $installed" >&2
+    echo "  file:  $(manifest installed)" >&2
+    exit 2
+fi
+# what the summary line calls the image: the pinned digest, or the content hash for an override
+ident=$content
+[ "$pinned" = 1 ] && ident=$digest
 
 cidfile="${TMPDIR:-/tmp}/due-pcb-$$-${RANDOM}.cid"
 errlog=$(mktemp)
@@ -58,7 +95,7 @@ flags=(
     --network none
     --memory "$M" --memory-swap "$M" --cpus "$C"
     --volume "$repo:/work" --workdir /work
-    --env "DUE_PCB_IMAGE=$image" --env "DUE_PCB_IMAGE_CONTENT=$content"
+    --env "DUE_PCB_IMAGE=$image" --env "DUE_PCB_IMAGE_CONTENT=$ident"
     --env "DUE_PCB_IMAGE_INSTALLED=$installed"
     --env "DUE_PCB_MACHINE=${DUE_PCB_MACHINE:-$(hostname)}"
     --env "DUE_PCB_CAP=$M"
@@ -84,6 +121,6 @@ if ! grep -q '^capped: ' "$errlog"; then
     # job (cap), or the container never started. Say what is known.
     oom=$(docker inspect "$(cat "$cidfile")" --format '{{.State.OOMKilled}}' 2>/dev/null || echo false)
     [ "$oom" = true ] && status=137
-    echo "capped: peak_rss_kb=? wall_s=? exit=$status cap=$M limit_s=$T image=$content installed=$installed" >&2
+    echo "capped: peak_rss_kb=? wall_s=? exit=$status cap=$M limit_s=$T image=$ident installed=$installed" >&2
 fi
 exit $status

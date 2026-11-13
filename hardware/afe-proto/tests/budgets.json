@@ -1,0 +1,180 @@
+{
+ "meta": {
+  "image": "c3fcbf1aeb95fe273df80066e9625336394b1a5ad06c58daa7092db0b0293657",
+  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
+  "machine": "jerry-x1gen7",
+  "versions": {
+   "python": "3.14.4",
+   "numpy": "2.3.5",
+   "scipy": "1.18.1",
+   "kicad": "10.0.8",
+   "ngspice": "45.2"
+  },
+  "runs": 5,
+  "margin": 1.5,
+  "rule": "median of the measured runs times margin",
+  "provisional": "measured in the locally built r3 image (content c3fcbf1a\u2026), not the pulled digest; retake from the pulled image for the figures of record"
+ },
+ "budgets": {
+  "v1": {
+   "pcbnew-load": {
+    "peak_rss_kb": 229974,
+    "wall_s": 0.43
+   },
+   "boardio-read": {
+    "peak_rss_kb": 258726,
+    "wall_s": 0.78
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 312474,
+    "wall_s": 3.82
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 528210,
+    "wall_s": 2.59
+   },
+   "erc-v1-schematic": {
+    "peak_rss_kb": 2048178,
+    "wall_s": 10.12
+   }
+  },
+  "v2-BASE": {
+   "pcbnew-load": {
+    "peak_rss_kb": 239556,
+    "wall_s": 0.52
+   },
+   "boardio-read": {
+    "peak_rss_kb": 269046,
+    "wall_s": 0.92
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 323166,
+    "wall_s": 3.92
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558990,
+    "wall_s": 3.65
+   }
+  },
+  "v2-awg": {
+   "pcbnew-load": {
+    "peak_rss_kb": 239070,
+    "wall_s": 0.49
+   },
+   "boardio-read": {
+    "peak_rss_kb": 269052,
+    "wall_s": 0.9
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 322560,
+    "wall_s": 3.96
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558690,
+    "wall_s": 3.65
+   }
+  },
+  "v2-integrated": {
+   "pcbnew-load": {
+    "peak_rss_kb": 238818,
+    "wall_s": 0.49
+   },
+   "boardio-read": {
+    "peak_rss_kb": 270300,
+    "wall_s": 0.89
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 320982,
+    "wall_s": 3.9
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558138,
+    "wall_s": 3.6
+   }
+  },
+  "v2-power": {
+   "pcbnew-load": {
+    "peak_rss_kb": 238986,
+    "wall_s": 0.51
+   },
+   "boardio-read": {
+    "peak_rss_kb": 270432,
+    "wall_s": 0.89
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 321822,
+    "wall_s": 3.96
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558510,
+    "wall_s": 3.71
+   }
+  },
+  "v2-power3": {
+   "pcbnew-load": {
+    "peak_rss_kb": 239976,
+    "wall_s": 0.52
+   },
+   "boardio-read": {
+    "peak_rss_kb": 270342,
+    "wall_s": 0.9
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 322560,
+    "wall_s": 3.96
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558000,
+    "wall_s": 3.65
+   }
+  },
+  "v2-refcal": {
+   "pcbnew-load": {
+    "peak_rss_kb": 239532,
+    "wall_s": 0.51
+   },
+   "boardio-read": {
+    "peak_rss_kb": 270918,
+    "wall_s": 0.89
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 322206,
+    "wall_s": 3.94
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 559590,
+    "wall_s": 3.63
+   }
+  },
+  "v2-scope2east": {
+   "pcbnew-load": {
+    "peak_rss_kb": 239190,
+    "wall_s": 0.51
+   },
+   "boardio-read": {
+    "peak_rss_kb": 267288,
+    "wall_s": 0.89
+   },
+   "kicad-cli-step": {
+    "peak_rss_kb": 322794,
+    "wall_s": 4.0
+   },
+   "kicad-cli-render": {
+    "peak_rss_kb": 558024,
+    "wall_s": 3.71
+   }
+  },
+  "-": {
+   "ngspice-rc-ladder": {
+    "peak_rss_kb": 48552,
+    "wall_s": 0.43
+   }
+  },
+  "v1+v2": {
+   "netlib-text-v1v2": {
+    "peak_rss_kb": 53796,
+    "wall_s": 0.41
+   }
+  }
+ }
+}
