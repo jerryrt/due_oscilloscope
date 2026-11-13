@@ -1,0 +1,53 @@
+refs,value,lcsc,role,qty
+C401,100n X7R,C14663,LM27762 VIN,1
+C402,1u X5R,C15849,flying capacitor C101,1
+C403,10u X5R 25V,C15850,5 V bulk = CIN,1
+C404,10u X5R 25V,C15850,5 V bulk = CIN,1
+C405,10u X5R 25V,C15850,CPOUT,1
+C406,10u X5R 25V,C15850,CPOUT,1
+C407,10u X5R 25V,C15850,OUT+,1
+C408,10u X5R 25V,C15850,OUT+,1
+C409,10u X5R 25V,C15850,OUT-,1
+C410,10u X5R 25V,C15850,OUT-,1
+C501,100n X7R,C14663,REF3030 VIN,1
+C502,100n X7R,C14663,ADS1115 VDD,1
+C503,100n X7R,C14663,"reference output, at the ADS1115 AIN0",1
+C504,1u X5R,C15849,"reference output: the REF3030E asks for 0.1-22 uF (SBVS032), a 100 nF part alone is 0.09 uF at -10 %",1
+C505,1u X5R,C15849,REF3030 VIN bulk,1
+D501,BAV99,C2500,clamp on AIN3,1
+D502,BAV99,C2500,clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others),1
+R401,100k 1%,C25803,FB+ bottom (R201),1
+R402,75k 1%,C23242,"R3 = 75k, -2.052 V nominal",1
+R403,330k 1%,C23137,R4 = 3 x 330k ||,1
+R404,330k 1%,C23137,R4 = 3 x 330k ||,1
+R405,330k 1%,C23137,R4 = 3 x 330k ||,1
+R406,75k 1%,C23242,"FB+ top (R101) = 75k + 100k = 175k, 3.300 V nominal",1
+R407,2.2k 1%,C4190,+3.3 V_A bleed (PR-3): holds the unpowered rail under 0.5 V with +5 V forced on the AWG BNC (whatif/v1-jumper/ section 8),1
+R408,1 1%,C22936,"5 V feed sense, take only (PW-1)",1
+R409,100k 1%,C25803,"FB+ top (R101), part 2",1
+R410,0R 1%,C21189,"POWER block agent: a 0 ohm link that carries VNEG over the +5V_F column (VNEG | VNEG_O, one net each side so the board connects it through the part): the generator's two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop)",1
+R411,0R 1%,C21189,bridge over the VNEG strip lane: +3V3A from the generator to the AWG branch (the lane order is the reverse of the generator's outputs),1
+R412,0R 1%,C21189,bridge over AREF: the +3V3A trunk to the ADS side of REFCAL (R517); AREF stays continuous,1
+R413,0R 1%,C21189,"bridge over AREF: the scope's own +3V3A branch from the star, straight to R110 (R109 removed: its crossing vanished with the final REFCAL routing); AREF stays continuous",1
+R501,22k 1%,C31850,"sense divider, BNC node to the tap T0",1
+R502,15k 1%,C22809,"sense divider, tap to the bottom end B",1
+R503,100 1%,C22775,ladder bottom,1
+R504,270 1%,C22966,ladder series,1
+R505,270 1%,C22966,ladder series,1
+R506,270 1%,C22966,ladder series,1
+R507,270 1%,C22966,ladder series,1
+R508,270 1%,C22966,ladder series,1
+R509,4.7k 1%,C23162,"I2C pull-up, SDA1 (the Due has none on TWI0)",1
+R511,4.7k 1%,C23162,"I2C pull-up, SCL1",1
+R512,1k 1%,C21190,Rd: the default tie of B to VREF (wire off); on the _N side of the sense bridge R520,1
+R513,3.9k 1%,C23018,Rs: T0 to AIN2,1
+R514,13k 1%,C22797,Rm: B to AIN3 (source impedance matched to AIN2),1
+R515,0R 1%,C21189,"wall bridge over A1 (the CH2 leg of VREF), part 1 of 2",1
+R516,0R 1%,C21189,"wall bridge over A0 (the CH2 leg of VREF), part 2 of 2",1
+R517,0R 1%,C21189,"bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)",1
+R518,0R 1%,C21189,bridge over a VREF leg: SDA to the ADS,1
+R519,0R 1%,C21189,bridge over a VREF leg: SCL to the ADS,1
+R520,0R 1%,C21189,"bridge over a VREF leg (not a TAP line, as built): splits the sense bottom node B so the Rd tie reaches branch D without crossing (v2 BR508); carries only the ADS input current",1
+U401,LM27762DSSR,C473398,"EN+ / EN- from VIN; PGOOD unused, to GND (SNVSAF7C table 4-1)",1
+U501,REF3030EAIDBZR,C54120492,drives the ladder and REFP0 directly,1
+U502,ADS1115IDGSR,C37593,"ADDR to GND (0x48); AIN0 VREF (a check), AIN1 TAP3, AIN2 / AIN3 the sense tap T0 and the bottom end B read as a differential pair; RDY unused",1

@@ -1,0 +1,12 @@
+stream,lcsc,block,why
+*,C118223,opamps,v2/bom/blocks.csv assignment for this LCSC number (the one dual op-amp type (V2-2))
+*,C54120492,adc_ref,v2/bom/blocks.csv assignment for this LCSC number (REF3030E)
+*,C37593,adc_ref,v2/bom/blocks.csv assignment for this LCSC number (ADS1115)
+*,C473398,rails,v2/bom/blocks.csv assignment for this LCSC number (LM27762)
+*,C23178,precres,v2/bom/blocks.csv assignment for this LCSC number (R3 to the REF3030E (470k))
+*,C17901,precres,v2/bom/blocks.csv assignment for this LCSC number (AW-4 50 ohm back-termination)
+*,C21190,precres,v2/bom/blocks.csv assignment for this LCSC number (AWG Rg1)
+*,C25803,precres,v2/bom/blocks.csv assignment for this LCSC number (LM27762 OUT- feedback bottom)
+*,C22809,precres,v2/bom/blocks.csv assignment for this LCSC number (sense divider top)
+*,C23018,precres,v2/bom/blocks.csv assignment for this LCSC number (sense series resistor)
+*,C22966,ladder,v1 calibration ladder rungs R504-R508 (270R); v2 uses C23138 for its rungs

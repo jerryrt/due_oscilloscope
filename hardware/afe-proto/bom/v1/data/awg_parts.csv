@@ -1,0 +1,18 @@
+refs,value,lcsc,role,qty
+C301,10p C0G,C1634,Cf across Rf (AN-1: the stage has no phase margin without it),1
+C302,100n X7R,C14663,TPH2502 V+ pin,1
+C303,100n X7R,C14663,TPH2502 V- pin (at the pin),1
+C304,10p C0G,C1634,Cbin across Rbin: without it the divider pole fails AW-3,1
+C305,10u X5R 25V,C15850,"offset filter, 10 uF (14 uF with the 2nd, about 7 uF each at 3 V bias *(check)*)",1
+C306,10u X5R 25V,C15850,"offset filter, 10 uF",1
+R301,75k 1%,C23242,"Rbpl, part 2",1
+R302,4.99k 1%,C23046,"Rg2, to the filtered REF3030E output",1
+R303,3.3k 1%,C22978,Rf,1
+R304,100 1% 1206,C17901,"series 50 ohm (AW-4): 2 x 100 ohm 1206 in parallel, 0.1 W each in the short",1
+R305,51k 1%,C23196,Rbin: DAC0 series resistor and the divider's upper arm,1
+R306,100 1% 1206,C17901,"series 50 ohm (AW-4), part 2",1
+R307,100 1%,C22775,"offset filter, series 100 ohm: hides the AWG current from the REF output impedance (SC-9)",1
+R308,51k 1%,C23196,"Rbpl, part 1 (51k + 75k = 126k to GND)",1
+R309,0R 1%,C21189,"wall bridge over A1 (AWG_BNC sense tap, west-bound), part 1 of 2",1
+R310,0R 1%,C21189,"wall bridge over A0 (AWG_BNC sense tap, west-bound), part 2 of 2",1
+U301,TPH2502-SR,C118223,"half B the gain stage (pins 5-7: +IN, -IN, OUT); half A the spare: +IN to GND, follower (V2-2). At 270 degrees the stage's pins face the DAC0 pin and its OUT the BNC",1

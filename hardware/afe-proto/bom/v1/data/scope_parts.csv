@@ -1,0 +1,31 @@
+refs,value,lcsc,role,qty
+C101,12p C0G,C38523,C101 across R101,1
+C102,30p C0G,C1658,C201,1
+C103,100n X7R,C14663,supply pin,1
+C104,10u X5R 25V,C15850,supply branch,1
+C105,10p C0G,C1634,Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz,1
+C201,12p C0G,C38523,C101 across R101,1
+C202,30p C0G,C1658,C201,1
+C203,10p C0G,C1634,Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz,1
+D101,BAV99,C2500,"ADC-pin clamp after Riso (BAV99, Basic: kvm_02's v2 scope run holds PR-2 with it)",1
+D201,BAV99,C2500,"ADC-pin clamp after Riso (BAV99, Basic: kvm_02's v2 scope run holds PR-2 with it)",1
+R101,330k 1%,C23137,"R201, part 2",1
+R102,470k 1%,C23178,"R101 (770k), part 1",1
+R103,300k 1%,C23024,"R101, part 2",1
+R104,330k 1%,C23137,"R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)",1
+R105,470k 1%,C23178,"R201 (800k) to GND, part 1",1
+R106,680 1%,C23228,"Rnp, clamp-current limit",1
+R107,22 1%,C23345,Riso,1
+R108,1 1%,C22936,scope dual supply branch (LR-6),1
+R110,0R 1%,C21189,bridge over the A1 column: the scope's +3V3A branch (from R413) to the dual V+ and the clamps,1
+R111,0R 1%,C21189,"SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3",1
+R112,0R 1%,C21189,"SCOPE agent: over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R",1
+R113,0R 1%,C21189,"SCOPE agent: over the supply belt (R110.2 -> R108 -> U101.8 -> U101 -> R107) inside fence 1, part 2 of 3",1
+R201,330k 1%,C23137,"R201, part 2",1
+R202,470k 1%,C23178,"R101 (770k), part 1",1
+R203,300k 1%,C23024,"R101, part 2",1
+R204,330k 1%,C23137,"R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)",1
+R205,470k 1%,C23178,"R201 (800k) to GND, part 1",1
+R206,680 1%,C23228,"Rnp, clamp-current limit",1
+R207,22 1%,C23345,Riso,1
+U101,TPH2502-SR,C118223,"scope dual: A CH2, B CH1, followers",1

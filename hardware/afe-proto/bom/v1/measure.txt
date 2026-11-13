@@ -1,0 +1,76 @@
+NOTE: taken on v1_merge5.kicad_pcb WITH R109 (since removed from design.py). R109's removal changes no copper figure except net P33_S (and the P33_SC/P33_S wiring around R413); no SNS, TAP, AWG, pump or VREF figure is affected.
+
+=== (a) SNS pair
+  net /SNS_TAP   tracks  7  total track length 6.910 mm
+  net /SNS_TI    tracks 12  total track length 13.553 mm
+  net /SNS_B     tracks  5  total track length 8.930 mm
+  net /SNS_B_N   tracks  2  total track length 2.177 mm
+  net /SNS_BI    tracks  8  total track length 11.185 mm
+  net /TAP1      tracks  2  total track length 5.435 mm
+  net /TAP2      tracks  3  total track length 6.105 mm
+  net /TAP3      tracks  7  total track length 15.510 mm
+  net /TAP4      tracks  2  total track length 8.260 mm
+  net /TAP5      tracks  3  total track length 6.105 mm
+  net /AWG_OUT   tracks  6  total track length 20.950 mm
+  net /AWG_BNC   tracks 10  total track length 51.780 mm
+   path nodes ['R502.1', (np.float64(61.62), np.float64(13.4)), (np.float64(62.1), np.float64(13.4)), (np.float64(62.6), np.float64(13.575)), (np.float64(63.1), np.float64(13.575)), 'R513.1', 'R513.2', (np.float64(63.1), np.float64(15.225)), (np.float64(60.8), np.float64(17.525)), (np.float64(60.8), np.float64(19.65)), 'U502.6']
+  TAP leg  R502.1 -> R513.1 -> U502.6 : path 8.542 mm incl. the R513 pad-to-pad span 1.650 (copper only 6.892)
+   path nodes ['R502.2', (np.float64(59.75), np.float64(13.625)), (np.float64(56.4), np.float64(13.625)), 'R514.1', 'R514.2', (np.float64(56.4), np.float64(15.675)), (np.float64(56.4), np.float64(17.5)), (np.float64(60.3), np.float64(17.5)), (np.float64(60.3), np.float64(18.95)), 'U502.7']
+  BOT leg  R502.2 -> R514.1 -> U502.7 : path 13.593 mm incl. the R514 pad-to-pad span 1.650 (copper only 11.943)
+  tap-leg track vs bottom-leg track: min edge gap 0.300 mm  (trk /SNS_TI (62.65,19.65)-(60.80,19.65) | trk /SNS_BI (60.30,18.95)-(60.30,19.65))
+  tap-leg track length within 0.5 mm of the bottom leg: 7.23 of 20.46 mm
+  tap-leg track length within 1.0 mm of the bottom leg: 10.64 of 20.46 mm
+  tap-leg track length within 2.0 mm of the bottom leg: 12.73 of 20.46 mm
+  all copper (pads, vias) tap side vs bottom side: min gap 0.165 (trk /SNS_TI (62.03,22.44)-(62.81,21.66) | pad D501.3)
+  SNS pins on U502: pad 6 (SNS_TI) at 60.8 19.65  pad 7 at 60.3 19.65
+=== (b) distances (copper edge to copper edge)
+  SNS pair all copper    to AWG_OUT          16.270 mm  (trk /SNS_TAP (64.00,13.57)-(64.00,17.77) | pad U301.7)
+  SNS pair all copper    to AWG_BNC          5.091 mm  (pad R501.2 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  SNS pair all copper    to AWG_OUT+AWG_BNC  5.091 mm  (pad R501.2 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  SNS tracks only        to AWG_OUT          16.270 mm  (trk /SNS_TAP (64.00,13.57)-(64.00,17.77) | pad U301.7)
+  SNS tracks only        to AWG_BNC          5.240 mm  (trk /SNS_TAP (64.00,17.77)-(63.70,17.77) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  SNS tracks only        to AWG_OUT+AWG_BNC  5.240 mm  (trk /SNS_TAP (64.00,17.77)-(63.70,17.77) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  TAP1..5 all copper     to AWG_OUT          16.200 mm  (pad J602.6 | pad C301.1)
+  TAP1..5 all copper     to AWG_BNC          8.747 mm  (pad U502.5 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  TAP1..5 all copper     to AWG_OUT+AWG_BNC  8.747 mm  (pad U502.5 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  TAP1..5 tracks only    to AWG_OUT          16.650 mm  (trk /TAP1 (63.50,4.60)-(63.50,7.97) | pad C301.1)
+  TAP1..5 tracks only    to AWG_BNC          9.051 mm  (trk /TAP3 (60.80,14.70)-(60.80,15.35) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  TAP1..5 tracks only    to AWG_OUT+AWG_BNC  9.051 mm  (trk /TAP3 (60.80,14.70)-(60.80,15.35) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  per-TAP net to AWG_OUT+AWG_BNC tracks+pads:
+    /TAP1 11.785 (pad R503.1 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /TAP2 13.201 (pad R505.1 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /TAP3 8.747 (pad U502.5 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /TAP4 14.461 (pad J501.1 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /TAP5 18.205 (pad R507.2 | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+  per-SNS net to AWG_OUT+AWG_BNC, tracks only (excluding the R501 / R502 divider pads):
+    /SNS_TAP 5.240 (trk /SNS_TAP (64.00,17.77)-(63.70,17.77) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /SNS_TI 5.355 (trk /SNS_TI (63.55,20.92)-(63.55,20.64) | pad R310.2)
+    /SNS_B 10.677 (trk /SNS_B (59.75,13.62)-(59.98,13.40) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /SNS_B_N 14.264 (trk /SNS_B_N (54.92,17.40)-(54.92,15.40) | trk /AWG_BNC (69.30,19.00)-(69.30,20.90))
+    /SNS_BI 6.605 (trk /SNS_BI (60.65,20.76)-(62.30,20.76) | pad R310.2)
+  pump keep-out: courtyards [('U401', [31.5, 11.2, 34.49, 14.8]), ('C402', [36.02, 10.64, 37.58, 13.7])] KEEPOUT 10.0
+  SNS pair to courtyard:  ['19.83 mm to U401 (pad R520.1)', '16.75 mm to C402 (pad R520.1)']
+  TAP1..5 to courtyard:  ['18.61 mm to U401 (pad R508.1)', '15.49 mm to C402 (pad R508.1)']
+  rules.lr5: True sensitive copper >= 10.0 mm from U401/C402 {'min_distance_mm': 11.517181449907461, 'violations': 0.0}
+=== (c) VREF branches from U501.2 (copper path, mm)
+  branch A: J602.1 12.553, R508.2 8.941
+  branch B: U502.4 10.179, C503.1 2.945
+  branch C: R307.1 38.399
+  branch D: R512.2 4.206, R515.1 32.746
+  branch trunk-other: C504.1 5.511, R510.1 not reached, TP501.1 8.808
+  VREF net total track length 98.802 mm (35 segments), vias none
+  extended through the wall/CH1 bridges (part spans counted pad centre to pad centre): U501.2 -> R204.2 48.976 mm
+  extended through the wall/CH1 bridges (part spans counted pad centre to pad centre): U501.2 -> R104.2 66.596 mm
+    net /VREF_M track length 2.590
+    net /VREF_P track length 13.110
+    net /VREF_Q track length 4.570
+    net /VREF_S track length 2.550
+    net /VREF_R track length 10.030
+=== unreached VREF pads: nearest VREF track endpoint
+   C503.1 centre (53.00,13.18) bbox x 52.52..53.48 y 12.72..13.62 nearest endpoint 0.000 at [53.    13.175] net /VREF
+   R512.2 centre (53.27,17.40) bbox x 52.88..53.67 y 16.93..17.88 nearest endpoint 0.000 at [53.275 17.4  ] net /VREF
+   C504.1 centre (50.17,10.50) bbox x 49.73..50.62 y 10.03..10.97 nearest endpoint 0.000 at [50.175 10.5  ] net /VREF
+   R510.1 centre (57.30,28.39) bbox x 56.83..57.77 y 28.00..28.80 nearest endpoint 4.850 at [52.45 28.4 ] net /VREF
+   TP501.1 centre (49.20,7.60) bbox x 48.70..49.70 y 7.10..8.10 nearest endpoint 0.000 at [49.2  7.6] net /VREF
+   U501.2 centre (51.45,14.86) bbox x 51.15..51.75 y 14.12..15.60 nearest endpoint 0.000 at [51.45   14.8625] net /VREF
+capped: peak_rss_kb=108868 wall_s=0.59 exit=0 cap=3G limit_s=300 image=sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293 installed=0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6
