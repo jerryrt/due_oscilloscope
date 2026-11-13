@@ -57,7 +57,11 @@ def v2_text():
         out.append(f"##### chan {k} {kw}\n{nl.chan(p, k, **kw)}\n")
     q = dict(p, xt=0.01, Cx=1e-12, Cxin=2e-12, Cxp=3e-12)
     out.append(f"##### coupling\n{nl.coupling(q)}\n{nl.chan(q, 'a')}\n{nl.chan(q, 'b')}\n")
-    return "".join(out)
+    # the one deliberate difference from the golden: where the derived TPH2501 macro is included from (a machine path: the
+    # old code wrote a repo-relative one, the port a cache outside the repo). Only that line's path is normalised.
+    import re
+    return re.sub(r"(?m)^\.include \S*TPH2501_ngspice\.mdl$", ".include ../../../../whatif/tph2502/models/TPH2501_ngspice.mdl",
+                  "".join(out))
 
 
 def main():

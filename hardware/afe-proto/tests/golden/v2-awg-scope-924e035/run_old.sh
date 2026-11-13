@@ -7,7 +7,7 @@
 # The old code finds its op-amp macro at <afe-proto>/whatif/tph2502/models/TPH2501_ngspice.mdl and its behavioural model at
 # <afe-proto>/whatif/tph2502/beh/tph2502_beh.lib, and writes beside itself; so the tree is rebuilt under a FIXED path
 # (/tmp/v2-old-TOOL/afe-proto: the awg header records the macro's path) from the fixture plus the two models:
-#   models/tph2501/Spice_Model_TPH2501/TPH2501.mdl (fetch_models.py) through sed 's/ tc1=0.001//' (sha256 256eeb24...)
+#   models/tph2501/TPH2501.mdl (fetch_models.py) through sed 's/ tc1=0.001//' (sha256 256eeb24...)
 #   models-open/tph2502-beh/tph2502_beh.lib
 set -u
 tool=$1
@@ -17,7 +17,7 @@ mkdir -p "$OUT"
 R=/tmp/v2-old-$tool/afe-proto
 rm -rf "/tmp/v2-old-$tool" && mkdir -p "$R/whatif/tph2502/models" "$R/whatif/tph2502/beh"
 cp -r "$W/tests/fixtures/v2-awg-scope-924e035/v2" "$R/"
-sed 's/ tc1=0.001//' "$W/models/tph2501/Spice_Model_TPH2501/TPH2501.mdl" > "$R/whatif/tph2502/models/TPH2501_ngspice.mdl"
+sed 's/ tc1=0.001//' "$W/models/tph2501/TPH2501.mdl" > "$R/whatif/tph2502/models/TPH2501_ngspice.mdl"
 cp "$W/models-open/tph2502-beh/tph2502_beh.lib" "$R/whatif/tph2502/beh/"
 echo "macro sha256 $(sha256sum < "$R/whatif/tph2502/models/TPH2501_ngspice.mdl")" >&2
 export PYTHONDONTWRITEBYTECODE=1

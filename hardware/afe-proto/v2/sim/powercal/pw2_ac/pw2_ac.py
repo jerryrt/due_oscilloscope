@@ -25,7 +25,6 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 AFE = HERE.parents[3]                                   # hardware/afe-proto
-sys.path.insert(0, str(HERE.parent))                    # power, common (v2/sim/powercal)
 
 C0 = 299792458.0
 MU0 = 4e-7 * math.pi
@@ -220,13 +219,30 @@ def get_pw2():
         return importlib.import_module("simtools_o.pw2")
 
 
+class _scoped_plain_imports:
+    """The powercal study's scripts import each other by plain name (power, common, design, ...): inside this block they may,
+    and on exit every module they added to sys.modules and every sys.path entry is removed again, so a caller (a test
+    session, the daemon) is not left with a plain `design` that shadows the live design module."""
+    def __enter__(self):
+        self._mods, self._path = set(sys.modules), list(sys.path)
+        sys.path.insert(0, str(HERE.parent))
+        return self
+
+    def __exit__(self, *exc):
+        for n in set(sys.modules) - self._mods:
+            del sys.modules[n]
+        sys.path[:] = self._path
+        return False
+
+
 def circuit(lm1):
     """lm_tran's 'su_5.25_max' circuit, the one pw2_loopl.py runs (VIN 5.25 V, v2 feedback values at the maximum corner)."""
-    import power
-    from common import TPH
-    rc = power.rail_corners()
-    v_awg, _ = power.awg_values()
-    b = power.budget(rc["max_p"], v_awg, 50.0, -1.9, TPH["iq_max"])
+    with _scoped_plain_imports():
+        import power
+        from common import TPH
+        rc = power.rail_corners()
+        v_awg, _ = power.awg_values()
+        b = power.budget(rc["max_p"], v_awg, 50.0, -1.9, TPH["iq_max"])
     vref = 1.216
 
     def fb_for(vp, vn):

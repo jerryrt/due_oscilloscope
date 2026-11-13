@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 AFE = Path(__file__).resolve().parents[1]
-TPH2501_SRC = AFE / "models" / "tph2501" / "Spice_Model_TPH2501" / "TPH2501.mdl"
+TPH2501_SRC = AFE / "models" / "tph2501" / "TPH2501.mdl"
 TPH2501_DERIVED_SHA = "256eeb242fe2d960625eb2c8b8d94d71a3e982730a617f01eb8cfcf90322fae1"
 TPH2502_BEH = AFE / "models-open" / "tph2502-beh" / "tph2502_beh.lib"
 TC1 = " tc1=0.001"

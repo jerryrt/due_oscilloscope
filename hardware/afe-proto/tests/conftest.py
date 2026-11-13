@@ -104,7 +104,7 @@ def network_reachable():
 def vendor_models():
     """The hash-verified vendor SPICE models (tools/fetch_models.py), untracked: 'present' or None."""
     m = Path(__file__).resolve().parents[1] / "models"
-    needed = (m / "opa365" / "OPA365_PSPICE.lib", m / "tph2501" / "Spice_Model_TPH2501" / "TPH2501.mdl")
+    needed = (m / "opa365" / "OPA365_PSPICE.lib", m / "tph2501" / "TPH2501.mdl")
     return "present" if all(f.is_file() for f in needed) else None
 
 
@@ -191,3 +191,20 @@ def versions():
 def pcb_image_ref():
     """The pinned reference the `docker` probe found (registry@digest); for tests of the probe itself."""
     return pcb_image_tag()
+
+
+# A test must not leave a plain `design`, `layout` or `floorplan` module behind: those are the names of the frozen fixtures' own
+# scripts and of the live design, and a plain-name import in-process poisons every later test that loads one of them by
+# its private name or asserts the name is absent (tests/pcbtools/test_v2_schematic.py). Import under a private name, or run it in
+# a subprocess. The error names the test that left it.
+PLAIN_NAMES = ("design", "layout", "floorplan")
+
+
+@pytest.fixture(autouse=True)
+def _no_plain_module_left_behind(request):
+    before = {n for n in PLAIN_NAMES if n in sys.modules}
+    yield
+    left = sorted(n for n in PLAIN_NAMES if n in sys.modules and n not in before)
+    for n in left:
+        del sys.modules[n]                       # so one polluter is one error, not one failure per later test
+    assert not left, f"{request.node.nodeid} left plain module(s) {left} in sys.modules: import under a private name or run it in a subprocess"
