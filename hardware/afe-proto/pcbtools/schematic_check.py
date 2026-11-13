@@ -20,7 +20,7 @@ Entry points
 What a board config provides (module-level names, a types.SimpleNamespace with the same names works):
     PARTS            list of part dicts: ref, value, fp, lcsc, pins {pin: net}, dnp, fitted_by
     BOM_PATH, BOM_DELTAS, ERC_EXCLUDED, MIN_NETS, MIN_COMPS, MIN_BOM, MIN_PADS
-    OUTLINE          (x0, y0, x1, y1) in Due mm;  HEADER_PINS {(ref, pin): (x, y)};  HEADER_TOL_MM
+    BOARD_RECT       (x0, y0, x1, y1) in Due mm;  HEADER_PINS {(ref, pin): (x, y)};  HEADER_TOL_MM
     SILK_EDGE_ALLOWED refs whose silk_edge_clearance DRC reports are by design
     sch_cfg(**over)  the namespace schematic.write_all takes (the schematic arms regenerate the project with one field changed)
     ARM_*            names the arms break: ARM_SWAP_PINS (a two-pin part), ARM_LCSC (ref, other code), ARM_BOM_DROP (ref),
@@ -245,7 +245,7 @@ def p1_rows(b, nets, cfg, tag=''):
 
 
 def p3_rows(b, cfg, tag=''):
-    x0, y0, x1, y1 = cfg.OUTLINE
+    x0, y0, x1, y1 = cfg.BOARD_RECT
     out = (b.p_x < x0) | (b.p_x > x1) | (b.p_y < y0) | (b.p_y > y1)
     bad = sorted({b.fp_ref[i] for i in b.p_fp[out]})
     err, found = 0.0, 0

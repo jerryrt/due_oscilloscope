@@ -157,6 +157,49 @@
       ]
     },
     {
+      "tool": "new-v1-check",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+        "--config",
+        "hardware/afe-proto/tests/fixtures/v1-34b2e51/kicad/afe-proto.kicad_pcb",
+        "--config",
+        "v1",
+        "--drc"
+      ]
+    },
+    {
+      "tool": "new-v1-check-mutate",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "-c",
+        "out=$(\"$@\" 2>&1); rc=$?; case \"$out\" in *Traceback*) echo \"$out\" >&2; exit 3;; esac; [ $rc -le 1 ] && exit 0; exit $rc",
+        "_",
+        "python3",
+        "-I",
+        "-B",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import check; sys.exit(check.main(sys.argv[1:]))",
+        "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-awg-bc96e334.kicad_pcb",
+        "--config",
+        "hardware/afe-proto/tests/fixtures/v1-34b2e51/kicad/afe-proto.kicad_pcb",
+        "--config",
+        "v1",
+        "--mutate",
+        "--drc"
+      ]
+    },
+    {
       "tool": "schematic-build-v1",
       "board": "v1",
       "argv": [
@@ -674,6 +717,14 @@
     [
       "old-v2-build_sch",
       "new-v2-schematic-build"
+    ],
+    [
+      "old-v1-lr_check",
+      "new-v1-check"
+    ],
+    [
+      "old-v1-lr_check-mutate",
+      "new-v1-check-mutate"
     ]
   ],
   "_pairs_doc": "[old, new] tool names measured interleaved (old, new, old, new, ...) on every board both are defined for, so machine load hits both arms alike; only the ratio is quotable",

@@ -73,7 +73,7 @@ SYMBOL_DIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
 FOOTPRINT_DIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
 
 # board geometry
-OUTLINE = (17.0, 0.0, 117.0, 53.34)                          # the shield's rectangle
+BOARD_RECT = (17.0, 0.0, 117.0, 53.34)                          # the shield's rectangle
 REFERENCE_OUTLINE = [(1, 0), (98.06, 0), (99.06, 1), (99.06, 2.54), (101.6, 5.08), (101.6, 37.846), (99.06, 40.386),
                      (99.06, 51.816), (97.536, 53.34), (1, 53.34), (0, 52.34), (0, 1), (1, 0)]   # the Due's own outline (V03)
 # header: (pin-1 x, pin-1 y, direction of rising pin numbers), due-header-table.md section 2
@@ -148,7 +148,7 @@ ANCHORS = frozenset(set(HEADERS) | set(BNCS) | {'J607', 'MH601', 'MH602'})      
 def pcb_cfg(**over):
     import types
     cfg = types.SimpleNamespace(
-        PROJECT=PROJECT, NS=NS, OUTLINE=OUTLINE, REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
+        PROJECT=PROJECT, NS=NS, OUTLINE=BOARD_RECT, REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
         TITLE=TITLE + ': AFE shield for the Arduino Due, placement', REV=REV, COMMENTS=list(PCB_COMMENTS),
         FOOTPRINT_DIR=FOOTPRINT_DIR, PROJECT_LIB_DIR=PROJECT_LIB_DIR, MODEL_OVERRIDE=dict(MODEL_OVERRIDE), MODELS_DIR=MODELS_DIR)
     for k, v in over.items():
@@ -164,3 +164,98 @@ ARM_NO_FLAG = 'GND'                     # the PWR_FLAG net whose flag is removed
 ARM_NET_SWAP = 'R303'                   # two-pad part whose pad nets are exchanged on the board
 ARM_OVERLAP = ('R102', 'R103')          # the first dropped onto the second
 ARM_HEADER = ('J602', '1')              # header pin shifted 0.2 mm
+
+
+# ---------------------------------------------------------------------------------------------------------------- layout rules
+# The LR-1..LR-12 fields in the shapes of pcbtools/CONFIG_FIELDS.md (v2's are canonical). Values are the old v1 lr_check.py's
+# tables (frozen at 34b2e51, tests/fixtures/v1-34b2e51/kicad/lr_check.py), written once here. What design.py already says
+# (blocks, pins, nets) is read from it, not copied. Net names carry the leading '/', as KiCad writes them.
+def _n(name):
+    return '/' + name
+
+
+_BLK = {'power': 'POWER', 'ch1': 'SCOPE', 'ch2': 'SCOPE', 'awg': 'AWG', 'cal': 'REFCAL', 'due': 'EDGE'}
+# v1 has ONE fence for both channels (floorplan.FENCES['SCOPE']), so CH1 and CH2 are one block here: the old tool's per-channel
+# test-point rule is carried by TP_NETS (a test point per net), and the hundreds digits 1 and 2 both name SCOPE.
+GND = '/GND'
+BLOCK = {p['ref']: _BLK[p['block']] for p in PARTS}
+BLOCK_OVERRIDE = {}
+EDGE_BLOCK = 'EDGE'
+ANALOG_BLOCKS = ('SCOPE', 'AWG', 'REFCAL')
+ANALOG_REFS = frozenset(r for r, k in BLOCK.items() if k in ANALOG_BLOCKS and not r.startswith(('J', 'TP', 'MH')))
+GENERATOR_BLOCK = frozenset(r for r, k in BLOCK.items() if k == 'POWER')
+ANALOG_FENCE = ('REFCAL', 'AWG', 'SCOPE')       # LR-1: no bottom copper in these fences (old NO_BOTTOM_FENCES)
+BRIDGE_TOL = 0.5                                # mm: a bridge counts as inside its block when within this of its floorplan point
+OUTLINE = {k: list(v) for k, v in FENCES.items()}
+for _name, _nets, _at, _x in _floorplan.BRIDGES:                 # the six 0603 bridges straddle the wall, outside every fence:
+    _r = _name[_name.index('(') + 1:_name.index(')')]            # each is inside its block's outline at its floorplan point
+    OUTLINE[BLOCK[_r]].append((_at[0] - BRIDGE_TOL, _at[1] - BRIDGE_TOL, _at[0] + BRIDGE_TOL, _at[1] + BRIDGE_TOL))
+LR_HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
+TEST_BLOCKS = ('SCOPE', 'AWG', 'POWER', 'REFCAL')
+TP_NETS = {p['ref']: _n(p['pins']['1']) for p in PARTS if p['ref'].startswith('TP')}
+SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF/CAL', 'ON')
+DESIGNATOR_MIN_H = 1.0                          # the board house's minimum text height (docs/jlcpcb.md)
+TP_PREFIX, TP_PIN = 'TP', '1'
+
+ZONE_PAD = 0.3
+HOP_MAX, HOP_MAX_VIAS = 3.0, 2
+KEEPOUT = 10.0
+INV_MAX = 5.0
+FB_MAX = 5.0                                    # LR-4: the inverting node (AWG_INV) is the shortest trace of its stage
+DECOUP_MAX = 3.0
+DIVIDER_X_MAX = 99.0                            # the BNC pads (x 102) are not divider pads
+GEN = ('U401', 'C402')                          # LM27762 and its flying capacitor
+
+ADC_NETS = ('/A0', '/A1')
+XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AWG_S', '/AWG_I', '/AWG_INV', '/AWG_BIN', '/AREF', '/CH1_', '/CH2_')
+SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AREF', '/CH1_N', '/CH2_N')
+INV_NODES = ('/AWG_INV',)
+INV_LEN_NODES = ('/AWG_INV',)
+POUR_NODES = ('/AWG_INV',)
+POUR_INFO_NODES = ()
+HIZ = tuple(_n(x) for x in ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A'))
+DIGITAL = ('/SDA1', '/SCL1')
+
+
+def _pad_on(ref, net):
+    p = next(q for q in PARTS if q['ref'] == ref)
+    return [(ref, k) for k, v in p['pins'].items() if v == net]
+
+
+def _channel(n, bnc, r1, rnp, riso, adc, a):
+    ch = f'CH{n}'
+    return dict(name=ch, bnc=(bnc, '1'), prot=r1, rnp=rnp, opamp='U101', riso=riso, out_pin=_pad_on('U101', f'{ch}_OUT')[0],
+                adc_pad=('J602', adc), out_nets=(a, _n(f'{ch}_OUT')),
+                hiz_nets=tuple(_n(f'{ch}_{x}') for x in ('N', 'NP', 'R1A', 'R2A')))
+
+
+CHANNELS = (_channel(1, 'J101', 'R102', 'R106', 'R107', '7', '/A1'), _channel(2, 'J201', 'R202', 'R206', 'R207', '8', '/A0'))
+DIVIDER_GROUPS = tuple(tuple(_n(f'CH{n}_{x}') for x in ('N', 'NP', 'R1A', 'R2A')) for n in (1, 2))
+CH_FLOW_TEXT = 'BNC > R1 > Rnp > U101 > Riso > ADC pad'
+AWG = dict(name='AWG', dac_net='/DAC0', fb_net='/AWG_INV', back_term=('R304', 'R306'), bnc='J301', shell_pin='2')
+FEED_PAD = ('J601', '5')
+BNC_REFS = ('J101', 'J201', 'J301')
+QUIET_REFS = ('U501', 'U502', 'R503', 'R504', 'R505', 'R506', 'R507', 'R508')
+
+# a 100 nF at each supply pin, named per pin (the old tool searched for the nearest 100 nF; this names it)
+DECOUP = [('C103', 'U101', '8'), ('C302', 'U301', '8'), ('C303', 'U301', '4'), ('C502', 'U502', '8'), ('C501', 'U501', '1')]
+SUPPLY_CAPS = list(DECOUP)
+
+RAILS = ('/+3V3A', '/VNEG')
+_CONSUMER = {'AWG': 'AWG', 'SCOPE': 'SCOPE', 'REFCAL': 'REF/ADS'}
+GROUPS = {}
+for _rail in RAILS:
+    GROUPS[_rail] = {}
+    for _p in PARTS:
+        if _rail[1:] in _p['pins'].values() and BLOCK[_p['ref']] in _CONSUMER:
+            GROUPS[_rail].setdefault(_CONSUMER[BLOCK[_p['ref']]], set()).add(_p['ref'])
+STAR = {'/+3V3A': [('U401', '11'), ('C407', '1'), ('C408', '1')], '/VNEG': [('U401', '6'), ('C409', '1'), ('C410', '1')]}
+BRIDGES = []
+BRIDGE_PADS = []
+RAIL_TEXT = '+3V3A and VNEG'
+VREF_NET = '/VREF'
+VREF_SOURCE = [('U501', '2'), ('C504', '1')]
+VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512', 'R515'))]
+CAP_PAIRS = ()
+CAP_SELF = ()
+DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')
