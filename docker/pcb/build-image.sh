@@ -5,6 +5,8 @@
 #     docker/pcb/build-image.sh                    # the image of record
 #     DUE_PCB_WITHOUT_NGSPICE=1 docker/pcb/build-image.sh
 #                                                  # the gate's control image (no ngspice)
+#     DUE_PCB_WITHOUT_FREEROUTING=1 docker/pcb/build-image.sh
+#                                                  # the control for the router (no Java, no jar)
 #
 # The tag is pcb-tools:<kicad>-r<revision>. Bump "current" in
 # image-revisions.json whenever a change to the Dockerfile or the lock
@@ -21,6 +23,10 @@ args=()
 if [ "${DUE_PCB_WITHOUT_NGSPICE:-0}" = 1 ]; then
     tag="$tag-no-ngspice"
     args+=(--build-arg WITH_NGSPICE=0)
+fi
+if [ "${DUE_PCB_WITHOUT_FREEROUTING:-0}" = 1 ]; then
+    tag="$tag-no-freerouting"
+    args+=(--build-arg WITH_FREEROUTING=0)
 fi
 recipe=$("$here/image-id.sh" recipe)
 

@@ -62,6 +62,26 @@ ARG KICAD_PACKAGES3D_SHA256=435ac54a87f6188a8e8817f335c0b79ba29f25f59c16665fdc0c
 # builds it. Nothing else sets it.
 ARG WITH_NGSPICE=1
 
+# Freerouting, the autorouter, headless. Java comes from the same dated archive snapshot at an exact version; the
+# jar is the project's GitHub release asset, verified against its sha256 before it is used (the release page
+# publishes the digest beside the asset). The jar is built for Java 25, hence openjdk-25. WITH_FREEROUTING=0
+# builds the image WITHOUT it, for the gate's own control, which must FAIL there: a missing router is an error and
+# never a skip. docker/pcb/freeroute.sh is the one way it is run.
+#
+# WHY THE JAR AND NOT THE NATIVE CLI, to be revisited on a later release. 2.5.0 also ships a GraalVM native
+# executable (freerouting-cli-2.5.0-linux-x64.tar.gz, sha256 64a957a9ef2a2fbde6ab2001bb32800f5ba34f9fd15575e363512934b870d63a,
+# 20.7 MB, needing only libc and libz), which would drop the JDK (about 480 MB). Measured in the r3 image on a
+# 4-resistor board, 2026-11-13: it prints its usage and starts, then routing dies with
+#   UnsupportedFeatureError: SerializationConstructorAccessor class not found for declaringClass:
+#   app.freerouting.board.model.items.ComponentOutline
+# (a missing GraalVM serialization configuration) and the process HANGS instead of exiting; no session is written.
+# The jar routes the same board in 0.3 s. To retry: fetch the CLI tarball of the new release, verify its sha256
+# against the release's checksums file, and run tests/test_freerouting.py with it in place of `java -jar`.
+ARG OPENJDK_VERSION=25.0.4+7-1~26.04
+ARG FREEROUTING_VERSION=2.5.0
+ARG FREEROUTING_SHA256=f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7
+ARG WITH_FREEROUTING=1
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -119,6 +139,22 @@ RUN set -eux; \
     dpkg-deb --fsys-tarfile "$f" | tar -x -C / --no-same-owner -T members.txt; \
     while read -r m; do test -f "/usr/share/kicad/3dmodels/$m"; done < 3dmodels.txt; \
     rm -f "$f" members.txt 3dmodels.txt
+
+# The autorouter. Its own layer, after KiCad, so the control image (WITH_FREEROUTING=0) shares everything before it.
+# The snapshot source is still configured; only the package lists were removed, so refresh them.
+RUN set -eux; \
+    if [ "${WITH_FREEROUTING}" = 1 ]; then \
+        apt-get -o Acquire::Check-Valid-Until=false update -qq; \
+        apt-get -o Acquire::Retries=5 install -y --no-install-recommends "openjdk-25-jre-headless=${OPENJDK_VERSION}"; \
+        rm -rf /var/lib/apt/lists/*; \
+        mkdir -p /opt/freerouting; \
+        curl -fsSL --retry 5 "https://github.com/freerouting/freerouting/releases/download/v${FREEROUTING_VERSION}/freerouting-${FREEROUTING_VERSION}.jar" \
+            -o /opt/freerouting/freerouting.jar; \
+        echo "${FREEROUTING_SHA256}  /opt/freerouting/freerouting.jar" | sha256sum -c -; \
+        chmod -R a+rX /opt/freerouting; \
+        java -version; \
+    fi
+ENV FREEROUTING_JAR=/opt/freerouting/freerouting.jar
 
 # The numpy tier's interpreter: a venv on the system 3.14, with system site
 # packages so `import pcbnew` (installed under /usr/lib/python3/dist-packages

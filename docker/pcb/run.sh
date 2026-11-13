@@ -118,6 +118,10 @@ if [ "${DUE_PCB_RO_FIXTURES:-1}" = 1 ]; then
     flags+=(--volume "$repo/hardware/afe-proto/tests/fixtures:/work/hardware/afe-proto/tests/fixtures:ro"
             --volume "$repo/hardware/afe-proto/tests/golden:/work/hardware/afe-proto/tests/golden:ro")
 fi
+# EXTRA MOUNTS, for a test that must put something else where the repository has its own file (an empty models
+# directory, to prove a missing vendor model fails the gate). DUE_PCB_EXTRA_VOLUMES is a space-separated list of
+# docker --volume specs. Not for ordinary use.
+for v in ${DUE_PCB_EXTRA_VOLUMES:-}; do flags+=(--volume "$v"); done
 cleanup() {
     if [ -f "$cidfile" ]; then
         cid=$(cat "$cidfile" 2>/dev/null || true)

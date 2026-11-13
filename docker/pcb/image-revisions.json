@@ -1,9 +1,16 @@
 {
   "kicad": "10.0.8",
-  "current": "3",
+  "current": "4",
   "registry": "dcr.ca2324.servep2p.com:8443/due-scope/pcb-tools",
-  "digest": "sha256:d59d53c2f00faee77709bf0e65fdf1a713b1a4a6785345d0ddb3a10c174f0531",
-  "installed": "a64aa4f285c5baf2731dc3f6e85da5cbd46bb5e032413293fae7f47abd1c341a",
-  "recipe": "f76136c849c054f5dd31e5642ada6062ac92e7164466afb5a876c94603de19df",
-  "if_the_registry_is_unreachable": "docker/pcb/build-image.sh rebuilds the image from the recipe (all inputs are pinned); then `docker/pcb/image-id.sh installed pcb-tools:<kicad>-r<current>` must print the installed-set hash above and the recipe must equal the recipe above. The layer content hash will differ, so use DUE_PCB_IMAGE=pcb-tools:<kicad>-r<current>: run.sh then labels every row image=UNPINNED:<tag> and bench.py will not write budgets from it. The installed-set equality is the claim; do not take a figure of record from an unpinned image."
+  "digest": "sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293",
+  "installed": "0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6",
+  "recipe": "2b5c60763e39e9129cb8af17ab8dd191d61b657e1259324554b0992638ac0e67",
+  "if_the_registry_is_unreachable": "docker/pcb/build-image.sh rebuilds the image from the recipe (all inputs are pinned); then `docker/pcb/image-id.sh installed pcb-tools:<kicad>-r<current>` must print the installed-set hash above and the recipe must equal the recipe above. The layer content hash will differ, so use DUE_PCB_IMAGE=pcb-tools:<kicad>-r<current>: run.sh then labels every row image=UNPINNED:<tag> and bench.py will not write budgets from it. The installed-set equality is the claim; do not take a figure of record from an unpinned image.",
+  "freerouting": {
+    "version": "2.5.0",
+    "jar_sha256": "f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7",
+    "openjdk": "openjdk-25-jre-headless 25.0.4+7-1~26.04",
+    "native_cli": "rejected for 2.5.0: dies with a GraalVM UnsupportedFeatureError on a 4-resistor board and hangs; see the Dockerfile"
+  },
+  "networkx": "3.7"
 }

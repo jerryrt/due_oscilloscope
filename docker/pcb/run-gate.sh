@@ -5,7 +5,7 @@
 #     docker/pcb/run.sh -m 3G -t 900 docker/pcb/run-gate.sh
 #
 # All three tiers - numpy, ngspice, pcbnew - in one pytest run with
-# --require-tool=pcbnew,ngspice, so a missing tool is a failure and nothing
+# --require-tool=pcbnew,ngspice,freerouting,networkx,vendor, so a missing tool is a failure and nothing
 # can skip into a pass. The only skips left are the `jobcap` tests, whose
 # per-job cap does not exist in the container (docker's cap is the whole
 # container's) and which test_image_gate.py checks from the host instead;
@@ -58,7 +58,7 @@ PY
 }
 guard save || exit $?
 python3 -m pytest -p no:cacheprovider -c hardware/afe-proto/tests/pytest.ini hardware/afe-proto/tests \
-    --require-tool=pcbnew,ngspice -q "$@"
+    --require-tool=pcbnew,ngspice,freerouting,networkx,vendor -q "$@"
 rc=$?
 guard check
 g=$?
