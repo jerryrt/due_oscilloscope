@@ -28,9 +28,11 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.environ.setdefault('PCBTOOLS_ROOT', os.path.normpath(os.path.join(HERE, '..')))   # hardware/afe-proto; scratch copies inherit it
+sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import design                         # noqa: E402
-from sexpr import parse, find, first  # noqa: E402
+from pcbtools.sexpr import parse, find, first  # noqa: E402
 
 SCH = os.path.join(HERE, 'afe-proto.kicad_sch')
 PCB = os.path.join(HERE, 'afe-proto.kicad_pcb')
@@ -212,7 +214,7 @@ def mutation_arms(nets):
     # M3: geometry: a schematic generated with the passives' rotation wrong must not reproduce the design's nets in
     # KiCad (S2 reads connectivity from the drawing, not from the generator's intent)
     tmp = tempfile.mkdtemp(prefix='afe-mut-')
-    for f in ('sexpr.py', 'design.py', 'build_sch.py'):
+    for f in ('design.py', 'build_sch.py'):
         shutil.copy(os.path.join(HERE, f), tmp)
     src = open(os.path.join(tmp, 'build_sch.py')).read()
     # keep the wire stubs where the correct rotation would put them: draw with r = 90 offsets, instantiate at r = 0
@@ -309,7 +311,7 @@ def regenerate(mutate=None):
     """Build the schematic and board from this tree's sources in a scratch copy; return their sha256."""
     import hashlib
     tmp = tempfile.mkdtemp(prefix='afe-regen-')
-    for f in ('sexpr.py', 'design.py', 'build_sch.py', 'build_pcb.py', 'layout.py'):
+    for f in ('design.py', 'build_sch.py', 'build_pcb.py', 'layout.py'):
         shutil.copy(os.path.join(HERE, f), tmp)
     shutil.copytree(os.path.join(HERE, '3d'), os.path.join(tmp, '3d'))
     shutil.copytree(os.path.join(HERE, 'lib'), os.path.join(tmp, 'lib'))

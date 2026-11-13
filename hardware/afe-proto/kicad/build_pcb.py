@@ -105,7 +105,7 @@ def xio_footprint():
     """PinSocket_2x18 with odd and even pad numbers exchanged: the stock socket puts pin 2 at -2.54 mm, the Due's XIO0
     has it at +2.54 (due-header-table.md 2.3).  The copper pattern is the same; only the numbering moves, so the
     origin goes on the even column.  Written as text into the project library (sexpr.py)."""
-    from sexpr import parse, dump, Q, first
+    from pcbtools.sexpr import parse, dump, Q, first
     src = os.path.join(FPDIR, 'Connector_PinSocket_2.54mm.pretty', 'PinSocket_2x18_P2.54mm_Vertical.kicad_mod')
     e = parse(open(src).read())
     name = 'PinSocket_2x18_P2.54mm_Vertical_DueXIO'
@@ -144,7 +144,7 @@ def courtyard(f):
 def schematic_nets():
     """(ref, pin) -> net name, from KiCad's own netlist export of the schematic (names as KiCad gives them: '/GND',
     'unconnected-(D1-K-Pad2)'), so the board follows the schematic exactly as 'Update PCB from schematic' would."""
-    from sexpr import parse, find, first
+    from pcbtools.sexpr import parse, find, first
     tmp = tempfile.mkdtemp(prefix='afe-pcb-')
     out = os.path.join(tmp, 'net.net')
     subprocess.run(['kicad-cli', 'sch', 'export', 'netlist', '--format', 'kicadsexpr', '-o', out,

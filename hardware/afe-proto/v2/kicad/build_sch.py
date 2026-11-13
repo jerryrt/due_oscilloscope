@@ -21,9 +21,11 @@ import sys
 import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.environ.setdefault('PCBTOOLS_ROOT', os.path.normpath(os.path.join(HERE, '..', '..')))   # hardware/afe-proto; scratch copies inherit it
+sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import design                                     # noqa: E402
-from sexpr import Q, parse, dump, find, first     # noqa: E402
+from pcbtools.sexpr import Q, parse, dump, find, first     # noqa: E402
 
 KILIB = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
 PROJECT = 'afe-v2'
