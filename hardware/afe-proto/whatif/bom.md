@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-13.** This is the 2026-11-11 ADS124S08 BOM. The AFE v1 BOM is `bom/v1/` (`bom.txt`, `bom.md`). Kept unchanged below for the record.
+
 # AFE shield BOM and cost, per board and per order (2026-11-11, owner's cost cuts, domestic order)
 
 **Approved design, reconciled against `docs/afe.md` at e510edd** (read, not

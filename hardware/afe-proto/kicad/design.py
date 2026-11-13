@@ -19,47 +19,59 @@ SOT23 = 'Package_TO_SOT_SMD:SOT-23'
 SC706 = 'Package_TO_SOT_SMD:SOT-363_SC-70-6'
 SOIC8 = 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm'
 WSON12 = 'Package_SON:WSON-12-1EP_3x2mm_P0.5mm_EP1x2.65_ThermalVias'
-TQFP32 = 'Package_QFP:TQFP-32_5x5mm_P0.5mm'
+TSSOP10 = 'Package_SO:TSSOP-10_3x3mm_P0.5mm'      # TI DGS (VSSOP-10), 3 x 3 mm, 0.5 mm pitch
 # Kinghelm drawing KH-801-0038 rev B, pads cross-checked with the EasyEDA footprint (lib/afe.pretty descr)
 BNC = 'afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal'
 TP = 'TestPoint:TestPoint_Pad_D1.0mm'
 
 # value, LCSC, MPN, footprint, symbol per BOM line (bom.txt numbering)
 T = {
-    '100k': ('100k 0.1%', 'C394537', 'RESI PTFR0603B100KN9', R0603),
-    '330k': ('330k 0.1%', 'C351655', 'RESI PTFR0603B330KP9', R0603),
-    '174k': ('174k 0.1%', 'C861163', 'Yageo RT0603BRD07174KL', R0603),
-    '953': ('953 0.1%', 'C2984375', 'Viking AR03BTCX9530', R0603),
-    '249': ('249 0.1%', 'C2692731', 'RESI PTFR0603B249RN9', R0603),
-    '49.9': ('49.9 0.1%', 'C869759', 'Yageo RT1206BRB0749R9L', R1206),
+    # D15: every resistor and capacitor a JLC Basic part (V2-3); LCSC and MPN from v2/jlc-basic.csv, read 2026-11-12
+    '100k': ('100k 1%', 'C25803', 'UNI-ROYAL 0603WAF1003T5E', R0603),
+    '330k': ('330k 1%', 'C23137', 'UNI-ROYAL 0603WAF3303T5E', R0603),
+    '470k': ('470k 1%', 'C23178', 'UNI-ROYAL 0603WAF4703T5E', R0603),
+    '300k': ('300k 1%', 'C23024', 'UNI-ROYAL 0603WAF3003T5E', R0603),
+    '3.3k': ('3.3k 1%', 'C22978', 'UNI-ROYAL 0603WAF3301T5E', R0603),
+    '4.99k': ('4.99k 1%', 'C23046', 'UNI-ROYAL 0603WAF4991T5E', R0603),
+    '51k': ('51k 1%', 'C23196', 'UNI-ROYAL 0603WAF5102T5E', R0603),
+    '100R': ('100 1%', 'C22775', 'UNI-ROYAL 0603WAF1000T5E', R0603),
+    '0Rb': ('0R 1%', 'C21189', 'UNI-ROYAL 0603WAF0000T5E', R0603),       # the wall bridges: a 0603 over one of the A1 / A0 lines each (afe.md LR-1, D24)
+    '2.2k': ('2.2k 1%', 'C4190', 'UNI-ROYAL 0603WAF2201T5E', R0603),
+    '22k': ('22k 1%', 'C31850', 'UNI-ROYAL 0603WAF2202T5E', R0603),
+    '15k': ('15k 1%', 'C22809', 'UNI-ROYAL 0603WAF1502T5E', R0603),
+    '3.9k': ('3.9k 1%', 'C23018', 'UNI-ROYAL 0603WAF3901T5E', R0603),
+    '13k': ('13k 1%', 'C22797', 'UNI-ROYAL 0603WAF1302T5E', R0603),
+    '75k': ('75k 1%', 'C23242', 'UNI-ROYAL 0603WAF7502T5E', R0603),
+    '1k': ('1k 1%', 'C21190', 'UNI-ROYAL 0603WAF1001T5E', R0603),
+    '270': ('270 1%', 'C22966', 'UNI-ROYAL 0603WAF2700T5E', R0603),
+    '100R1206': ('100 1% 1206', 'C17901', 'UNI-ROYAL 1206W4F1000T5E', R1206),
     '680': ('680 1%', 'C23228', 'UNI-ROYAL 0603WAF6800T5E', R0603),
     '22': ('22 1%', 'C23345', 'UNI-ROYAL 0603WAF220JT5E', R0603),
     '4.7k': ('4.7k 1%', 'C23162', 'UNI-ROYAL 0603WAF4701T5E', R0603),
     '1R': ('1 1%', 'C22936', 'UNI-ROYAL 0603WAF100KT5E', R0603),
     '12p': ('12p C0G', 'C38523', 'Samsung CL10C120JB8NNNC', C0603),
-    '20p': ('20p C0G', 'C1648', 'Samsung CL10C200JB8NNNC', C0603),
+    '10p': ('10p C0G', 'C1634', 'Samsung CL10C100JB8NNNC', C0603),
+    '30p': ('30p C0G', 'C1658', 'FH 0603CG300J500NT', C0603),
     '100n': ('100n X7R', 'C14663', 'Yageo CC0603KRX7R9BB104', C0603),
     '1u': ('1u X5R', 'C15849', 'Samsung CL10A105KB8NNNC', C0603),
     '10u': ('10u X5R 25V', 'C15850', 'Samsung CL21A106KAYNNNE', C0805),
-    'OPA354': ('OPA354AIDBVR', 'C36384', 'TI OPA354AIDBVR', SOT235),
-    'OPA365': ('OPA365AIDBVR', 'C96626', 'TI OPA365AIDBVR', SOT235),
+    'TPH2502': ('TPH2502-SR', 'C118223', '3PEAK TPH2502-SR', SOIC8),   # afe.md D13/D16, v2/parts.md: every fast role
     'TLV9062': ('TLV9062IDR', 'C398355', 'TI TLV9062IDR', SOIC8),
     'LM27762': ('LM27762DSSR', 'C473398', 'TI LM27762DSSR', WSON12),
     'REF3030': ('REF3030EAIDBZR', 'C54120492', 'TI REF3030EAIDBZR', SOT23),
-    'ADS124S08': ('ADS124S08IPBSR', 'C2870171', 'TI ADS124S08IPBSR', TQFP32),
+    'ADS1115': ('ADS1115IDGSR', 'C37593', 'TI ADS1115IDGSR', TSSOP10),
     'TMUX1119': ('TMUX1119DCKR', 'C2673327', 'TI TMUX1119DCKR', SC706),
-    'BAT54S': ('BAT54S', 'C7420333', 'hongjiacheng BAT54S', SOT23),
     # not assembled
-    'BAV99': ('BAV99', '', '', SOT23),
+    'BAV99': ('BAV99', 'C2500', 'Nexperia BAV99,215', SOT23),     # Basic: every clamp (series pair: 1 anode, 3 junction, 2 cathode)
     '0R': ('0R', '', '', R0603),
     'BNC': ('KH-BNC50-3511', 'C2837587', 'Kinghelm KH-BNC50-3511', BNC),
 }
 SYM = {
     'R': 'Device:R', 'C': 'Device:C',
-    'OPA354': 'afe:OPA354xxDBV', 'OPA365': 'Amplifier_Operational:OPA365xxDBV',
+    'TPH2502': 'Amplifier_Operational:LM358',     # generic dual, standard SOIC-8 pinout (TPH2502 Table 'Pin Configuration' *(check)*)
     'TLV9062': 'Amplifier_Operational:TLV9062xD', 'LM27762': 'Regulator_SwitchedCapacitor:LM27762',
-    'REF3030': 'Reference_Voltage:REF3030', 'ADS124S08': 'afe:ADS124S08', 'TMUX1119': 'afe:TMUX1119',
-    'BAT54S': 'Diode:BAT54S', 'BAV99': 'Diode:BAT54S', 'BNC': 'Connector:Conn_Coaxial',
+    'REF3030': 'Reference_Voltage:REF3030', 'ADS1115': 'Analog_ADC:ADS1115IDGS', 'TMUX1119': 'afe:TMUX1119',
+    'BAV99': 'Diode:BAT54S', 'BNC': 'Connector:Conn_Coaxial',
 }
 
 PARTS = []       # dicts: ref, sym, value, fp, lcsc, mpn, pins {pin: net}, block, dnp, fitted_by, note
@@ -82,190 +94,184 @@ def other(ref, sym, value, fp, pins, block, note='', fitted_by='owner', dnp=Fals
 
 
 G, P5, P5F, P33A, VN, P33D = 'GND', '+5V_DUE', '+5V_F', '+3V3A', 'VNEG', '+3V3_DUE'
+VNO = 'VNEG_O'     # VNEG beyond R410 (the far side of the +5V_F column): the AWG's V- pin, its 100 nF and the VNEG test point
+P33E = 'P33_G'   # the AWG's +3.3 V_A: carried east on a strip lane under the pad rows, beyond the bridge R411 over the VNEG lane
 VREF = 'VREF'   # REF3030E output = ladder top tap = REFP0 (PA-8)
 
 # ------------------------------------------------------------------ power (architecture.md "Power"; sim/powercal)
 B = 'power'
-two('R70', '1R', P5, P5F, B, '5 V feed sense, take only (PW-1)')
-two('C36', '10u', P5F, G, B, '5 V bulk = CIN'); two('C37', '10u', P5F, G, B, '5 V bulk = CIN')
-two('C23', '100n', P5F, G, B, 'LM27762 VIN')
-part('U7', 'LM27762', {'1': G, '2': 'LM_FBP', '3': P5F, '4': G, '5': 'LM_CP', '6': VN, '7': 'LM_FBN',
+two('R408', '1R', P5, P5F, B, '5 V feed sense, take only (PW-1)')
+two('R410', '0Rb', VN, VNO, 'power', 'POWER block agent: a 0 ohm link that carries VNEG over the +5V_F column (VNEG | VNEG_O, one net each side so the board connects it through the part): the generator\'s two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop)')
+# +3V3A bridges of the corridors (the integrator, 2026-11-12; spec team's standing rule: a 0603 0R over a net that is not an ADC line, a divider node
+# or a VREF branch; AREF stays continuous on top and the other net bridges it): each splits +3V3A, as R410 splits VNEG
+two('R411', '0Rb', P33A, P33E, 'power', 'bridge over the VNEG strip lane: +3V3A from the generator to the AWG branch (the lane order is the reverse of the generator\'s outputs)')
+two('R412', '0Rb', P33A, 'P33_RN', 'power', 'bridge over AREF: the +3V3A trunk to the ADS side of REFCAL (R517); AREF stays continuous')
+two('R413', '0Rb', P33A, 'P33_S', 'power', 'bridge over AREF: the scope\'s own +3V3A branch from the star, straight to R110 (R109 removed: its crossing vanished with the final REFCAL routing); AREF stays continuous')
+two('C403', '10u', P5F, G, B, '5 V bulk = CIN'); two('C404', '10u', P5F, G, B, '5 V bulk = CIN')
+two('C401', '100n', P5F, G, B, 'LM27762 VIN')
+part('U401', 'LM27762', {'1': G, '2': 'LM_FBP', '3': P5F, '4': G, '5': 'LM_CP', '6': VN, '7': 'LM_FBN',
                        '8': P5F, '9': 'LM_C1N', '10': 'LM_C1P', '11': P33A, '12': P5F, '13': G}, B,
      'EN+ / EN- from VIN; PGOOD unused, to GND (SNVSAF7C table 4-1)')
-two('C31', '1u', 'LM_C1P', 'LM_C1N', B, 'flying capacitor C1')
-two('C38', '10u', 'LM_CP', G, B, 'CPOUT'); two('C39', '10u', 'LM_CP', G, B, 'CPOUT')
-two('C40', '10u', P33A, G, B, 'OUT+'); two('C41', '10u', P33A, G, B, 'OUT+')
-two('C42', '10u', VN, G, B, 'OUT-'); two('C43', '10u', VN, G, B, 'OUT-')
-two('R29', '174k', P33A, 'LM_FBP', B, 'FB+ top (R1)'); two('R5', '100k', 'LM_FBP', G, B, 'FB+ bottom (R2)')
+two('C402', '1u', 'LM_C1P', 'LM_C1N', B, 'flying capacitor C101')
+two('C405', '10u', 'LM_CP', G, B, 'CPOUT'); two('C406', '10u', 'LM_CP', G, B, 'CPOUT')
+two('C407', '10u', P33A, G, B, 'OUT+'); two('C408', '10u', P33A, G, B, 'OUT+')
+two('C409', '10u', VN, G, B, 'OUT-'); two('C410', '10u', VN, G, B, 'OUT-')
+two('R406', '75k', P33A, 'LM_FBPX', B, 'FB+ top (R101) = 75k + 100k = 175k, 3.300 V nominal')
+two('R409', '100k', 'LM_FBPX', 'LM_FBP', B, 'FB+ top (R101), part 2'); two('R401', '100k', 'LM_FBP', G, B, 'FB+ bottom (R201)')
 # VOUT- = -1.22 V x (R3 + R4) / R4 (SNVSAF7C eq. 3): R3 OUT- to FB-, R4 FB- to GND
-two('R6', '100k', VN, 'LM_FBN', B, 'R3 = 330k || 100k'); two('R25', '330k', VN, 'LM_FBN', B, 'R3 = 330k || 100k')
-for r in ('R26', 'R27', 'R28'):
+two('R402', '75k', VN, 'LM_FBN', B, 'R3 = 75k, -2.052 V nominal')
+for r in ('R403', 'R404', 'R405'):
     two(r, '330k', 'LM_FBN', G, B, 'R4 = 3 x 330k ||')
-two('R65', '4.7k', P33A, G, B, '+3.3 V_A bleed (PR-3)')
-
-# ------------------------------------------------------------------ 3.3 V sense and the scope Vmid (sim/scope netlib, sim/powercal P8)
-B = 'vmid'
-two('R38', '249', P33D, 'V3S', B, 'shared sense filter from the Due 3.3 V pin')
-two('C46', '10u', 'V3S', G, B, 'sense filter'); two('C15', '100n', 'V3S', G, B, 'sense node')
-two('R20', '330k', 'V3S', 'VMID_TAP', B, 'Vmid divider top'); two('R21', '330k', 'VMID_TAP', G, B, 'Vmid divider bottom')
-two('C47', '10u', 'VMID_TAP', G, B, 'Vmid tap (PW-7)')
-part('U6', 'TLV9062', {'1': 'CH1_VBO', '2': 'CH1_VFB', '3': 'VMID_TAP', '4': G,
-                       '5': 'VMID_TAP', '6': 'CH2_VFB', '7': 'CH2_VBO', '8': P33A}, B, 'A: CH1 Vmid, B: CH2 Vmid')
-two('C18', '100n', P33A, G, B, 'TLV9062 supply')
-for ch, rs, rfb, cfb, cn, c10 in (('CH1', ('R73', 'R74', 'R75', 'R76'), 'R63', 'C34', 'C16', range(48, 54)),
-                                  ('CH2', ('R77', 'R78', 'R79', 'R80'), 'R64', 'C35', 'C17', range(54, 60))):
-    for r in rs:
-        two(r, '1R', f'{ch}_VBO', f'{ch}_VMID', B, f'{ch} Vmid isolation, 4 x 1R ||')
-    two(rfb, '4.7k', f'{ch}_VMID', f'{ch}_VFB', B, f'{ch} Vmid DC feedback')
-    two(cfb, '1u', f'{ch}_VBO', f'{ch}_VFB', B, f'{ch} Vmid HF feedback')
-    for k in c10:
-        two(f'C{k}', '10u', f'{ch}_VMID', G, B, f'{ch} Vmid node, 6 x 10 uF')
-    two(cn, '100n', f'{ch}_VMID', G, B, f'{ch} Vmid node')
+two('R407', '2.2k', P33A, G, B, '+3.3 V_A bleed (PR-3): holds the unpowered rail under 0.5 V with +5 V forced on the AWG BNC (whatif/v1-jumper/ section 8)')
 
 # ------------------------------------------------------------------ scope channels (sim/scope netlib core, variant hz)
-SC = {  # ch: R1 100k, R1 330k x2, R3 100k, R3 330k x2, R2, C1, C2 12p (||), C2 12p (series), C2 20p (||), C2 20p (series),
-        #     Rnp, op-amp, RF, RG, switch, Riso, clamp, supply R, 10 uF, 100 nF, switch cap, pull-down, BNC
-    'CH1': ('R1', ('R10', 'R11'), 'R3', ('R14', 'R15'), 'R18', 'C1', 'C3', 'C4', 'C9', 'C10',
-            'R52', 'U1', 'R30', 'R36', 'U10', 'R55', 'D5', 'R71', 'C44', 'C13', 'C28', 'R66', 'J1'),
-    'CH2': ('R2', ('R12', 'R13'), 'R4', ('R16', 'R17'), 'R19', 'C2', 'C5', 'C6', 'C11', 'C12',
-            'R53', 'U2', 'R31', 'R37', 'U11', 'R56', 'D6', 'R72', 'C45', 'C14', 'C29', 'R67', 'J2'),
+# D18 and the REF3030E centre (budget/v1_scope_ref.py): each channel is IN - R101 (470k + 300k) - N, N - R201 (470k + 330k) - GND,
+# N - R3 (330k) - VREF, C101 12 pF across R101, C201 30 pF from N to GND (the 39.5 pF of the compensation less the 10 pF Cnp that
+# loads N behind Rnp), then Rnp 680 / Cnp 10 pF to the follower's +IN
+SC = {  # ch: R101 parts, R201 parts, R3, C101, C201, Rnp, Cnp, Riso, clamp, BNC
+    'CH1': (('R102', 'R103'), ('R105', 'R101'), 'R104', 'C101', 'C102', 'R106', 'C105', 'R107', 'D101', 'J101'),
+    'CH2': (('R202', 'R203'), ('R205', 'R201'), 'R204', 'C201', 'C202', 'R206', 'C203', 'R207', 'D201', 'J201'),
 }
 ADC = {'CH1': 'A1', 'CH2': 'A0'}            # afe.md: CH1 on A1, CH2 on A0
-RANGE = {'CH1': 'D16', 'CH2': 'D39'}   # D16 (PA13, COMMUNICATION0.3) over CH1's switch; D39 on XIO0 (afe.md D14)
-for ch, (r1a, (r1b, r1c), r3a, (r3b, r3c), r2, c1, c2p, c2s, c2q, c2t, rnp, u, rf, rg, sw, riso, dk, rsup, c10, cpin,
-         csw, rpd, j) in SC.items():
+for ch, (r1, r2, r3, c1, c2, rnp, cnp, riso, dk, j) in SC.items():
     B = ch.lower()
     n = lambda s: f'{ch}_{s}'
     other(j, 'Connector:Conn_Coaxial', 'KH-BNC50-3511', BNC, {'1': n('IN'), '2': G}, B, f'{ch} input, right-angle')
     PARTS[-1].update(lcsc='C2837587', mpn='Kinghelm KH-BNC50-3511')
-    # R1 = 330k + 330k + 100k from IN to N, C1 12 pF across all of it
-    two(r1b, '330k', n('IN'), n('R1A'), B, 'R1 (760k), part 1'); two(r1c, '330k', n('R1A'), n('R1B'), B, 'R1, part 2')
-    two(r1a, '100k', n('R1B'), n('N'), B, 'R1, part 3'); two(c1, '12p', n('IN'), n('N'), B, 'C1 across R1')
-    two(r2, '330k', n('N'), n('VMID'), B, 'R2, N to this channel Vmid')
-    # C2 = 20 || 12 || (12 s 20) = 39.5 pF, N to Vmid
-    two(c2q, '20p', n('N'), n('VMID'), B, 'C2: 20 pF'); two(c2p, '12p', n('N'), n('VMID'), B, 'C2: 12 pF')
-    two(c2s, '12p', n('N'), n('C2S'), B, 'C2: 12 pF in series'); two(c2t, '20p', n('C2S'), n('VMID'), B, 'C2: 20 pF in series')
-    # R3 = 330k + 330k + 100k from N to the shared sense node
-    two(r3b, '330k', n('N'), n('R3A'), B, 'R3 (760k), part 1'); two(r3c, '330k', n('R3A'), n('R3B'), B, 'R3, part 2')
-    two(r3a, '100k', n('R3B'), 'V3S', B, 'R3, part 3, to the sense node')
+    two(r1[0], '470k', n('IN'), n('R1A'), B, 'R101 (770k), part 1'); two(r1[1], '300k', n('R1A'), n('N'), B, 'R101, part 2')
+    two(c1, '12p', n('IN'), n('N'), B, 'C101 across R101')
+    two(r2[0], '470k', n('N'), n('R2A'), B, 'R201 (800k) to GND, part 1'); two(r2[1], '330k', n('R2A'), G, B, 'R201, part 2')
+    two(r3, '330k', n('N'), 'VREF_R' if ch == 'CH1' else 'VREF_P', B, 'R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)')
+    two(c2, '30p', n('N'), G, B, 'C201')
     two(rnp, '680', n('N'), n('NP'), B, 'Rnp, clamp-current limit')
-    part(u, 'OPA354', {'1': n('OUT'), '2': G, '3': n('NP'), '4': n('FB'), '5': n('VCC')}, B, f'{ch} op-amp')
-    two(rsup, '1R', P33A, n('VCC'), B, 'supply branch'); two(c10, '10u', n('VCC'), G, B, 'supply branch')
-    two(cpin, '100n', n('VCC'), G, B, 'supply pin')
-    two(rf, '953', n('OUT'), n('FB'), B, 'RF'); two(rg, '249', n('FB'), n('VMID'), B, 'RG to this channel Vmid')
-    # range switch across RF: SEL low (pulled down) = S1-D closed = +/-5 V (G ~ 1); high = open = +/-1.25 V
-    part(sw, 'TMUX1119', {'1': RANGE[ch], '2': P33A, '3': G, '4': n('OUT'), '5': n('FB')}, B, 'range switch, S2 unused')
-    two(csw, '100n', P33A, G, B, 'TMUX1119 supply')
-    two(rpd, '4.7k', RANGE[ch], G, B, 'range pull-down: low = +/-5 V (bom.txt PULL RESISTORS: 0.31 V worst low)')
+    two(cnp, '10p', n('NP'), G, B, 'Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz')
+    if ch == 'CH1':     # one TPH2502 for both channels (afe.md D16; VT-10 decides, else one dual per channel)
+        # placed at 90 degrees between the two channels: pins 1-3 on its south edge are CH2's, 5-7 on its north edge CH1's,
+        # each with OUT at the west end and +IN at the east end (layout.py); unity followers: -IN is tied to OUT
+        part('U101', 'TPH2502', {'1': 'CH2_OUT', '2': 'CH2_OUT', '3': 'CH2_NP', '4': G,
+                               '5': 'CH1_NP', '6': 'CH1_OUT', '7': 'CH1_OUT', '8': 'SC_VCC'}, B,
+             'scope dual: A CH2, B CH1, followers')
+        two('R108', '1R', 'P33_U', 'SC_VCC', B, 'scope dual supply branch (LR-6)'); two('C104', '10u', 'SC_VCC', G, B, 'supply branch')
+        two('C103', '100n', 'SC_VCC', G, B, 'supply pin')
     two(riso, '22', n('OUT'), ADC[ch], B, 'Riso')
-    part(dk, 'BAT54S', {'1': G, '3': ADC[ch], '2': P33A}, B, 'ADC-pin clamp after Riso')
+    part(dk, 'BAV99', {'1': G, '3': ADC[ch], '2': 'P33_U'}, B, 'ADC-pin clamp after Riso (BAV99, Basic: kvm_02\'s v2 scope run holds PR-2 with it)')
 
 # ------------------------------------------------------------------ AWG (sim/awg variant buf, sim/powercal ac_netlist)
 B = 'awg'
-two('R54', '680', 'DAC0', 'AWG_BIN', B, 'Rbin'); two('R22', '330k', 'AWG_BIN', G, B, 'Rbpl, to GND (PR-2)')
-part('U4', 'OPA365', {'1': 'AWG_BO', '2': G, '3': 'AWG_BIN', '4': 'AWG_BO', '5': 'AWG_BV'}, B, 'DAC0 buffer, follower')
-part('D3', 'BAT54S', {'1': P33A, '3': 'AWG_BV'}, B, 'DAC0 buffer supply, one die (pin 1 -> 3)')
-two('C19', '100n', 'AWG_BV', G, B, 'DAC0 buffer supply pin')
-two('R32', '953', 'AWG_BO', 'AWG_VP', B, 'Ra')
-# Rb = 953 + (249 || 249) + 22, V+ to GND
-two('R34', '953', 'AWG_VP', 'AWG_RB1', B, 'Rb, 953 part')
-two('R39', '249', 'AWG_RB1', 'AWG_RB2', B, 'Rb, 249 || 249'); two('R40', '249', 'AWG_RB1', 'AWG_RB2', B, 'Rb, 249 || 249')
-two('R57', '22', 'AWG_RB2', G, B, 'Rb, 22 part')
-# Rf = 953 + (249 || 249) + 22, out to V-, with Cf 12 pF across the whole of it; Rg 953 to the AWG Vmid
-two('R35', '953', 'AWG_OUT', 'AWG_RF1', B, 'Rf, 953 part')
-two('R41', '249', 'AWG_RF1', 'AWG_RF2', B, 'Rf, 249 || 249'); two('R42', '249', 'AWG_RF1', 'AWG_RF2', B, 'Rf, 249 || 249')
-two('R58', '22', 'AWG_RF2', 'AWG_INV', B, 'Rf, 22 part')
-two('C7', '12p', 'AWG_OUT', 'AWG_INV', B, 'Cf'); two('R33', '953', 'AWG_INV', 'AWG_VMID', B, 'Rg')
-part('U3', 'OPA365', {'1': 'AWG_OUT', '2': 'AWG_VNX', '3': 'AWG_VP', '4': 'AWG_INV', '5': 'AWG_VPX'}, B, 'AWG op-amp')
-# supplies: 22 || 22 from each rail, 100 nF, then a series Schottky die into the pin
-two('R59', '22', P33A, 'AWG_VCC', B, 'V+ filter 22 || 22'); two('R60', '22', P33A, 'AWG_VCC', B, 'V+ filter 22 || 22')
-two('C21', '100n', 'AWG_VCC', G, B, 'V+ pin filter')
-part('D1', 'BAT54S', {'1': 'AWG_VCC', '3': 'AWG_VPX'}, B, 'V+ series Schottky, one die (pin 1 -> 3)')
-two('R61', '22', VN, 'AWG_VEE', B, 'V- filter 22 || 22'); two('R62', '22', VN, 'AWG_VEE', B, 'V- filter 22 || 22')
-two('C22', '100n', 'AWG_VEE', G, B, 'V- pin filter')
-part('D2', 'BAT54S', {'1': 'AWG_VNX', '3': 'AWG_VEE'}, B, 'V- series Schottky, one die (pin 1 -> 3)')
-two('R51', '49.9', 'AWG_OUT', 'AWG_BNC', B, 'series 50 ohm (AW-4), 1206')
-other('J3', 'Connector:Conn_Coaxial', 'KH-BNC50-3511', BNC, {'1': 'AWG_BNC', '2': G}, B, 'AWG output, right-angle')
+# D25/D27 and whatif/v1-awg-ref (one design with v2): DAC0 straight into a divider, ONE half of a TPH2502 as the gain stage
+# (the spare half tied off: V2-2 allows it where the circuit has no use for it), the offset taken from the REF3030E through a
+# 100 ohm + 2 x 10 uF filter at the Rg2 end; Vout = Gs*kin*Vdac - K*Vref.  No buffer, no Vmid follower, no series Schottkys.
+two('R305', '51k', 'DAC0', 'AWG_BIN', B, 'Rbin: DAC0 series resistor and the divider\'s upper arm')
+two('R308', '51k', 'AWG_BIN', 'AWG_BPL', B, 'Rbpl, part 1 (51k + 75k = 126k to GND)')
+two('R301', '75k', 'AWG_BPL', G, B, 'Rbpl, part 2')
+two('C304', '10p', 'DAC0', 'AWG_BIN', B, 'Cbin across Rbin: without it the divider pole fails AW-3')
+two('R303', '3.3k', 'AWG_OUT', 'AWG_INV', B, 'Rf')
+two('C301', '10p', 'AWG_OUT', 'AWG_INV', B, 'Cf across Rf (AN-1: the stage has no phase margin without it)')
+two('R302', '4.99k', 'AWG_INV', 'AWG_X', B, 'Rg2, to the filtered REF3030E output')
+two('R307', '100R', VREF, 'AWG_X', B, 'offset filter, series 100 ohm: hides the AWG current from the REF output impedance (SC-9)')
+two('C305', '10u', 'AWG_X', G, B, 'offset filter, 10 uF (14 uF with the 2nd, about 7 uF each at 3 V bias *(check)*)')
+two('C306', '10u', 'AWG_X', G, B, 'offset filter, 10 uF')
+two('C302', '100n', P33E, G, B, 'TPH2502 V+ pin')
+# the AWG's +3.3 V branch crosses the A1 and A0 lines (the ADC lines from the channels to the Due's A1 / A0 pins) on two
+# 0 ohm bridges (afe.md D24: a bridge, not a bottom hop, over an ADC trace)
+two('R110', '0Rb', 'P33_S', 'P33_U', 'ch1', 'bridge over the A1 column: the scope\'s +3V3A branch (from R413) to the dual V+ and the clamps')
+two('R515', '0Rb', VREF, 'VREF_M', 'cal', 'wall bridge over A1 (the CH2 leg of VREF), part 1 of 2')
+two('R111', '0Rb', 'VREF_P', 'VREF_Q', 'ch1', 'SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3')
+two('R113', '0Rb', 'VREF_Q', 'VREF_S', 'ch1', 'SCOPE agent: over the supply belt (R110.2 -> R108 -> U101.8 -> U101 -> R107) inside fence 1, part 2 of 3')
+two('R112', '0Rb', 'VREF_S', 'VREF_R', 'ch1', 'SCOPE agent: over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R')
+two('R516', '0Rb', 'VREF_M', 'VREF_P', 'cal', 'wall bridge over A0 (the CH2 leg of VREF), part 2 of 2')
+two('C303', '100n', VNO, G, B, 'TPH2502 V- pin (at the pin)')
+part('U301', 'TPH2502', {'1': 'AWG_SP', '2': 'AWG_SP', '3': G, '4': VNO, '5': 'AWG_BIN', '6': 'AWG_INV', '7': 'AWG_OUT', '8': P33E}, B,
+     'half B the gain stage (pins 5-7: +IN, -IN, OUT); half A the spare: +IN to GND, follower (V2-2). At 270 degrees the '
+     'stage\'s pins face the DAC0 pin and its OUT the BNC')
+two('R304', '100R1206', 'AWG_OUT', 'AWG_BNC', B, 'series 50 ohm (AW-4): 2 x 100 ohm 1206 in parallel, 0.1 W each in the short')
+two('R306', '100R1206', 'AWG_OUT', 'AWG_BNC', B, 'series 50 ohm (AW-4), part 2')
+other('J301', 'Connector:Conn_Coaxial', 'KH-BNC50-3511', BNC, {'1': 'AWG_BNC', '2': G}, B, 'AWG output, right-angle')
 PARTS[-1].update(lcsc='C2837587', mpn='Kinghelm KH-BNC50-3511')
-# optional output clamp, op-amp side: 3 diodes to GND per polarity, footprints only (PR-4: not needed for any limit).
-# D9 and D10 each hold two diodes of one string; their pin 3 is the string's internal node and is left open.
-part('D9', 'BAV99', {'1': 'AWG_OUT', '2': 'AWG_CLA2'}, B, 'clamp string a, diodes 1-2', dnp=True)
-part('D11', 'BAV99', {'1': 'AWG_CLA2', '3': G, '2': 'AWG_CLB1'}, B, 'clamp string a diode 3, string b diode 1', dnp=True)
-part('D10', 'BAV99', {'1': 'AWG_CLB1', '2': 'AWG_OUT'}, B, 'clamp string b, diodes 2-3', dnp=True)
-# the AWG's own fast Vmid: 330k / 330k off +3.3 V_A, 12 pF at the tap, OPA365 follower, NO output capacitor
-two('R23', '330k', P33A, 'AWG_VMT', B, 'AWG Vmid divider top'); two('R24', '330k', 'AWG_VMT', G, B, 'AWG Vmid divider bottom')
-two('C8', '12p', 'AWG_VMT', G, B, 'AWG Vmid tap: strays under 3 pF (check at layout)')
-part('U5', 'OPA365', {'1': 'AWG_VMID', '2': G, '3': 'AWG_VMT', '4': 'AWG_VMID', '5': 'AWG_MV'}, B, 'AWG Vmid follower, no output C')
-part('D4', 'BAT54S', {'1': P33A, '3': 'AWG_MV'}, B, 'Vmid buffer supply, one die (pin 1 -> 3)')
-two('C20', '100n', 'AWG_MV', G, B, 'Vmid buffer supply pin')
 
 # ------------------------------------------------------------------ calibration (architecture.md "Calibration", whatif/tee)
 B = 'cal'
-part('U8', 'REF3030', {'1': P33A, '2': VREF, '3': G}, B, 'drives the ladder and REFP0 directly')
-two('C24', '100n', P33A, G, B, 'REF3030 VIN'); two('C32', '1u', P33A, G, B, 'REF3030 VIN bulk')
-two('C26', '100n', VREF, G, B, 'REFP0, 2 x 100 nF'); two('C27', '100n', VREF, G, B, 'REFP0, 2 x 100 nF')
-# ladder: 3 x 249 || at the bottom, 5 x 249 in series; taps 0.188 / 0.750 / 1.312 / 1.875 / 2.438 / 3.000 V on A2..A7
-for r in ('R43', 'R44', 'R45'):
-    two(r, '249', 'TAP1', G, B, 'ladder bottom, 3 x 249 ||')
-for r, a, b in (('R46', 'TAP1', 'TAP2'), ('R47', 'TAP2', 'TAP3'), ('R48', 'TAP3', 'TAP4'), ('R49', 'TAP4', 'TAP5'),
-                ('R50', 'TAP5', VREF)):
-    two(r, '249', a, b, B, 'ladder series')
-two('R81', '0R', VREF, 'AREF', B, 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
-# AWG-sense divider k = 1/2 at the BNC (after the 49.9 ohm); the ratio switch moves its far end
-two('R7', '100k', 'AWG_BNC', 'SNS_TAP', B, 'sense divider, BNC node to tap')
-two('R8', '100k', 'SNS_TAP', 'SNS_D', B, 'sense divider, tap to far end (switch D, read by the ADC)')
-part('U12', 'TMUX1119', {'1': 'D9_SEL', '2': P33A, '3': G, '4': 'SNS_S1', '5': 'SNS_D', '6': VREF}, B,
-     'ratio switch: SEL low = S1 (AWG Vmid via 100k), high = S2 (3.0 V)')
-two('C30', '100n', P33A, G, B, 'TMUX1119 supply')
-two('R68', '4.7k', 'D9_SEL', G, B, 'ratio-switch pull-down (bom.txt PULL RESISTORS)')
-two('R9', '100k', 'AWG_VMID', 'SNS_S1', B, 'AWG Vmid to S1')
-# switch-pin clamps on D and S1 (architecture.md C1-q / C1-r)
-part('D7', 'BAT54S', {'1': G, '3': 'SNS_D', '2': P33A}, B, 'clamp on the ratio switch D')
-part('D8', 'BAT54S', {'1': G, '3': 'SNS_S1', '2': P33A}, B, 'clamp on the ratio switch S1')
-part('U9', 'ADS124S08', {
-    '1': G,             # AINCOM = AGND (single-ended)
-    '7': 'TAP1', '6': 'TAP2', '5': 'TAP3', '4': 'TAP4', '3': 'TAP5', '2': VREF,   # AIN0..AIN5: the six taps
-    '22': 'SNS_TAP', '21': 'SNS_D',                                               # AIN8, AIN9
-    '8': G,             # START/SYNC to DGND
-    '9': 'D5_CS', '10': 'D6_DIN', '11': 'D7_SCLK', '12': 'D8_DOUT',   # bit-banged SPI on PC25..PC22 (D5..D8, one port),
-    # on the top edge, its bus along the west and top board edges (afe.md D14, LR-9)
-    '14': G, '15': P33A, '16': P33A, '17': G, '18': P33A,    # DGND, IOVDD, DVDD, CLK to DGND (internal osc), RESET high
-    '24': G, '26': P33A, '27': G, '28': G, '29': G, '30': VREF,   # REFCOM, AVDD, AVSS, AVSS-SW, REFN0, REFP0
-}, B, 'precision ADC; DRDY, REFOUT, NC and AIN6/7/10/11 open (SBAS660C 10.1.5)')
-two('C25', '100n', P33A, G, B, 'ADS124S08 DVDD + IOVDD (tied)')
-two('C33', '1u', P33A, G, B, 'ADS124S08 AVDD, >= 330 nF')
-two('R69', '4.7k', 'D5_CS', P33A, B, 'CS pull-up (bom.txt PULL RESISTORS)')
+part('U501', 'REF3030', {'1': P33A, '2': VREF, '3': G}, B, 'drives the ladder and REFP0 directly')
+two('C501', '100n', P33A, G, B, 'REF3030 VIN'); two('C505', '1u', P33A, G, B, 'REF3030 VIN bulk')
+two('C503', '100n', VREF, G, B, 'reference output, at the ADS1115 AIN0')
+two('C504', '1u', VREF, G, B, 'reference output: the REF3030E asks for 0.1-22 uF (SBVS032), a 100 nF part alone is 0.09 uF at -10 %')
+# ladder: 100 ohm at the bottom (one part: the 3 x 270 || it replaces was 90 ohm), 5 x 270 in series; taps about 0.207 / 0.766 /
+# 1.324 / 1.883 / 2.441 V on A2..A7 (the measured ones are read, the rest are checks)
+two('R503', '100R', 'TAP1', G, B, 'ladder bottom')
+for r, a, b in (('R504', 'TAP1', 'TAP2'), ('R505', 'TAP2', 'TAP3'), ('R506', 'TAP3', 'TAP4'), ('R507', 'TAP4', 'TAP5'),
+                ('R508', 'TAP5', VREF)):
+    two(r, '270', a, b, B, 'ladder series')
+two('R510', '0R', VREF, 'AREF', B, 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
+# AWG-sense divider and the jumper ratio measurement (afe.md D25, PA-4; kvm_02's structure S3, whatif/v1-jumper/):
+# BNC node - R501 - tap T0 - R502 - bottom end B - Rd - VREF (the default tie, wire off); k = R502 / (R501 + R502) = 0.405.  The wire (a
+# shunt on J501) joins B to TAP3.  T0 and B each reach the ADS1115 through a series resistor (Rs 3.9k, Rm 13k = Rt||Rb + Rs
+# matched) and a BAV99 clamp, and are read as the differential pair AIN2-AIN3.
+two('R309', '0Rb', 'AWG_S', 'AWG_I', 'awg', 'wall bridge over A1 (AWG_BNC sense tap, west-bound), part 1 of 2')
+two('R310', '0Rb', 'AWG_I', 'AWG_BNC', 'awg', 'wall bridge over A0 (AWG_BNC sense tap, west-bound), part 2 of 2')
+two('R501', '22k', 'AWG_S', 'SNS_TAP', B, 'sense divider, BNC node to the tap T0')
+two('R502', '15k', 'SNS_TAP', 'SNS_B', B, 'sense divider, tap to the bottom end B')
+two('R512', '1k', 'SNS_B_N', VREF, B, 'Rd: the default tie of B to VREF (wire off); on the _N side of the sense bridge R520')
+two('R520', '0Rb', 'SNS_B', 'SNS_B_N', B, 'bridge over a VREF leg (not a TAP line, as built): splits the sense bottom node B so the Rd tie reaches branch D without crossing (v2 BR508); carries only the ADS input current')
+two('R513', '3.9k', 'SNS_TAP', 'SNS_TI', B, 'Rs: T0 to AIN2')
+two('R514', '13k', 'SNS_B', 'SNS_BI', B, 'Rm: B to AIN3 (source impedance matched to AIN2)')
+part('D502', 'BAV99', {'1': G, '3': 'SNS_TI', '2': 'P33_R'}, B, 'clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others)')
+part('D501', 'BAV99', {'1': G, '3': 'SNS_BI', '2': 'P33_R'}, B, 'clamp on AIN3')
+other('J501', 'Connector_Generic:Conn_01x03', 'CAL', 'Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical',
+      {'1': 'TAP4', '2': 'SNS_B', '3': 'TAP3'}, B, 'ratio jumper: a shunt across B and TAP3 (pins 2-3); TAP4 next to it is a wrong '
+      'position that stays in range', fitted_by='owner')
+# precision ADC (D15: v2's ADS1115, afe-v2 V2-8 / section 3.4)
+part('U502', 'ADS1115', {'1': G, '3': G, '4': VREF, '5': 'TAP3', '6': 'SNS_TI', '7': 'SNS_BI',
+                       '8': 'P33_R', '9': 'SDA1_A', '10': 'SCL1_A'}, B,
+     'ADDR to GND (0x48); AIN0 VREF (a check), AIN1 TAP3, AIN2 / AIN3 the sense tap T0 and the bottom end B read as a '
+     'differential pair; RDY unused')
+two('C502', '100n', 'P33_R', G, B, 'ADS1115 VDD')
+two('R509', '4.7k', 'SDA1_A', 'P33_R', B, 'I2C pull-up, SDA1 (the Due has none on TWI0)')
+two('R511', '4.7k', 'SCL1_A', 'P33_R', B, 'I2C pull-up, SCL1')
+# REFCAL's planar cut (the block agent's finding): the VREF tree (legs A south, D1 north, D2 east) splits the fence, and the ADS
+# straddles it. Three 0603 0 ohm bridges carry the nets that must cross: the ADS's +3V3A, SDA and SCL.
+two('R517', '0Rb', 'P33_RN', 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)')
+two('R518', '0Rb', 'SDA1', 'SDA1_A', B, 'bridge over a VREF leg: SDA to the ADS')
+two('R519', '0Rb', 'SCL1', 'SCL1_A', B, 'bridge over a VREF leg: SCL to the ADS')
 
 # ------------------------------------------------------------------ Due headers (docs/due-header-table.md, V03)
 B = 'due'
 HDR = {  # ref: (symbol, value, footprint, {pin: net})
-    'J4': ('Connector_Generic:Conn_01x08', 'POWER0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
-           {'4': P33D, '5': P5, '6': G, '7': G}),
-    'J5': ('Connector_Generic:Conn_01x08', 'ADCL0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
+    'J601': ('Connector_Generic:Conn_01x08', 'POWER0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
+           {'5': P5, '6': G, '7': G}),
+    'J602': ('Connector_Generic:Conn_01x08', 'ADCL0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
            {'1': VREF, '2': 'TAP5', '3': 'TAP4', '4': 'TAP3', '5': 'TAP2', '6': 'TAP1', '7': 'A1', '8': 'A0'}),
-    'J6': ('Connector_Generic:Conn_01x08', 'ADCH0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
+    'J603': ('Connector_Generic:Conn_01x08', 'ADCH0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
            {'5': 'DAC0'}),
-    'J7': ('Connector_Generic:Conn_01x08', 'PWML0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
-           {'6': 'D5_CS', '7': 'D6_DIN', '8': 'D7_SCLK'}),
-    'J8': ('Connector_Generic:Conn_01x08', 'COMMUNICATION0',
-           'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {'3': 'D16'}),
-    'J9': ('Connector_Generic:Conn_01x10', 'PWMH0', 'Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical',
-           {'1': 'D8_DOUT', '2': 'D9_SEL', '7': G, '8': 'AREF'}),
-    'J10': ('Connector_Generic:Conn_02x18_Odd_Even', 'XIO0',
+    'J604': ('Connector_Generic:Conn_01x08', 'PWML0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {}),
+    'J605': ('Connector_Generic:Conn_01x08', 'COMMUNICATION0',
+           'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {}),
+    'J606': ('Connector_Generic:Conn_01x10', 'PWMH0', 'Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical',
+           {'7': G, '8': 'AREF', '9': 'SDA1', '10': 'SCL1'}),
+    'J607': ('Connector_Generic:Conn_02x18_Odd_Even', 'XIO0',
             'afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO',     # stock socket, odd / even exchanged (build_pcb.py);
             # its 5V pins 1/2 are left open: the Due joins them to POWER0.5 on its own board, and the shield takes
             # 5 V at POWER0.5 alone (a second shield-side 5 V path would only add a trace across the board)
-            {'20': 'D39', '35': G, '36': G}),
+            {'35': G, '36': G}),
 }
 for ref, (sym, val, fp, pins) in HDR.items():
     other(ref, sym, val, fp, pins, B, 'generic Mega stacking header, owner-fitted')
 # ISO7380 courtyard (r 3.1 mm, a 5.7 mm head): the plain M3 hole's r 3.45 overlaps ADCH0's and XIO0's courtyards
 # there; the M3 x 5 pan head is 5.6 mm *(check)*
-other('MH1', 'Mechanical:MountingHole', 'M3 standoff', 'MountingHole:MountingHole_3.2mm_M3_ISO7380', {}, B,
+# M2.5 at both Due holes (the spec lead, with v2): MH602 at (90.17, 50.8) is 3.81 mm from XIO0's pin 1 / the top socket's end, where an M3 head
+# (5.6 mm) would overlap the socket housing and an M2.5 head (4.5 mm) clears it by about 0.7 mm *(check against the housing drawing)*
+other('MH601', 'Mechanical:MountingHole', 'M2.5 standoff', 'MountingHole:MountingHole_2.7mm_M2.5', {}, B,
       'over the Due hole (96.52, 2.54)')
-for k, (net, why) in enumerate(((P5, '5 V pin side of the sense resistor (D7)'), (P5F, 'AFE side of the sense resistor (D7)'),
-                                (G, 'ground'), (P33A, '+3.3 V_A'), (VN, 'negative rail'), (VREF, '3.0 V reference')), 1):
-    other(f'TP{k}', 'Connector:TestPoint', net, TP, {'1': net}, 'power' if k <= 5 else 'cal', why, fitted_by='none')
+other('MH602', 'Mechanical:MountingHole', 'M2.5 standoff', 'MountingHole:MountingHole_2.7mm_M2.5', {}, B,
+      'over the Due hole (90.17, 50.8), beside the BNCs')
+for k, (net, why) in enumerate(((P5, '5 V pin side of the sense resistor (R408)'), (P5F, 'AFE side of the sense resistor (R408)'),
+                                (G, 'ground'), (P33A, '+3.3 V_A'), (VNO, 'negative rail, beyond R410'), (VREF, '3.0 V reference')), 1):
+    other(f'TP{400 + k}' if k <= 5 else 'TP501', 'Connector:TestPoint', net, TP, {'1': net}, 'power' if k <= 5 else 'cal', why, fitted_by='none')
+
+# LR-11 test points on the key nodes of the blocks that had none: each ADC pin (on the existing trace, no stub: A1, A0 add pad
+# capacitance to LR-4's total) and the AWG output before the back-termination
+for ref, net, blk, why in (('TP101', 'A1', 'ch1', 'ADC pin A1 (CH1), on the trace'), ('TP201', 'A0', 'ch2', 'ADC pin A0 (CH2), on the trace'),
+                           ('TP301', 'AWG_OUT', 'awg', 'AWG output before the back-termination')):
+    other(ref, 'Connector:TestPoint', net, TP, {'1': net}, blk, why, fitted_by='none')
 
 PARTS_BY_REF = {p['ref']: p for p in PARTS}
 assert len(PARTS_BY_REF) == len(PARTS), 'duplicate designator'

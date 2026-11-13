@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-13.** This is the 2026-11-11 ADS124S08 BOM. The AFE v1 BOM is `bom/v1/` (`bom.txt`, `bom.md`). Kept unchanged below for the record.
+
 AFE shield BOM, owner's cost cuts (B, C, k = 1/2), ordered domestically, 2026-11-11
 Plain-text companion of whatif/bom.md; that file carries the sources, the cost breakdown and the flags.
 Prices: international JLC tiers, all read 2026-11-11 (JLC parts search), USD *(check)*. 'unit@20' = the tier holding
