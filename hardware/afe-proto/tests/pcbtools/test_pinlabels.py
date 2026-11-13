@@ -45,12 +45,12 @@ def test_the_parser_takes_the_dues_name_from_each_kind_of_cell(tmp_path):
     p = tmp_path / 't.md'
     p.write_text(SYNTH)
     refs = ['ADCL0', 'ADCH0', 'POWER0', 'COMMUNICATION0', 'PWMH0', 'PWML0']
-    t = PL.parse_header_table(p, refs, L.PIN_LABEL_ALIASES)
+    t = PL.parse_header_table(p, refs, L.PIN_LABEL_ALIASES, L.PIN_LABEL_FUNCTION_HEADERS)
     assert t['ADCL0'] == {'1': PL.Label('A7', False), '2': PL.Label('A6', False)}                # two headers side by side are split
     assert t['ADCH0'] == {'1': PL.Label('A8', True), '2': PL.Label('DAC0', False)}               # the cell's own *(check)* mark is kept
     assert t['POWER0'] == {'1': PL.Label('NC', False), '2': PL.Label('IOREF', False), '4': PL.Label('3V3', False)}   # parenthesis dropped, alias
-    assert t['COMMUNICATION0']['1'] == PL.Label('D14', True)                                      # a marked column header marks every cell
-    assert t['COMMUNICATION0']['7'] == PL.Label('D20', True)                                      # first word, comment in parentheses dropped
+    assert t['COMMUNICATION0']['1'] == PL.Label('TX3', True)                                      # the function word, not the number; the marked column marks every cell
+    assert t['COMMUNICATION0']['7'] == PL.Label('SDA', True)                                      # comment in parentheses dropped
     assert t['PWMH0']['9'] == PL.Label('SDA1', True) and t['PWML0']['1'] == PL.Label('D0', False)
 
 
@@ -62,10 +62,26 @@ def test_a_header_that_the_table_lacks_is_an_error_not_a_smaller_label_set(tmp_p
 
 
 def test_the_real_table_gives_every_edge_header_its_pins():
-    t = PL.parse_header_table(TABLE, sorted(set(L.EDGE_SOCKETS.values())), L.PIN_LABEL_ALIASES)
+    t = PL.parse_header_table(TABLE, sorted(set(L.EDGE_SOCKETS.values())), L.PIN_LABEL_ALIASES, L.PIN_LABEL_FUNCTION_HEADERS)
     want = {'POWER0': 8, 'ADCL0': 8, 'ADCH0': 8, 'PWMH0': 10, 'PWML0': 8, 'COMMUNICATION0': 8}      # the 1xN headers' own pin counts (the table, section 2)
     assert {k: len(v) for k, v in t.items()} == want
     assert all(lab.text and ' ' not in lab.text for h in t.values() for lab in h.values())
+
+
+def test_a_function_header_cell_with_only_a_number_keeps_the_number_marked_check(tmp_path):
+    p = tmp_path / 't.md'
+    p.write_text('| COMMUNICATION0 pin | x | net | Arduino |\n|---|---|---|---|\n| 1 | 1 | N | D14 TX3 |\n| 2 | 2 | N | D15 |\n')
+    t = PL.parse_header_table(p, ['COMMUNICATION0'], None, ('COMMUNICATION0',))
+    assert t['COMMUNICATION0'] == {'1': PL.Label('TX3', False), '2': PL.Label('D15', True)}
+
+
+def test_the_communication_pins_print_the_dues_function_names_read_from_the_table():
+    """the expected text is derived here from the raw table cells by the rule 'the word that is not the number', independently of clean()"""
+    rows = re.findall(r'^\| (\d) \| [\d.]+ \| \S+ \| (D\d+ [A-Z]+\d?)[^|]*\|$', TABLE.read_text(), re.M)
+    assert len(rows) == 8
+    want = {pin: [w for w in cell.split() if not re.fullmatch(r'D\d+', w)][0] for pin, cell in rows}
+    got = {pin: lab.text for pin, lab in PL.label_table(L)['COMMUNICATION0'].items()}
+    assert want == got and all(not re.fullmatch(r'D\d+', v) for v in got.values()), (want, got)
 
 
 def test_the_config_names_the_edge_sockets_and_not_the_xio_socket():
@@ -97,10 +113,34 @@ def test_every_edge_socket_pad_has_exactly_one_label_equal_to_the_table(pcbnew_r
         assert len(hit) == 1, (sock, pin, hit)
         text, x, y, ang, layer, h, w = hit[0]
         assert text == want, (sock, pin)
-        assert layer == 'F.SilkS' and h >= 1.0 and ang == p.angle and L.PIN_LABEL_MIN_W <= w <= L.PIN_LABEL_W, (sock, pin, hit[0])
+        assert layer == 'F.SilkS' and h == L.PIN_LABEL_H == 1.0 and w == L.PIN_LABEL_W and ang == p.angle == 90, (sock, pin, hit[0])
         assert abs(x - px) < 0.01                                                               # centred on its pad column
     in_bands = [t for t in labels if any(x0 <= t[1] <= x1 and y0 <= t[2] <= y1 for _, (x0, y0, x1, y1) in L.KEEPOUTS)]
     assert len(in_bands) == len(pads)                                                          # and nothing else is in a band
+
+
+@pcbnew_mark
+@pcbnew_mark
+def test_every_label_has_the_same_rotation_height_and_width(pcbnew_required, tmp_path):
+    """all 50 labels: turned 90 degrees (one reading direction on both bands), one height, one width. Broken on purpose: one label rotated,
+    and one sized differently, must each be reported by findings() (LR-11) and by this same uniformity measure."""
+    text = BOARD.read_text()
+    sizes = lambda t: {(x[3], x[5], x[6]) for x in file_labels(t) if any(x0 <= x[1] <= x1 and y0 <= x[2] <= y1 for _, (x0, y0, x1, y1) in L.KEEPOUTS)}  # noqa: E731
+    one = sizes(text)
+    assert len(one) == 1, one
+    ang, h, w = next(iter(one))
+    assert ang == 90 and h == L.PIN_LABEL_H == 1.0 and w == L.PIN_LABEL_W                       # exactly 1.0 mm high, the one normal width
+    m = [m for m in re.finditer(r'\n\t\(gr_text "A3"\n.*?\n\t\)(?=\n)', text, re.S)][0]
+    rot = re.sub(r'(\(at [-\d.]+ [-\d.]+ )90\)', r'\g<1>0)', m.group(0), count=1)
+    p = tmp_path / 'rot.kicad_pcb'
+    p.write_text(text[:m.start()] + rot + text[m.end():])
+    assert len(sizes(p.read_text())) == 2                                                       # the uniformity measure sees it ...
+    r = PL.findings(boardio.read_board(p), L)
+    assert any('"A3"' in s and 'turned 0' in s for s in r), r                                     # ... and so does LR-11
+    big = m.group(0).replace(f'(size {h:g} {w:g})', f'(size {h:g} {w + 0.1:g})', 1)
+    p.write_text(text[:m.start()] + big + text[m.end():])
+    r = PL.findings(boardio.read_board(p), L)
+    assert any('"A3"' in s and 'every label is' in s for s in r), r
 
 
 @pcbnew_mark
@@ -120,11 +160,14 @@ def test_the_board_labels_pass_the_rule_and_the_rule_reports_each_way_to_break_t
     cut = lambda m, repl: text[:m.start()] + repl + text[m.end():]  # noqa: E731
     r = run(cut(lab, lab.group(0).replace('"A3"', '"A9"', 1)), 'renamed')
     assert any('"A3"' in s for s in r), r
+    tx3 = [m for m in blocks if m.group(1) == 'TX3'][0]                                         # J607 pin 1: the function name, not D14
+    r = run(cut(tx3, tx3.group(0).replace('"TX3"', '"D14"', 1)), 'comm_number')
+    assert any('0 label(s) "TX3"' in s for s in r), r
     r = run(cut(lab, ''), 'missing')
     assert any('0 label(s) "A3"' in s for s in r), r
     r = run(cut(lab, lab.group(0).replace(lab.group(3), '147.3', 1)), 'ontopad')                  # y 147.3 = Due y 2.7: on the pad row
     assert r, r
-    r = run(cut(lab, lab.group(0).replace('(size 1 0.8)', '(size 0.8 0.8)', 1)), 'short')
+    r = run(cut(lab, lab.group(0).replace('(size 1 ', '(size 0.8 ', 1)), 'short')
     assert any('mm high' in s for s in r), r
     nb = [m for m in blocks if m.group(1) == 'A2'][0]
     moved = lab.group(0).replace(lab.group(2), str(float(lab.group(2)) + 1.0), 1).replace('"A3"', '"A3"')
@@ -174,3 +217,54 @@ def test_kicad_drc_has_no_silk_finding_on_the_labels(pcbnew_required, tmp_path):
     v = json.loads(out.read_text())['violations']
     silk = [x for x in v if x['type'] in ('silk_overlap', 'silk_edge_clearance', 'silk_over_copper', 'text_height', 'text_thickness')]
     assert silk == [], [(x['type'], [i['description'] for i in x['items']]) for x in silk]
+
+
+# ------------------------------------------------------------------------------------------------ the overhang follows the longest name
+def test_required_overhang_rounds_up_to_the_step():
+    f = PL.required_overhang
+    assert f(4.0, 1.0, 0.5, 0.5, 0.5) == 4.0                  # need = 0.5 + 4.0 + 0.5 - 1.0 = 4.0 exactly: not rounded up further
+    assert f(4.01, 1.0, 0.5, 0.5, 0.5) == 4.5                 # a hair over: the next 0.5
+    assert f(0.1, 5.0, 0.5, 0.5, 0.5) <= 0.0 + 0.5            # a long pad edge needs no overhang (not negative-rounded away)
+
+
+def test_the_configs_overhang_is_the_computed_one_not_a_typed_figure():
+    """recomputed here from the measurement file and the table, independently of v2_layout's own call"""
+    d = json.loads(pathlib.Path(PL.INK_FILE).read_text())
+    names = PL.label_names(TABLE, sorted(set(L.EDGE_SOCKETS.values())), L.PIN_LABEL_ALIASES, L.PIN_LABEL_FUNCTION_HEADERS)
+    longest = max(d['ink'][n] for n in names)
+    need = L.PIN_LABEL_EDGE_MARGIN + longest + L.PIN_LABEL_PAD_GAP - d['pad_edge']
+    assert L.OVERHANG >= need - 1e-9 and L.OVERHANG < need + L.OVERHANG_STEP - 1e-9 and (L.OVERHANG / L.OVERHANG_STEP) % 1 == 0, (L.OVERHANG, need)
+    assert L.PIN_LABEL_LONGEST in names and d['ink'][L.PIN_LABEL_LONGEST] == longest
+    assert L.BOARD_RECT[3] - L.BOARD_RECT[1] <= L.BOARD_MAX_MM[1] and L.BOARD_RECT[2] - L.BOARD_RECT[0] <= L.BOARD_MAX_MM[0]
+
+
+@pcbnew_mark
+def test_the_ink_file_is_what_the_stroke_font_and_the_board_give(pcbnew_required):
+    d = json.loads(pathlib.Path(PL.INK_FILE).read_text())
+    ink, across = PL.measure(sorted(d['ink']), L.PIN_LABEL_H, L.PIN_LABEL_W, L.PIN_LABEL_THICK)
+    assert all(abs(ink[n] - d['ink'][n]) < 0.002 for n in ink), {n: (ink[n], d['ink'][n]) for n in ink if abs(ink[n] - d['ink'][n]) >= 0.002}
+    assert abs(across - d['ink_h']) < 0.002
+    assert PL.pad_edge(boardio.read_board(BOARD), L) == pytest.approx(d['pad_edge'], abs=0.002)
+
+
+@pcbnew_mark
+def test_every_label_fits_between_the_pads_and_the_board_edge_and_is_one_size(pcbnew_required, tmp_path):
+    b = boardio.read_board(BOARD)
+    plan = PL.plan_labels(b, L)
+    assert {(p.h, p.w, p.angle) for p in plan} == {(1.0, L.PIN_LABEL_W, 90.0)}                  # exactly 1.0 mm high, one width, one rotation
+    x0, y0, x1, y1 = L.BOARD_RECT
+    m = L.PIN_LABEL_EDGE_MARGIN
+    for p in plan:
+        lo, hi = p.y - p.length / 2, p.y + p.length / 2
+        assert lo >= y0 + m - 0.06 and hi <= y1 - m + 0.06, (p, lo, hi)                           # inside the board with the margin
+    assert max(p.length for p in plan) == L.PIN_LABEL_INK[L.PIN_LABEL_LONGEST]
+    # broken on purpose: a label moved out past the edge, and a board whose overhang is a typed 4.0 mm (too small for CANRX)
+    text = BOARD.read_text()
+    mm = [m_ for m_ in re.finditer(r'\n\t\(gr_text "CANRX"\n\t\t\(at ([-\d.]+) ([-\d.]+) ', text)][0]
+    out = text[:mm.start(2)] + str(float(mm.group(2)) + 1.0) + text[mm.end(2):]                 # 1 mm south in sheet y = 1 mm outward of the south edge
+    p = tmp_path / 'edge.kicad_pcb'
+    p.write_text(out)
+    r = PL.findings(boardio.read_board(p), L)
+    assert any('CANRX' in s for s in r), r
+    need4 = PL.required_overhang(L.PIN_LABEL_INK[L.PIN_LABEL_LONGEST], PL.pad_edge(b, L), L.PIN_LABEL_PAD_GAP, m, L.OVERHANG_STEP)
+    assert need4 != 4.0 and need4 == L.OVERHANG                                                  # a typed 4.0 would not equal the computed figure

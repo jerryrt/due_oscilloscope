@@ -20,7 +20,7 @@ import sys
 from pcbtools.boards import v2_layout as L
 dpi = float(sys.argv[1]); k = dpi / 25.4
 x0, y0, x1, y1 = L.BOARD_RECT
-strip = 3.7                                              # mm from the band's inner edge toward the pads: where a turned label may reach
+strip = L.PIN_PAD_EDGE + 0.2                             # mm from the band's inner edge to just past the socket pads: where a label may reach
 for (n, (bx0, by0, bx1, by1)), tag in zip(L.KEEPOUTS, ('band-south', 'band-north')):
     south = by0 < 1.0
     top, bot = (by1 + strip, by0) if south else (by1, by0 - strip)          # Due mm, y up

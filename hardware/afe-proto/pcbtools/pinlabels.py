@@ -13,19 +13,22 @@ Built once and driven by the board config (see boards/v2_layout.py), so another 
     pinlabels.findings(b, cfg)                -> [str]                                   what is wrong with the board's labels (LR-11)
 
 Config fields (all read from `cfg`, none is typed here): EDGE_SOCKETS {socket ref: Due header ref in the table}, PIN_TABLE (repo
-relative path of docs/due-header-table.md), BOARD_RECT, KEEPOUTS (the bands), PIN_LABEL_H / _W / _MIN_W / _THICK / _ADVANCE / _INK_PAD /
-_EDGE_MARGIN / _PAD_GAP / _ALIASES / _POS_TOL, DESIGNATOR_GAP_ONE_LABEL (the gap two labels must keep), DESIGNATOR_ADVANCE and
-DESIGNATOR_INK_H (the designators' boxes, which labels keep clear of).
+relative path of docs/due-header-table.md), BOARD_RECT, KEEPOUTS (the bands), PIN_LABEL_H / _W / _THICK /
+_EDGE_MARGIN / _PAD_GAP / _ALIASES / _POS_TOL / _FUNCTION_HEADERS, DESIGNATOR_GAP_ONE_LABEL (the gap two labels must keep), DESIGNATOR_ADVANCE and
+DESIGNATOR_INK_H (the designators' boxes, which labels keep clear of), PIN_LABEL_INK {name: ink length} and PIN_LABEL_INK_H (from
+INK_FILE), OVERHANG (derived from them by required_overhang).
 
 The names are the table's "Arduino" or "Due label" column: the cell without its `*(check)*` mark and its parenthesis, mapped through
-PIN_LABEL_ALIASES when the whole cell is a key ("3.3 V" -> "3V3"), else its first word ("D14 TX3" -> "D14"). A cell the table marks
+PIN_LABEL_ALIASES when the whole cell is a key ("3.3 V" -> "3V3"), else its first word; for a header in PIN_LABEL_FUNCTION_HEADERS the
+word that is not the Dnn number ("D14 TX3" -> "TX3"), and a cell with no such word keeps the number, marked (check). A cell the table marks
 `*(check)*` (or whose column header is marked) keeps the mark in `Label.check`, and the plan, the CLI listing and the board's data
 comment carry it: the name is the table's inference, not a read-off from the Due.
 
-Placement. Labels of up to two characters are horizontal, centred on their pad; longer ones are turned 90 degrees (the name does not fit
-the pitch with the gap two labels must keep) and run from the band's outer edge inward, so the label starts in the band and may enter the
-copper-free strip between the band and the socket pads, never reaching a pad. A turned label that would reach a pad is narrowed down to
-PIN_LABEL_MIN_W before it is reported. Text height is PIN_LABEL_H (the board house's 1.0 mm minimum).
+Placement. Every label is turned 90 degrees (reading bottom to top, on both bands), exactly PIN_LABEL_H (1.0 mm, the board house's minimum)
+high and PIN_LABEL_W wide (the stroke font's default width at that height), one size for every name. A label starts at the band's outer
+edge (PIN_LABEL_EDGE_MARGIN in) and runs inward, so it may enter the copper-free strip between the band and the socket pads, never closer
+than PIN_LABEL_PAD_GAP to a pad. Nothing is narrowed or shrunk: the overhang is what is sized, to fit the longest name
+(required_overhang()), from lengths measured in KiCad's stroke font (measure(), stored in pinlabel_ink.json, which a test re-measures).
 """
 from __future__ import annotations
 
@@ -68,16 +71,22 @@ def _cells(line):
     return [c.strip() for c in line.strip().strip('|').split('|')]
 
 
-def clean(cell, aliases=None):
-    """the Due's name in one table cell"""
+def clean(cell, aliases=None, function=False):
+    """the Due's name in one table cell. function=True (a header in PIN_LABEL_FUNCTION_HEADERS): the cell's word that is not the Dnn
+    number ("D14 TX3" -> "TX3"); a cell with only the number keeps it, and the caller marks it (check)."""
     s = re.sub(r'\*\(check\)\*', '', cell)
     s = re.sub(r'\([^)]*\)', '', s).strip()
     if aliases and s in aliases:
         return aliases[s]
-    return s.split()[0] if s else ''
+    words = s.split()
+    if function:
+        named = [w for w in words if not re.fullmatch(r'D\d+', w)]
+        if named:
+            return named[0]
+    return words[0] if words else ''
 
 
-def parse_header_table(path, refs, aliases=None):
+def parse_header_table(path, refs, aliases=None, function_headers=()):
     """{header ref: {pin number (str): Label}} for each header in `refs`, read from the markdown tables whose header row has a cell
     `<REF> pin` followed by a column called Arduino or Due label. Tables with two headers side by side (ADCL0 | ADCH0) are split. A
     header that is not found is an error: the label set must not shrink silently."""
@@ -102,7 +111,9 @@ def parse_header_table(path, refs, aliases=None):
                     c = _cells(lines[j])
                     for ref, (pk, lk, hchk) in cols.items():
                         if ref in rows and pk < len(c) and lk < len(c) and c[pk].isdigit() and c[lk]:
-                            rows[ref][c[pk]] = Label(clean(c[lk], aliases), hchk or '(check)' in c[lk])
+                            fn = ref in function_headers
+                            txt = clean(c[lk], aliases, fn)
+                            rows[ref][c[pk]] = Label(txt, hchk or '(check)' in c[lk] or (fn and re.fullmatch(r'D\d+', txt) is not None))
                     j += 1
                 out.update({r: v for r, v in rows.items() if v})
                 i = j
@@ -122,10 +133,6 @@ def _box(cx, cy, length, height, ang):
     return np.array([p + u + v, p - u + v, p - u - v, p + u - v])
 
 
-def _length(n, w, cfg):
-    return n * cfg.PIN_LABEL_ADVANCE * w + cfg.PIN_LABEL_INK_PAD
-
-
 def socket_pads(b, cfg):
     """[(ref, pin, header ref, row of pad box (x0, y0, x1, y1))] of every pad of every edge-row socket, in the board's pad order"""
     refs = list(b.fp_ref)
@@ -142,11 +149,14 @@ def socket_pads(b, cfg):
 
 def label_table(cfg):
     path = cfg.PIN_TABLE if os.path.isabs(cfg.PIN_TABLE) else os.path.join(REPO, cfg.PIN_TABLE)
-    return parse_header_table(path, sorted(set(cfg.EDGE_SOCKETS.values())), getattr(cfg, 'PIN_LABEL_ALIASES', None))
+    return parse_header_table(path, sorted(set(cfg.EDGE_SOCKETS.values())), getattr(cfg, 'PIN_LABEL_ALIASES', None),
+                             getattr(cfg, 'PIN_LABEL_FUNCTION_HEADERS', ()))
 
 
 def plan_labels(b, cfg):
-    """[Planned] one per pad of the edge-row sockets. Returns what the config and the table say; the board's own silk is not read."""
+    """[Planned] one per pad of the edge-row sockets, all turned 90 degrees (reading bottom to top on both bands), all PIN_LABEL_H high and
+    PIN_LABEL_W wide, each starting at its band's outer edge (PIN_LABEL_EDGE_MARGIN in) and running inward by its measured ink length
+    (cfg.PIN_LABEL_INK). Returns what the config and the table say; the board's own silk is not read."""
     table = label_table(cfg)
     bands = [(n, r) for n, r in cfg.KEEPOUTS]
     out = []
@@ -154,49 +164,106 @@ def plan_labels(b, cfg):
         lab = table[hdr].get(pin)
         if lab is None:
             raise ValueError(f'{sock}.{pin}: the table has no pin {pin} for {hdr}')
+        if lab.text not in cfg.PIN_LABEL_INK:
+            raise ValueError(f'{lab.text!r} has no measured ink length: run python3 -m pcbtools.pinlabels --measure in the PCB image')
         name, (rx0, ry0, rx1, ry1) = min(bands, key=lambda nr: abs(py - (nr[1][1] + nr[1][3]) / 2))
         south = (ry0 + ry1) / 2 < py                                  # the band lies on the low-y side of the pad
-        n = len(lab.text)
-        w = cfg.PIN_LABEL_W
-        h = cfg.PIN_LABEL_H
-        outer = (ry0 + cfg.PIN_LABEL_EDGE_MARGIN) if south else (ry1 - cfg.PIN_LABEL_EDGE_MARGIN)      # where the ink starts, at the band's outer edge
-        inner = (by0 - cfg.PIN_LABEL_PAD_GAP) if south else (by1 + cfg.PIN_LABEL_PAD_GAP)             # the nearest a label may reach to the pad
-        ink_h = h + cfg.PIN_LABEL_THICK
-        if _length(n, w, cfg) <= _pitch(b, cfg, sock) - cfg.DESIGNATOR_GAP_ONE_LABEL:
-            ang, length = 0.0, _length(n, w, cfg)
-            cy = outer + ink_h / 2 if south else outer - ink_h / 2
-            cx = px
-        else:
-            avail = abs(inner - outer)
-            while _length(n, w, cfg) > avail and w > cfg.PIN_LABEL_MIN_W + 1e-9:
-                w = max(cfg.PIN_LABEL_MIN_W, round(w - 0.01, 3))
-            ang, length = 90.0, _length(n, w, cfg)
-            cx = px
-            cy = outer + length / 2 if south else outer - length / 2
-        out.append(Planned(sock, pin, lab.text, round(cx, 3), round(cy, 3), ang, w, h, round(length, 3), lab.check, name))
+        outer = (ry0 + cfg.PIN_LABEL_EDGE_MARGIN) if south else (ry1 - cfg.PIN_LABEL_EDGE_MARGIN)
+        length = cfg.PIN_LABEL_INK[lab.text]
+        cy = outer + length / 2 if south else outer - length / 2
+        out.append(Planned(sock, pin, lab.text, round(px, 3), round(cy, 3), 90.0, cfg.PIN_LABEL_W, cfg.PIN_LABEL_H, round(length, 3), lab.check, name))
     return out
 
 
-def _pitch(b, cfg, sock):
-    """the pad pitch of a socket's row: the smallest distance between two of its pads"""
-    refs = list(b.fp_ref)
-    j = np.flatnonzero(b.p_fp.astype(int) == refs.index(sock))
-    xs = np.sort(b.p_x[j])
-    return float(np.diff(xs).min()) if len(xs) > 1 else 2.54
+# ------------------------------------------------------------------------------------------------ measuring, and the overhang that follows
+INK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pinlabel_ink.json')
+
+
+def label_names(path, refs, aliases=None, function_headers=()):
+    """the sorted set of names the table gives the headers in `refs`"""
+    t = parse_header_table(path, refs, aliases, function_headers)
+    return sorted({lab.text for h in t.values() for lab in h.values()})
+
+
+def measure(names, h, w, thick):
+    """{name: ink length along the baseline, in mm} and the ink height across it, as KiCad's stroke font draws them at h x w with the given
+    stroke: the bounding box of GetEffectiveTextShape() plus one stroke width. Needs pcbnew (the PCB image)."""
+    import pcbnew
+    b = pcbnew.BOARD()
+    ink, across = {}, 0.0
+    for n in names:
+        t = pcbnew.PCB_TEXT(b)
+        t.SetText(n)
+        t.SetLayer(pcbnew.F_SilkS)
+        t.SetTextSize(pcbnew.VECTOR2I(int(round(w * 1e6)), int(round(h * 1e6))))
+        t.SetTextThickness(int(round(thick * 1e6)))
+        t.SetPosition(pcbnew.VECTOR2I(0, 0))
+        bb = t.GetEffectiveTextShape().BBox()
+        ink[n] = round(bb.GetWidth() / 1e6 + thick, 3)
+        across = max(across, round(bb.GetHeight() / 1e6 + thick, 3))
+    return ink, across
+
+
+def pad_edge(b, cfg):
+    """how far the nearest pad of an edge-row socket lies from the Due's own edge on its side, in mm (the same for every socket row)"""
+    dx0, dy0, dx1, dy1 = cfg.DUE_RECT
+    d = []
+    for sock, pin, hdr, (bx0, by0, bx1, by1), px, py in socket_pads(b, cfg):
+        d.append(by0 - dy0 if py < (dy0 + dy1) / 2 else dy1 - by1)
+    return round(min(d), 3)
+
+
+def required_overhang(ink_max, pad_edge_mm, pad_gap, edge_margin, step):
+    """the overhang that fits the longest name: from the board edge, edge_margin + the ink + pad_gap reach the pads, which lie pad_edge_mm
+    inside the Due's edge; rounded UP to the next `step` mm"""
+    import math
+    need = edge_margin + ink_max + pad_gap - pad_edge_mm
+    return math.ceil(round(need / step, 9)) * step
+
+
+def load_ink(path=INK_FILE):
+    import json
+    return json.load(open(path))
 
 
 def planned_boxes(plan, cfg):
-    out = []
-    for p in plan:
-        ink_h = p.h + cfg.PIN_LABEL_THICK
-        out.append(_box(p.x, p.y, p.length, ink_h, p.angle))
-    return out
+    return [_box(p.x, p.y, p.length, cfg.PIN_LABEL_INK_H, p.angle) for p in plan]
 
 
 # ------------------------------------------------------------------------------------------------ the findings (LR-11)
 def _gap(P, Q):
     from .rules import _convex_gap
     return float(_convex_gap(P, Q))
+
+
+def file_texts(text):
+    """[(text, x, y, angle, layer, height, width)] of every board-level gr_text in a board file (Due mm; the file's `(size H W)`)"""
+    out = []
+    for m in re.finditer(r'\n\t\(gr_text "([^"]*)"\n\t\t\(at ([-\d.]+) ([-\d.]+) ([-\d.]+)\)\n\t\t\(layer "([^"]+)"\).*?\(size ([-\d.]+) ([-\d.]+)\)', text, re.S):
+        out.append((m.group(1), float(m.group(2)) - SHEET_X, SHEET_Y - float(m.group(3)), float(m.group(4)), m.group(5), float(m.group(6)), float(m.group(7))))
+    return out
+
+
+def _file_findings(b, plan, cfg):
+    """what the arrays cannot see, read from the board file when it is there: every label on F.SilkS, turned as planned and of the one
+    planned height and width (a label rotated or sized differently from the rest is the finding)"""
+    path = getattr(b, 'path', '')
+    if not path or not os.path.isfile(path) or not str(path).endswith('.kicad_pcb'):
+        return []
+    texts = file_texts(open(path).read())
+    bad = []
+    for p in plan:
+        hit = [t for t in texts if t[0] == p.text and abs(t[1] - p.x) <= cfg.PIN_LABEL_POS_TOL and abs(t[2] - p.y) <= cfg.PIN_LABEL_POS_TOL]
+        if len(hit) != 1:
+            continue                                                  # a missing or doubled label is already reported from the arrays
+        _, _, _, ang, layer, h, w = hit[0]
+        if layer != 'F.SilkS':
+            bad.append(f'{p.ref}.{p.pin}: label "{p.text}" is on {layer}, not F.SilkS')
+        if abs(((ang - p.angle + 180) % 360) - 180) > 0.01:
+            bad.append(f'{p.ref}.{p.pin}: label "{p.text}" is turned {ang:g} degrees, every label is {p.angle:g}')
+        if abs(h - p.h) > 1e-6 or abs(w - p.w) > 1e-6:
+            bad.append(f'{p.ref}.{p.pin}: label "{p.text}" is {h:g} x {w:g} mm, every label is {p.h:g} x {p.w:g}')
+    return bad
 
 
 def findings(b, cfg):
@@ -216,8 +283,9 @@ def findings(b, cfg):
             bad.append(f'{p.ref}.{p.pin}: {len(hit)} label(s) "{p.text}" at ({p.x}, {p.y})' + (f', found {near}' if near else ''))
             continue
         used.add(hit[0])
-        if th[hit[0]] + 1e-6 < cfg.PIN_LABEL_H:
-            bad.append(f'{p.ref}.{p.pin}: label "{p.text}" is {th[hit[0]]:.2f} mm high, under {cfg.PIN_LABEL_H}')
+        if abs(th[hit[0]] - cfg.PIN_LABEL_H) > 1e-6:
+            bad.append(f'{p.ref}.{p.pin}: label "{p.text}" is {th[hit[0]]:.2f} mm high, every label is {cfg.PIN_LABEL_H}')
+    bad += _file_findings(b, plan, cfg)
     bands = [r for _, r in cfg.KEEPOUTS]
     for i, t in enumerate(texts):
         if i in used:
@@ -229,13 +297,14 @@ def findings(b, cfg):
     rx0, ry0, rx1, ry1 = cfg.BOARD_RECT
     m = cfg.PIN_LABEL_EDGE_MARGIN
     for k, (p, B) in enumerate(zip(plan, boxes)):
-        if B[:, 1].min() < ry0 + m - 0.1 or B[:, 1].max() > ry1 - m + 0.1 or B[:, 0].min() < rx0 + m or B[:, 0].max() > rx1 - m:
+        if B[:, 1].min() < ry0 + m - 0.06 or B[:, 1].max() > ry1 - m + 0.06 or B[:, 0].min() < rx0 + m or B[:, 0].max() > rx1 - m:
             bad.append(f'{p.ref}.{p.pin}: "{p.text}" is within {m} mm of the board edge')
-        near = np.flatnonzero((b.p_bx1 >= B[:, 0].min()) & (b.p_bx0 <= B[:, 0].max()) & (b.p_by1 >= B[:, 1].min()) & (b.p_by0 <= B[:, 1].max()))
+        g_ = cfg.PIN_LABEL_PAD_GAP
+        near = np.flatnonzero((b.p_bx1 >= B[:, 0].min() - g_) & (b.p_bx0 <= B[:, 0].max() + g_) & (b.p_by1 >= B[:, 1].min() - g_) & (b.p_by0 <= B[:, 1].max() + g_))
         refs = list(b.fp_ref)
         for j in near:
-            if _gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]], [b.p_bx1[j], b.p_by1[j]], [b.p_bx0[j], b.p_by1[j]]])) <= 0:
-                bad.append(f'{p.ref}.{p.pin}: "{p.text}" lies over pad {refs[int(b.p_fp[j])]}.{b.p_pin[j]}')
+            if _gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]], [b.p_bx1[j], b.p_by1[j]], [b.p_bx0[j], b.p_by1[j]]])) < cfg.PIN_LABEL_PAD_GAP - 0.01:
+                bad.append(f'{p.ref}.{p.pin}: "{p.text}" lies over or within {cfg.PIN_LABEL_PAD_GAP} mm of pad {refs[int(b.p_fp[j])]}.{b.p_pin[j]}')
         for p2, B2 in zip(plan[k + 1:], boxes[k + 1:]):
             g = _gap(B, B2)
             if g < cfg.DESIGNATOR_GAP_ONE_LABEL:
@@ -293,9 +362,23 @@ def main(argv):
     ap.add_argument('--write', nargs='?', const='', default=None, help='write the labels into the board text (in place, or to OUT)')
     ap.add_argument('--check', action='store_true', help='exit 1 unless the board already carries the planned labels and findings() is empty')
     ap.add_argument('--list', action='store_true')
+    ap.add_argument('--measure', action='store_true', help='re-measure the stroke font in the PCB image and write pcbtools/pinlabel_ink.json (--check compares instead)')
     a = ap.parse_args(argv)
     cfg = importlib.import_module('pcbtools.boards.' + a.config)
     b = boardio.read_board_retry(a.board)
+    if a.measure:
+        import json
+        names = label_names(os.path.join(REPO, cfg.PIN_TABLE), sorted(set(cfg.EDGE_SOCKETS.values())), cfg.PIN_LABEL_ALIASES, cfg.PIN_LABEL_FUNCTION_HEADERS)
+        ink, across = measure(names, cfg.PIN_LABEL_H, cfg.PIN_LABEL_W, cfg.PIN_LABEL_THICK)
+        data = dict(h=cfg.PIN_LABEL_H, w=cfg.PIN_LABEL_W, thick=cfg.PIN_LABEL_THICK, ink_h=across, pad_edge=pad_edge(b, cfg), ink=ink,
+                    note='ink length = the bounding box of KiCad stroke-font text (pcbnew GetEffectiveTextShape) plus one stroke width; pad_edge = pad box to the Due edge')
+        if a.check:
+            old = load_ink()
+            print('pinlabel_ink.json is current' if old == data else 'pinlabel_ink.json is STALE')
+            return 0 if old == data else 1
+        json.dump(data, open(INK_FILE, 'w'), indent=1, sort_keys=True)
+        print(f'wrote {INK_FILE}: {len(ink)} names, longest {max(ink, key=ink.get)} {max(ink.values())} mm, pad edge {data["pad_edge"]} mm')
+        return 0
     plan = plan_labels(b, cfg)
     if a.list:
         for p in plan:

@@ -91,8 +91,9 @@ DEV_OUTLINE = ('MC-1 board outline',
                'the board overhangs the Due by {overhang} mm on each long edge: {w:.2f} x {h:.2f} mm against the {max0} x {max1} mm bound; each band is a top-layer keep-out and the bottom ground plane fills it ({band})',
                None)                                       # the authority text is MC1_FOUND or MC1_MISSING
 MC1_COMMIT = '9489582'
-MC1_PATTERN = r'Amended by the owner, 2026-11-13[^|]*overhangs the Due by 2.5 mm on each long edge'
-MC1_FOUND = ('owner ruling 2026-11-13, in `docs/afe.md` row MC-1 ("Amended by the owner, 2026-11-13 ... the outline overhangs the Due by 2.5 mm on each long edge", '
+from . import v2_layout as _layout  # noqa: E402  the overhang in the quoted wording is the config's computed one, not a typed figure
+MC1_PATTERN = r'Amended by the owner, 2026-11-13[^|]*overhangs the Due by %g mm on each long edge' % _layout.OVERHANG
+MC1_FOUND = ('owner ruling 2026-11-13, in `docs/afe.md` row MC-1 ("Amended by the owner, 2026-11-13 ... the outline overhangs the Due by %g mm on each long edge", ' % _layout.OVERHANG +
              'read from the file at run time; amendment commit 9489582, not named in the document)')
 MC1_MISSING = 'owner ruling 2026-11-13, MC-1 amended on main (`9489582`); `docs/afe.md` in this tree does not carry the wording *(check)*'
 DEV_EDGE = ('copper-to-edge', 'min_copper_edge_clearance {edge_rule} mm in the project file (config says {edge_cfg} mm)',

@@ -53,10 +53,10 @@ def band_copper(b, band):
 
 
 # ------------------------------------------------------------------------------------------------ the arithmetic and the data
-def test_the_outline_arithmetic_is_100_by_58_34_split_over_both_long_edges():
+def test_the_outline_is_the_dues_width_by_its_depth_plus_two_overhangs_split_over_both_long_edges():
     x0, y0, x1, y1 = L.BOARD_RECT
     dx0, dy0, dx1, dy1 = L.DUE_RECT
-    assert (round(x1 - x0, 6), round(y1 - y0, 6)) == (100.0, 58.34)
+    assert (round(x1 - x0, 6), round(y1 - y0, 6)) == (round(dx1 - dx0, 6), round(dy1 - dy0 + 2 * L.OVERHANG, 6))
     assert round(x1 - x0, 6) <= L.BOARD_MAX_MM[0] and round(y1 - y0, 6) <= L.BOARD_MAX_MM[1]
     assert (x0, x1) == (dx0, dx1)                                                      # the short edges are the Due's own
     assert (round(dy0 - y0, 6), round(y1 - dy1, 6)) == (L.OVERHANG, L.OVERHANG)         # the same overhang on both long edges: centred over the Due
