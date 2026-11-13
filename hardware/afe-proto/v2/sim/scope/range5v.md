@@ -20,23 +20,22 @@ Per channel; CH1 is the 1xx refs, CH2 is the same + 100 (`v2/kicad/design.py`). 
 | R104 / R204 | R2b, M2 to GND | 510k | **330k** | C23137 | yes |
 | R105 / R205 | R3a, N to M3 | 470k | **330k** | C23137 | yes |
 | R106 / R206 | R3b, M3 to VREF | 200k | **0R** | C21189 | yes |
-| C101 / C201 | C1 across R1 | 22p C0G | **12p C0G** | C38523 | yes |
-| C102 / C202 | Cn, N to GND | 12p C0G | **30p C0G** | C1658 | yes |
+| C101 / C201 | C1 across R1 | 22p C0G | **18p C0G** | C1647 | yes (jlc-basic.csv, 0603, read 2026-11-12) |
+| C102 / C202 | Cn, N to GND | 12p C0G | **47p C0G** | C1671 | yes (same read) |
 | R107 / R207, C103 / C203, R108 / R208, D101 / D201 | Rnp 470, Cpx 10p, Riso 22, BAV99 | | **unchanged** | | |
 
-These are version 1's values (`kicad/design.py` of version 1: R101 470k + 300k, R201 470k + 330k, R3 330k, C101 12p, C201 30p) in version 2's
-positions, with a 0R where version 1 has one part (R3). R1 = 770k, R2 = 800k, R3 = 330k. **Rnp stays 470 ohm** (version 1 has 680): at 12 pF
-C1 the 12 V edge reads 0.49 mA with Rnp 470 against the datasheet's 10 mA, so nothing asks for more (section 3).
+The resistors are version 1's values (`kicad/design.py` of version 1: R101 470k + 300k, R201 470k + 330k, R3 330k) in version 2's positions, with a 0R
+where version 1 has one part (R3). R1 = 770k, R2 = 800k, R3 = 330k. **Rnp stays 470 ohm** (version 1 has 680): the 12 V edge reads 0.82 mA with
+Rnp 470 against the datasheet's 10 mA (section 3).
 
-**One open choice, the compensation pair (section 4).** C1 12p / Cn 30p (above) leave the divider's HF/DC step at 95 % within +-12.9 % on
-version 2's stray assumption, twice what version 2 accepted (+-6.1 %). **C1 18p (C1647) / Cn 47p (C1671)** make it +-7.2 % at the same two
-capacitors per channel, and every other figure in this note passes with either. The table in section 2 carries both. Recommended: 18p / 47p,
-for the spec lead to confirm; nothing else in the BOM depends on it.
+**Adopted: C1 18p (C1647) / Cn 47p (C1671), the spec lead's decision of 2026-11-13** (both confirmed JLC Basic, 0603 C0G 5 %, in `v2/jlc-basic.csv`).
+Version 1's capacitors, C1 12p (C38523) / Cn 30p (C1658), are kept in the figures for the D-V2 record: they leave the divider's HF/DC step at 95 % within
++-12.9 % on version 2's stray assumption, twice what version 2 accepted (+-6.1 %); 18p / 47p give +-7.2 % at the same two capacitors per channel
+(section 4). Every figure below is given for both pairs.
 
-BOM effect (derived from `v2/kicad/design.py`, which uses each of the removed values only in the scope): part types out 510k C23192, 30k C22984,
-1M C22935, 200k C25811, 22p C1653; in 300k C23024, 330k C23137, 30p C1658 (470k C23178, 0R C21189, 12p C38523 are already on the board).
-Placements are unchanged except R106 / R206, a resistor that becomes a 0R. With 18p / 47p the capacitor types are 18p C1647 and 47p C1671 in place
-of 30p C1658 and 12p C38523. Prices not re-read *(check)*.
+BOM effect (derived from `v2/kicad/design.py`, which uses each removed value only in the scope): part types out 510k C23192, 30k C22984, 1M C22935,
+200k C25811, 22p C1653, 12p C38523; in 300k C23024, 330k C23137, 18p C1647, 47p C1671 (470k C23178 and 0R C21189 are already on the board).
+Placements are unchanged except R106 / R206, a resistor that becomes a 0R. Prices not re-read *(check)*.
 
 ## 2. Derivation
 
@@ -78,7 +77,7 @@ coupling through it, both in section 3.
 All DC rows are the 200,000-draw Monte Carlo of `run.py` section `mc` (1 % resistors, 0.2 % REF, 5 % C0G, +-0.5 mV VOS and the CMRR term, +-30 mV centring)
 and the 128 corners; `range5v.py` reproduces them in closed form (margins 167.3 / 124.5 mV there, the Monte Carlo 170.5 / 127.7 mV).
 
-| Req | Limit | v2 old | **5 V (C1 12 / Cn 30)** | **5 V (C1 18 / Cn 47)** | Verdict |
+| Req | Limit | v2 old | 5 V, C1 12 / Cn 30 (version 1's, kept for the record) | **5 V adopted, C1 18 / Cn 47** | Verdict |
 |---|---|---|---|---|---|
 | SC-2 low: pin >= 80 mV above 0 at -6 V (AREF 3.20, +-30 mV) | 80 mV | 140.6 mV at -2 V | **170.5 mV** (slack 90.5) | same | PASS |
 | SC-2 high: pin >= 80 mV below AREF at +6 V (AREF 3.20) | 80 mV | 191.2 mV at +4 V | **127.7 mV** (slack **47.7**) | same | PASS |
@@ -94,6 +93,7 @@ and the 128 corners; `range5v.py` reproduces them in closed form (margins 167.3 
 | SC-8 gain match of the two channels (200,000 draws) | 3 % (afe-v2.md 3.1; D19: 5.5 %) | 1.78 % | **2.45 %** (128 corners 3.12 %, information) | same | PASS (0.55 % margin) |
 | SC-9 scope to scope, 10 MHz, full-scale input, budget 0.02 pF N-N + 0.02 pF pad-pad | <= 2 LSB | 1.72 LSB at 6 Vpp | **1.45 LSB at 12 Vpp** (1.21 at the rated 10 Vpp) | 1.28 LSB at 12 Vpp | PASS |
 | SC-9 shared REF alone (no layout stray), 10 MHz | <= 2 LSB | 7e-6 | 6e-6 | 7e-6 | PASS |
+| **SC-9 AWG into scope through the REF, 1.9 kHz, +-1.6 V swing (simulated, section 3 below)** | <= 2 LSB | 1.68 LSB | 2.45 LSB | **2.44 LSB** | **FAIL (over by 0.44 LSB)** |
 | SC-10 settle in the 667 ns window, +6 V / -6 V through the derived ADC input; pin impedance | 0.5 LSB; <= 5 kohm | 203 ns; 22.2 ohm | **205 ns, 0.04 LSB at the end; 22.2 ohm** | 205 ns, 0.03 LSB | PASS |
 | SC-12 slew, 12 Vpp at 10 MHz at the input (pin slew) | not slew-limited (datasheet 160 V/us) | 84 V/us | **79 V/us**, THD 0.0013 % at 5 MHz | 83 V/us | PASS |
 | AN-1 phase margin (BEH60 / BEH21 / vendor), nominal; worst of the Riso x load grid | >= 45 deg | 60.2 / 60.2 / 69.9; 49.4 | **60.1 / 60.1 / 69.9; 49.0** | 60.0 / 60.0 / 69.8; 48.3 | PASS |
@@ -104,23 +104,93 @@ and the 128 corners; `range5v.py` reproduces them in closed form (margins 167.3 
 | PR-3 unpowered rail with +12 V on both inputs; largest bleed that holds 0.5 V | rail <= 0.5 V | 0.365 V at 10k; 14.1 kohm | **0.220 V at 10k; 26.5 kohm** | same | PASS (looser) |
 | REF3030E load | +-10 mA | 4.2 uA | 8.5 uA | 8.5 uA | PASS |
 
-**SC-7 with the scope terms replaced** (v2's own stack, `v2/sim/summary.md` section 2; the other rows come from that study unchanged): the scope gain
-term goes 0.108 -> 0.154 %, so the **linear sum goes 0.351 -> 0.397 % on the tracking basis (limit 0.5, margin +0.103) and 0.526 -> 0.572 % on the
-independent basis; RSS 0.187 -> 0.217 % and 0.288 -> 0.308 %**. Offset 2.13 -> 2.87 mV tracking (REF term 0.36 -> 1.05 mV, the Rp / R3 ratio and
-the 1/a at the input), 2.75 -> 3.49 mV independent, against 5 mV. The independent case was already over on the linear sum (information in v2's
-stack) and stays so; the RSS rule of D26 holds. **The tee-fit extrapolation row (0.064 %) is the powercal study's and was derived for the old range
-(AWG -1.5..+2.05 V of a -2..+4 V scope range); with a +-6 V range the fit extrapolates further (the AWG covers about 30 % of 12 V) *(check:
-that study re-derives it; version 1's own fit share was 0.1 % on +-5 V with the AWG at about 23 % of the range)*.** EN-1: the uncalibrated gain
-drift over 20 K goes 0.215 -> **0.307 %**, inside afe.md's relaxed 0.34 % (D19) and the new "design's computed worst case" of afe-v2.md D-V2-3.
+### SC-7 stack on the new range, with the tee-fit row re-derived (`range5v_sc7.py`, `range5v/sc7_5v.json`)
 
-**AWG into scope coupling through the REF (SC-9, the AWG stream's figure 0.207 LSB, not re-run here):** it enters through the scope's R3, so it
-scales with Rp / R3, 1.46 times: **about 0.30 LSB against 2 LSB** *(derived, check with the AWG study's own run)*.
+The fit is `../powercal/sc7.py`'s Monte Carlo, imported and run unchanged except for the scope's map (a = 0.2328, centre 1.6295 V) and the points
+extrapolated to. Its assumptions stand, all *(assumed, VT-23)*: a straight line of Due code against AWG volts over a 1024-point staircase from the
+sweep's kept bottom -1.923 V to the window top; the Due ADC's INL a cubic bow (0.5 or 1.2 LSB), a parabolic bow (1.2 LSB) or random knots every 8 codes
+(1.2 LSB); Due gain -1.56 / +0.29 % and offset -30..+56 codes; a +-0.5 LSB channel offset between the scope pin and the ladder pin; the scope's own pin
+map unknown to the host (a +-2 %, centre +-30 mV); 99.9th percentile of 800 draws per cell; ladder anchors not used (D-V2-13). The AWG now covers
+-1.923 .. +1.785 V (the lowest window top, the design's worst case) of the +-5 V, 3.7 V of 10 V, 37 % of the rated span (32 % for its commanded +-1.6 V);
+both ends are extrapolated (v2's old range extrapolated only the top). One Due LSB is 3.43 mV at the input now (1.73 mV before).
 
-**Downstream, derived:** the codes per volt halve (582 -> 293), so a full AWG loopback (about 3.55 V) spans about 1,040 codes at 3.25 V (was about
-2,100 to 2,200) and a 1 V signal about 293 (was about 590); afe.md's PAM table for the +-5 V range applies again in place of afe-v2.md section 3.1's
-last rows. The scope pin reaches 3.03 V against a supply of 3.21..3.39 V, so the TPH2502's input common mode and its output sit about 0.18 V from
-the rail (v2 old: about 0.24 V); the vendor macro is a single PMOS-pair model and the DC sweep tracks to 0.11 mV, but **the real rail-to-rail input's
-crossover and CMRR at 3.3 V are *(check)*, as v2's summary section 5 already says**.
+| 99.9th percentile error at the input, mV | -6 V | -5 V | +5 V | +6 V |
+|---|---|---|---|---|
+| cubic 0.5 LSB | 3.05 | 1.76 | 1.76 | 3.05 |
+| cubic 1.2 LSB | 7.31 | 4.23 | 4.23 | 7.33 |
+| parabolic 1.2 LSB | 2.90 | 1.97 | 2.09 | 3.04 |
+| **random knots 1.2 LSB (the worst model)** | 6.49 | **5.79** | **5.98** | 6.25 |
+
+(window top 1.785 V; the 1.6 V and 2.133 V tops move the knots row to 5.73 / 6.08 and 5.54 / 5.82 mV at -5 / +5 V; `sc7_5v.json` has all twelve rows.
+The guard, an INL of 12 LSB, reads 42 mV at +5 V and breaks the share, so the check can fail.)
+
+**The fit's own share of SC-7 (0.1 % of the reading, 5.0 mV at 5 V) is exceeded by the worst INL model: 5.98 mV = 0.120 % at +5 V** (cubic models are
+inside it, 4.2 mV). v2's old range read 2.35 mV = 0.067 % of 3.5 V. The cause is the 3.4 times larger Due LSB at the input and an extrapolation of 3.3 V
+on each side. The **whole of SC-7 still holds** (v2's stack of `v2/sim/summary.md` section 2 and `../powercal/results/sc7.json`, the scope row and the
+fit row replaced; gain terms in % of reading at the 5 V end, offset in mV):
+
+| Term | Gain %, tracking | Gain %, independent | Offset mV (tracking / independent) |
+|---|---|---|---|
+| REF3030E | 0.129 | 0.129 | 0 |
+| Sense ratio (powercal) | 0.050 | 0.224 | 1.73 / 2.46 |
+| **Tee fit extrapolated to +-5 V (new: was 0.064 to 3.5 V)** | **0.120** | **0.120** | 0 |
+| **Scope: R1 vs R2 \|\| R3 drift, 100 ppm/K opposed, 10 K (new: was 0.108)** | **0.154** | **0.154** | |
+| Scope: REF modulation into the centre (new: was 0.36) | | | 1.05 |
+| Scope: VOS drift 2 uV/K | | | 0.09 |
+| **Linear sum** | **0.453** | **0.627** | **2.87 / 3.60** |
+| RSS | 0.239 | 0.324 | |
+| Limit | 0.5 | 0.5 | 5 |
+| **Margin** | **+0.047 linear, +0.261 RSS** | **-0.127 linear, +0.176 RSS** | **+2.13 / +1.40** |
+
+On D26's rule (common-cause terms linear, independent terms RSS) the stack passes on both bases; the tracking basis passes even on the plain linear
+sum, with **0.047 % of margin, thin** (v2's old range: +0.149). The independent basis fails the plain linear sum, as it already did (information, -0.026 before). At
+the usable +-6 V the fit reads 7.4 mV (0.123 %), information. Gain drift EN-1 over 20 K goes 0.215 -> **0.307 %**, inside afe.md's relaxed 0.34 % (D19) and the
+design's computed worst case of afe-v2.md D-V2-3. VT-23 measures the residual on the board.
+
+### AWG into scope coupling through the REF, in the simulator (`range5v_refcoupling.py`, `range5v/refcoupling_5v.json`): **FAILS 2 LSB**
+
+How the AWG study gets its figure (`../awg/run.py` `case_ref`): the AWG's offset current moves the REF3030E output by m volts peak to peak (3.662 mV at
+1885 Hz for the full commanded +-1.6 V swing, the output impedance read from the datasheet's Fig. 6-14, peak 115 ohm *(check)*), and that reaches the pin
+through R3 and the divider; 1 LSB is 3.3 V / 4096 = 0.806 mV at the pin. (Powercal's 0.133 LSB is a different path, the rail and the plane, and is
+unchanged; the 0.207 LSB quoted before the +-1.6 V ruling is superseded: the AWG study now reads 1.69 LSB for this path, margin +0.31.) Here m is applied
+as a source on the reference node of the ported scope netlist, both channels present, and the pin's response is read from ngspice at that frequency:
+
+| scope network | pin / REF at 1885 Hz | pin | **LSB (limit 2)** | 110 ohm flat bound (information) | 28 ohm loaded (information) |
+|---|---|---|---|---|---|
+| v2 old (control: reproduces the AWG study's 1.693) | 0.3688 | 1.351 mV | 1.676 | 3.05 | 0.78 |
+| 5 V, 12p / 30p | 0.5394 | 1.975 mV | 2.452 | 4.44 | 1.13 |
+| **5 V adopted, 18p / 47p** | **0.5357** | **1.962 mV** | **2.435, over by 0.435** | 4.44 | 1.13 |
+
+**This is a failure on the new range and not a scaling artefact.** The REF reaches the pin by Rp / R3 = 0.543 (measured 0.536 at 1885 Hz including the node
+pole), and that ratio is fixed by the requirement that the REF set the centre (Vr Rp / R3 = 1.63 V of 3.0 V): any resistor set meeting SC-2 and SC-4
+has it, so a scope-side value change cannot recover it. The levers are on the AWG / REF side, outside this note's files: the movement m scales with the
+offset filter, 1 / (Rvr C) above its corner, so (the AWG study's own formula `ref_move`, `Rg2` 3k, `Cvr` 14 uF, all else unchanged, derived, not a
+design) **Rvr 100 -> 120 ohm gives 2.03 LSB, 130 gives 1.88, 150 gives 1.63, 200 gives 1.22**; or a larger capacitor at the REF output pin (10 uF:
+1.24 LSB on the graph read as a resistive magnitude *(check: Fig. 6-14 states no output capacitance)*). Rvr is in the AWG's window arithmetic (offset
+current through Rg2 + Rvr), so it belongs to that study. Not relaxed here.
+
+### The pin at 3.03 V against a 3.21 .. 3.39 V rail: the TPH2502's common-mode range and CMRR (`models/tph2502/tph2502.pdf`, Rev. A)
+
+* **Input common-mode voltage range, p. 3, Electrical Characteristics, row "VCM": V- - 0.1 V (min) to V+ - 0.1 V (max)**, no typical, no test condition. So
+  the datasheet's input range ends 0.1 V below the positive rail (the "rail-to-rail input" of the title and p. 8 is a claim of no phase reversal, Fig. 1,
+  not a range). With V+ at its low corner 3.22 V (`../powercal`'s rails 3.220 .. 3.418 V) the limit is **3.12 V**; the scope node's worst corner is **3.044 V**
+  (128 corners of 1 % parts and 0.2 % REF, +6 V in, VOS included), **margin +76 mV; on v2's old range 2.98 V, +142 mV**. It passes, and is the thinnest
+  analog margin after SC-2's high side.
+* **CMRR, p. 3, row "CMRR": 65 dB min, 85 dB typ, VCM = -1 V to 3 V, VS = 5.4 V.** Not stated at VS = 3.3 V or near the rail; the CMRR-vs-temperature
+  curve on p. 6 is at the same conditions. The study's VOS allowance already carries the 65 dB over the swing (`CMRR_ERR` 1.7 mV at the pin, in the margins above);
+  the new common-mode swing is 2.8 V at the node (0.23 .. 3.05 V), the old 2.8 V (0.19 .. 2.97 V), so the term is the same size at the pin and 2.1 times
+  larger at the input (6.9 mV against 3.3 mV at 65 dB, **the linear part of which the tee calibration removes**; what it cannot remove is a crossover step,
+  which no datasheet figure covers).
+* **VOS, p. 3: +-500 uV max at VCM = VDD/2 + 0.5 V only**; no VOS-versus-VCM curve in the document (p. 6 has CMRR and PSRR versus temperature only).
+  So an input-stage crossover or offset step near V+ - 0.1 V is **not described by the datasheet** and stays *(check)*.
+
+Proposed VT line (VT-23 already catches "an op-amp input-stage offset step"; this extends it to the new range; text for the spec lead, not edited into
+`docs/afe*.md`): **"VT-23 (addition). Scope linearity at the top of the range: the DC sweep includes the last 0.3 V of the node below the amplifier's
+V+ - 0.1 V common-mode limit (input +5.2 to +6 V, node 2.85 to 3.05 V) in steps of at most 10 mV, at the AFE's measured +3.3 V_A and again with that rail
+0.1 V lower on a bench supply; the residual after PA-3's fit stays within SC-7's fit share at both, and any step is reported with the rail. Covers the
+TPH2502's input-stage behaviour and CMRR near the rail at 3.3 V, which datasheet Rev. A (p. 3) states only as VCM <= V+ - 0.1 V and CMRR at VS = 5.4 V."**
+
+**Downstream, derived:** the codes per volt halve (582 -> 293), so a full AWG loopback (about 3.55 V) spans about 1,040 codes at 3.25 V (was about 2,100 to 2,200) and a 1 V signal about 293 (was about 590); afe.md's PAM table for the +-5 V range applies again in place of afe-v2.md section 3.1's last rows.
 
 ### Stray-capacitance cases A and B (SC-9, SC-5, AN-1; `range5v/sensitivity_n_stray_5v.json`)
 
@@ -179,6 +249,8 @@ python3 -I hardware/afe-proto/v2/sim/scope/range5v.py [--json FILE]             
 docker/pcb/run.sh -m 3G -t 900 python3 -I hardware/afe-proto/v2/sim/scope/run.py --out DIR --work W --range 5v  SECTION     # one process per section:
         netlist cscan dc ac bw noise d17 tran stab beh prot xtalk static mc guards
         (--range 5vc for C1 18p / Cn 47p; A and B: add  --set Cn_par=4.31e-12 --set Cx=5e-17  and  --set Cn_par=0.81e-12 --set Cx=5e-17  with  ac bw static xtalk stab)
+docker/pcb/run.sh python3 -I hardware/afe-proto/v2/sim/scope/range5v_sc7.py --json range5v/sc7_5v.json                  # SC-7 tee-fit row on +-5 V
+docker/pcb/run.sh python3 -I hardware/afe-proto/v2/sim/scope/range5v_refcoupling.py --out range5v/refcoupling_5v.json   # AWG into scope through the REF
 python3 -I hardware/afe-proto/v2/sim/scope/range5v_collect.py                           # sensitivity_n_stray_5v.json, summary_5v.json
 ```
 
