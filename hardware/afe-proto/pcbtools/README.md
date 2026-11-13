@@ -230,3 +230,72 @@ header lists what a board config provides. Verdicts and details equal the old ro
 `tests/golden/v1-34b2e51-image/`: each old v1 tool's output, taken inside the pinned PCB image and stamped with its digest in
 `STAMP.json`; every output was produced twice and compared byte for byte. The figures in `STAMP.json` are single runs; the bench
 takes the medians. The five old tools and the two new build steps are in `tests/bench_steps.json`.
+
+## `planar.py`: can this block be routed on one layer without a crossing?
+
+Crossings used to be found only while routing. `planar.check(block_nets, pads, rotation, boundary, protected)` answers before:
+planar or not, the fewest nets that must be bridged (a 0R 0603 or a hop), which net to bridge (never one that matches
+`protected`: ADC lines, divider nodes, VREF branches, `boards/planar_v2.PROTECTED_NETS`), and which nets it crosses. The planarity
+test is **networkx** (`nx.check_planarity`, in `requirements-pcb.txt`; the r4 image carries it, the r3 image does not, so the tests
+skip with a reason there and **fail** under `PCBTOOLS_REQUIRE_NETWORKX=1`). What `planar.py` owns is the graph:
+
+- every net is a hub joined to its pads and to its fence edge points; GND is the bottom plane and is not a net;
+- a part body is a wall (its pads in pin order as a cycle, plus a hub so nothing can be inside it), a row of pins a chain, a
+  part in `passable` (the 0R bridges) nothing; `body='wall'` is the strict construction, `body='auto'` (what `from_board` uses)
+  reads the pad geometry: two pads, or pads further apart than `pass_pitch` (1.5 mm), are passable, one or two rows are chains
+  (a track runs under a SOIC and between 0603 pads), anything else a wall; `body_overrides` names parts by hand;
+- the fence is a wheel: the edge points in order along the boundary, joined to an outer hub;
+- optional `roots`/`branches`/`ordered_branches` star a net at a pad (LR-8's Kelvin legs) with its legs in a given order.
+
+**Minimum crossings** = the fewest nets whose removal makes the graph planar, exact by a bounded search (a minimal conflict from
+the Kuratowski certificate and a deletion filter; every solution removes one of its nets; iterative deepening to `max_k` 4; past
+that, or past the node budget, a greedy bound and `Result.exact` False). `crossings` pairs a removed net with the nets of its
+conflict (K3,3 gives all eight partners; a three-way conflict is not a pair). `bridge_plans[net]` is one split of that net's
+terminals into two segments that makes the block planar, or None (more than one bridge, or a rooted net).
+
+`from_board(b, cfg, block)` reads a BoardArrays: the block's pads (`fence.owner_of`), the edge points and, with no `edge_points`
+given, **the as-built contract**: each net is split into the pieces of top copper it has inside the fence (a net that leaves and
+re-enters through a corridor is two pieces: one hub joining them inside would claim copper that is outside) and the edge points
+are where tracks cross the fence boundary (rectangles of one block nearer than 3.5 mm are one region, ordered by angle).
+`merge_bridges=True` removes the bridge parts and joins their nets. With `edge_points=[(net, (x, y))]` a planned contract is used
+instead and each net stays one hub.
+
+### v2, integrated board 990d4b03 (host venv, seconds)
+
+| block | bridges in design.py | as built, auto | bridges as wires, auto | as built, strict walls | as wires, strict walls |
+|---|---|---|---|---|---|
+| POWER | 1 (BR401) | planar | planar (0) | planar | planar |
+| REFCAL | 10 | planar | planar (0) | not planar, 1 | not planar, 3 (+3V3A_R, ADS_B, SNS_T0, TAP4) |
+| SCOPE | 2 | planar | planar (0) | planar | planar |
+| AWG | 0 | planar | planar (0) | not planar, 1 (+3V3A) | not planar, 1 |
+
+**The consistency test holds in `auto` and the strict model does not**: read as the spec's construction (every body a wall), two
+routed blocks come out non-planar because tracks pass between the pads of 0603s and under SOICs, so `auto` is the default for a
+board. **The bridges are not found, and that is a finding**: with the bridges as wires the model still says planar for all four
+blocks. A planarity test lets a net go round the end of another's trunk; the v2 bridges exist because the geometry (corridors, the
+A0/A1 wall, strip lanes, distances) forbids that, and a topological check cannot see geometry. So a *non-planar* verdict is a
+sound reason to expect a bridge, and a *planar* one is not a promise that no bridge is needed.
+
+### v1 REFCAL, the hand-found crossing (kvm_01, REFCAL_obstruction.md)
+
+`boards/planar_v1.py` carries the inputs (frozen board `tests/pcbtools/planar_v1_34b2e51.npz`, the contract rows as edge points,
+VREF as a Kelvin star at U501.2 with its four legs, R520 as `with R520`). What the tool finds, and it does **not** reproduce the
+hand derivation:
+
+- legs of VREF leaving U501.2 in the order A, C, B, D, ICs as walls: not planar, one net short, the pair VREF/TAP3 (suggestion
+  TAP3), and **R520 does not cure it**;
+- no order on the legs: planar, with or without R520, so the topology alone does not make the obstruction;
+- J501, the clamps and the 0603s on the SNS path walls as well: two nets short, SNS_B in the minimum sets with TAP3 or VREF, still
+  not cured by R520.
+
+The hand derivation used placement facts the topology lacks (leg D running between the pads of R517-R519, which face each leg
+borders), so `test_v1_refcal_finds_the_hand_found_crossing` is a strict xfail with that reason and the three findings above are
+pinned as ordinary tests. SNS_B is not matched by the default protected patterns, so the rule would not have forbidden bridging it
+(it is a sense net: add `/SNS*` to `PROTECTED_NETS` if the owner wants it protected).
+
+### What it cannot see
+
+Pad shapes, track width and clearance (whether a gap passes a 0.2 mm track is `pass_pitch`, a proxy); via placement and the bottom
+layer (a bottom hop is a crossing); keep-outs and courtyards; the extent of a body beyond its pads; the **mirror** of a part (a
+planar embedding fixes pin order up to reflection, so handedness is not checked: the verdict is necessary, never sufficient); a fence
+of several rectangles is one star-shaped ring; and routability, as above.
