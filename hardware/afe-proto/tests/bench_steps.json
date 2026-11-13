@@ -103,6 +103,56 @@
         "-c",
         "import sys; sys.path.insert(0,'hardware/afe-proto/tests'); import netlib_snapshot as s; s.v1_text(); s.v2_text()"
       ]
+    },
+    {
+      "tool": "old-v1-build_pcb",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh",
+        "build_pcb",
+        "/tmp/bench-old"
+      ]
+    },
+    {
+      "tool": "old-v1-check-pcb",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh",
+        "check_pcb",
+        "/tmp/bench-old"
+      ]
+    },
+    {
+      "tool": "old-v1-lr_check",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh",
+        "lr_check",
+        "/tmp/bench-old"
+      ]
+    },
+    {
+      "tool": "old-v1-lr_check-mutate",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh",
+        "lr_check_mutate",
+        "/tmp/bench-old"
+      ]
+    },
+    {
+      "tool": "old-v1-fence_check",
+      "board": "v1",
+      "argv": [
+        "bash",
+        "hardware/afe-proto/tests/golden/v1-34b2e51-image/run_old.sh",
+        "fence_check",
+        "/tmp/bench-old"
+      ]
     }
   ]
 }
