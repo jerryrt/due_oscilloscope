@@ -2,6 +2,8 @@
 
     python3 hardware/afe-proto/tests/pcbtools/bench_tools.py sexpr  BOARD.kicad_pcb      parse the board text
     python3 hardware/afe-proto/tests/pcbtools/bench_tools.py editor BOARD.kicad_pcb      edit() it: move one part, add a via, save a copy
+    python3 hardware/afe-proto/tests/pcbtools/bench_tools.py schematic                   write the v1 schematic project from design.py
+    python3 hardware/afe-proto/tests/pcbtools/bench_tools.py board                       build the v1 placement board from design.py
 
 The bench measures wall time and peak memory of the whole process, so each step is the smallest honest unit of work.
 """
@@ -29,5 +31,28 @@ def editor(path):
         e.add_vias('GND', 1.0, 1.0)
 
 
+def _work():
+    return tempfile.mkdtemp(prefix='pcbtools-bench-')
+
+
+def schematic(_):
+    from pcbtools import schematic as sch
+    from pcbtools.boards import v1_build as v1b
+    w = _work()
+    parts, cfg = v1b.sch_inputs(v1b.prepare(w))
+    sch.write_all(parts, cfg, os.path.join(w, 'new'))
+
+
+def board(_):
+    from pcbtools import build as bd
+    from pcbtools.boards import v1_build as v1b
+    w = _work()
+    old = v1b.prepare(w)
+    inp = v1b.pcb_inputs(old)
+    nets = bd.schematic_nets(os.path.join(old, 'afe-proto.kicad_sch'))
+    bd.build_board(inp['parts'], inp['cfg'], inp['place'], nets, os.path.join(w, 'new.kicad_pcb'),
+                   legalise_overlaps=True, anchors=inp['anchors'])
+
+
 if __name__ == '__main__':
-    {'sexpr': sexpr, 'editor': editor}[sys.argv[1]](sys.argv[2])
+    {'sexpr': sexpr, 'editor': editor, 'schematic': schematic, 'board': board}[sys.argv[1]](sys.argv[2] if len(sys.argv) > 2 else None)

@@ -104,3 +104,31 @@ def _add_vias(e, b, mask):
     for k in np.unique(key, axis=0):
         sel = idx[(key == k).all(axis=1)]
         e.add_vias(b.nets[int(k[0])], b.v_x[sel], b.v_y[sel], k[1] / 1e6, k[2] / 1e6)
+
+
+def main(argv=None):
+    """python -m pcbtools.merge --board v1 --base BASE.kicad_pcb --out OUT.kicad_pcb AWG=awg.kicad_pcb POWER=power.kicad_pcb
+    exit 0: every block merged; 1: a block was refused (the others are merged); 2: usage"""
+    import argparse
+    import importlib
+    ap = argparse.ArgumentParser(prog='python -m pcbtools.merge', description=__doc__.split('\n')[0])
+    ap.add_argument('--board', required=True, help='board config name in pcbtools/boards (v1, v2)')
+    ap.add_argument('--base', required=True)
+    ap.add_argument('--out', required=True)
+    ap.add_argument('blocks', nargs='+', metavar='BLOCK=PATH')
+    a = ap.parse_args(argv)
+    cfg = importlib.import_module(f'pcbtools.boards.{a.board}')
+    pairs = {}
+    for s in a.blocks:
+        k, sep, v = s.partition('=')
+        if not sep or k not in cfg.FENCES:
+            ap.error(f'{s!r}: expected BLOCK=PATH with BLOCK one of {sorted(cfg.FENCES)}')
+        pairs[k] = v
+    res = merge(a.base, pairs, a.out, cfg)
+    print('\n'.join(res.report))
+    return 0 if res.ok else 1
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())

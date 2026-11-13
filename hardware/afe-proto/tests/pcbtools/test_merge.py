@@ -177,3 +177,15 @@ def test_nothing_is_written_when_no_block_merges_cleanly_except_the_base_copy(bo
 def test_fences_of_the_v1_config_do_not_overlap(boards, tmp_path):
     res = mg.merge(boards['base'], {}, tmp_path / 'o.kicad_pcb', cfg)
     assert [m for m in res.report if m.startswith('warning')] == []
+
+
+def test_cli_exit_codes_and_report(boards, tmp_path):
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONPATH=str(pathlib.Path(__file__).resolve().parents[2]))
+    run = lambda *a: subprocess.run([sys.executable, '-m', 'pcbtools.merge', '--board', 'v1', '--base', str(boards['base']),
+                                     '--out', str(tmp_path / 'o.kicad_pcb'), *a], capture_output=True, text=True, env=env)
+    r = run(f'AWG={boards["awg"]}')
+    assert r.returncode == 0 and 'AWG: merged (3 tracks/vias' in r.stdout, r.stderr[-300:]
+    r = run(f'AWG={boards["awg"]}', f'SCOPE={boards["bad"]}')
+    assert r.returncode == 1 and 'SCOPE: REFUSED' in r.stdout and 'AWG: merged' in r.stdout
+    r = run(f'NOSUCH={boards["awg"]}')
+    assert r.returncode == 2

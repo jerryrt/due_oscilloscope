@@ -153,6 +153,24 @@
         "fence_check",
         "/tmp/bench-old"
       ]
+    },
+    {
+      "tool": "schematic-build-v1",
+      "board": "v1",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "schematic"
+      ]
+    },
+    {
+      "tool": "board-build-v1",
+      "board": "v1",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "board"
+      ]
     }
   ]
 }
