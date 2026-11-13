@@ -29,7 +29,7 @@ I_BLEED = VP_MAX / 1.8e3
 I_I2C = 2 * VP_MAX / 4.7e3
 I_LADDER = VREF / (6 * 330.0 * 0.99)
 I_CENTRES = 2 * 5.4e-6
-SCOPE_AMPS = 2            # the scope's op-amp halves in power.py's model (one dual); the scope is being re-ranged to +-5 V, so this is a parameter: see HEADROOM
+SCOPE_AMPS = 2            # The +-5 V change is values only: the scope still uses the one shared dual (U101, both halves) and the AWG its own dual (U301), so power.py's two scope halves stand.
 
 def awg(vout, rl):
     K = RF / (RG2 + RVR); Gs0 = 1 + K

@@ -55,7 +55,7 @@ The worst normal state is **74.0 mA** (the AWG into 50 ohm at its -1.81 V reach)
 | AWG dual, IQ | 15.0 mA on each rail (2 x 7.5 mA max) | TPH2502 Rev. A p. 4, 6.5 mA typ / 7.5 mA max per amplifier |
 | AWG output current | 15.85 mA from OUT+ at +1.6 V; 16.84 mA into OUT- at -1.6 V | 1.6 V over 49.5 + 50 ohm (back-termination at its low corner), plus Rf / Rg2 feedback |
 | AWG offset path | 0.23 mA at +1.6 V, 0.76 mA at -1.6 V, from the reference (so from OUT+) | (3.009 V - V_inv) / (Rg2 + Rvr) |
-| scope dual, IQ | 15.0 mA on OUT+ (2 halves, as in `power.py`) | same datasheet; the scope is being re-ranged to +-5 V, so this term is open *(check against the new scope's op-amp count)* |
+| scope dual, IQ | 15.0 mA on OUT+ (2 halves, as in `power.py`) | same datasheet. The +-5 V change is values only: the scope still uses the one shared dual (U101, both halves) and the AWG its own dual (U301), so power.py's two scope halves stand. |
 | ADS1115 | 0.300 mA | SBAS444E 5.5, 300 uA over temperature |
 | REF3030E IQ | 0.037 mA | SBVS032K, 37 uA max over temperature |
 | ladder | 1.53 mA | 6 x 330 ohm at -1 %, 3.009 V |
@@ -72,7 +72,7 @@ The worst normal state is **74.0 mA** (the AWG into 50 ohm at its -1.81 V reach)
 | 50 ohm, +1.6 V | 51.4 | 15.0 | 68.3 |
 | **50 ohm, -1.6 V** | 36.2 | 31.8 | **71.6** |
 
-Worst normal state **71.6 mA against 100 mA: +28.4 mA**. The 16 mA load by itself adds 16.1 mA to the 5V pin at +1.6 V (OUT+) and 17.7 mA at -1.6 V (OUT- x 1.10). Another 3.8 op-amp halves (7.5 mA each from OUT+) would still fit under 100 mA, which is the room the scope's re-range has. Faults, the indefinite short (exempt from the 100 mA, not from the 450 mA total with the Due at 300 mA): at the window top (AC top end 2.197 V) 96.6 mA AFE, **396.6 mA total**; at the window bottom (-1.73 V, the weak-rail clip) 92.4 mA, 392.4 mA; at the 3.3 V reset level (stage output about 3.0 V with the AWG study's derived saturation, accepted transient D-V2-12) 112.7 mA, **412.7 mA total, +37.3 mA against 450** (`power.py` clips the output at 0.1 V under the rail and reads 119.2 mA, 419.2 mA; the difference is that assumption). The check is broken on purpose by lowering the limit to 40 mA (it fails; the real 100 mA passes, an assertion in the script).
+Worst normal state **71.6 mA against 100 mA: +28.4 mA**. The 16 mA load by itself adds 16.1 mA to the 5V pin at +1.6 V (OUT+) and 17.7 mA at -1.6 V (OUT- x 1.10). Another 3.8 op-amp halves (7.5 mA each from OUT+) would still fit under 100 mA. Faults, the indefinite short (exempt from the 100 mA, not from the 450 mA total with the Due at 300 mA): at the window top (AC top end 2.197 V) 96.6 mA AFE, **396.6 mA total**; at the window bottom (-1.73 V, the weak-rail clip) 92.4 mA, 392.4 mA; at the 3.3 V reset level (stage output about 3.0 V with the AWG study's derived saturation, accepted transient D-V2-12) 112.7 mA, **412.7 mA total, +37.3 mA against 450** (`power.py` clips the output at 0.1 V under the rail and reads 119.2 mA, 419.2 mA; the difference is that assumption). The check is broken on purpose by lowering the limit to 40 mA (it fails; the real 100 mA passes, an assertion in the script).
 LM27762 dissipation at 5.25 V in the worst state is 277 mW, 102 C junction at 85 C ambient on the datasheet's 62.2 C/W (limit 125) *(check on the board)*.
 PW-6: at the 4.50 V minimum the +LDO keeps 1.08 V and the pump 2.35 V of headroom.
 
