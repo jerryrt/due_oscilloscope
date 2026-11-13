@@ -105,8 +105,23 @@ class Editor:
         tx.SetPosition(self._pt(x, y))
         tx.SetTextSize(self.pcb.VECTOR2I(self.pcb.FromMM(float(h)), self.pcb.FromMM(float(h))))
         tx.SetTextThickness(self.pcb.FromMM(float(t)))
+        if layer.startswith('B.'):
+            tx.SetMirrored(True)                          # read from the back
         self.b.Add(tx)
         self._give(tx)
+
+    def add_box(self, rect, layer='F.SilkS', filled=True, t=0.15):
+        """a rectangle in Due mm (x0, y0, x1, y1), filled or outlined, on a graphic layer (the S/N box)"""
+        s = self.pcb.PCB_SHAPE(self.b)
+        s.SetShape(self.pcb.SHAPE_T_RECT)
+        s.SetLayer(self.b.GetLayerID(layer))
+        x0, y0, x1, y1 = rect
+        s.SetStart(self._pt(x0, y1))
+        s.SetEnd(self._pt(x1, y0))
+        s.SetFilled(bool(filled))
+        s.SetWidth(self.pcb.FromMM(float(t)))
+        self.b.Add(s)
+        self._give(s)
 
     def remove_footprint(self, ref):
         """take a footprint off the board (kept alive until the block ends)"""
