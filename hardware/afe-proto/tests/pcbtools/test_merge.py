@@ -12,7 +12,7 @@ import pytest
 
 from pcbtools import boardio, fence
 from pcbtools import merge as mg
-from pcbtools.boards import v1 as cfg
+from pcbtools.boards import v1_frozen as cfg
 from pcbtools.editor import edit
 
 pytestmark = pytest.mark.pcbnew

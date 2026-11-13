@@ -33,14 +33,21 @@ def test_every_field_is_required_or_named_optional():
     assert extra == {'AFE', 'EVIDENCE_DERIVED'}
 
 
-def test_v1_template_has_every_field_and_reports_its_todos_by_name():
-    problems = check_table(V1)
-    assert [p for p in problems if p.startswith('missing field')] == []              # every field present
-    todo = [p for p in problems if p.startswith('TODO in ')]
-    assert todo and all(p.split(':')[0][len('TODO in '):].split('[')[0] in REQUIRED for p in todo)       # each names a real field
-    names = {p.split(':')[0][len('TODO in '):].split('[')[0] for p in todo}
-    assert {'BRIDGE_REF_PATTERN', 'BRIDGES_SOURCE', 'PROOF', 'EVIDENCE_DATA', 'BOM_DATA_DIR'} <= names       # the fields only kvm_01 knows
-    assert 'BOARD' not in names and 'BRIDGE_PART' not in names                                              # filled from the repo
+def test_v1_table_is_complete_and_names_its_own_inputs():
+    """the v1 table is filled: every field present, no TODO marker, and the BOM adapter and bridge list it points at exist"""
+    assert check_table(V1) == []
+    root = AFE.parents[1]
+    assert (root / V1.BOM_ENGINE).is_file() and (root / V1.BOM_DATA_DIR / 'catalog.csv').is_file()
+    assert len(V1.BRIDGE_TABLE) == 16 and all(len(t) == 5 for t in V1.BRIDGE_TABLE)       # the 16 0Rb parts, each with block and justification
+    assert 'R109' not in {t[0] for t in V1.BRIDGE_TABLE}                                  # removed from the design
+    assert V1.RENDERS[0][1] == 'v1-top.png'
+
+
+def test_v1_table_with_one_field_unfilled_is_refused_by_name():
+    """the control: the v1 table is clean, and a TODO put back in a nested value is found with its path"""
+    assert check_table(clone(V1)) == []
+    t = clone(V1, PROOF=dict(V1.PROOF, source=TODO_MARK + 'kvm_01): the source pad'))
+    assert check_table(t) == ["TODO in PROOF['source']: TODO(kvm_01): the source pad"]
 
 
 def test_v1_template_board_and_project_exist():
@@ -64,10 +71,13 @@ def test_none_is_a_legal_value_for_an_optional_row():
     assert check_table(clone(V2, DEV_FOREIGN=None)) == []
 
 
-def test_cli_refuses_an_incomplete_table_naming_the_fields(capsys):
-    rc = cli.main(['--config', 'v2_layout', '--table', 'gate3_v1', '--out', os.devnull])
+def test_cli_refuses_an_incomplete_table_naming_the_fields(capsys, tmp_path):
+    src = (AFE / 'pcbtools' / 'boards' / 'gate3_v1.py').read_text().replace("BRIDGE_REF_PATTERN = r'", "BRIDGE_REF_PATTERN = r'TODO(x): ", 1)
+    f = tmp_path / 'gate3_todo.py'
+    f.write_text(src)
+    rc = cli.main(['--config', 'v2_layout', '--table', str(f), '--out', os.devnull])
     err = capsys.readouterr().err
-    assert rc == 2 and 'TODO in BRIDGE_REF_PATTERN' in err and 'TODO in PROOF' in err
+    assert rc == 2 and 'TODO in BRIDGE_REF_PATTERN' in err
 
 
 def test_cli_check_table_accepts_the_v2_table(capsys):
@@ -88,3 +98,15 @@ def test_cli_names_a_config_field_the_table_makes_it_read(capsys, monkeypatch):
 def test_config_fields_follow_the_table():
     assert {'GND', 'KEEPOUT', 'HOP_MAX', 'DECOUP_MAX', 'CHANNELS', 'VREF_NET', 'DESIGNATOR_GAP_MIN'} <= set(config_fields(V2))
     assert 'DESIGNATOR_GAP_MIN' not in config_fields(V1)                              # v1's table quotes only the hop limits
+
+
+def test_bom_paths_is_an_optional_field_that_points_at_real_files():
+    """BOM_PATHS (the engine's optional field, passed to bom.Data as its `paths`): v1 sets it (its stream files are not under v2's folder layout),
+    every entry names a file that exists, and the table loader does not require it (v2's table has none)"""
+    import os
+    from pcbtools.gate3 import table as TB
+    assert 'BOM_PATHS' not in TB.REQUIRED
+    assert V1.BOM_PATHS and {'scope', 'awg', 'powercal'} <= set(V1.BOM_PATHS)
+    repo = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+    missing = [v for v in V1.BOM_PATHS.values() if not os.path.isfile(os.path.join(repo, v))]
+    assert not missing, missing

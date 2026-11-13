@@ -18,7 +18,8 @@ import types
 import pytest
 
 from pcbtools import boardio, check as CK, rules as R
-from pcbtools.boards import v1, v1_arms
+from pcbtools.boards import v1_arms
+from pcbtools.boards import v1_frozen as v1          # the old tool's goldens were taken on the frozen 34b2e51 inputs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FX = os.path.join(HERE, '..', 'fixtures', 'v1-34b2e51', 'kicad')
@@ -132,32 +133,27 @@ def test_a_mutant_is_not_prepared_twice(board):
 
 
 # ---------------------------------------------------------------------------------------------------- the routed board
-FIXTURES = os.path.join(HERE, '..', 'fixtures')
-MERGE5 = os.path.join(FIXTURES, 'v1-merge5-a256c8f')           # frozen: the live v1 data and the routed merge (MANIFEST.json names the source)
-MERGE1 = os.path.join(FIXTURES, 'v1-merge1-a256c8f')
+KICAD = os.path.join(HERE, '..', '..', 'kicad')
+FROZEN_BOARD = os.path.join(HERE, '..', 'fixtures', 'v1-34b2e51', 'kicad', 'afe-proto.kicad_pcb')
 
 
-def _cli(board, *args, live=True):
+def _cli(board, *args):
+    """pcbtools.check on a board with the LIVE v1 config (`v1r`, boards/v1.py reads kicad/ by default)"""
     import subprocess
     import sys
-    env = dict(os.environ)
-    if live:
-        env['PCBTOOLS_V1_SOURCE'] = MERGE5                                                    # the v1 data (R411-R413, P33_G, ...)
-    else:
-        env.pop('PCBTOOLS_V1_SOURCE', None)
     root = os.path.join(HERE, '..', '..')
-    return subprocess.run([sys.executable, '-m', 'pcbtools.check', board, '--config', 'v1r', '--no-drc', *args], cwd=root, env=env,
-                          capture_output=True, text=True)
+    return subprocess.run([sys.executable, '-m', 'pcbtools.check', board, '--config', 'v1r', '--no-drc', *args], cwd=root,
+                          env={k: v for k, v in os.environ.items() if k != 'PCBTOOLS_V1_SOURCE'}, capture_output=True, text=True)
 
 
 def test_the_routed_arms_are_caught_on_the_routed_board():
-    p = _cli(os.path.join(MERGE5, 'v1_merge5.kicad_pcb'), '--mutate')
+    p = _cli(os.path.join(KICAD, 'afe-proto.kicad_pcb'), '--mutate')
     assert p.returncode == 0, p.stdout[-600:] + p.stderr[-300:]
     assert p.stdout.count('FAILED AS REQUIRED') == 4 and 'every arm caught' in p.stdout, p.stdout
 
 
 def test_the_routed_arms_do_not_pass_on_a_board_that_is_not_routed():
-    """the control: on the frozen unrouted baseline (and the frozen data, which has no P33_G) the arms are not evidence: they fail to
-    run or are not testable, never 'every arm caught'"""
-    p = _cli(os.path.join(MERGE1, 'v1_merge1.kicad_pcb'), '--mutate', live=False)          # merge 1: unrouted REFCAL, and the frozen data
+    """the control: on the frozen unrouted baseline the arms are not evidence (the nets they name, P33_G, are not on it): they fail to run or
+    are not testable, never 'every arm caught'"""
+    p = _cli(FROZEN_BOARD, '--mutate')
     assert p.returncode != 0 and 'every arm caught' not in p.stdout

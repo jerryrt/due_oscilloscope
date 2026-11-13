@@ -38,14 +38,14 @@ def _work():
 
 def schematic(_=None):
     from pcbtools import schematic as sch
-    from pcbtools.boards import v1
+    from pcbtools.boards import v1_frozen as v1
     sch.write_all(v1.PARTS, v1.sch_cfg(), os.path.join(_work(), 'new'))
 
 
 def board(_=None):
     import shutil
     from pcbtools import build as bd
-    from pcbtools.boards import v1
+    from pcbtools.boards import v1_frozen as v1
     w = _work()
     shutil.copy(os.path.join(v1.SOURCE_DIR, 'afe-proto.kicad_sch'), w)        # kicad-cli reads a copy, never the fixture
     nets = bd.schematic_nets(os.path.join(w, 'afe-proto.kicad_sch'))

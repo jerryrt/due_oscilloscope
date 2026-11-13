@@ -11,13 +11,25 @@ import json
 import os
 import sys
 
-NAME = 'v1'
+# the board's identity: the one source of the silk, the package title and the fabrication file names (docs/afe.md D29)
+NAME = 'COPPIA'
+MODEL = 'AFE-1'
+REV = 'A'                                       # steps on any change to fabrication data; skips I O Q S X Z (ASME Y14.35)
+ID_LINE = f'{MODEL}  REV {REV}'
+FILE_STEM = f'{NAME}-{MODEL}-REV{REV}'
+SN_LABEL = 'S/N'
+JLC_ORDER_TEXT = 'JLCJLCJLCJLC'                 # the board house replaces it with the order number (bottom silk)
+# top silk, Due mm, text centres (h in mm): in the free area west of the first fence, outside the bands
+IDENT = dict(name=(26.0, 33.0, 2.0), line=(27.0, 30.4, 1.2), sn_label=(22.0, 27.6, 1.0), sn_box=(24.5, 26.1, 34.5, 29.1),
+             jlc=(35.0, 27.0, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
 FIXTURE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v1-34b2e51', 'kicad'))
-# The frozen fixture is the default: the equivalence tests and the goldens are about 34b2e51. PCBTOOLS_V1_SOURCE names the folder of
-# the LIVE v1 data (design.py, floorplan.py, layout.py: hardware/afe-proto/kicad) for the layout restart, where the design has moved on
-SOURCE_DIR = os.path.normpath(os.environ.get('PCBTOOLS_V1_SOURCE') or FIXTURE_DIR)
+LIVE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'kicad'))
+# `v1` is the LIVE design (design.py, floorplan.py, layout.py in hardware/afe-proto/kicad). The frozen 34b2e51 inputs the old tools' goldens
+# were taken on are `boards/v1_frozen.py` (this module again, with PCBTOOLS_V1_SOURCE pointing at the fixture folder).
+SOURCE_DIR = os.path.normpath(os.environ.get('PCBTOOLS_V1_SOURCE') or LIVE_DIR)
+TAG = 'frozen' if SOURCE_DIR == FIXTURE_DIR else 'live'     # keeps the two evaluations' module names apart in sys.modules
 
 
 def _load_sources():
@@ -29,7 +41,7 @@ def _load_sources():
     sys.dont_write_bytecode = True               # the fixture folder is frozen: importing it must not leave __pycache__ in it
     try:
         for name in ('design', 'floorplan', 'layout'):
-            spec = importlib.util.spec_from_file_location(f'pcbtools._fixture_v1.{name}', os.path.join(SOURCE_DIR, name + '.py'))
+            spec = importlib.util.spec_from_file_location(f'pcbtools._fixture_v1.{TAG}.{name}', os.path.join(SOURCE_DIR, name + '.py'))
             m = importlib.util.module_from_spec(spec)
             sys.modules[spec.name] = m
             spec.loader.exec_module(m)
@@ -57,7 +69,6 @@ from .. import schematic as _sch          # noqa: E402  (after the loader above:
 
 PROJECT = 'afe-proto'
 TITLE = 'AFE full range design 01'
-REV = 'FR-01'
 NS = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'                  # uuid namespace of every generated id
 BLOCK_ORDER = ['power', 'ch1', 'ch2', 'awg', 'cal', 'due']
 BLOCK_TITLE = {
@@ -69,6 +80,9 @@ BLOCK_TITLE = {
     'due': 'DUE HEADERS (V03 positions), mounting, test points',
 }
 PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', 'P33_R']
+# the rail nets a 0 ohm bridge splits off (R410: VNEG_O, R411: P33_G) carry a power input (U301 pins 4 and 8) and no driver of their own: a flag
+# each (the live design only; the frozen 34b2e51 design has neither net, so its generated schematic is unchanged)
+PWR_FLAG_NETS += [n for n in ('P33_G', 'VNEG_O') if any(n in p_['pins'].values() for p_ in PARTS)]
 SCH_COMMENTS = ['Generated from design.py by pcbtools.schematic: edit design.py, not this file',
                 'Values and parts: whatif/bom.txt. Connectivity: the simulated circuit (docs/architecture.md)',
                 'Own work, CC BY-SA 4.0']
@@ -77,10 +91,54 @@ SYMBOL_DIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')
 FOOTPRINT_DIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
 
 # board geometry
-# The shield's rectangle (Due mm, y up). The outline overhangs the Due by 5 mm on the analog-header edge only (the south edge, y 0), and that band is a
-# copper keep-out: owner's ruling 2026-11-13 (MC-1 amended); the other edges keep the Due's outline, so the board is 100 x 58.34 mm.
-BOARD_RECT = (17.0, -5.0, 117.0, 53.34)
-KEEPOUTS = [('analog edge band', (17.0, -5.0, 117.0, 0.0))]      # rule area over the 5 mm band: no tracks, vias or pour
+# The shield's rectangle (Due mm, y up). The outline overhangs the Due by 2.5 mm on each long edge (south y 0, north y 53.34), so the board is
+# 100 x 58.34 mm, centred over the Due (owner's ruling 2026-11-13, MC-1 amended). Each 2.5 mm band is a TOP-layer copper keep-out only; the
+# bottom GND plane fills both bands, back to the 0.45 mm copper-to-edge clearance.
+# The Due's own pin names, printed on top silk in the bands beside each edge-row socket (LR-11, owner 2026-11-13: the shield covers the Due's
+# silkscreen). pcbtools/pinlabels.py builds them from this config and the table; no name is typed here. EDGE_SOCKETS: which sockets are edge
+# rows -> the Due header whose table gives their pins (v1's numbering: J607, the XIO socket, is on the short edge and is not one).
+EDGE_SOCKETS = {'J601': 'POWER0', 'J602': 'ADCL0', 'J603': 'ADCH0', 'J604': 'PWML0', 'J605': 'COMMUNICATION0', 'J606': 'PWMH0'}
+PIN_TABLE = 'hardware/afe-proto/docs/due-header-table.md'     # repo relative; names are its "Arduino" / "Due label" column
+PIN_LABEL_ALIASES = {'3.3 V': '3V3', '5 V': '5V'}             # a whole table cell -> the name the Due prints (the cells spell them with a space)
+PIN_LABEL_FUNCTION_HEADERS = ('COMMUNICATION0',)              # the Due prints the function there (TX3, RX3 ... SDA, SCL): the table cell's word that is not the Dnn number
+# Every label is exactly this high and this wide (the stroke font's default width at that height), turned 90 degrees, on both bands. Nothing is
+# narrowed or shrunk: the OVERHANG is sized to fit the longest name (as v2's config).
+PIN_LABEL_H = 1.0                # the board house's minimum silk text height (docs/jlcpcb.md)
+PIN_LABEL_W = 1.0
+PIN_LABEL_THICK = 0.15           # stroke
+PIN_LABEL_EDGE_MARGIN = 0.35     # the ink starts this far inside the board edge
+PIN_LABEL_PAD_GAP = 0.7          # and ends at least this far from a socket pad box *(check against DRC silk_overlap)*
+PIN_LABEL_POS_TOL = 0.05         # the checker finds a label within this of its planned place
+OVERHANG_STEP = 0.5              # the overhang is rounded UP to this
+from .. import pinlabels as _pl  # noqa: E402
+_ink = _pl.load_ink()            # measured in the PCB image by `python3 -m pcbtools.pinlabels --measure BOARD --config v1` (a test re-measures it)
+assert (_ink['h'], _ink['w'], _ink['thick']) == (PIN_LABEL_H, PIN_LABEL_W, PIN_LABEL_THICK), 'pinlabel_ink.json was measured at another size: re-measure'
+PIN_LABEL_INK = dict(_ink['ink'])                               # {name: ink length along the baseline, mm}
+PIN_LABEL_INK_H = _ink['ink_h']                                 # ink across the baseline
+PIN_PAD_EDGE = _ink['pad_edge']                                 # socket pad box to the Due's own edge, mm
+PIN_LABEL_NAMES = _pl.label_names(os.path.join(_pl.REPO, PIN_TABLE), sorted(set(EDGE_SOCKETS.values())), PIN_LABEL_ALIASES, PIN_LABEL_FUNCTION_HEADERS)
+PIN_LABEL_LONGEST = max(PIN_LABEL_NAMES, key=lambda n: PIN_LABEL_INK[n])
+
+# The board outline and the two edge bands (owner's ruling 2026-11-13, MC-1 amended). The shield's rectangle in Due mm (y up) overhangs the Due by
+# OVERHANG on each long edge: the analog-header edge (the south edge, y 0, the strip with the J601/J602/J603 sockets) and the opposite one (north,
+# y 53.34), so the board is centred over the Due. OVERHANG is COMPUTED (pinlabels.required_overhang): the longest pin name's measured ink at
+# PIN_LABEL_H, after the pad edge and PIN_LABEL_PAD_GAP and before PIN_LABEL_EDGE_MARGIN, rounded up to OVERHANG_STEP. Each band is a TOP-layer
+# keep-out only (no tracks, vias or pour on KEEPOUT_LAYERS); the bottom GND plane fills both bands back to the 0.45 mm copper-to-edge clearance.
+DUE_RECT = (17.0, 0.0, 117.0, 53.34)                            # the Due's own outline in Due mm, where the shield sits over it
+OVERHANG = _pl.required_overhang(PIN_LABEL_INK[PIN_LABEL_LONGEST], PIN_PAD_EDGE, PIN_LABEL_PAD_GAP, PIN_LABEL_EDGE_MARGIN, OVERHANG_STEP)
+BOARD_RECT = (DUE_RECT[0], DUE_RECT[1] - OVERHANG, DUE_RECT[2], DUE_RECT[3] + OVERHANG)
+BOARD_MAX_MM = (100.0, 100.0)                                   # MC-1: the board fits the board house's 100 x 100 mm price tier
+BAND_NAME = 'analog edge band'                                  # the first band (the second is FAR_BAND_NAME)
+FAR_BAND_NAME = 'far edge band'
+KEEPOUTS = [(BAND_NAME, (DUE_RECT[0], BOARD_RECT[1], DUE_RECT[2], DUE_RECT[1])),         # (name, rect): no tracks, vias or pour on KEEPOUT_LAYERS
+            (FAR_BAND_NAME, (DUE_RECT[0], DUE_RECT[3], DUE_RECT[2], BOARD_RECT[3]))]
+KEEPOUT_LAYERS = ('F.Cu',)                                      # top only: the bottom ground plane fills the bands
+ZONE_MARGIN = 0.05                                              # the bottom GND zone outline is BOARD_RECT grown by this; the edge clearance trims its fill
+DESIGNATOR_ADVANCE = 0.95        # length of a designator's ink box per character, as a fraction of the text height (the spec team's measured ink, as v2)
+DESIGNATOR_INK_H = 1.2           # width of the box across the text, as a fraction of the text height
+DESIGNATOR_GAP_ONE_LABEL = 0.6   # the pin labels are planned clear of each other by this (pinlabels.py reads it). The LR-11 LEGIBILITY check of designators is NOT
+                                 # switched on for v1 (that is DESIGNATOR_GAP_MIN, which this config does not set): v1's silk was judged with its own script and its
+                                 # exceptions are recorded in the gate-3 package (C301/C304 0.33 mm, the 0.6-1.0 mm waiver list, two far labels, MH602)
 REFERENCE_OUTLINE = [(1, 0), (98.06, 0), (99.06, 1), (99.06, 2.54), (101.6, 5.08), (101.6, 37.846), (99.06, 40.386),
                      (99.06, 51.816), (97.536, 53.34), (1, 53.34), (0, 52.34), (0, 1), (1, 0)]   # the Due's own outline (V03)
 # header: (pin-1 x, pin-1 y, direction of rising pin numbers), due-header-table.md section 2
@@ -88,7 +146,9 @@ HEADERS = {'J601': (27.94, 2.54, '+x'), 'J602': (50.80, 2.54, '+x'), 'J603': (73
            'J604': (63.50, 50.80, '-x'), 'J605': (68.58, 50.80, '+x'), 'J606': (41.656, 50.80, '-x')}
 XIO = (93.98, 50.80)          # J607 pin 1; odd pins at x 93.98, even at 96.52, rows step down 2.54
 HEADER_ROT = {'+x': 90.0, '-x': -90.0}
-BNCS = {'J101': 44.45, 'J201': 24.13, 'J301': 7.4}           # y of each BNC centre pin: CH1, CH2, AWG
+BNCS = {'J101': 44.45, 'J201': 26.67, 'J301': 7.4}           # y of each BNC centre pin: CH1, CH2, AWG
+SCOPE_PITCH = 17.78                                          # J101 to J201 (owner, 2026-11-13)
+AWG_BNC_GAP_MIN = SCOPE_PITCH + 1.0                          # J201 to J301: the AWG is set apart from the scope pair (spec team, 2026-11-13)
 BNC_X = 102.0
 MH = (96.52, 2.54)
 MH602 = (90.17, 50.8)
@@ -98,7 +158,7 @@ PROJECT_LIB_DIR = os.path.join(SOURCE_DIR, 'lib', 'afe.pretty')
 MODELS_DIR = os.path.join(SOURCE_DIR, '3d')
 
 # the checks (schematic_check.py): what the old check.py kept at module level
-BOM_PATH = os.path.normpath(os.path.join(SOURCE_DIR, '..', 'whatif', 'bom.txt'))
+BOM_PATH = os.path.normpath(os.path.join(SOURCE_DIR, '..', 'whatif', 'bom.txt') if SOURCE_DIR == FIXTURE_DIR else os.path.join(SOURCE_DIR, '..', 'bom', 'v1', 'bom.txt'))
 BOM_DELTAS = {}               # parts on the board that bom.txt does not list, each with its reason
 ERC_EXCLUDED = 1              # exactly one documented ERC exclusion (U401 PGOOD)
 MIN_NETS, MIN_COMPS, MIN_BOM, MIN_PADS = 40, 90, 90, 250       # floors: a check that examined fewer items than this did not run
@@ -164,7 +224,7 @@ ANCHORS = frozenset(set(HEADERS) | set(BNCS) | {'J607', 'MH601', 'MH602'})      
 def pcb_cfg(**over):
     import types
     cfg = types.SimpleNamespace(
-        PROJECT=PROJECT, NS=NS, OUTLINE=BOARD_RECT, KEEPOUTS=list(KEEPOUTS), REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
+        PROJECT=PROJECT, NS=NS, OUTLINE=BOARD_RECT, KEEPOUTS=list(KEEPOUTS), KEEPOUT_LAYERS=KEEPOUT_LAYERS, REFERENCE_OUTLINE=list(REFERENCE_OUTLINE),
         TITLE=TITLE + ': AFE shield for the Arduino Due, placement', REV=REV, COMMENTS=list(PCB_COMMENTS),
         FOOTPRINT_DIR=FOOTPRINT_DIR, PROJECT_LIB_DIR=PROJECT_LIB_DIR, MODEL_OVERRIDE=dict(MODEL_OVERRIDE), MODELS_DIR=MODELS_DIR)
     for k, v in over.items():
@@ -212,7 +272,9 @@ for _r in ('R411', 'R412', 'R413'):             # the corridor bridges (POWER pa
 LR_HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
 TEST_BLOCKS = ('SCOPE', 'AWG', 'POWER', 'REFCAL')
 TP_NETS = {p['ref']: _n(p['pins']['1']) for p in PARTS if p['ref'].startswith('TP')}
-SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF/CAL', 'ON')
+SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF/CAL', 'ON', NAME, ID_LINE, SN_LABEL)                  # top silk, read by LR-11; the bottom text is held by tests/pcbtools/test_identity.py
+IDENTITY_CHECK = True                           # LR-11 also reads the identity silk and finds no arrow head (pcbtools/identity.py, silkarrows.py)
+ARROWS = []                                     # board silk carries no arrows (docs/afe.md LR-11)
 DESIGNATOR_MIN_H = 1.0                          # the board house's minimum text height (docs/jlcpcb.md)
 TP_PREFIX, TP_PIN = 'TP', '1'
 
@@ -279,6 +341,6 @@ RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'
 VREF_SOURCE = [('U501', '2'), ('C504', '1')]
 VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512', 'R515'))]
-CAP_PAIRS = ()
-CAP_SELF = ()
+CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
+CAP_SELF = (('/AWG_INV', 3.0, 0.1), ('/AWG_BIN', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))
 DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')

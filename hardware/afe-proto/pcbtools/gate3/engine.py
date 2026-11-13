@@ -265,6 +265,16 @@ def apply_setup(pro, setup):
     return out
 
 
+def lib_mismatch_text(pro):
+    """what the committed project file says about `lib_footprint_mismatch`, read from it (never assumed): its severity if it sets one, else KiCad's default"""
+    sev = ((pro or {}).get('board', {}).get('design_settings', {}).get('rule_severities', {}) or {}).get('lib_footprint_mismatch')
+    if sev == 'ignore':
+        return 'the committed project file sets mismatch to ignore'
+    if sev:
+        return f'the committed project file sets the mismatch severity to `{sev}`'
+    return 'the committed project file sets no severity for it, so KiCad\'s default (a warning) applies and the warning is reported'
+
+
 def rule_diff(pro, setup):
     have = pro.get('board', {}).get('design_settings', {}).get('rules', {})
     want = setup['board']['design_settings']['rules']
@@ -433,7 +443,7 @@ def load_bom_engine(T):
 
 
 def sec_bom(b, props, T, bom):
-    data = bom.Data(os.path.join(REPO, T.BOM_DATA_DIR))
+    data = bom.Data(os.path.join(REPO, T.BOM_DATA_DIR), {k: os.path.join(REPO, v) for k, v in getattr(T, 'BOM_PATHS', {}).items()})     # BOM_PATHS: optional, the engine's own override names
     counts = tuple(T.BOARD_COUNTS)
     rep = T.REPORT_BOARDS
     per_order = bom.PER_ORDER_MAX
@@ -762,10 +772,11 @@ def build_doc(D, T, config_name):
         w('')
     else:
         w('The project file carries the design\'s rules (`BOARD_SETUP`); run A and run B are the same DRC.\n')
+    lib_sev = lib_mismatch_text(D.get('_project'))
     for tag, key in (('A: project file as it stands', 'drc'), ('B: at the design rules (BOARD_SETUP applied to a scratch copy)', 'drc_design')):
         d = D[key]
         w(f"**Run {tag}:** {d['total']} violation(s), {d['unconnected']} unconnected, {d['schematic_parity']} schematic-parity. "
-          f"{d['total'] - d['undocumented']} documented ({T.DRC_DOCUMENTED_LABEL}), {d['library']} library-copy warnings (`lib_footprint_*`: footprint differs from the stock library copy; the committed project file sets mismatch to ignore), "
+          f"{d['total'] - d['undocumented']} documented ({T.DRC_DOCUMENTED_LABEL}), {d['library']} library-copy warnings (`lib_footprint_*`: footprint differs from the stock library copy; {lib_sev}), "
           f"**{d['real_undocumented']} other.**\n")
         if d['counts']:
             w(md_table(['type', 'severity', 'count', 'of which documented'], [[c['type'], c['severity'], c['n'], c['documented']] for c in d['counts']]))
@@ -919,7 +930,8 @@ def generate(cfg, T, out_dir, config_name, stamp=None):
     rep = run_drc(board)
     D['drc'] = sec_drc(rep, T)
     D['drc_design'] = sec_drc(run_drc(board, cfg.BOARD_SETUP), T)
-    D['rule_diff'] = rule_diff(read_json(project), cfg.BOARD_SETUP)
+    D['_project'] = read_json(project)
+    D['rule_diff'] = rule_diff(D['_project'], cfg.BOARD_SETUP)
     D['lr'] = sec_lr(b, cfg, rep, T)
     D['lr_text'] = lr_texts(os.path.join(REPO, T.RULE_DOC))
     D['bridges'] = sec_bridges(b, cfg, T)

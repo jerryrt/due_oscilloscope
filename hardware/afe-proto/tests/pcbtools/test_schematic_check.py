@@ -8,7 +8,7 @@ import types
 import pytest
 
 from pcbtools import schematic_check as sc
-from pcbtools.boards import v1
+from pcbtools.boards import v1_frozen as v1
 
 GOLDEN = pathlib.Path(__file__).resolve().parents[1] / 'golden' / 'v1-34b2e51-image' / 'check_pcb.out'
 FIX = pathlib.Path(v1.SOURCE_DIR)

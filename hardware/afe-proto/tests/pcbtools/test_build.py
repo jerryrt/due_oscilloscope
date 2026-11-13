@@ -14,11 +14,11 @@ import pytest
 
 from pcbtools import boardio
 from pcbtools import build as bd
-from pcbtools.boards import v1
+from pcbtools.boards import v1_frozen as v1
 
 FIX = pathlib.Path(__file__).resolve().parents[1] / 'fixtures' / 'v1-34b2e51' / 'kicad'
 FPDIR = os.environ.get('KICAD_FOOTPRINT_DIR', '/usr/share/kicad/footprints')
-OLD_RECT = (17.0, 0.0, 117.0, 53.34)        # the frozen 34b2e51 outline: the v1 config's own outline now overhangs 5 mm south (MC-1 amended)
+OLD_RECT = (17.0, 0.0, 117.0, 53.34)        # the frozen 34b2e51 outline: the v1 config's own outline now overhangs by the computed figure on each long edge (MC-1 amended)
 
 
 # ------------------------------------------------------------------------------------------------ pure helpers
@@ -181,17 +181,20 @@ def test_legalise_reports_what_two_anchors_leave():
 
 
 @pytest.mark.pcbnew
-def test_the_v1_outline_overhangs_5_mm_south_with_a_keepout_over_the_band(built, tmp_path):
-    """the v1 config's own board: Edge.Cuts 5 mm further south on the analog-header edge only (100 x 58.34 mm) and one rule area over the
-    band (no tracks, vias or pour); the frozen old board has neither"""
+def test_the_v1_outline_overhangs_on_each_long_edge_with_top_only_keepouts(built, tmp_path):
+    """the v1 config's own board: Edge.Cuts OVERHANG further out on each long edge (the computed figure, centred over the Due) and two rule areas
+    over the bands that keep TOP copper out (no tracks, vias or pour on F.Cu only: the bottom plane fills the bands); the frozen old board
+    has neither"""
     import pcbnew
     cfg = v1.pcb_cfg(FOOTPRINT_DIR=FPDIR, COMMENTS=built['cfg'].COMMENTS)
     out = tmp_path / 'new.kicad_pcb'
     bd.build_board(built['parts'], cfg, built['place'], built['nets'], out, legalise_overlaps=True, anchors=built['fixed'])
     b = boardio.read_board(out)
-    assert (b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()) == pytest.approx((17.0, -5.0, 117.0, 53.34), abs=1e-5)
+    assert (b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()) == pytest.approx((17.0, -v1.OVERHANG, 117.0, 53.34 + v1.OVERHANG), abs=1e-5)      # the overhang is the config's computed one (the longest pin name)
     board = pcbnew.LoadBoard(str(out))
     areas = [z for z in board.Zones() if z.GetIsRuleArea()]
-    assert len(areas) == 1 and areas[0].GetDoNotAllowTracks() and areas[0].GetDoNotAllowVias() and areas[0].GetDoNotAllowZoneFills()
-    assert areas[0].GetZoneName() == 'analog edge band'
+    assert sorted(z.GetZoneName() for z in areas) == ['analog edge band', 'far edge band']
+    for z in areas:
+        assert z.GetDoNotAllowTracks() and z.GetDoNotAllowVias() and z.GetDoNotAllowZoneFills()
+        assert z.IsOnLayer(pcbnew.F_Cu) and not z.IsOnLayer(pcbnew.B_Cu)                   # top only: the bottom plane fills the band
     assert not [z for z in pcbnew.LoadBoard(str(built['out'])).Zones() if z.GetIsRuleArea()]      # the old-equivalent build has none

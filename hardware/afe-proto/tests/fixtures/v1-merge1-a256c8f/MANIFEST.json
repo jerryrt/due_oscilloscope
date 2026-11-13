@@ -1,9 +1,0 @@
-{
- "branch": "origin/gate3-tool",
- "commit": "a256c8f",
- "repo_path_prefix": "hardware/afe-proto/kicad/ (kicad/ and kicad/wip/ here)",
- "note": "FROZEN INPUT: v1 merge 1 (kicad/wip/v1_merge1), the unrouted REFCAL baseline, the control arm of the v1r routed-arms test.",
- "files": {
-  "v1_merge1.kicad_pcb": "ccfcb7a42aef8cd255cc5eb9cbd8cfcaa33152dbdc203a76231b944b493607a2"
- }
-}

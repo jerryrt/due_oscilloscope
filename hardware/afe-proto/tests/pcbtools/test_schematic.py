@@ -13,7 +13,7 @@ import pytest
 
 from pcbtools import schematic as sch
 from pcbtools import sexpr as sx
-from pcbtools.boards import v1
+from pcbtools.boards import v1_frozen as v1
 
 FIX = pathlib.Path(__file__).resolve().parents[1] / 'fixtures' / 'v1-34b2e51' / 'kicad'
 SYMDIR = os.environ.get('KICAD_SYMBOL_DIR', '/usr/share/kicad/symbols')

@@ -18,7 +18,9 @@ assert sys.path == before, 'a board config changed sys.path'
 fx = [k for k in PLAIN if k in sys.modules and 'fixtures' in (getattr(sys.modules[k], '__file__', '') or '')]
 assert not fx, f'plain-named fixture modules left in sys.modules: {{fx}}'
 assert v1._floorplan is not v2._floorplan and v1._floorplan.__file__ != v2._floorplan.__file__
-assert 'v1-34b2e51' in v1._floorplan.__file__ and 'v2-8a1f7ac' in v2._floorplan.__file__
+from pcbtools.boards import v1_frozen
+assert v1._floorplan.__file__.replace('\\\\', '/').endswith('kicad/floorplan.py') and 'v2-8a1f7ac' in v2._floorplan.__file__
+assert 'v1-34b2e51' in v1_frozen._floorplan.__file__ and v1_frozen._floorplan is not v1._floorplan       # live and frozen v1 side by side
 assert v1.FENCES != v2.FENCES
 assert v1._layout.__name__.startswith('pcbtools._fixture_v1.') and 'v1' not in v2._layout.__file__
 try:
