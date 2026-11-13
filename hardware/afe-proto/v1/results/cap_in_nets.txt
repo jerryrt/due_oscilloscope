@@ -1,0 +1,13 @@
+IN-IN                pour=False converge  0.8 mm: 0.0000  0.4 mm: 0.0000  0.2 mm: 0.0000 pF  order 3.52  extrapolated 0.0000 +- 0.0000 pF  [not converging monotonically (observed order 3.52 outside 0.5 to 2.5)]
+IN-IN                pour=True  converge  0.8 mm: 0.0000  0.4 mm: 0.0000  0.2 mm: 0.0000 pF  order 4.75  extrapolated 0.0000 +- 0.0000 pF  [not converging monotonically (observed order 4.75 outside 0.5 to 2.5)]
+/CH1_IN              pour=False converge  0.4 mm: 1.0033  0.2 mm: 1.4527  0.1 mm: 1.4022 pF  order n/a  extrapolated 1.4022 +- 0.4494 pF  [not converging monotonically]  [not validated against a field solver]
+/CH1_IN              pour=True  converge  0.4 mm: 1.2097  0.2 mm: 2.0040  0.1 mm: 1.7807 pF  order n/a  extrapolated 1.7807 +- 0.7942 pF  [not converging monotonically]  [not validated against a field solver]
+/CH2_IN              pour=False converge  0.4 mm: 1.0289  0.2 mm: 1.3541  0.1 mm: 1.4054 pF  order 2.66  extrapolated 1.4054 +- 0.3765 pF  [not converging monotonically (observed order 2.66 outside 0.5 to 2.5)]  [not validated against a field solver]
+/CH2_IN              pour=True  converge  0.4 mm: 1.2384  0.2 mm: 1.8483  0.1 mm: 1.7819 pF  order n/a  extrapolated 1.7819 +- 0.6099 pF  [not converging monotonically]  [not validated against a field solver]
+N-N h=0.2 pour=False pad 0.75: 0.0006 fF
+N-N h=0.2 pour=True pad 0.75: 0.0000 fF
+N-N h=0.1 pour=False pad 0.75: 0.0003 fF
+N-N h=0.1 pour=True pad 0.75: 0.0000 fF
+NP-NP h=0.1 pour=False pad 0.75: 0.6217 fF
+NP-NP h=0.1 pour=True pad 0.75: 0.1040 fF
+capped: peak_rss_kb=1015196 wall_s=32.85 exit=0 cap=3G limit_s=570 image=sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293 installed=0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6

@@ -279,6 +279,6 @@ RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'
 VREF_SOURCE = [('U501', '2'), ('C504', '1')]
 VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512', 'R515'))]
-CAP_PAIRS = ()
-CAP_SELF = ()
+CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
+CAP_SELF = (('/AWG_INV', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))
 DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')
