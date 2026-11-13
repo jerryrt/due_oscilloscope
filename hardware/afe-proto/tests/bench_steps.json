@@ -11,14 +11,98 @@
     "v2-scope2east": "hardware/afe-proto/tests/fixtures/v2-8a1f7ac/v2-scope2east-05ee441f.kicad_pcb"
   },
   "per_board": [
-    {"tool": "pcbnew-load", "argv": ["python3", "-c", "import pcbnew,sys; pcbnew.LoadBoard(sys.argv[1])", "{board}"]},
-    {"tool": "boardio-read", "argv": ["python3", "-c", "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import boardio; boardio.read_board(sys.argv[1])", "{board}"]},
-    {"tool": "kicad-cli-step", "argv": ["kicad-cli", "pcb", "export", "step", "-o", "/tmp/bench.step", "{board}"]},
-    {"tool": "kicad-cli-render", "argv": ["kicad-cli", "pcb", "render", "-o", "/tmp/bench.png", "{board}"]}
+    {
+      "tool": "pcbnew-load",
+      "argv": [
+        "python3",
+        "-c",
+        "import pcbnew,sys; pcbnew.LoadBoard(sys.argv[1])",
+        "{board}"
+      ]
+    },
+    {
+      "tool": "boardio-read",
+      "argv": [
+        "python3",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto'); from pcbtools import boardio; boardio.read_board(sys.argv[1])",
+        "{board}"
+      ]
+    },
+    {
+      "tool": "kicad-cli-step",
+      "argv": [
+        "kicad-cli",
+        "pcb",
+        "export",
+        "step",
+        "-o",
+        "/tmp/bench.step",
+        "{board}"
+      ]
+    },
+    {
+      "tool": "kicad-cli-render",
+      "argv": [
+        "kicad-cli",
+        "pcb",
+        "render",
+        "-o",
+        "/tmp/bench.png",
+        "{board}"
+      ]
+    },
+    {
+      "tool": "sexpr-parse",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "sexpr",
+        "{board}"
+      ]
+    },
+    {
+      "tool": "editor-roundtrip",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/pcbtools/bench_tools.py",
+        "editor",
+        "{board}"
+      ]
+    }
   ],
   "global": [
-    {"tool": "erc-v1-schematic", "board": "v1", "argv": ["kicad-cli", "sch", "erc", "--format", "json", "-o", "/tmp/bench-erc.json", "hardware/afe-proto/tests/fixtures/v1-34b2e51/kicad/afe-proto.kicad_sch"]},
-    {"tool": "ngspice-rc-ladder", "board": "-", "argv": ["python3", "hardware/afe-proto/tests/bench_ngspice.py"]},
-    {"tool": "netlib-text-v1v2", "board": "v1+v2", "argv": ["python3", "-I", "-c", "import sys; sys.path.insert(0,'hardware/afe-proto/tests'); import netlib_snapshot as s; s.v1_text(); s.v2_text()"]}
+    {
+      "tool": "erc-v1-schematic",
+      "board": "v1",
+      "argv": [
+        "kicad-cli",
+        "sch",
+        "erc",
+        "--format",
+        "json",
+        "-o",
+        "/tmp/bench-erc.json",
+        "hardware/afe-proto/tests/fixtures/v1-34b2e51/kicad/afe-proto.kicad_sch"
+      ]
+    },
+    {
+      "tool": "ngspice-rc-ladder",
+      "board": "-",
+      "argv": [
+        "python3",
+        "hardware/afe-proto/tests/bench_ngspice.py"
+      ]
+    },
+    {
+      "tool": "netlib-text-v1v2",
+      "board": "v1+v2",
+      "argv": [
+        "python3",
+        "-I",
+        "-c",
+        "import sys; sys.path.insert(0,'hardware/afe-proto/tests'); import netlib_snapshot as s; s.v1_text(); s.v2_text()"
+      ]
+    }
   ]
 }
