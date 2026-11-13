@@ -10,7 +10,14 @@
    "kicad": "10.0.8",
    "ngspice": "45.2"
   },
-  "runs": 5
+  "runs": 5,
+  "remeasured_later": [
+   "old-v1-build_pcb",
+   "old-v1-check-pcb",
+   "old-v1-fence_check",
+   "old-v1-lr_check",
+   "old-v1-lr_check-mutate"
+  ]
  },
  "rows": [
   {
@@ -21,13 +28,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.29,
-    "min": 0.28,
+    "min": 0.27,
     "max": 0.31
    },
    "peak_rss_kb": {
-    "median": 152476,
-    "min": 151536,
-    "max": 153288
+    "median": 153172,
+    "min": 152128,
+    "max": 153976
    }
   },
   {
@@ -37,14 +44,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.34,
+    "median": 0.33,
     "min": 0.33,
     "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 159556,
-    "min": 158628,
-    "max": 160232
+    "median": 160112,
+    "min": 158796,
+    "max": 161128
    }
   },
   {
@@ -56,12 +63,12 @@
    "wall_s": {
     "median": 0.34,
     "min": 0.33,
-    "max": 0.34
+    "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 159620,
-    "min": 158032,
-    "max": 160556
+    "median": 159232,
+    "min": 157472,
+    "max": 160424
    }
   },
   {
@@ -76,9 +83,9 @@
     "max": 0.33
    },
    "peak_rss_kb": {
-    "median": 158620,
-    "min": 157996,
-    "max": 158776
+    "median": 158924,
+    "min": 157756,
+    "max": 159144
    }
   },
   {
@@ -88,14 +95,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.34,
+    "median": 0.33,
     "min": 0.33,
     "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 159520,
-    "min": 158792,
-    "max": 161008
+    "median": 159276,
+    "min": 158424,
+    "max": 160860
    }
   },
   {
@@ -110,9 +117,9 @@
     "max": 0.35
    },
    "peak_rss_kb": {
-    "median": 159796,
-    "min": 159312,
-    "max": 160240
+    "median": 159824,
+    "min": 158424,
+    "max": 160188
    }
   },
   {
@@ -122,31 +129,31 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.33,
+    "median": 0.34,
+    "min": 0.34,
+    "max": 0.35
+   },
+   "peak_rss_kb": {
+    "median": 160136,
+    "min": 158308,
+    "max": 161192
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "pcbnew-load",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.34,
     "min": 0.33,
     "max": 0.34
    },
    "peak_rss_kb": {
-    "median": 160324,
-    "min": 158936,
-    "max": 160612
-   }
-  },
-  {
-   "board": "v2-scope2east",
-   "tool": "pcbnew-load",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.33,
-    "min": 0.33,
-    "max": 0.35
-   },
-   "peak_rss_kb": {
-    "median": 160336,
-    "min": 158604,
-    "max": 160732
+    "median": 159296,
+    "min": 157252,
+    "max": 160268
    }
   },
   {
@@ -156,14 +163,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.53,
-    "min": 0.49,
-    "max": 0.56
+    "median": 0.38,
+    "min": 0.38,
+    "max": 0.4
    },
    "peak_rss_kb": {
-    "median": 172512,
-    "min": 171756,
-    "max": 173628
+    "median": 172460,
+    "min": 171816,
+    "max": 172776
    }
   },
   {
@@ -173,14 +180,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.59,
-    "min": 0.58,
-    "max": 0.63
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.49
    },
    "peak_rss_kb": {
-    "median": 180036,
-    "min": 178016,
-    "max": 180980
+    "median": 178948,
+    "min": 178188,
+    "max": 179432
    }
   },
   {
@@ -190,14 +197,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.59,
-    "min": 0.58,
-    "max": 0.6
+    "median": 0.47,
+    "min": 0.46,
+    "max": 0.48
    },
    "peak_rss_kb": {
-    "median": 179260,
-    "min": 179216,
-    "max": 179640
+    "median": 178476,
+    "min": 178300,
+    "max": 180796
    }
   },
   {
@@ -207,14 +214,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.58,
-    "min": 0.57,
-    "max": 0.6
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.47
    },
    "peak_rss_kb": {
-    "median": 181148,
-    "min": 177876,
-    "max": 182000
+    "median": 179280,
+    "min": 177956,
+    "max": 180216
    }
   },
   {
@@ -224,14 +231,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.6,
-    "min": 0.56,
-    "max": 0.61
+    "median": 0.47,
+    "min": 0.46,
+    "max": 0.48
    },
    "peak_rss_kb": {
-    "median": 179224,
-    "min": 178800,
-    "max": 179780
+    "median": 179136,
+    "min": 178540,
+    "max": 179736
    }
   },
   {
@@ -241,14 +248,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.6,
-    "min": 0.57,
-    "max": 0.64
+    "median": 0.49,
+    "min": 0.48,
+    "max": 0.49
    },
    "peak_rss_kb": {
-    "median": 179308,
-    "min": 177940,
-    "max": 180068
+    "median": 178996,
+    "min": 178284,
+    "max": 180640
    }
   },
   {
@@ -258,14 +265,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.58,
-    "min": 0.58,
-    "max": 0.59
+    "median": 0.48,
+    "min": 0.47,
+    "max": 0.48
    },
    "peak_rss_kb": {
-    "median": 179228,
-    "min": 177976,
-    "max": 180464
+    "median": 179984,
+    "min": 178764,
+    "max": 181088
    }
   },
   {
@@ -275,14 +282,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.59,
-    "min": 0.57,
-    "max": 0.61
+    "median": 0.47,
+    "min": 0.46,
+    "max": 0.49
    },
    "peak_rss_kb": {
-    "median": 180332,
-    "min": 178252,
-    "max": 181400
+    "median": 178356,
+    "min": 177668,
+    "max": 179344
    }
   },
   {
@@ -292,116 +299,116 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.56,
-    "min": 2.53,
-    "max": 2.58
+    "median": 2.65,
+    "min": 2.6,
+    "max": 2.74
    },
    "peak_rss_kb": {
-    "median": 208504,
-    "min": 208456,
-    "max": 209520
+    "median": 208164,
+    "min": 207464,
+    "max": 209280
    }
   },
   {
    "board": "v2-BASE",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.63,
-    "min": 2.62,
-    "max": 2.67
-   },
-   "peak_rss_kb": {
-    "median": 215448,
-    "min": 212764,
-    "max": 216116
-   }
-  },
-  {
-   "board": "v2-awg",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.61,
-    "min": 2.61,
-    "max": 2.68
-   },
-   "peak_rss_kb": {
-    "median": 213948,
-    "min": 213256,
-    "max": 215692
-   }
-  },
-  {
-   "board": "v2-integrated",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.67,
-    "min": 2.62,
-    "max": 2.67
-   },
-   "peak_rss_kb": {
-    "median": 213788,
-    "min": 213172,
-    "max": 216520
-   }
-  },
-  {
-   "board": "v2-power",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.67,
-    "min": 2.62,
-    "max": 2.7
-   },
-   "peak_rss_kb": {
-    "median": 215580,
-    "min": 214024,
-    "max": 216812
-   }
-  },
-  {
-   "board": "v2-power3",
-   "tool": "kicad-cli-step",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.64,
-    "min": 2.62,
-    "max": 2.71
-   },
-   "peak_rss_kb": {
-    "median": 215720,
-    "min": 212740,
-    "max": 216280
-   }
-  },
-  {
-   "board": "v2-refcal",
    "tool": "kicad-cli-step",
    "runs": 5,
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
     "median": 2.7,
-    "min": 2.68,
-    "max": 2.74
+    "min": 2.69,
+    "max": 2.75
    },
    "peak_rss_kb": {
-    "median": 215572,
-    "min": 213024,
-    "max": 216212
+    "median": 215296,
+    "min": 213984,
+    "max": 216884
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.74,
+    "min": 2.63,
+    "max": 2.77
+   },
+   "peak_rss_kb": {
+    "median": 214344,
+    "min": 213540,
+    "max": 215624
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.7,
+    "min": 2.66,
+    "max": 2.73
+   },
+   "peak_rss_kb": {
+    "median": 214964,
+    "min": 213492,
+    "max": 215708
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.67,
+    "min": 2.65,
+    "max": 2.72
+   },
+   "peak_rss_kb": {
+    "median": 214340,
+    "min": 212556,
+    "max": 215376
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.67,
+    "min": 2.64,
+    "max": 2.82
+   },
+   "peak_rss_kb": {
+    "median": 215312,
+    "min": 214500,
+    "max": 215844
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "kicad-cli-step",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.74,
+    "min": 2.66,
+    "max": 2.78
+   },
+   "peak_rss_kb": {
+    "median": 214888,
+    "min": 214412,
+    "max": 217188
    }
   },
   {
@@ -411,14 +418,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.64,
-    "min": 2.6,
-    "max": 2.67
+    "median": 2.74,
+    "min": 2.72,
+    "max": 2.78
    },
    "peak_rss_kb": {
-    "median": 214788,
-    "min": 213800,
-    "max": 216888
+    "median": 214548,
+    "min": 211544,
+    "max": 214728
    }
   },
   {
@@ -428,14 +435,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 1.73,
-    "min": 1.7,
-    "max": 1.74
+    "median": 1.74,
+    "min": 1.72,
+    "max": 1.78
    },
    "peak_rss_kb": {
-    "median": 352100,
-    "min": 351884,
-    "max": 352352
+    "median": 351768,
+    "min": 351372,
+    "max": 352516
    }
   },
   {
@@ -445,14 +452,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.45,
-    "min": 2.43,
-    "max": 2.45
+    "median": 2.46,
+    "min": 2.4,
+    "max": 2.48
    },
    "peak_rss_kb": {
-    "median": 372820,
-    "min": 372396,
-    "max": 373296
+    "median": 372140,
+    "min": 371664,
+    "max": 373008
    }
   },
   {
@@ -467,9 +474,9 @@
     "max": 2.47
    },
    "peak_rss_kb": {
-    "median": 371364,
-    "min": 371108,
-    "max": 372888
+    "median": 371104,
+    "min": 370256,
+    "max": 371708
    }
   },
   {
@@ -481,12 +488,12 @@
    "wall_s": {
     "median": 2.4,
     "min": 2.39,
-    "max": 2.43
+    "max": 2.44
    },
    "peak_rss_kb": {
-    "median": 372440,
-    "min": 370736,
-    "max": 372788
+    "median": 371056,
+    "min": 370932,
+    "max": 371996
    }
   },
   {
@@ -496,52 +503,18 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 2.43,
-    "min": 2.4,
-    "max": 2.49
+    "median": 2.46,
+    "min": 2.43,
+    "max": 2.48
    },
    "peak_rss_kb": {
-    "median": 371740,
-    "min": 371688,
-    "max": 373680
+    "median": 372272,
+    "min": 371584,
+    "max": 372676
    }
   },
   {
    "board": "v2-power3",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.47,
-    "min": 2.44,
-    "max": 2.49
-   },
-   "peak_rss_kb": {
-    "median": 372976,
-    "min": 372456,
-    "max": 373696
-   }
-  },
-  {
-   "board": "v2-refcal",
-   "tool": "kicad-cli-render",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 2.45,
-    "min": 2.39,
-    "max": 2.46
-   },
-   "peak_rss_kb": {
-    "median": 374432,
-    "min": 373076,
-    "max": 374952
-   }
-  },
-  {
-   "board": "v2-scope2east",
    "tool": "kicad-cli-render",
    "runs": 5,
    "dropped_first": true,
@@ -549,12 +522,46 @@
    "wall_s": {
     "median": 2.47,
     "min": 2.45,
+    "max": 2.51
+   },
+   "peak_rss_kb": {
+    "median": 372620,
+    "min": 371752,
+    "max": 373284
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.46,
+    "min": 2.44,
+    "max": 2.49
+   },
+   "peak_rss_kb": {
+    "median": 373288,
+    "min": 373060,
+    "max": 374740
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "kicad-cli-render",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.48,
+    "min": 2.42,
     "max": 2.5
    },
    "peak_rss_kb": {
-    "median": 372120,
-    "min": 371776,
-    "max": 372932
+    "median": 371772,
+    "min": 370872,
+    "max": 372896
    }
   },
   {
@@ -564,14 +571,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.09,
-    "min": 0.09,
+    "median": 0.08,
+    "min": 0.08,
     "max": 0.09
    },
    "peak_rss_kb": {
-    "median": 19900,
-    "min": 19608,
-    "max": 20032
+    "median": 20044,
+    "min": 19860,
+    "max": 20096
    }
   },
   {
@@ -582,13 +589,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.13,
-    "min": 0.12,
-    "max": 0.13
+    "min": 0.13,
+    "max": 0.15
    },
    "peak_rss_kb": {
-    "median": 25444,
-    "min": 25352,
-    "max": 25460
+    "median": 25536,
+    "min": 25492,
+    "max": 25560
    }
   },
   {
@@ -603,9 +610,9 @@
     "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25076,
-    "min": 24980,
-    "max": 25180
+    "median": 25156,
+    "min": 25040,
+    "max": 25240
    }
   },
   {
@@ -616,13 +623,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.13,
-    "min": 0.13,
-    "max": 0.14
+    "min": 0.12,
+    "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 24964,
-    "min": 24684,
-    "max": 25128
+    "median": 25084,
+    "min": 25068,
+    "max": 25116
    }
   },
   {
@@ -633,13 +640,13 @@
    "status": "OK",
    "wall_s": {
     "median": 0.13,
-    "min": 0.12,
-    "max": 0.14
+    "min": 0.13,
+    "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25400,
-    "min": 25252,
-    "max": 25488
+    "median": 25488,
+    "min": 25396,
+    "max": 25568
    }
   },
   {
@@ -651,12 +658,12 @@
    "wall_s": {
     "median": 0.13,
     "min": 0.13,
-    "max": 0.14
+    "max": 0.15
    },
    "peak_rss_kb": {
-    "median": 25484,
-    "min": 25440,
-    "max": 25520
+    "median": 25544,
+    "min": 25444,
+    "max": 25592
    }
   },
   {
@@ -671,9 +678,9 @@
     "max": 0.14
    },
    "peak_rss_kb": {
-    "median": 25720,
-    "min": 25636,
-    "max": 25796
+    "median": 25796,
+    "min": 25740,
+    "max": 25848
    }
   },
   {
@@ -684,64 +691,64 @@
    "status": "OK",
    "wall_s": {
     "median": 0.13,
-    "min": 0.12,
+    "min": 0.13,
     "max": 0.13
    },
    "peak_rss_kb": {
-    "median": 25320,
-    "min": 25120,
-    "max": 25384
+    "median": 25392,
+    "min": 25196,
+    "max": 25436
    }
   },
   {
    "board": "v1",
+   "tool": "editor-roundtrip",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.45,
+    "max": 0.46
+   },
+   "peak_rss_kb": {
+    "median": 183116,
+    "min": 182400,
+    "max": 184048
+   }
+  },
+  {
+   "board": "v2-BASE",
+   "tool": "editor-roundtrip",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.62,
+    "min": 0.62,
+    "max": 0.62
+   },
+   "peak_rss_kb": {
+    "median": 196408,
+    "min": 194512,
+    "max": 196576
+   }
+  },
+  {
+   "board": "v2-awg",
    "tool": "editor-roundtrip",
    "runs": 5,
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
     "median": 0.61,
-    "min": 0.58,
+    "min": 0.61,
     "max": 0.63
    },
    "peak_rss_kb": {
-    "median": 183504,
-    "min": 183100,
-    "max": 184328
-   }
-  },
-  {
-   "board": "v2-BASE",
-   "tool": "editor-roundtrip",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.77,
-    "min": 0.74,
-    "max": 0.8
-   },
-   "peak_rss_kb": {
-    "median": 196876,
-    "min": 194300,
-    "max": 197392
-   }
-  },
-  {
-   "board": "v2-awg",
-   "tool": "editor-roundtrip",
-   "runs": 5,
-   "dropped_first": true,
-   "status": "OK",
-   "wall_s": {
-    "median": 0.78,
-    "min": 0.74,
-    "max": 0.79
-   },
-   "peak_rss_kb": {
-    "median": 196248,
-    "min": 193348,
-    "max": 196928
+    "median": 194132,
+    "min": 193344,
+    "max": 197144
    }
   },
   {
@@ -751,14 +758,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.74,
-    "min": 0.71,
-    "max": 0.78
+    "median": 0.6,
+    "min": 0.59,
+    "max": 0.61
    },
    "peak_rss_kb": {
-    "median": 196144,
-    "min": 194836,
-    "max": 196500
+    "median": 195012,
+    "min": 193632,
+    "max": 195956
    }
   },
   {
@@ -768,14 +775,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.76,
-    "min": 0.75,
-    "max": 0.78
+    "median": 0.62,
+    "min": 0.61,
+    "max": 0.63
    },
    "peak_rss_kb": {
-    "median": 194964,
-    "min": 192972,
-    "max": 196408
+    "median": 196364,
+    "min": 193428,
+    "max": 197384
    }
   },
   {
@@ -785,14 +792,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.8,
-    "min": 0.77,
-    "max": 0.81
+    "median": 0.63,
+    "min": 0.63,
+    "max": 0.65
    },
    "peak_rss_kb": {
-    "median": 196112,
-    "min": 195656,
-    "max": 197748
+    "median": 195664,
+    "min": 194064,
+    "max": 197152
    }
   },
   {
@@ -802,14 +809,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.79,
-    "min": 0.77,
-    "max": 0.8
+    "median": 0.63,
+    "min": 0.63,
+    "max": 0.64
    },
    "peak_rss_kb": {
-    "median": 197436,
-    "min": 193696,
-    "max": 198420
+    "median": 197200,
+    "min": 194880,
+    "max": 197932
    }
   },
   {
@@ -819,14 +826,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.78,
-    "min": 0.75,
-    "max": 0.8
+    "median": 0.63,
+    "min": 0.61,
+    "max": 0.63
    },
    "peak_rss_kb": {
-    "median": 196060,
-    "min": 195096,
-    "max": 197052
+    "median": 195372,
+    "min": 193676,
+    "max": 196416
    }
   },
   {
@@ -836,14 +843,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 6.58,
-    "min": 6.5,
-    "max": 6.62
+    "median": 6.51,
+    "min": 6.47,
+    "max": 6.58
    },
    "peak_rss_kb": {
-    "median": 1364344,
-    "min": 1363332,
-    "max": 1365476
+    "median": 1365388,
+    "min": 1364508,
+    "max": 1366276
    }
   },
   {
@@ -853,14 +860,14 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.3,
-    "min": 0.29,
-    "max": 0.34
+    "median": 0.17,
+    "min": 0.17,
+    "max": 0.18
    },
    "peak_rss_kb": {
-    "median": 32324,
-    "min": 32080,
-    "max": 32500
+    "median": 32424,
+    "min": 32196,
+    "max": 32576
    }
   },
   {
@@ -870,14 +877,577 @@
    "dropped_first": true,
    "status": "OK",
    "wall_s": {
-    "median": 0.27,
-    "min": 0.21,
-    "max": 0.28
+    "median": 0.1,
+    "min": 0.1,
+    "max": 0.11
    },
    "peak_rss_kb": {
-    "median": 35952,
-    "min": 35728,
-    "max": 36016
+    "median": 35944,
+    "min": 35576,
+    "max": 36012
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "schematic-build-v1",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 2.1,
+    "min": 2.04,
+    "max": 2.11
+   },
+   "peak_rss_kb": {
+    "median": 213960,
+    "min": 213856,
+    "max": 214156
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "board-build-v1",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 4.18,
+    "min": 4.1,
+    "max": 4.23
+   },
+   "peak_rss_kb": {
+    "median": 236364,
+    "min": 236048,
+    "max": 236904
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 7.02,
+    "min": 6.98,
+    "max": 7.04
+   },
+   "peak_rss_kb": {
+    "median": 1496384,
+    "min": 1445540,
+    "max": 1510660
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.9,
+    "min": 0.89,
+    "max": 0.91
+   },
+   "peak_rss_kb": {
+    "median": 181008,
+    "min": 179808,
+    "max": 181784
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 6.81,
+    "min": 6.81,
+    "max": 6.94
+   },
+   "peak_rss_kb": {
+    "median": 1492652,
+    "min": 1484028,
+    "max": 1497132
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.88,
+    "min": 0.88,
+    "max": 0.91
+   },
+   "peak_rss_kb": {
+    "median": 181288,
+    "min": 178256,
+    "max": 182384
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 7.27,
+    "min": 7.19,
+    "max": 7.33
+   },
+   "peak_rss_kb": {
+    "median": 1501048,
+    "min": 1487480,
+    "max": 1512784
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.93,
+    "min": 0.93,
+    "max": 0.94
+   },
+   "peak_rss_kb": {
+    "median": 181872,
+    "min": 180496,
+    "max": 183956
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 7.3,
+    "min": 7.19,
+    "max": 7.35
+   },
+   "peak_rss_kb": {
+    "median": 1476472,
+    "min": 1464956,
+    "max": 1504008
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.95,
+    "min": 0.93,
+    "max": 0.95
+   },
+   "peak_rss_kb": {
+    "median": 182000,
+    "min": 180160,
+    "max": 182372
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 7.11,
+    "min": 6.99,
+    "max": 7.12
+   },
+   "peak_rss_kb": {
+    "median": 1487372,
+    "min": 1465952,
+    "max": 1502812
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.93,
+    "min": 0.93,
+    "max": 0.94
+   },
+   "peak_rss_kb": {
+    "median": 180488,
+    "min": 179312,
+    "max": 182504
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "old-v2-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 7.24,
+    "min": 7.19,
+    "max": 7.27
+   },
+   "peak_rss_kb": {
+    "median": 1483900,
+    "min": 1462668,
+    "max": 1490796
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "new-v2-check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.92,
+    "min": 0.91,
+    "max": 0.94
+   },
+   "peak_rss_kb": {
+    "median": 181204,
+    "min": 179700,
+    "max": 181676
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "old-v2-lr_check-mutate",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 10.84,
+    "min": 10.77,
+    "max": 10.93
+   },
+   "peak_rss_kb": {
+    "median": 1483752,
+    "min": 1462216,
+    "max": 1496068
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "new-v2-check-mutate",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 1.02,
+    "min": 1.01,
+    "max": 1.02
+   },
+   "peak_rss_kb": {
+    "median": 180720,
+    "min": 180212,
+    "max": 180808
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.45,
+    "max": 0.47
+   },
+   "peak_rss_kb": {
+    "median": 166428,
+    "min": 164984,
+    "max": 168844
+   }
+  },
+  {
+   "board": "v2-power3",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.64,
+    "min": 0.62,
+    "max": 0.64
+   },
+   "peak_rss_kb": {
+    "median": 186928,
+    "min": 185168,
+    "max": 188208
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.47
+   },
+   "peak_rss_kb": {
+    "median": 165988,
+    "min": 164524,
+    "max": 167472
+   }
+  },
+  {
+   "board": "v2-power",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.63,
+    "min": 0.61,
+    "max": 0.63
+   },
+   "peak_rss_kb": {
+    "median": 186120,
+    "min": 183828,
+    "max": 187044
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.45,
+    "max": 0.47
+   },
+   "peak_rss_kb": {
+    "median": 166356,
+    "min": 165316,
+    "max": 167108
+   }
+  },
+  {
+   "board": "v2-refcal",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.63,
+    "min": 0.61,
+    "max": 0.63
+   },
+   "peak_rss_kb": {
+    "median": 186928,
+    "min": 183888,
+    "max": 187984
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.45,
+    "max": 0.47
+   },
+   "peak_rss_kb": {
+    "median": 166328,
+    "min": 164732,
+    "max": 166904
+   }
+  },
+  {
+   "board": "v2-awg",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.62,
+    "min": 0.61,
+    "max": 0.64
+   },
+   "peak_rss_kb": {
+    "median": 185440,
+    "min": 184956,
+    "max": 185992
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "old-v2-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.46,
+    "min": 0.46,
+    "max": 0.47
+   },
+   "peak_rss_kb": {
+    "median": 166988,
+    "min": 166224,
+    "max": 168068
+   }
+  },
+  {
+   "board": "v2-scope2east",
+   "tool": "new-v2-fence",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.63,
+    "min": 0.61,
+    "max": 0.65
+   },
+   "peak_rss_kb": {
+    "median": 185420,
+    "min": 183716,
+    "max": 186748
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "old-v2-cap",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 48.4,
+    "min": 47.84,
+    "max": 48.7
+   },
+   "peak_rss_kb": {
+    "median": 316944,
+    "min": 316020,
+    "max": 317572
+   }
+  },
+  {
+   "board": "v2-integrated",
+   "tool": "new-v2-cap",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 28.88,
+    "min": 28.52,
+    "max": 29.59
+   },
+   "peak_rss_kb": {
+    "median": 549280,
+    "min": 549096,
+    "max": 549664
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-build_pcb",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 4.32,
+    "min": 4.3,
+    "max": 4.44
+   },
+   "peak_rss_kb": {
+    "median": 236344,
+    "min": 235540,
+    "max": 237132
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-check-pcb",
+   "runs": 5,
+   "dropped_first": true,
+   "expect_exit": 1,
+   "status": "OK",
+   "wall_s": {
+    "median": 44.18,
+    "min": 43.88,
+    "max": 44.2
+   },
+   "peak_rss_kb": {
+    "median": 1536928,
+    "min": 1523236,
+    "max": 1557368
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-lr_check",
+   "runs": 5,
+   "dropped_first": true,
+   "expect_exit": 1,
+   "status": "OK",
+   "wall_s": {
+    "median": 5.97,
+    "min": 5.92,
+    "max": 6.02
+   },
+   "peak_rss_kb": {
+    "median": 1474284,
+    "min": 1452516,
+    "max": 1493696
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-lr_check-mutate",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 12.12,
+    "min": 12.08,
+    "max": 12.35
+   },
+   "peak_rss_kb": {
+    "median": 1487968,
+    "min": 1466188,
+    "max": 1498588
+   }
+  },
+  {
+   "board": "v1",
+   "tool": "old-v1-fence_check",
+   "runs": 5,
+   "dropped_first": true,
+   "status": "OK",
+   "wall_s": {
+    "median": 0.35,
+    "min": 0.34,
+    "max": 0.35
+   },
+   "peak_rss_kb": {
+    "median": 156920,
+    "min": 155484,
+    "max": 158104
    }
   }
  ]

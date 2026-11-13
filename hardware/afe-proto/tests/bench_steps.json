@@ -116,6 +116,7 @@
     },
     {
       "tool": "old-v1-check-pcb",
+      "expect_exit": 1,
       "board": "v1",
       "argv": [
         "bash",
@@ -126,6 +127,7 @@
     },
     {
       "tool": "old-v1-lr_check",
+      "expect_exit": 1,
       "board": "v1",
       "argv": [
         "bash",

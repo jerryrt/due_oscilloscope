@@ -116,3 +116,11 @@ def test_the_committed_budgets_carry_their_machine():
     d = json.loads((pathlib.Path(__file__).resolve().parent / "budgets.json").read_text())
     rows = [t for b in d["budgets"].values() for t in b.values()]
     assert len(rows) >= 30 and all(r.get("machine") == d["meta"]["machine"] for r in rows)
+
+
+def test_a_step_that_reports_findings_by_exiting_1_is_ok_at_1_and_a_failure_otherwise():
+    assert step("raise SystemExit(1)", expect_exit=1).kind == "OK"
+    assert step("raise SystemExit(0)", expect_exit=1).kind == "FAIL"
+    assert step("raise SystemExit(2)", expect_exit=1).kind == "FAIL"
+    assert step("raise SystemExit(1)").kind == "FAIL"                 # the default is still 0
+    assert B.classify(139, expect_exit=1) == "CRASH" and B.classify(124, expect_exit=1) == "TIMEOUT"

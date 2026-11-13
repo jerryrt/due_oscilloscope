@@ -70,9 +70,11 @@ class Outcome:
     wall_enforced: bool = False
 
 
-def classify(rc):
-    """Exit status -> kind, before any budget is looked at."""
-    if rc == 0:
+def classify(rc, expect_exit=0):
+    """Exit status -> kind, before any budget is looked at. `expect_exit` is the status a clean run of
+    this step returns: a checker that reports findings by exiting 1 (the old v1 check and lr_check do, on
+    the v1 board) is OK at 1 and a FAIL at 0 or 2."""
+    if rc == expect_exit:
         return "OK"
     if rc == capped.TIMED_OUT:
         return "TIMEOUT"
@@ -90,7 +92,7 @@ def signal_name(rc):
         return f"signal {rc - 128}"
 
 
-def run_step(name, argv, *, budget=None, mem="2G", timeout=None, cwd=None, env=None, machine=None):
+def run_step(name, argv, *, budget=None, mem="2G", timeout=None, cwd=None, env=None, machine=None, expect_exit=0):
     """Run once under the cap. Where the wall budget is enforced (same machine) the time limit is the
     budget's wall time unless `timeout` is given, with no slack added: a step over it is OVER_BUDGET if it
     finished within the limit and TIMEOUT if it did not. Elsewhere the limit is 300 s."""
@@ -98,7 +100,7 @@ def run_step(name, argv, *, budget=None, mem="2G", timeout=None, cwd=None, env=N
     enforce_wall = bool(budget and budget.get("machine") and budget["machine"] == machine)
     limit = timeout if timeout is not None else (max(int(budget["wall_s"]) + 1, 2) if enforce_wall else 300)
     res = capped.run(argv, mem=mem, timeout=limit, cwd=cwd, env=env)
-    kind = classify(res.returncode)
+    kind = classify(res.returncode, expect_exit)
     peak = None if res.peak_rss_bytes is None else res.peak_rss_bytes // 1024
     detail = ""
     if kind == "CRASH":
