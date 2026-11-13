@@ -355,13 +355,13 @@ PAD_STEP = 0.25                   # mm: the window pad is lowered in steps of th
 
 def extrapolate(values, hs=CONVERGE_H):
     """Richardson extrapolation of a capacitance computed at three cell sizes `hs` (coarse to fine, a constant ratio r).
-    Assumes C(h) = C0 + A h^p. With d1 = C(h1) - C(h2) and d2 = C(h2) - C(h3) the observed order is
+    Assumes C(h) = Cinf + A h^p. With d1 = C(h1) - C(h2) and d2 = C(h2) - C(h3) the observed order is
         p = log(d1 / d2) / log(r)            (r = 2: p = log2(d1 / d2))
     and, when the sequence is strictly monotone and 0.5 <= p <= 2.5,
-        C0 = C(h3) - d2 / (r^p - 1),   uncertainty = |C0 - C(h3)|  (what the extrapolation moved the finest value by).
+        Cinf = C(h3) - d2 / (r^p - 1),   uncertainty = |Cinf - C(h3)|  (what the extrapolation moved the finest value by).
     Otherwise (not monotone, or the order is out of range, or d2 = 0 with d1 != 0) the finest value stands and the full spread
     max - min of the three is its uncertainty, flagged 'not converging monotonically'. Three identical values are converged:
-    C0 = the value, uncertainty 0, no order. -> dict(values, hs, order, extrapolated, uncertainty, spread, status)."""
+    Cinf = the value, uncertainty 0, no order. -> dict(values, hs, order, extrapolated, uncertainty, spread, status)."""
     v = [float(x) for x in values]
     h = [float(x) for x in hs]
     if len(v) != 3 or len(h) != 3:
