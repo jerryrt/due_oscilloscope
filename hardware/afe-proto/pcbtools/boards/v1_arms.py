@@ -399,3 +399,4 @@ ARMS += [
     _repair('REPAIR LR-8 each branch connected', R.lr8, 'is not connected to the source', prep_connected_vref),
     _repair('REPAIR LR-11 silk added', R.lr11, 'designator not on silk', prep_silk),
 ]
+

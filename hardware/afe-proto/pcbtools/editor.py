@@ -221,12 +221,18 @@ class Editor:
             self.b.Add(s)
             self._give(s)
 
-    def keepout(self, rect, name='keepout', tracks=True, vias=True, pour=True):
-        """a rule area over `rect` = (x0, y0, x1, y1) in Due mm on every copper layer: no tracks, no vias, no copper pour (each
-        switchable); pads and footprints are allowed. KiCad's DRC reports anything inside it as a keepout violation"""
+    def keepout(self, rect, name='keepout', tracks=True, vias=True, pour=True, layers='all'):
+        """a rule area over `rect` = (x0, y0, x1, y1) in Due mm on every copper layer (layers='all') or on 'F' or 'B' only: no tracks,
+        no vias, no copper pour (each switchable); pads and footprints are allowed. KiCad's DRC reports anything inside it as a
+        keepout violation, and a router that reads the board (Specctra export) keeps out of it"""
         z = self.pcb.ZONE(self.b)
         z.SetIsRuleArea(True)
-        z.SetLayerSet(self.pcb.LSET.AllCuMask())
+        if layers == 'all':
+            ls = self.pcb.LSET.AllCuMask()
+        else:
+            ls = self.pcb.LSET()
+            ls.AddLayer(self._layer(layers))
+        z.SetLayerSet(ls)
         z.SetDoNotAllowTracks(bool(tracks))
         z.SetDoNotAllowVias(bool(vias))
         z.SetDoNotAllowZoneFills(bool(pour))

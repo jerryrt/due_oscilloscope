@@ -235,3 +235,19 @@ def test_keepout_makes_kicad_report_a_track_and_a_via_inside_it(board):
         e.keepout(band, name='analog edge band')
     types = _drc_types(board)
     assert types.count('items_not_allowed') == 2, types                      # the track and the via: KiCad's keepout violation
+
+
+def test_keepout_on_one_layer_catches_that_layers_track_only(board):
+    """a bottom-only rule area: a bottom track inside it is a violation, the same track on the top is not (the router flow forbids
+    bottom signal copper this way)"""
+    import shutil
+    if not shutil.which('kicad-cli'):
+        pytest.skip('no kicad-cli')
+    b = boardio.read_board(board)
+    x0, y0, x1, y1 = b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()
+    with edit(board) as e:
+        e.set_outline((x0, y0 - 5.0, x1, y1))
+        e.add_tracks('GND', 'F', x0 + 10, y0 - 2.5, x0 + 14, y0 - 2.5, 0.2)
+        e.add_tracks('GND', 'B', x0 + 30, y0 - 2.5, x0 + 34, y0 - 2.5, 0.2)
+        e.keepout((x0, y0 - 5.0, x1, y0), name='bottom only', layers='B')
+    assert _drc_types(board).count('items_not_allowed') == 1

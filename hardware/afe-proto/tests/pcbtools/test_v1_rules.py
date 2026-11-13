@@ -129,3 +129,33 @@ def test_a_mutant_is_not_prepared_twice(board):
     name, rule, arm = next(a for a in v1_arms.ARMS if a[0] == 'LR-11 designator under 0.8 mm / not on silk')
     m = arm(board, v1)
     assert 'R101: designator not on silk' in rule(m, v1).detail
+
+
+# ---------------------------------------------------------------------------------------------------- the routed board
+WIP = os.path.join(HERE, '..', '..', 'kicad', 'wip')
+
+
+def _cli(board, *args, live=True):
+    import subprocess
+    import sys
+    env = dict(os.environ)
+    if live:
+        env['PCBTOOLS_V1_SOURCE'] = os.path.join(HERE, '..', '..', 'kicad')           # the live v1 data (R411-R413, P33_G, ...)
+    else:
+        env.pop('PCBTOOLS_V1_SOURCE', None)
+    root = os.path.join(HERE, '..', '..')
+    return subprocess.run([sys.executable, '-m', 'pcbtools.check', board, '--config', 'v1r', '--no-drc', *args], cwd=root, env=env,
+                          capture_output=True, text=True)
+
+
+def test_the_routed_arms_are_caught_on_the_routed_board():
+    p = _cli(os.path.join(WIP, 'v1_merge5.kicad_pcb'), '--mutate')
+    assert p.returncode == 0, p.stdout[-600:] + p.stderr[-300:]
+    assert p.stdout.count('FAILED AS REQUIRED') == 4 and 'every arm caught' in p.stdout, p.stdout
+
+
+def test_the_routed_arms_do_not_pass_on_a_board_that_is_not_routed():
+    """the control: on the frozen unrouted baseline (and the frozen data, which has no P33_G) the arms are not evidence: they fail to
+    run or are not testable, never 'every arm caught'"""
+    p = _cli(os.path.join(WIP, 'v1_merge1.kicad_pcb'), '--mutate', live=False)          # merge 1: unrouted REFCAL, and the frozen data
+    assert p.returncode != 0 and 'every arm caught' not in p.stdout

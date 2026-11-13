@@ -1,0 +1,16 @@
+[PASS] LR-1: 2 layers, one bottom plane, 4 bottom runs, 45 GND pads each with its own via
+[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)
+[PASS] LR-3: 8 divider nets: no via, short, no track beside
+[PASS] LR-4: A0/A1 top only, no via (45/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it
+[PASS] LR-4 INV_MAX: AWG_INV 4.4 mm (<= 5.0)
+[PASS] LR-12 DECOUP_MAX: 5 caps within 3.0 mm: C103>U101.8 2.1, C302>U301.8 2.1, C303>U301.4 2.3, C502>U502.8 2.0, C501>U501.1 2.7
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C402
+[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads
+[PASS] LR-7: DAC0 4.3 mm; back-termination at the BNC; shell pads on ground
+[PASS] LR-8: VREF: 4 branches each on its own copper
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-11: J607: designator not on silk at 0.8 mm or more; R305: designator not on silk at 0.8 mm or more; R306: designator not on silk at 0.8 mm or more; R308: designator not on silk at 0.8 mm or more; C306: designator not on silk at 0.8 mm or more; C304: designator not on silk at 0.8 mm or more
+[FAIL] LR-10: DRC {'courtyards_overlap': 2, 'lib_footprint_issues': 4}; unconnected 0
+FAIL: LR-11, LR-10
+[FAILED AS REQUIRED] LR-10 (a 0.1 mm track added): DRC {'track_width': 1, 'courtyards_overlap': 2, 'clearance': 1, 'lib_footprint_issues': 4, 'track_dangling': 1}; unconnected 1
+NOT TESTABLE on this board: LR-6 AWG and REF/ADS on one +3V3A piece, LR-6 SCOPE and AWG on one +3V3A piece, LR-8 ladder and ADS share VREF copper, LR-8 AWG offset and the scope branch share copper, REPAIR LR-1 every SMD GND pad gets a via, REPAIR LR-6 each consumer connected on its rail, REPAIR LR-8 each branch connected
