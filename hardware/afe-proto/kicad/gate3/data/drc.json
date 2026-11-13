@@ -1,0 +1,194 @@
+{
+ "counts": [
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "n": 2,
+   "documented": 2
+  },
+  {
+   "type": "lib_footprint_mismatch",
+   "severity": "warning",
+   "n": 1,
+   "documented": 0
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "n": 5,
+   "documented": 5
+  }
+ ],
+ "items": [
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "description": "Courtyards overlap",
+   "items": [
+    "Footprint J607",
+    "Footprint MH602"
+   ],
+   "pos_due_mm": [
+    [
+     96.52,
+     50.8
+    ],
+    [
+     90.17,
+     50.8
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "courtyards_overlap",
+   "severity": "error",
+   "description": "Courtyards overlap",
+   "items": [
+    "Footprint MH602",
+    "Footprint J605"
+   ],
+   "pos_due_mm": [
+    [
+     90.17,
+     50.8
+    ],
+    [
+     68.58,
+     50.8
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "description": "Silkscreen clearance",
+   "items": [
+    "Reference field of J501",
+    "Polygon of U502 on F.Silkscreen"
+   ],
+   "pos_due_mm": [
+    [
+     57.73,
+     13.65
+    ],
+    [
+     58.39,
+     15.34
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "description": "Silkscreen clearance",
+   "items": [
+    "Segment of U502 on F.Silkscreen",
+    "Reference field of R514"
+   ],
+   "pos_due_mm": [
+    [
+     58.19,
+     15.89
+    ],
+    [
+     57.525,
+     16.975
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "description": "Silkscreen clearance",
+   "items": [
+    "Reference field of J501",
+    "Segment of J501 on F.Silkscreen"
+   ],
+   "pos_due_mm": [
+    [
+     57.73,
+     13.65
+    ],
+    [
+     57.15,
+     12.18
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "description": "Silkscreen clearance",
+   "items": [
+    "Segment of J501 on F.Silkscreen",
+    "Reference field of R520"
+   ],
+   "pos_due_mm": [
+    [
+     54.5,
+     9.42
+    ],
+    [
+     54.3,
+     11.2
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "silk_overlap",
+   "severity": "warning",
+   "description": "Silkscreen clearance",
+   "items": [
+    "Segment of J501 on F.Silkscreen",
+    "Reference field of R520"
+   ],
+   "pos_due_mm": [
+    [
+     55.88,
+     9.42
+    ],
+    [
+     54.3,
+     11.2
+    ]
+   ],
+   "documented": true,
+   "library": false
+  },
+  {
+   "type": "lib_footprint_mismatch",
+   "severity": "warning",
+   "description": "Footprint 'SOT-23' does not match copy in library 'Package_TO_SOT_SMD'",
+   "items": [
+    "Footprint D501"
+   ],
+   "pos_due_mm": [
+    [
+     62.3,
+     21.7
+    ]
+   ],
+   "documented": false,
+   "library": true
+  }
+ ],
+ "unconnected": 0,
+ "kicad": "10.0.8",
+ "schematic_parity": 0,
+ "total": 8,
+ "undocumented": 1,
+ "library": 1,
+ "real_undocumented": 0
+}

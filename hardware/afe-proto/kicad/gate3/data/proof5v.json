@@ -1,0 +1,344 @@
+{
+ "net": "/+5V_F",
+ "source": "R408.2",
+ "counts": {
+  "tracks": 14,
+  "vias": 0,
+  "pads": 8,
+  "zone_fills": 0
+ },
+ "arcs": 0,
+ "pads": [
+  "C401.1",
+  "C403.1",
+  "C404.1",
+  "R408.2",
+  "TP402.1",
+  "U401.12",
+  "U401.3",
+  "U401.8"
+ ],
+ "components": [
+  [
+   "C401.1",
+   "C403.1",
+   "C404.1",
+   "R408.2",
+   "TP402.1",
+   "U401.12",
+   "U401.3",
+   "U401.8"
+  ]
+ ],
+ "components_without_zones": [
+  [
+   "C401.1",
+   "C403.1",
+   "C404.1",
+   "R408.2",
+   "TP402.1",
+   "U401.12",
+   "U401.3",
+   "U401.8"
+  ]
+ ],
+ "zones": [
+  {
+   "name": "analog edge band",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "far edge band",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "",
+   "net": "/GND",
+   "layers": [
+    "B.Cu"
+   ],
+   "keepout": false,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  }
+ ],
+ "zones_on_net": 0,
+ "length_mm": 80.62499999999999,
+ "path_u401_3": [
+  {
+   "item": "U401.3",
+   "link": "start"
+  },
+  {
+   "item": "track F.Cu (32.050,13.250)-(18.400,13.250) w 0.30",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (18.400,20.000)-(18.400,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (18.400,6.000)-(35.300,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.300,6.000)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.675,5.100)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "R408.2",
+   "link": "track reaches pad"
+  }
+ ],
+ "path_u401_8": [
+  {
+   "item": "U401.8",
+   "link": "start"
+  },
+  {
+   "item": "track F.Cu (35.000,12.250)-(33.950,12.250) w 0.30",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (35.300,6.000)-(35.300,12.250) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.300,6.000)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.675,5.100)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "R408.2",
+   "link": "track reaches pad"
+  }
+ ],
+ "path_u401_12": [
+  {
+   "item": "U401.12",
+   "link": "start"
+  },
+  {
+   "item": "track F.Cu (33.950,14.250)-(35.000,14.250) w 0.30",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (35.300,14.250)-(35.300,20.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.300,20.000)-(18.400,20.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (18.400,20.000)-(18.400,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (18.400,6.000)-(35.300,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.300,6.000)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (35.675,5.100)-(35.675,6.000) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "R408.2",
+   "link": "track reaches pad"
+  }
+ ],
+ "upstream_components": [
+  [
+   "J601.5",
+   "R408.1",
+   "TP401.1"
+  ]
+ ],
+ "upstream_path": [
+  {
+   "item": "R408.1",
+   "link": "start"
+  },
+  {
+   "item": "track F.Cu (38.100,5.100)-(37.325,5.100) w 0.30",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (38.100,4.600)-(38.100,5.100) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (38.100,4.600)-(38.100,2.540) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "J601.5",
+   "link": "track reaches pad"
+  }
+ ],
+ "upstream_counts": {
+  "tracks": 5,
+  "vias": 0,
+  "pads": 3,
+  "zone_fills": 0
+ },
+ "drc_unconnected_baseline": 0,
+ "joined_3": true,
+ "joined_8": true,
+ "joined_12": true,
+ "joined_3_without_zones": true,
+ "arms": [
+  {
+   "track": "F.Cu (35.000,12.250)-(33.950,12.250)",
+   "removed_from_text": 1,
+   "graph_lost_pads": [
+    "U401.8"
+   ],
+   "drc_unconnected": 1,
+   "drc_named_pads": [
+    "U401.8"
+   ],
+   "drc_items": [
+    {
+     "nets": [
+      "/+5V_F"
+     ],
+     "pads": [
+      "U401.8"
+     ],
+     "raw": [
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm",
+      "Pad 8 [/+5V_F] of U401 on F.Cu"
+     ]
+    }
+   ],
+   "agree": true,
+   "label": "stub at U401 pin 8"
+  },
+  {
+   "track": "F.Cu (33.950,14.250)-(35.000,14.250)",
+   "removed_from_text": 1,
+   "graph_lost_pads": [
+    "U401.12"
+   ],
+   "drc_unconnected": 1,
+   "drc_named_pads": [
+    "U401.12"
+   ],
+   "drc_items": [
+    {
+     "nets": [
+      "/+5V_F"
+     ],
+     "pads": [
+      "U401.12"
+     ],
+     "raw": [
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm",
+      "Pad 12 [/+5V_F] of U401 on F.Cu"
+     ]
+    }
+   ],
+   "agree": true,
+   "label": "stub at U401 pin 12"
+  },
+  {
+   "track": "F.Cu (18.400,6.000)-(35.300,6.000)",
+   "removed_from_text": 1,
+   "graph_lost_pads": [
+    "C401.1",
+    "C403.1",
+    "C404.1",
+    "TP402.1",
+    "U401.12",
+    "U401.3"
+   ],
+   "drc_unconnected": 1,
+   "drc_named_pads": [
+    "U401.8"
+   ],
+   "drc_items": [
+    {
+     "nets": [
+      "/+5V_F"
+     ],
+     "pads": [
+      "U401.8"
+     ],
+     "raw": [
+      "Pad 8 [/+5V_F] of U401 on F.Cu",
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm"
+     ]
+    }
+   ],
+   "agree": false,
+   "label": "trunk, middle of the pin 3 run"
+  },
+  {
+   "track": "F.Cu (18.400,20.000)-(18.400,6.000)",
+   "removed_from_text": 1,
+   "graph_lost_pads": [
+    "C401.1",
+    "C403.1",
+    "C404.1",
+    "TP402.1",
+    "U401.12",
+    "U401.3"
+   ],
+   "drc_unconnected": 2,
+   "drc_named_pads": [
+    "U401.3"
+   ],
+   "drc_items": [
+    {
+     "nets": [
+      "/+5V_F"
+     ],
+     "pads": [
+      "U401.3"
+     ],
+     "raw": [
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm",
+      "Pad 3 [/+5V_F] of U401 on F.Cu"
+     ]
+    },
+    {
+     "nets": [],
+     "pads": [],
+     "raw": [
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm",
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm"
+     ]
+    }
+   ],
+   "agree": true,
+   "label": "track, middle of the pin 12 run"
+  }
+ ]
+}

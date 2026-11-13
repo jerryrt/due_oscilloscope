@@ -1,0 +1,167 @@
+[
+ {
+  "rule": "LR-1",
+  "checker_row": "LR-1",
+  "ok": true,
+  "detail": "2 layers, one bottom plane, 4 bottom runs, 45 GND pads each with its own via",
+  "figures": {
+   "layers": 2.0,
+   "bottom_pieces": 1.0,
+   "bottom_runs": 4.0,
+   "max_run_mm": 1.7999999999999972,
+   "max_run_vias": 2.0,
+   "gnd_pads": 45.0,
+   "pads_without_via": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-2",
+  "checker_row": "LR-2",
+  "ok": true,
+  "detail": "flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)",
+  "figures": {
+   "divider_gap_mm": 5.110322886080681,
+   "generator_to_5v_mm": 11.63707867121298,
+   "generator_to_J101_mm": 75.82943030248876,
+   "generator_to_J201_mm": 70.34108969869602,
+   "generator_to_J301_mm": 69.22687339465794,
+   "U501_to_generator_mm": 11.18075578840715,
+   "U502_to_generator_mm": 20.439711348255386,
+   "R503_to_generator_mm": 25.152035702900868,
+   "R504_to_generator_mm": 23.451520206587883,
+   "R505_to_generator_mm": 20.657613608546363,
+   "R506_to_generator_mm": 18.460211266396705,
+   "R507_to_generator_mm": 15.599647431913324,
+   "R508_to_generator_mm": 13.535058182364788
+  }
+ },
+ {
+  "rule": "LR-3",
+  "checker_row": "LR-3",
+  "ok": true,
+  "detail": "8 divider nets: no via, short, no track beside",
+  "figures": {
+   "nets": 8.0,
+   "longest_mm": 8.190002000000014,
+   "tracks_too_close": 0.0
+  }
+ },
+ {
+  "rule": "LR-4",
+  "checker_row": "LR-4",
+  "ok": true,
+  "detail": "A0/A1 top only, no via (45/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it",
+  "figures": {
+   "a0_mm": 45.02749800000001,
+   "a1_mm": 51.01749999999999,
+   "fb_mm": 4.3999999999999995,
+   "violations": 0.0,
+   "gnd_track_gap_AWG_INV_mm": 3.00180995549373,
+   "pour_gap_AWG_INV_mm": Infinity
+  }
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "checker_row": "LR-4 INV_MAX",
+  "ok": true,
+  "detail": "AWG_INV 4.4 mm (<= 5.0)",
+  "figures": {
+   "AWG_INV": 4.3999999999999995
+  }
+ },
+ {
+  "rule": "LR-4 decoupling (DECOUP_MAX 3.0 mm)",
+  "checker_row": "LR-12 DECOUP_MAX",
+  "ok": true,
+  "detail": "5 caps within 3.0 mm: C103>U101.8 2.1, C302>U301.8 2.1, C303>U301.4 2.3, C502>U502.8 2.0, C501>U501.1 2.7",
+  "figures": {
+   "C103>U101.8": 2.0690154663510825,
+   "C302>U301.8": 2.0615588761905435,
+   "C303>U301.4": 2.311498431753733,
+   "C502>U502.8": 1.9750000000000014,
+   "C501>U501.1": 2.7488918221712515
+  }
+ },
+ {
+  "rule": "LR-5",
+  "checker_row": "LR-5",
+  "ok": true,
+  "detail": "sensitive copper >= 10.0 mm from U401/C402",
+  "figures": {
+   "min_distance_mm": 11.517181449907461,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-6",
+  "checker_row": "LR-6",
+  "ok": true,
+  "detail": "+3V3A and VNEG: one piece per consumer group after cutting the star pads",
+  "figures": {
+   "pieces": 4.0,
+   "groups_reached": 4.0,
+   "groups_absent": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-7",
+  "checker_row": "LR-7",
+  "ok": true,
+  "detail": "DAC0 4.3 mm; back-termination at the BNC; shell pads on ground",
+  "figures": {
+   "dac0_mm": 4.26,
+   "shell_pads": 3.0,
+   "R304_to_J301_mm": 12.854960132182441,
+   "R306_to_J301_mm": 12.51439171514141
+  }
+ },
+ {
+  "rule": "LR-8",
+  "checker_row": "LR-8",
+  "ok": true,
+  "detail": "VREF: 4 branches each on its own copper",
+  "figures": {
+   "branches": 4.0,
+   "branches_reached": 4.0,
+   "branches_unchecked": 0.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-9",
+  "checker_row": "LR-9",
+  "ok": true,
+  "detail": "SDA / SCL outside every analog courtyard but their own parts",
+  "figures": {
+   "digital_segments": 16.0,
+   "violations": 0.0
+  }
+ },
+ {
+  "rule": "LR-11",
+  "checker_row": "LR-11",
+  "ok": true,
+  "detail": "4 outlines hold exactly their parts, 122 designators, 8 test points, 50 pin labels (1.0 x 1.0 mm, overhang 4.5 mm), identity silk",
+  "figures": {
+   "outlines": 4.0,
+   "designators": 122.0,
+   "violations": 0.0,
+   "waived_pairs": 0.0
+  }
+ },
+ {
+  "rule": "LR-10",
+  "checker_row": "LR-10",
+  "ok": false,
+  "detail": "DRC {'courtyards_overlap': 2, 'silk_overlap': 5, 'lib_footprint_mismatch': 1}; unconnected 0",
+  "figures": {
+   "violations": 8.0,
+   "unconnected": 0.0,
+   "courtyards_overlap": 2.0,
+   "silk_overlap": 5.0,
+   "lib_footprint_mismatch": 1.0
+  }
+ }
+]

@@ -1,0 +1,560 @@
+{
+ "classes": {
+  "adc": [
+   "/A0",
+   "/A1",
+   "/CH1_OUT",
+   "/CH2_OUT"
+  ],
+  "divider": [
+   "/CH1_N",
+   "/CH1_NP",
+   "/CH1_R1A",
+   "/CH1_R2A",
+   "/CH2_N",
+   "/CH2_NP",
+   "/CH2_R1A",
+   "/CH2_R2A"
+  ],
+  "vref_prefix": [
+   "/VREF"
+  ],
+  "other": [
+   "/A0",
+   "/A1",
+   "/AREF",
+   "/AWG_BIN",
+   "/AWG_BNC",
+   "/AWG_I",
+   "/AWG_INV",
+   "/AWG_S",
+   "/CH1_",
+   "/CH2_",
+   "/SNS",
+   "/TAP",
+   "/VREF"
+  ]
+ },
+ "board_refs": [
+  "R110",
+  "R111",
+  "R112",
+  "R113",
+  "R309",
+  "R310",
+  "R410",
+  "R411",
+  "R412",
+  "R413",
+  "R515",
+  "R516",
+  "R517",
+  "R518",
+  "R519",
+  "R520"
+ ],
+ "design_refs": [
+  "R110",
+  "R111",
+  "R112",
+  "R113",
+  "R309",
+  "R310",
+  "R410",
+  "R411",
+  "R412",
+  "R413",
+  "R515",
+  "R516",
+  "R517",
+  "R518",
+  "R519",
+  "R520"
+ ],
+ "bridges": [
+  {
+   "ref": "R410",
+   "x": 35.3,
+   "y": 6.9,
+   "rot": 0.0,
+   "net_a": "/VNEG",
+   "net_b": "/VNEG_O",
+   "design_a": "/VNEG",
+   "design_b": "/VNEG_O",
+   "pad_pitch_mm": 1.6499999999999986,
+   "block": "POWER",
+   "why": "a 0 ohm link that carries VNEG over the +5V_F column (VNEG | VNEG_O, one net each side so the board connects it through the part): the generator's two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop). Crossed net is +5V_F: standing rule (a) (gate3-notes item 4: no new part type, the other bridges' pattern)",
+   "crossed": [
+    {
+     "net": "/+5V_F",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.15,
+     "cls": null
+    }
+   ],
+   "needs_ruling": false,
+   "ruling_classes": []
+  },
+  {
+   "ref": "R411",
+   "x": 48.275,
+   "y": 3.1,
+   "rot": -90.0,
+   "net_a": "/+3V3A",
+   "net_b": "/P33_G",
+   "design_a": "/+3V3A",
+   "design_b": "/P33_G",
+   "pad_pitch_mm": 1.65,
+   "block": "POWER",
+   "why": "corridor bridge over the VNEG strip lane: +3V3A from the generator to the AWG branch (the lane order is the reverse of the generator's outputs, so R411 is topological); standing rule (a) (item 7)",
+   "crossed": [
+    {
+     "net": "/VNEG_O",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": null
+    }
+   ],
+   "needs_ruling": false,
+   "ruling_classes": []
+  },
+  {
+   "ref": "R412",
+   "x": 42.0,
+   "y": 47.0,
+   "rot": 90.0,
+   "net_a": "/+3V3A",
+   "net_b": "/P33_RN",
+   "design_a": "/+3V3A",
+   "design_b": "/P33_RN",
+   "pad_pitch_mm": 1.6500000000000057,
+   "block": "POWER",
+   "why": "corridor bridge over AREF: the +3V3A trunk to the ADS side of REFCAL (R517); AREF stays top-continuous; standing rule (a) and the spec team's corridor rule (item 7)",
+   "crossed": [
+    {
+     "net": "/AREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "other-sensitive"
+    }
+   ],
+   "needs_ruling": false,
+   "ruling_classes": []
+  },
+  {
+   "ref": "R413",
+   "x": 40.0,
+   "y": 47.0,
+   "rot": 90.0,
+   "net_a": "/+3V3A",
+   "net_b": "/P33_S",
+   "design_a": "/+3V3A",
+   "design_b": "/P33_S",
+   "pad_pitch_mm": 1.6500000000000057,
+   "block": "POWER",
+   "why": "corridor bridge over AREF: the scope's own +3V3A branch from the star, straight to R110; AREF stays top-continuous; standing rule (a) (item 7). R109, the earlier second part of this branch, was REMOVED (item 17: it crossed nothing on the final board)",
+   "crossed": [
+    {
+     "net": "/AREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "other-sensitive"
+    }
+   ],
+   "needs_ruling": false,
+   "ruling_classes": []
+  },
+  {
+   "ref": "R110",
+   "x": 66.04,
+   "y": 35.7,
+   "rot": 0.0,
+   "net_a": "/P33_S",
+   "net_b": "/P33_U",
+   "design_a": "/P33_S",
+   "design_b": "/P33_U",
+   "pad_pitch_mm": 1.6499999999999915,
+   "block": "SCOPE",
+   "why": "wall bridge over the A1 column: the scope's +3V3A branch (from R413) to the dual V+ and the clamps; LR-1 method over an ADC line, one of the original six wall bridges (D24 count review)",
+   "crossed": [
+    {
+     "net": "/A1",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R515",
+   "x": 66.04,
+   "y": 22.8,
+   "rot": 0.0,
+   "net_a": "/VREF",
+   "net_b": "/VREF_M",
+   "design_a": "/VREF",
+   "design_b": "/VREF_M",
+   "pad_pitch_mm": 1.6499999999999915,
+   "block": "REFCAL",
+   "why": "wall bridge over A1 (the CH2 leg of VREF), part 1 of 2; LR-1 method over an ADC line (original six wall bridges, D24 count review)",
+   "crossed": [
+    {
+     "net": "/A1",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R111",
+   "x": 71.5,
+   "y": 29.08,
+   "rot": 90.0,
+   "net_a": "/VREF_P",
+   "net_b": "/VREF_Q",
+   "design_a": "/VREF_P",
+   "design_b": "/VREF_Q",
+   "pad_pitch_mm": 1.6500000000000021,
+   "block": "SCOPE",
+   "why": "VREF_P to the CH1 R3 leg over the A0 horizontal, part 1 of 3 (A0, the supply belt and A1 close the north half of the fence); LR-1 method over ADC and VREF lines (D24 count review)",
+   "crossed": [
+    {
+     "net": "/A0",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R113",
+   "x": 71.5,
+   "y": 35.3,
+   "rot": 90.0,
+   "net_a": "/VREF_Q",
+   "net_b": "/VREF_S",
+   "design_a": "/VREF_Q",
+   "design_b": "/VREF_S",
+   "pad_pitch_mm": 1.6499999999999986,
+   "block": "SCOPE",
+   "why": "over the supply belt (R110.2, R108, U101.8, U101, R107) inside fence 1, part 2 of 3; LR-1 method (D24 count review)",
+   "crossed": [
+    {
+     "net": "/P33_U",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.125,
+     "cls": null
+    }
+   ],
+   "needs_ruling": false,
+   "ruling_classes": []
+  },
+  {
+   "ref": "R112",
+   "x": 71.5,
+   "y": 39.5,
+   "rot": 90.0,
+   "net_a": "/VREF_S",
+   "net_b": "/VREF_R",
+   "design_a": "/VREF_S",
+   "design_b": "/VREF_R",
+   "pad_pitch_mm": 1.6500000000000057,
+   "block": "SCOPE",
+   "why": "over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R; LR-1 method over an ADC line (D24 count review)",
+   "crossed": [
+    {
+     "net": "/A1",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R516",
+   "x": 68.58,
+   "y": 24.5,
+   "rot": 0.0,
+   "net_a": "/VREF_M",
+   "net_b": "/VREF_P",
+   "design_a": "/VREF_M",
+   "design_b": "/VREF_P",
+   "pad_pitch_mm": 1.6500000000000057,
+   "block": "REFCAL",
+   "why": "wall bridge over A0 (the CH2 leg of VREF), part 2 of 2; LR-1 method over an ADC line (original six wall bridges, D24 count review)",
+   "crossed": [
+    {
+     "net": "/A0",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R309",
+   "x": 66.04,
+   "y": 19.5,
+   "rot": 0.0,
+   "net_a": "/AWG_S",
+   "net_b": "/AWG_I",
+   "design_a": "/AWG_S",
+   "design_b": "/AWG_I",
+   "pad_pitch_mm": 1.6499999999999915,
+   "block": "AWG",
+   "why": "wall bridge over A1: the AWG_BNC sense tap, west-bound, part 1 of 2; LR-1 method over an ADC line (original six wall bridges, D24 count review)",
+   "crossed": [
+    {
+     "net": "/A1",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R310",
+   "x": 68.58,
+   "y": 21.1,
+   "rot": 0.0,
+   "net_a": "/AWG_I",
+   "net_b": "/AWG_BNC",
+   "design_a": "/AWG_I",
+   "design_b": "/AWG_BNC",
+   "pad_pitch_mm": 1.6500000000000057,
+   "block": "AWG",
+   "why": "wall bridge over A0: the AWG_BNC sense tap, west-bound, part 2 of 2; LR-1 method over an ADC line (original six wall bridges, D24 count review)",
+   "crossed": [
+    {
+     "net": "/A0",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "adc"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "adc"
+   ]
+  },
+  {
+   "ref": "R520",
+   "x": 54.8,
+   "y": 14.45,
+   "rot": 90.0,
+   "net_a": "/SNS_B",
+   "net_b": "/SNS_B_N",
+   "design_a": "/SNS_B",
+   "design_b": "/SNS_B_N",
+   "pad_pitch_mm": 1.6500000000000004,
+   "block": "REFCAL",
+   "why": "splits the sense bottom node B into SNS_B / SNS_B_N so the Rd tie (R512) reaches VREF branch D without a crossing; it crosses a VREF leg (not a TAP line, as design.py's note now says) and carries only the ADS input current. Owner team's ruling (option a), mirrors v2 BR508 (gate3-notes item 3); the later standing rule (a) is wider but excludes VREF branches, so the ruling is the authority",
+   "crossed": [
+    {
+     "net": "/VREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "vref"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "vref"
+   ]
+  },
+  {
+   "ref": "R517",
+   "x": 59.2,
+   "y": 28.4,
+   "rot": -90.0,
+   "net_a": "/P33_RN",
+   "net_b": "/P33_R",
+   "design_a": "/P33_RN",
+   "design_b": "/P33_R",
+   "pad_pitch_mm": 1.6500000000000021,
+   "block": "REFCAL",
+   "why": "over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps). Accepted by the spec team (2026-11-13) under the same ruling as v2's BR506-BR508 (D24 of `docs/afe.md`, as updated on main): a top-side 0603 bridge is LR-1's prescribed method for crossing a VREF or ADC line, and none of R517-R519 crosses a divider node; standing rule (a) only said when to ask",
+   "crossed": [
+    {
+     "net": "/VREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "vref"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "vref"
+   ]
+  },
+  {
+   "ref": "R518",
+   "x": 55.6,
+   "y": 28.4,
+   "rot": -90.0,
+   "net_a": "/SDA1",
+   "net_b": "/SDA1_A",
+   "design_a": "/SDA1",
+   "design_b": "/SDA1_A",
+   "pad_pitch_mm": 1.6500000000000021,
+   "block": "REFCAL",
+   "why": "over a VREF leg: SDA to the ADS; accepted with R517 (D24)",
+   "crossed": [
+    {
+     "net": "/VREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "vref"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "vref"
+   ]
+  },
+  {
+   "ref": "R519",
+   "x": 54.0,
+   "y": 28.4,
+   "rot": -90.0,
+   "net_a": "/SCL1",
+   "net_b": "/SCL1_A",
+   "design_a": "/SCL1",
+   "design_b": "/SCL1_A",
+   "pad_pitch_mm": 1.6500000000000021,
+   "block": "REFCAL",
+   "why": "over a VREF leg: SCL to the ADS; accepted with R517 (D24)",
+   "crossed": [
+    {
+     "net": "/VREF",
+     "layer": "F.Cu",
+     "edge_gap_mm": -0.1,
+     "cls": "vref"
+    }
+   ],
+   "needs_ruling": true,
+   "ruling_classes": [
+    "vref"
+   ]
+  }
+ ],
+ "hops": [
+  {
+   "net": "/+3V3A",
+   "segments": 1,
+   "length_mm": 1.7999999999999972,
+   "vias": 2,
+   "width_mm": 0.2,
+   "ends": [
+    [
+     40.0,
+     42.1
+    ],
+    [
+     40.0,
+     43.9
+    ]
+   ],
+   "crosses": [
+    {
+     "net": "/SDA1",
+     "cls": null
+    }
+   ]
+  },
+  {
+   "net": "/+3V3A",
+   "segments": 1,
+   "length_mm": 1.7999999999999972,
+   "vias": 2,
+   "width_mm": 0.2,
+   "ends": [
+    [
+     40.0,
+     38.1
+    ],
+    [
+     40.0,
+     39.9
+    ]
+   ],
+   "crosses": [
+    {
+     "net": "/SCL1",
+     "cls": null
+    }
+   ]
+  },
+  {
+   "net": "/+3V3A",
+   "segments": 1,
+   "length_mm": 1.7999999999999972,
+   "vias": 2,
+   "width_mm": 0.3,
+   "ends": [
+    [
+     42.0,
+     38.1
+    ],
+    [
+     42.0,
+     39.9
+    ]
+   ],
+   "crosses": [
+    {
+     "net": "/SCL1",
+     "cls": null
+    }
+   ]
+  },
+  {
+   "net": "/+3V3A",
+   "segments": 1,
+   "length_mm": 1.7999999999999972,
+   "vias": 2,
+   "width_mm": 0.3,
+   "ends": [
+    [
+     42.0,
+     42.1
+    ],
+    [
+     42.0,
+     43.9
+    ]
+   ],
+   "crosses": [
+    {
+     "net": "/SDA1",
+     "cls": null
+    }
+   ]
+  }
+ ]
+}

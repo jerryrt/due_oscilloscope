@@ -1,0 +1,92 @@
+[
+ {
+  "rule": "LR-5",
+  "what": "sensitive copper to the generator (mm)",
+  "value": 11.517181449907461,
+  "limit": 10.0,
+  "kind": "min",
+  "margin": 1.5171814499074614,
+  "marginal": false
+ },
+ {
+  "rule": "LR-1",
+  "what": "longest bottom hop (mm)",
+  "value": 1.7999999999999972,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 1.2000000000000028,
+  "marginal": false
+ },
+ {
+  "rule": "LR-1",
+  "what": "vias on the longest hop",
+  "value": 2.0,
+  "limit": 2.0,
+  "kind": "max",
+  "margin": 0.0,
+  "marginal": true
+ },
+ {
+  "rule": "LR-4 INV_MAX",
+  "what": "AWG_INV inverting node (mm)",
+  "value": 4.3999999999999995,
+  "limit": 5.0,
+  "kind": "max",
+  "margin": 0.6000000000000005,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4",
+  "what": "AWG_INV node track length (mm; FB_MAX)",
+  "value": 4.3999999999999995,
+  "limit": 5.0,
+  "kind": "max",
+  "margin": 0.6000000000000005,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C103>U101.8",
+  "value": 2.0690154663510825,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.9309845336489175,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C302>U301.8",
+  "value": 2.0615588761905435,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.9384411238094565,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C303>U301.4",
+  "value": 2.311498431753733,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.688501568246267,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C502>U502.8",
+  "value": 1.9750000000000014,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 1.0249999999999986,
+  "marginal": false
+ },
+ {
+  "rule": "LR-4 decoupling",
+  "what": "C501>U501.1",
+  "value": 2.7488918221712515,
+  "limit": 3.0,
+  "kind": "max",
+  "margin": 0.2511081778287485,
+  "marginal": true
+ }
+]
