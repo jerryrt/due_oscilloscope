@@ -19,12 +19,12 @@ pytestmark = pytest.mark.skipif(not shutil.which('kicad-cli'), reason='needs kic
 @pytest.fixture(scope='module')
 def built(tmp_path_factory):
     d = tmp_path_factory.mktemp('fab')
-    zp = fab.build(str(BOARD), str(d), str(AFE / 'v2/bom/jlc-bom.csv'), str(AFE / 'v2/bom/jlc-cpl.csv'))
+    zp = fab.build(str(BOARD), str(d), str(AFE / f'v2/bom/{fab.IDENT}-bom.csv'), str(AFE / f'v2/bom/{fab.IDENT}-cpl.csv'))
     return zp, d
 
 
 def text(zp, key):
-    return zipfile.ZipFile(zp).read(f'{fab.STEM}-{key}').decode()
+    return zipfile.ZipFile(zp).read(f'{fab.IDENT}-{key}').decode()
 
 
 def test_the_zip_has_every_expected_member_and_nothing_else(built):
@@ -44,14 +44,14 @@ def test_the_drills_equal_the_holes_of_the_board_file(built):
 
 
 def test_a_fresh_build_equals_the_committed_manifest_and_a_second_build_is_identical(built, tmp_path):
-    zp2 = fab.build(str(BOARD), str(tmp_path), str(AFE / 'v2/bom/jlc-bom.csv'), str(AFE / 'v2/bom/jlc-cpl.csv'))
+    zp2 = fab.build(str(BOARD), str(tmp_path), str(AFE / f'v2/bom/{fab.IDENT}-bom.csv'), str(AFE / f'v2/bom/{fab.IDENT}-cpl.csv'))
     assert open(zp2, 'rb').read() == open(built[0], 'rb').read()
     assert fab.manifest(built[0]) == json.loads(MANIFEST.read_text())
 
 
 # ------------------------------------------------------------------------------------ break each check on purpose
 def test_a_missing_member_is_caught(built):
-    assert fab.check_members([n for n in zipfile.ZipFile(built[0]).namelist() if not n.endswith('F_Paste.gtp')]) == [f'missing {fab.STEM}-F_Paste.gtp']
+    assert fab.check_members([n for n in zipfile.ZipFile(built[0]).namelist() if not n.endswith('F_Paste.gtp')]) == [f'missing {fab.IDENT}-F_Paste.gtp']
 
 
 def test_a_moved_outline_coordinate_is_caught(built):

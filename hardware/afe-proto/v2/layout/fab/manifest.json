@@ -1,63 +1,63 @@
 {
- "zip_sha256": "3d1882c2fa10c7e68271ae6da8090369684e4f889f1fc81bb723d913c9856903",
+ "zip_sha256": "4854d3f9aafcc571a3f7382111af01f90d805050df91693eecfbb30a6ccdb96a",
  "members": [
   {
-   "name": "afe-v2-integrated-B_Cu.gbl",
+   "name": "COPPIA-AFE-2-REVA-B_Cu.gbl",
    "size": 165683,
    "sha256": "70a3a2fe10737bd772449672965f193186d6658413f07357962c91c345350dc5"
   },
   {
-   "name": "afe-v2-integrated-B_Mask.gbs",
+   "name": "COPPIA-AFE-2-REVA-B_Mask.gbs",
    "size": 3642,
    "sha256": "4a8b383e28acb3b684c58ce66490877618aede6db2eaaa1a5ca8416fc133d20f"
   },
   {
-   "name": "afe-v2-integrated-B_Silkscreen.gbo",
-   "size": 506,
-   "sha256": "29a26e52fcd0f7c43d77818cb819449147664f2360faf5203f00fb450f8f13d2"
+   "name": "COPPIA-AFE-2-REVA-B_Silkscreen.gbo",
+   "size": 4930,
+   "sha256": "dbce84b3ea85d9ce10164e56ff46195b81e82bb566cb5734ef76fba602e132ab"
   },
   {
-   "name": "afe-v2-integrated-Edge_Cuts.gm1",
+   "name": "COPPIA-AFE-2-REVA-Edge_Cuts.gm1",
    "size": 735,
    "sha256": "b1d37d44068570ba28fc8cf2e3b3f3a2aa5d68cb5ef9e53f06b9632d3daa5f50"
   },
   {
-   "name": "afe-v2-integrated-F_Cu.gtl",
+   "name": "COPPIA-AFE-2-REVA-F_Cu.gtl",
    "size": 330249,
    "sha256": "03c859399614860fadd8c9549270042c489ea9692005bf348984b90893ccf182"
   },
   {
-   "name": "afe-v2-integrated-F_Mask.gts",
+   "name": "COPPIA-AFE-2-REVA-F_Mask.gts",
    "size": 13936,
    "sha256": "0d89f7f45c39d7d20a38f6d7f72d103ab63f6f60bc5521258cb71ced5defc63d"
   },
   {
-   "name": "afe-v2-integrated-F_Paste.gtp",
+   "name": "COPPIA-AFE-2-REVA-F_Paste.gtp",
    "size": 10402,
    "sha256": "4c1e6306a5771c4e80afd6e3bb8c50b1eb117dd9e1e43b196b7e0667786475d3"
   },
   {
-   "name": "afe-v2-integrated-F_Silkscreen.gto",
-   "size": 396379,
-   "sha256": "fd6a4d8fd278841869622847e4363482ee093e30a5efbd14f9f26b2849efc0e9"
+   "name": "COPPIA-AFE-2-REVA-F_Silkscreen.gto",
+   "size": 401960,
+   "sha256": "d32cd97407cd2eb4f0c6196b0e4213d6ae39dbfa943c16bf61dfe4e8ae890e48"
   },
   {
-   "name": "afe-v2-integrated-NPTH.drl",
+   "name": "COPPIA-AFE-2-REVA-NPTH.drl",
    "size": 406,
    "sha256": "8433f1767141aebf92a21a64c246f2e14742f214e53a5f5a6ed4bf8bfdb9fb83"
   },
   {
-   "name": "afe-v2-integrated-PTH.drl",
+   "name": "COPPIA-AFE-2-REVA-PTH.drl",
    "size": 2689,
    "sha256": "6c0e1dbfa83be958d3e324e7a4a12d4e68c4329dbe38d30f6d7c0214a2b7a9f3"
   },
   {
-   "name": "afe-v2-integrated-bom.csv",
+   "name": "COPPIA-AFE-2-REVA-bom.csv",
    "size": 1917,
    "sha256": "b5901e2e355b6b4cb3f9ba47460c6b6c3be6f89c08580ab6cd2d362782487f1d"
   },
   {
-   "name": "afe-v2-integrated-cpl.csv",
+   "name": "COPPIA-AFE-2-REVA-cpl.csv",
    "size": 3195,
    "sha256": "c7c021620efa6e59e90e590b54e927bfe0fbe802e8cf31009c617e7519f8e787"
   }

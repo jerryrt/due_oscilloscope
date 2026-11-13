@@ -1,29 +1,39 @@
 """The JLC fabrication set of a board: Gerbers, Excellon drills, the BOM and CPL, in one deterministic zip, and the checks on it.
 
-    python3 -m pcbtools.fab build BOARD OUTDIR [--bom F --cpl F]     write OUTDIR/afe-v2-jlc.zip and OUTDIR/files/ (needs kicad-cli: run in the image)
+    python3 -m pcbtools.fab build BOARD OUTDIR [--bom F --cpl F]     write OUTDIR/<IDENT>-fab.zip and OUTDIR/files/ (needs kicad-cli: run in the image)
     python3 -m pcbtools.fab manifest ZIP                              the manifest (member names, sizes, sha256) as JSON
 
 Options follow docs/jlcpcb.md section 1 ("Files for KiCad"): Gerber with Protel extensions, 4.6 format, F/B.Cu, F/B.Mask, F/B.Silkscreen,
 Edge.Cuts and F.Paste, extended X2 and netlist attributes on, no drill marks, scale 1:1; Excellon in mm, absolute origin, decimal zeros,
 PTH and NPTH in separate files, alternate mode for ovals. The zip is flat (JLC reads the Gerbers and drills from the zip root); the BOM and
-CPL are the bom engine's files (`v2/bom/jlc-bom.csv`, `jlc-cpl.csv`), which JLC takes in its own upload step, so they are in the zip under
+CPL are the bom engine's files (`v2/bom/<IDENT>-bom.csv`, `-cpl.csv`), which JLC takes in its own upload step, so they are in the zip under
 their own names and a customer may leave them out of the Gerber upload. Reproducibility: kicad-cli writes the plot time into the Gerber and
 drill headers, so it is replaced by a fixed stamp, members are sorted, and the zip entries carry a fixed date and mode.
 """
 import hashlib, json, os, re, subprocess, sys, tempfile, zipfile
 
 LAYERS = 'F.Cu,B.Cu,F.Mask,B.Mask,F.Silkscreen,B.Silkscreen,Edge.Cuts,F.Paste'
-STEM = 'afe-v2-integrated'
+STEM = 'afe-v2-integrated'       # kicad-cli's own file stem (the board's name)
+
+
+def _ident():
+    import importlib.util
+    sp = importlib.util.spec_from_file_location('_fab_v2cfg', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'boards', 'v2.py'))
+    m = importlib.util.module_from_spec(sp); sp.loader.exec_module(m)
+    return f'{m.NAME}-{m.MODEL}-REV{m.REV}'
+
+
+IDENT = _ident()                  # the member and zip prefix, from the config: COPPIA-AFE-2-REVA
 GERBERS = {'F_Cu.gtl': 'top copper', 'B_Cu.gbl': 'bottom copper', 'F_Mask.gts': 'top mask', 'B_Mask.gbs': 'bottom mask',
            'F_Silkscreen.gto': 'top silk', 'B_Silkscreen.gbo': 'bottom silk', 'Edge_Cuts.gm1': 'outline', 'F_Paste.gtp': 'top paste'}
 DRILLS = {'PTH.drl': 'plated holes', 'NPTH.drl': 'non-plated holes'}
 ASSEMBLY = {'bom.csv': 'JLC BOM', 'cpl.csv': 'JLC CPL'}
-ZIP_NAME = 'afe-v2-jlc.zip'
+ZIP_NAME = IDENT + '-fab.zip'
 STAMP = '2000-01-01T00:00:00+00:00'
 
 
 def expected_members():
-    return sorted([f'{STEM}-{k}' for k in GERBERS] + [f'{STEM}-{k}' for k in DRILLS] + [f'{STEM}-{k}' for k in ASSEMBLY])
+    return sorted(f'{IDENT}-{k}' for k in list(GERBERS) + list(DRILLS) + list(ASSEMBLY))
 
 
 def _norm(data):
@@ -42,12 +52,11 @@ def build(board, outdir, bom, cpl):
                         '--excellon-separate-th', board], check=True, capture_output=True)
         members = {}
         for k in list(GERBERS):
-            members[f'{STEM}-{k}'] = _norm(open(f'{tmp}/{STEM}-{k}', 'rb').read())
+            members[f'{IDENT}-{k}'] = _norm(open(f'{tmp}/{STEM}-{k}', 'rb').read())
         for k in DRILLS:
-            src = {'PTH.drl': f'{STEM}-PTH.drl', 'NPTH.drl': f'{STEM}-NPTH.drl'}[k]
-            members[f'{STEM}-{k}'] = _norm(open(f'{tmp}/{src}', 'rb').read())
-    members[f'{STEM}-bom.csv'] = open(bom, 'rb').read()
-    members[f'{STEM}-cpl.csv'] = open(cpl, 'rb').read()
+            members[f'{IDENT}-{k}'] = _norm(open(f'{tmp}/{STEM}-{k}', 'rb').read())
+    members[f'{IDENT}-bom.csv'] = open(bom, 'rb').read()
+    members[f'{IDENT}-cpl.csv'] = open(cpl, 'rb').read()
     zp = os.path.join(outdir, ZIP_NAME)
     with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for name in sorted(members):
@@ -129,15 +138,15 @@ def verify(zp, board, width, height):
     names = z.namelist()
     probs = check_members(names)
     if probs: return probs
-    t = lambda k: z.read(f'{STEM}-{k}').decode('utf8')
+    t = lambda k: z.read(f'{IDENT}-{k}').decode('utf8')
     return check_outline(t('Edge_Cuts.gm1'), width, height) + check_drills(t('PTH.drl'), t('NPTH.drl'), open(board).read())
 
 
 if __name__ == '__main__':
     if sys.argv[1] == 'build':
         a = sys.argv[2:]
-        bom = a[a.index('--bom') + 1] if '--bom' in a else 'v2/bom/jlc-bom.csv'
-        cpl = a[a.index('--cpl') + 1] if '--cpl' in a else 'v2/bom/jlc-cpl.csv'
+        bom = a[a.index('--bom') + 1] if '--bom' in a else f'v2/bom/{IDENT}-bom.csv'
+        cpl = a[a.index('--cpl') + 1] if '--cpl' in a else f'v2/bom/{IDENT}-cpl.csv'
         print(build(a[0], a[1], bom, cpl))
     elif sys.argv[1] == 'manifest':
         print(json.dumps(manifest(sys.argv[2]), indent=1))

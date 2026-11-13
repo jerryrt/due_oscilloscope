@@ -9,7 +9,8 @@ number the way the document does, and `{name[key]}` indexes a mapping.
 AFE = 'hardware/afe-proto/'
 
 # ---------------------------------------------------------------------------------------------------- identity and files
-TITLE = 'v2 AFE integrated layout'
+from . import v2 as _cfg                                   # the identity is the config's, typed nowhere else
+TITLE = f'{_cfg.NAME} {_cfg.MODEL} REV {_cfg.REV}' + (f' (assembly {_cfg.ASSY_REV})' if _cfg.ASSY_REV else '') + ' - v2 AFE integrated layout'
 GENERATED_BY = '`v2/layout/gate3/build_gate3.sh` (`gate3.py`)'
 BOARD = AFE + 'v2/layout/integrated/afe-v2-integrated.kicad_pcb'
 PROJECT = AFE + 'v2/layout/integrated/afe-v2-integrated.kicad_pro'

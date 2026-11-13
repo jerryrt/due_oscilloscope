@@ -39,7 +39,7 @@ def test_one_command_regenerates_the_committed_files_byte_identically(tmp_path):
             assert want.exists(), want
             assert got.read_bytes() == want.read_bytes(), "%s differs: rerun `python3 -I hardware/afe-proto/v2/bom/bom.py --order`" % want
             n += 1
-    for d, nm in (("v2", "jlc-bom.csv"), ("v2", "jlc-cpl.csv"), ("v1", "jlc-bom.csv")):
+    for d, nm in (("v2", order.IDENT + "-bom.csv"), ("v2", order.IDENT + "-cpl.csv"), ("v1", "jlc-bom.csv")):
         got, want = out[d].parent / nm, COMMITTED[d].parent / nm
         assert got.read_bytes() == want.read_bytes(), want
         n += 1
@@ -152,10 +152,10 @@ def test_the_count_check_fails_when_the_bridges_are_dropped():
 
 def test_every_smt_footprint_is_in_the_bom_and_cpl_uploads():
     refs = board_smt_refs()
-    bomrows = list(csv.reader(open(BOMDIR / "jlc-bom.csv", newline="")))
+    bomrows = list(csv.reader(open(BOMDIR / (order.IDENT + "-bom.csv"), newline="")))
     assert bomrows[0] == ["Comment", "Designator", "Footprint", "LCSC Part #"]
     in_bom = sorted(r for row in bomrows[1:] for r in row[1].split(","))
-    cpl = list(csv.reader(open(BOMDIR / "jlc-cpl.csv", newline="")))
+    cpl = list(csv.reader(open(BOMDIR / (order.IDENT + "-cpl.csv"), newline="")))
     assert cpl[0] == ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
     in_cpl = sorted(r[0] for r in cpl[1:])
     assert in_bom == refs and in_cpl == refs
