@@ -603,6 +603,14 @@
    "archive_sha256": "d4b6f13433b2cd8e7fdfd945c32afb14e943266d7589d23dc6659a44f05afc95",
    "kind": "extracted",
    "note": "TI TLV9062 PSpice model. Retrieved 2026-11-11 for the low-cost scope what-if (whatif/lowcost-scope): TLV9062 as an alternative Vmid buffer pair."
+  },
+  {
+   "path": "tph2502/tph2502.pdf",
+   "url": "https://static.chipdip.ru/lib/986/DOC012986131.pdf",
+   "sha256": "774114f825b87a644b59f33c3ee4bcaae6c4b72f3dd757dd556f5a6a4bc8d40c",
+   "size": 943721,
+   "kind": "download",
+   "note": "3PEAK TPH2501/2/3/4 datasheet Rev. A, 18 pages, via the chipdip.ru distributor copy (3peakic.com's own file was not found; Rev. B.4 at promelec.ru returned 404). Retrieved 2026-11-13 for the v2 AWG (sim/awg/design.md). Rev. A cites a typical-characteristic curve 'Output Voltage Swing vs Output Current' (p. 9, Output Drive Capability) that it does not contain; the only swing data are that sentence (+-100 mA at about 2.7 V swing on 5 V) and 2/30 mV typ/max from the rail at 100 kohm (p. 4)."
   }
  ]
 }

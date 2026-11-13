@@ -5,7 +5,7 @@ DAC0 into one TPH2502 dual with both halves paralleled as one gain stage (V2-2: 
 (the DC arithmetic, hard corners and the Basic-value search). Figures marked *(check)* are open. The vendor op-amp model is `simtools.vendor`'s derived copy of 3PEAK's TPH2501 (fetched, never committed) and the stability
 models are `models-open/tph2502-beh/`.
 
-**Status after the offset filter (REF3030E Fig. 6-14 peaking):** 99 rows, **0 FAIL**. The guaranteed range is **-1.5 V to +1.63 V** (it was +1.71 V): the filter's shelf lets an AC waveform
+**Status (owner ruling 2026-11-13): the guaranteed range is +-1.6 V, symmetric, with every value unchanged**; 99 rows, **0 FAIL**; see "The +-1.6 V range" below, which supersedes the -1.5 .. +1.63 V figures quoted in the older text (the sections after it are kept as the derivation and have not been re-worded). Before that ruling (REF3030E Fig. 6-14 peaking) the range was **-1.5 V to +1.63 V** (it was +1.71 V): the filter's shelf lets an AC waveform
 reach above the DC window top end, so the supply-pin limit is judged on an **AC top end** of 2.197 V against 2.2275 V (+30 mV). The position-aware row is at 0.9194 (+0.0006) and the AC supply-pin
 peak at 59.4 mA (+0.6 mA): both are fragile, re-run first after any change here. AW-1's guarantee is the commanded range; the last unused window codes (below about -1.95 V) clip on the weak
 negative rail, and the calibration sweep must drop any level whose sense reading stops following the DAC code (spec lead). **One reading is not met:** against the flat 110 ohm bound
@@ -13,6 +13,39 @@ on the reference's output impedance (1-3 kHz) the coupling is 2.99 LSB; against 
 
 **Rails:** the LM27762 with 1 % Basic feedback resistors (R1 120k, R2 68k, R3 56k + 8.2k, R4 100k) gives +3.2205 .. +3.4172 V and -1.9549 .. -2.0525 V (nominal +3.318 / -2.003 V;
 `../powercal/design.md` section 1). `core.RAILS` and `design.RAIL_P/RAIL_N` carry them.
+
+## The +-1.6 V range (owner ruling 2026-11-13) and the refused +-1.75 V request
+
+**The ruling.** AW-1 becomes +-1.6 V into high impedance (+-0.8 V into 50 ohm), symmetric, guaranteed by hardware. It replaces -1.5 .. +1.63 V. `design.OUT_LO, OUT_HI = -1.6, +1.6`; `run.py` reads them (its AW-1 row texts no longer carry the old figures).
+
+**The values do not change.** A search over Basic 1 % sets (`design.search`: Rbin 1.0-3.3 kohm, Rbpl 18-100 kohm with Rbin + Rbpl >= 28 kohm, Rf and Rg2 1-5.1 kohm, gain 1.6-2.3, Rvr 100 ohm) for the hard-corner AC top end <= 2.2275 V, position-aware use <= 92 %, width use <= 92 % and the commanded -1.6 V inside the window with 4 % kept gives 79 sets; **with Rf <= 3 kohm the best are Rf = Rg2 = 3 kohm with Rbin/Rbpl 2.7k/27k (or 3.0k/30k, 3.3k/33k, the same ratio)**, the existing design: hard-corner position-aware use **0.9038** (limit 0.92, +0.016), width 0.848, AC top end 2.1971 V, commandable top 1.631 V, commandable bottom -1.637 V. The larger Rf = Rg2 = 5.1 kohm sets reach 0.891 but fail AW-3 (the 10 pF Cf across a 5 kohm Rf: 6.6 MHz, B3 in the table above). The board is unchanged: R3 3 kohm, R4 3 kohm, R5 100 ohm, R6 2.7 kohm, R7 27 kohm, C1 10 pF, C3/C4 2 x 10 uF, R1/R2 2 x 100 ohm, R8/R9 1 ohm.
+
+| Row | -1.5 .. +1.63 V | +-1.6 V | Limit | Margin now |
+|---|---|---|---|---|
+| AW-1 position-aware, hard corners | 91.9 % | **90.4 %** | <= 92 % | +1.6 % |
+| AW-1 position-aware, MC A / B | 91.6 / 85.2 % | 90.1 / 89.7 % | <= 92 % | +1.9 / +2.3 % |
+| AW-1 width use, hard corners | 83.0 % | 84.8 % | <= 92 % | +7.2 % |
+| commanded bottom inside the window, 4 % kept, A / B | -1.664 / -1.644 V | -1.664 / -1.644 V (<= -1.6 V) | | +0.064 / +0.044 V |
+| bottom reach into 50 ohm, weak rail (op-amp output), both halves paralleled | -1.835 V (+0.335 V) | -1.835 V (**+0.235 V**) | <= -1.6 V | +0.235 V |
+| AW-2, AW-3 (8.99 MHz worst corner), AN-1 (47.8 deg BEH60), AW-5 (94.3 uA), AW-6 (213 uV), AW-8, PW-3 (58.0 / 59.4 / 50.7 mA), PA-2 (2.72 mA) | | unchanged | | as before |
+| SC-9 through the reference | 1.66 LSB | 1.69 LSB (3.66 mV on the reference) | <= 2 LSB | +0.31 LSB |
+| PR-4 restated levels | +0.73 / -0.60 V | +0.63 / -0.63 V; the forced-voltage rows 36 / 34 mA against 45 | | +9 / +11 mA |
+
+`python3 -I run.py` gives 99 rows, 0 FAIL, 15 guards each failing broken and passing restored. The guaranteed-range guard now breaks by commanding +1.75 V (fails the hard-corner 92 % row) and the bottom-reach guard by a -1.5 V rail. The window top end, AC top end (2.197 V, +30 mV), the AC supply-pin peak (59.4 mA, +0.6 mA) and the 3 kohm values are untouched, so the watch-list rows other than SC-9 and the position-aware row did not move.
+
+**PA-4 and SC-7.** The sense divider sees the whole DC window (-1.923 .. +2.18 V sweep, hardware unchanged), so k = 0.4, the tap range and the PA-4 tracking figure (0.050 % / 1.73 mV) are unchanged; `../powercal/sc7.py` now reads the guaranteed top as 1.6 V and its extrapolation rows move by 0.04 mV (cubic 1.2 LSB, tee fit alone: 1.29 mV; knots 1.2 LSB 2.37 mV against 3.5 mV) and the block sum stays 0.42 % linear (0.27 % RSS), 2.5 mV.
+
+**The swing at the weak rail, with the datasheet.** `../../models/tph2502/tph2502.pdf` (3PEAK TPH2501/2/3/4, Rev. A, 18 pages; manifest entry, `models/SOURCES.md`). **Rev. A cites "Output Voltage Swing vs Output Current" on p. 9 (Output Drive Capability: continuous +-100 mA with approximately 2.7 V of swing on a 5 V supply) and does not contain the curve**: none of the typical-characteristic figures on pp. 5-8 is a swing curve, and the table on p. 4 gives only 2 mV typ / 30 mV max from the rail at 100 kohm. So the 11.5 ohm per rail (1.15 V at 100 mA) stays derived, linear in current *(check: the real curve, a later revision or a bench measurement)*. At +-0.8 V into 50 ohm the op-amp output current is 16 mA (+-1.6 V over the 100 ohm of back-termination plus load), the model's 16.8 mA sunk at -1.6 V (with the feedback). Two bounds on the bottom reach at the weak -1.9549 V rail (the macro stops 0.0323 V short): the two halves sharing the current, as the model does, -1.835 V (+0.235 V of margin); **one half carrying all of it** (R8/R9 are 1 ohm against 11.5 ohm, so sharing is close, but unmatched halves are not excluded), -1.9549 + 0.0323 + 11.5 ohm x 17 mA = **-1.727 V, +0.127 V of margin**. Into high impedance only the 0.3 mA through Rf flows and the reach is the -1.946 V of the model.
+
+### The +-1.75 V request, refused (D-V2 record)
+
++-1.75 V was asked for first and fails by arithmetic that no choice of values escapes. The same hard-corner machinery with `OUT_LO, OUT_HI = -1.75, +1.75`:
+
+- 9145 Basic 1 % sets (gain 1.85-2.4): **none** has position-aware use <= 92 % with the AC top end <= 2.2275 V; the best has 0.9695 (Rf 5100, Rg2 4700, Rbin 2200, Rbpl 27k, AC top 2.225 V).
+- 6000 random continuous resistor values, not restricted to Basic: the best guaranteed top is **+1.66 V**.
+- The cause is the AREF spread: with the DAC window scaling with AREF over 3.20-3.30 V, the guaranteed top is **+1.807 V only at a fixed AREF 3.27 V** (resistors 0.5 %: +1.661 V; 0.1 %: +1.669 V; VOS zero +1.634 V; fixed offset reference +1.646 V; no filter shelf +1.683 V; DAC-window scenario A only +1.682 V, B only +1.764 V; baseline 1 % +1.632 V). The resistor tolerance is not the cause.
+- Requiring position-aware use <= 92 % at +-1.75 V (1908 Basic sets) needs an AC top end of at least **2.331 V, which is 62.1 mA through the supply pin (15 mA IQ max + 2.331 V / 49.5 ohm) against the 60 mA rating**, and those sets have Rf 4.99-5.1 kohm, for which **AW-3 reads 6.6 MHz (< 8)**.
+- The bottom reach at -1.75 V into 50 ohm is **85 mV** with both halves sharing (-1.835 V), not the 0.2 V first estimated, and **-36 mV with one half carrying all of it** (-1.714 V): the reach is not a certain pass at -1.75 V either.
 
 ## Circuit
 
@@ -129,7 +162,7 @@ The commanded range is untouched. What differs is the window's last codes (infor
 | Item | State |
 |---|---|
 | SC-9 against the flat 110 ohm bound | **2.99 LSB, over 2**: the graph's curve gives 1.66; no Basic combination meets both AW-3 and the flat bound (needs about 5 kohm and two capacitors) |
-| fragile margins | position-aware 0.9194 (+0.0006), AC peak 59.4 mA (+0.6 mA), AC top end +30 mV, SC-9 +0.34 LSB |
+| fragile margins | AC peak 59.4 mA (+0.6 mA), AC top end +30 mV, SC-9 +0.31 LSB; position-aware 0.904 at +-1.6 V (+0.016) |
 
 **Watch list.** These four rows have the least margin: position-aware use (+0.0006), the AC supply-pin peak (+0.6 mA), the AC top end (+30 mV) and SC-9 through the reference (+0.34 LSB, against the datasheet curve; D-V2-15). Any part or value change here re-runs those rows first (`python3 -I run.py`).
 | AW-6 | 213 uV against 300: the margin is 87 uV, down from 211 uV; the cause is the 3 kohm resistors and the removed output capacitor |
@@ -156,10 +189,10 @@ AW-5 94.3 uA; PW-3 58.0 mA +pin (58.7), 50.7 mA -pin (54.3); PR-4 +0.73 / -0.60 
 | supply-pin current, old top | version 1's values |
 | supply-pin current, simulated | stage commanded to +3.0 V in ngspice |
 | reference load | Rg2 200 ohm (over the 10 mA rating) |
-| guaranteed range | commanding +1.71 V |
+| guaranteed range | commanding +1.75 V (the refused request) |
 | **reference coupling (new)** | no offset filter (27.7 LSB) |
 | **reference coupling, resistors (new)** | the filter-alone 390 ohm Rg2 with the filter (22.9 LSB) |
-| bottom reach | a -1.5 V negative rail (clips at -1.4 V) |
+| bottom reach | a -1.5 V negative rail (clips at about -1.4 V) |
 
 ## Reproducing
 

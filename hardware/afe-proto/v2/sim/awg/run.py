@@ -125,8 +125,8 @@ def case_mc():
         add('AW-1', f'window use, position-aware (+{design.OUT_HI} / {design.OUT_LO} V ends against the window ends, 4 % kept at each end) [{scen}]', '<= 92 %', f'{w["edge"]*100:.1f} %', f'{(0.92-w["edge"])*100:+.1f} %', w['edge'] <= 0.92, 'the guaranteed range is the one this row passes at; +1.71 V (before the offset filter) would not')
         info('AW-1', f'highest top the stage can command with 4 % of the window kept free, every draw [{scen}]', f'{tg.min():.3f} V at the worst draw; window top end {w["topmin"]:.3f}..{w["top"]:.3f} V', f'{(tg >= design.OUT_HI).mean()*100:.1f} % of draws reach {design.OUT_HI} V inside the 92 % band; each board\'s actual top is measured at calibration')
         info('AW-1', f'window bottom end against the negative rail reach into high impedance ({design.RAIL_REACH_LO:.4f} V, ngspice, weak rail -1.9549 V) [{scen}]', f'{w["bot"]:.3f} V ({w["bot"]-design.RAIL_REACH_LO:+.3f} V)',
-             'information (spec lead, rail-corner decision): the last unused window codes clip on the weak rail; AW-1 is judged on the commanded -1.5 V into 50 ohm (row below)')
-        add('AW-1', f'commanded bottom -1.5 V stays inside the window with 4 % kept at its bottom end [{scen}]', '<= -1.5 V', f'{w["botg"]:.3f} V (highest window bottom + 4 % of the window)', f'{-1.5-w["botg"]:+.3f} V', w['botg'] <= -1.5, 'the position-aware row\'s other half')
+             f'information (spec lead, rail-corner decision): the last unused window codes clip on the weak rail; AW-1 is judged on the commanded {design.OUT_LO} V into 50 ohm (row below)')
+        add('AW-1', f'commanded bottom {design.OUT_LO} V stays inside the window with 4 % kept at its bottom end [{scen}]', f'<= {design.OUT_LO} V', f'{w["botg"]:.3f} V (highest window bottom + 4 % of the window)', f'{design.OUT_LO-w["botg"]:+.3f} V', w['botg'] <= design.OUT_LO, 'the position-aware row\'s other half')
         add('AW-2', f'one DAC code at the output, ideal 12-bit [{scen}]', '<= 1.5 mV', f'{w["lsb"]*1e3:.3f} mV', f'{(1.5e-3-w["lsb"])*1e3:+.3f} mV', w['lsb'] <= 1.5e-3)
         info('AW-7', f'gain and output at the window centre [{scen}]', f'gain {w["g"][0]:.3f}..{w["g"][1]:.3f}, centre {w["off"][0]*1e3:.0f}..{w["off"][1]*1e3:.0f} mV', 'no calibration; the precision ADC calibrates both (AW-7)')
     OUT['mc'] = {k: dict(use=float(v['use']), edge=float(v['edge']), lsb=float(v['lsb']), g=[float(x) for x in v['g']], off=[float(x) for x in v['off']], top=float(v['top']), topmin=float(v['topmin']), bot=float(v['bot'])) for k, v in worst.items()}
@@ -209,15 +209,15 @@ def case_swing():
     iout = ia + ib
     info('AW-1', 'op-amp output at the window top end into 50 ohm (weak rail, Rout 49.5 ohm)', f'{vo:.3f} V at {iout*1e3:.1f} mA, {RAILS["weak"][0]-vo:.2f} V under the +rail (the 50 ohm swing limit, D-V2-8, no longer binds)', f'BNC {bnc:.3f} V')
     r = res[('weak', 49.5, 'r50', 'bot')][0]
-    info('AW-1', 'op-amp output at the commanded bottom -1.5 V into 50 ohm (weak negative rail)', f'{r[0]:.3f} V at {-(r[2]+r[3])*1e3:.1f} mA sunk, {r[0]-RAILS["weak"][1]:.2f} V above the -rail', f'BNC {r[1]:.3f} V')
+    info('AW-1', f'op-amp output at the commanded bottom {design.OUT_LO} V into 50 ohm (weak negative rail)', f'{r[0]:.3f} V at {-(r[2]+r[3])*1e3:.1f} mA sunk, {r[0]-RAILS["weak"][1]:.2f} V above the -rail', f'BNC {r[1]:.3f} V')
     OUT['swing'] = {f'{k[0]}|{k[1]}|{k[2]}|{k[3]}': [[float(x) for x in v[0]], [float(x) for x in v[1]]] for k, v in res.items()}
     # negative-rail reach on the 1 % feedback corners (../powercal/design.md), and the proposal that restores the window bottom
     reach = reach_bottom
     r50 = reach(RAILS['weak'][1], 'r50')
-    add('AW-1', 'commanded bottom -1.5 V reachable into 50 ohm at the weak negative rail -1.9549 V: the stage output clips at', f'<= {design.OUT_LO} V', f'{r50:.3f} V', f'{design.OUT_LO-r50:+.3f} V', r50 <= design.OUT_LO,
+    add('AW-1', f'commanded bottom {design.OUT_LO} V reachable into 50 ohm at the weak negative rail -1.9549 V: the stage output clips at', f'<= {design.OUT_LO} V', f'{r50:.3f} V', f'{design.OUT_LO-r50:+.3f} V', r50 <= design.OUT_LO,
         'the pass/fail row for the bottom end (spec lead): 11.5 ohm per rail is derived *(check)*; into high impedance the clip is -1.923 V')
     info('AW-1', 'negative-rail reach of the stage output at the weak rail -1.9549 V (derived 11.5 ohm per rail): high impedance / into 50 ohm', f'{reach(RAILS["weak"][1], "hiz"):.3f} V / {reach(RAILS["weak"][1], "r50"):.3f} V',
-         f'commanded -1.5 V needs {abs(design.OUT_LO):.1f} V: {design.OUT_LO-reach(RAILS["weak"][1], "r50"):+.2f} V to spare into 50 ohm; the power stream\'s -1.69 V into 50 ohm figure used 22 mA and no macro offset')
+         f'commanded {design.OUT_LO} V needs {abs(design.OUT_LO):.2f} V: {design.OUT_LO-reach(RAILS["weak"][1], "r50"):+.2f} V to spare into 50 ohm; the power stream\'s -1.69 V into 50 ohm figure used 22 mA and no macro offset')
     vn_prop = -1.22 * (1 + 0.66) * (1.9549 / 2.0032)     # PROPOSAL, not the design: R3 = 56k + 10k = 66k (nominal -2.0252 V), weak corner scaled as the power stream's
     info('AW-1', 'PROPOSAL (not in the design): LM27762 R3 = 56k + 10k = 66k (nominal V- -2.0252 V): weak rail %.4f V, strong %.4f V, strong sum with +3.4172 V = %.4f V' % (vn_prop, -1.22 * 1.66 * (2.0525 / 2.0032), 3.4172 + 1.22 * 1.66 * (2.0525 / 2.0032)),
          f'reach into high impedance {reach(vn_prop, "hiz"):.4f} V (window bottom {design.corner_stats(V)["bot"]:.3f} V: {design.corner_stats(V)["bot"]-reach(vn_prop, "hiz"):+.3f} V), into 50 ohm {reach(vn_prop, "r50"):.3f} V', 'restores the window-bottom rows; costs 22 mV of the 5.5 V sum margin (30 mV -> 7.6 mV); the weak +rail and PR-2 are unchanged')
@@ -558,7 +558,7 @@ def case_forced():
     iun = max(imax(1.8, 'unpowered'), imax(-1.8, 'unpowered'))
     add('PR-4', 'forced +-1.8 V at the BNC, unpowered rails (0 V): current through the 50 ohm into the op-amp output', '<= 160 mA (abs max output current)', f'{iun*1e3:.0f} mA', f'{(160-iun*1e3):+.0f} mA', iun <= 0.160,
         '*(check)* the macromodel clamps the output to the rails through its diodes; the real output structure is not in the datasheet; the supply-pin limit does not apply with no supply, the input and ESD structures do')
-    info('PR-4', 'level restated by the rule: 45 mA x 49.5 ohm minus the largest output the stage commands at the opposite end (positive: the lowest commanded -1.5 V / window bottom end; negative: the commanded top / window top end)',
+    info('PR-4', 'level restated by the rule: 45 mA x 49.5 ohm minus the largest output the stage commands at the opposite end (positive: the lowest commanded bottom / window bottom end; negative: the commanded top / window top end)',
          f'+{lev_pos_c:.2f} V (+{lev_pos:.2f} V with the window bottom end {e["bot"]:.2f} V) and {-lev_neg_c:+.2f} V (0 at the window top end {e["top"]:.3f} V)', 'against version 1\'s +-1.8 V: the lowered top end took the headroom the rule spends; accepted (D-V2-12). At the earlier +2.05 V top the figures were +0.73 / -0.18 V; at the guaranteed top they are +0.73 / %.2f V' % (-lev_neg_c))
     OUT['forced'] = [list(r) for r in rows]
     OUT['pr4'] = dict(lev_pos=float(lev_pos), lev_neg=float(lev_neg), lev_pos_c=float(lev_pos_c), lev_neg_c=float(lev_neg_c))
@@ -710,7 +710,7 @@ def run_guards():
 
     def g_range(th):
         return design.corner_stats(V, th=th)['edge'] <= 0.92
-    guard('guaranteed range', 'commanding +1.71 V (the earlier guarantee, before the offset filter) must fail the position-aware 92 %; the guaranteed +1.63 V passes', g_range, dict(th=1.71), dict(th=1.63))
+    guard('guaranteed range', 'commanding +1.75 V (the refused +-1.75 V request) must fail the position-aware 92 % at the hard corners; the guaranteed +1.6 V passes', g_range, dict(th=1.75), dict(th=design.OUT_HI))
 
     def g_sc9(Rflt, C):
         m = ref_move((design.OUT_HI - design.OUT_LO) / (1 + V['Rf'] / V['Rg2']), V['Rg2'], Rflt, C)[0]
@@ -724,7 +724,7 @@ def run_guards():
 
     def g_reach(vn):
         return reach_bottom(vn, 'r50') <= design.OUT_LO
-    guard('bottom reach', 'a negative rail that does not reach -1.5 V into 50 ohm (-1.5 V: clips at -1.4 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.5), dict(vn=-1.9549))
+    guard('bottom reach', 'a negative rail that does not reach the commanded bottom into 50 ohm (-1.5 V: clips at -1.4 V) must fail the commanded-bottom row; the 1 % weak rail -1.9549 V passes', g_reach, dict(vn=-1.5), dict(vn=-1.9549))
 
     OLD = dict(Rf=560.0, Rg1=1000.0, Rg2=510.0, Rvr=2.2, Rbin=680.0, Rbpl=330e3)     # version 1's values, the +3.0 V top
     def g_oldtop(vals):

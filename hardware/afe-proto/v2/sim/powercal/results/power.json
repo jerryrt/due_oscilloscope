@@ -1,6 +1,6 @@
 {
- "awg_design_sha": "f5a820a442ef934cbb8d7bf82a2167fa223a499459211667e5a160d6274041f1",
- "awg_report_table_sha": "c18fcf146d008c5ab3b2f05ac38347e7ae778f0f74844ac7e7b22f8c90c3dd0b",
+ "awg_design_sha": "6b9fbba15dad1fee44a3ce3bcde955867c29af2f45a8bb6f0e0278190dd3e8ab",
+ "awg_report_table_sha": "688a222a18aea79f1de600abedc0eb2c6d6cf94397ccfd5f5b90b90dcaac6ad2",
  "awg_top_end_lim": 2.2275,
  "awg_values": {
   "Rbin": 2700.0,

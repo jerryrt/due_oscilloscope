@@ -88,8 +88,8 @@ def main():
     share = lambda v: REQ["fit_share"] * v * 1e3        # mV: 0.1 % of the reading
     full = lambda v: REQ["sc7_pct"] / 100 * v * 1e3 + REQ["sc7_mv"]
     res = {}
-    for top in (1.63, 1.785, 2.133):
-        cover = (top - (-1.5)) / 5.0
+    for top in (1.6, 1.785, 2.133):
+        cover = (top - (-1.6)) / 5.0
         for model, A in (("cubic", 0.5), ("cubic", 1.2), ("parab", 1.2), ("knots", 1.2)):
             r = run(model=model, A=A, top=top, n=800)   # 800 draws behind each 99.9th percentile (about the second-largest value; two seeds agree to 0.1 mV)
             res[f"{top}/{model}/{A}"] = r
