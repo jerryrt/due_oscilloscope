@@ -10,8 +10,8 @@ One interpreter with pcbnew (KiCad 10), numpy, scipy and pytest. Nothing in the 
 | variable | used by | meaning |
 |---|---|---|
 | `PCB_PYTHON` | `tests/run_pcbnew_tests.sh` | that interpreter (default `python3`) |
-| `CAPPED` | the runner, `tests/golden/*.py` | optional memory-cap wrapper (`capped.sh -m MEM -t SEC cmd`); empty = uncapped |
-| `OLD_TOOLS_DIR` | `tests/golden/capture_old.py`, `old_counts.py` | `v2/kicad` of the reference tools (v2-layout-wip 8a1f7ac) |
+| `CAPPED` | the runner, `tests/golden_capture/*.py` | optional memory-cap wrapper (`capped.sh -m MEM -t SEC cmd`); empty = uncapped |
+| `OLD_TOOLS_DIR` | `tests/golden_capture/capture_old.py`, `old_counts.py` | the reference tools; default: the frozen copy in `tests/fixtures/v2-8a1f7ac/tools` |
 | `PCB_IMAGE_ID` | goldens and bench rows | container image id; null until the pinned image exists |
 | `PCBTOOLS_EXPECT_PCBNEW=1` | `tests/conftest.py` | the environment claims pcbnew: missing pcbnew fails, the guard arms |
 
@@ -34,7 +34,8 @@ The pcbnew group skips with an explicit reason when pcbnew is missing, **fails**
     tests/fixtures/v2-8a1f7ac/   frozen boards, design.py/floorplan.py/layout.py, SOURCE.md (do not edit)
     tests/fixtures/arrays/       cached BoardArrays (.npz) of each fixture, readable without pcbnew
     tests/golden/v2-8a1f7ac/     old-tool outputs (lr_check, --mutate, fence_check, cap, loader counts), old/new bench
-    tests/golden/capture_old.py, bench_new.py, geom_mutation_result.txt
+    tests/golden/MANIFEST.sha256 (hash of every golden), update_manifest.py, *_mutation_result.txt
+    tests/golden_capture/        the scripts that WRITE goldens (capture_old, run_old_tools, bench_*, reparse_figures); never collected
     # regenerate arrays:  python -m pcbtools.boardio BOARD.kicad_pcb OUT.npz   (run from hardware/afe-proto)
 
 ## Conventions that bite
@@ -110,3 +111,35 @@ outside the block's fences that exist in one board and not in the other (what an
 `test_rules_live.py` (pcbnew: the live read gives the same rows; LR-10 through kicad-cli against the old DRC rows).
 The pcbnew tier prints every start-up retry; a retry is a finding, not a cost.
 Under a memory cap: `capped.sh -m 3G -t 300 <command>`; never more than two heavy jobs at once.
+
+# Stage 3: golden protection, the frozen old tools, the capacitance solver
+
+## Goldens cannot change silently
+
+`tests/golden/MANIFEST.sha256` (sha256sum format) lists every file under `tests/golden/` except itself, and
+`tests/pcbtools/test_golden_manifest.py` fails when a golden differs, is missing, or is on disk without being listed. To change a
+golden on purpose: `python tests/golden/update_manifest.py --i-changed-a-golden`, and commit the manifest with it (the script refuses
+without the flag). Scripts that write goldens live in `tests/golden_capture/`, outside the collected tree: each has `main()` behind
+`__main__`, writes only to `--out DIR` (default `pcbtools/.scratch/golden_out/`), and writes into `tests/golden/v2-8a1f7ac/` only
+with `--into-golden`, printing the manifest reminder. `test_golden_capture.py` imports every script in its own subprocess and
+checks the golden folder is untouched (and that a script which writes at import would be caught).
+
+## The old tools, frozen
+
+`tests/fixtures/v2-8a1f7ac/tools/` holds lr_check, fence_check, cap and what they import, byte for byte from v2-layout-wip 8a1f7ac
+(SOURCE.md). `python tests/golden_capture/run_old_tools.py --out DIR` runs them on the fixture boards and writes the raw text
+(`<fixture>.<tool>.raw.txt`); this is what the container run uses to re-take the goldens of record. Run them with `-I -B`.
+Checked against the committed goldens on this host: 11 of 12 raw outputs are byte-identical; the twelfth (awg `lr_check`) differs
+only in the order of two keys of the LR-10 dict, which the old tool does not fix (kicad-cli's report order).
+
+## pcbtools/cap.py
+
+3-D finite-difference capacitance on a window of the board, numpy/scipy only (arrays in, floats out; see the module docstring for
+the model). `pair_caps`, `self_cap`, `report(b, cfg)` (the old tool's whole output; `cfg.CAP_PAIRS`, `cfg.CAP_SELF` in
+`boards/v2.py`), `python -m pcbtools.cap BOARD|NPZ|selftest`. Rasterisation is ragged vectorised arithmetic, the operator is one CSR
+matrix per scenario, solved by scipy CG with a Jacobi preconditioner (relative residual 1e-6, the old tool's). Chosen by measurement (host,
+scratch scripts): Jacobi halves the iterations (557 -> 278 on the 1 M-cell NP window, 6 s -> 3-4 s per solve); on the N-N window a
+direct solve (SuperLU) took 0.48 s at 19 k unknowns against 0.1 s for plain CG and had not finished after the 100 s cap at 158 k
+(CG 1.1 s); an ILU preconditioner (spilu) made CG take 23 000 iterations on 2 k unknowns and was dropped. Coordinates are
+rounded to a nanometre in KiCad mm before rasterising so every cell decision equals the old tool's (a 0.2 mm track on a 0.1 mm grid
+puts cell centres exactly on its edge). `python tests/pcbtools/mutate_cap.py` is the mutation proof.

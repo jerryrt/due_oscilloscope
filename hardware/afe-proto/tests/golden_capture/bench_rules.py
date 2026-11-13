@@ -1,19 +1,18 @@
 """Measure `python -m pcbtools.check` on the integrated board: wall time and peak RSS per run, each its own child process
 under CAPPED when set, one at a time, 3 repetitions (the first is recorded, flagged, and excluded from the medians).
-Appends rows to tests/golden/v2-8a1f7ac/new_tools_bench.json (stage 1's rows are kept; this script's own earlier rows are
-replaced) and copies the old tool's figures from old_tools_bench.json next to them. The DRC child's seconds are separate
+Reads the committed tests/golden/v2-8a1f7ac/new_tools_bench.json (or the one already in the output folder) and writes it to the
+output folder with this script's rows appended (stage 1's rows are kept; this script's own earlier rows are replaced), and
+copies the old tool's figures from old_tools_bench.json next to them. The DRC child's seconds are separate
 (`drc_child_s`), and the number of attempts a pcbnew start-up needed is recorded per row.
 
-    [PCB_PYTHON=...] [CAPPED=<capped.sh>] [PCB_IMAGE_ID=<id>] python tests/golden/bench_rules.py
+    [CAPPED=<capped.sh>] [PCB_IMAGE_ID=<id>] python tests/golden_capture/bench_rules.py [--out DIR | --into-golden]
 """
 import json, os, re, statistics, subprocess, sys
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C  # noqa: E402
+ROOT, CAPPED, PY = C.ROOT, C.CAPPED, C.PY
 FX = os.path.join(ROOT, 'tests', 'fixtures')
-OUT = os.path.join(HERE, 'v2-8a1f7ac', 'new_tools_bench.json')
-OLD = os.path.join(HERE, 'v2-8a1f7ac', 'old_tools_bench.json')
-CAPPED = os.environ.get('CAPPED', '')
-PY = sys.executable
+OLD = os.path.join(C.GOLDEN_V2, 'old_tools_bench.json')
 NAME = 'v2-integrated-990d4b03'
 PCB = os.path.join(FX, 'v2-8a1f7ac', NAME + '.kicad_pcb')
 NPZ = os.path.join(FX, 'arrays', NAME + '.npz')
@@ -37,13 +36,15 @@ def run(args, tmo=300):
                 drc_child_s=float(t.group(3)), read_attempts=int(t.group(4)), stdout_lines=len(p.stdout.splitlines()))
 
 
-def main():
+def main(argv=None):
+    out_dir, args = C.parse_out(__doc__, argv)
+    OUT = os.path.join(out_dir, 'new_tools_bench.json')
     sys.path.insert(0, ROOT)
     import numpy, scipy, pcbnew
-    env = dict(label='working reference, host .venv-pcb' if not os.environ.get('PCB_IMAGE_ID') else 'container', image_id=os.environ.get('PCB_IMAGE_ID'),
+    env = dict(label='working reference, host .venv-pcb' if not C.IMAGE_ID else 'container', image_id=C.IMAGE_ID,
                interpreter=PY, python=sys.version.split()[0], numpy=numpy.__version__, scipy=scipy.__version__, kicad=pcbnew.GetBuildVersion())
     old = {r['tool']: r for r in json.load(open(OLD))['rows'] if r['fixture'] == NAME}
-    data = json.load(open(OUT))
+    data = json.load(open(OUT if os.path.exists(OUT) else os.path.join(C.GOLDEN_V2, 'new_tools_bench.json')))
     data['rows'] = [r for r in data['rows'] if not r['what'].startswith('check_')]
     for what, args, oldtool in CASES:
         runs = [run(args) for _ in range(3)]
@@ -63,6 +64,7 @@ def main():
         print(json.dumps(summ), flush=True)
     data['check_env'] = env
     json.dump(data, open(OUT, 'w'), indent=1)
+    C.done(args)
 
 
 if __name__ == '__main__':

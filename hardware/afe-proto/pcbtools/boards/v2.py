@@ -92,3 +92,8 @@ FENCES = {k: list(v) for k, v in _floorplan.FENCES.items()}
 HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': None}    # fence ownership by digit
 OWNER_OVERRIDE = {}
 TOL_MM = 0.001
+
+# cap (the old cap.py main()): pairs are (label, nets, window pad mm, cell mm), the window is the pair's pads and tracks
+# grown by the pad; self capacitances are (net, window pad mm, cell mm). 0.2 mm cells for the long N-N window, 0.1 mm for NP.
+CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
+CAP_SELF = (('/AWG_FB', 3.0, 0.1),)

@@ -617,6 +617,141 @@
    "read_attempts_max": 1,
    "any_retry": false,
    "drc_child_s_median": 1.3805
+  },
+  {
+   "what": "cap_old_frozen",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 1,
+   "first_run_excluded_from_median": true,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 25.53,
+   "peak_rss_kb": 323964,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_old_frozen",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 2,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 25.73,
+   "peak_rss_kb": 323068,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_old_frozen",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 3,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 25.37,
+   "peak_rss_kb": 323716,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_old_frozen_median_of_reps_2_3",
+   "fixture": "v2-integrated-990d4b03",
+   "wall_s": 25.55,
+   "peak_rss_kb": 323716,
+   "any_retry": false
+  },
+  {
+   "what": "cap_new_npz",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 1,
+   "first_run_excluded_from_median": true,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.42,
+   "peak_rss_kb": 559192,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_npz",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 2,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.52,
+   "peak_rss_kb": 559608,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_npz",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 3,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.09,
+   "peak_rss_kb": 559892,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_npz_median_of_reps_2_3",
+   "fixture": "v2-integrated-990d4b03",
+   "wall_s": 17.305,
+   "peak_rss_kb": 559892,
+   "any_retry": false
+  },
+  {
+   "what": "cap_new_kicad_pcb",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 1,
+   "first_run_excluded_from_median": true,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.62,
+   "peak_rss_kb": 559680,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_kicad_pcb",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 2,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.21,
+   "peak_rss_kb": 559812,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_kicad_pcb",
+   "fixture": "v2-integrated-990d4b03",
+   "rep": 3,
+   "first_run_excluded_from_median": false,
+   "env_label": "working reference, host .venv-pcb",
+   "wall_s": 17.62,
+   "peak_rss_kb": 559812,
+   "exit_code": 0,
+   "outer_attempts": 1,
+   "stdout_lines": 5
+  },
+  {
+   "what": "cap_new_kicad_pcb_median_of_reps_2_3",
+   "fixture": "v2-integrated-990d4b03",
+   "wall_s": 17.415,
+   "peak_rss_kb": 559812,
+   "any_retry": false
+  },
+  {
+   "what": "cap_output_check",
+   "fixture": "v2-integrated-990d4b03",
+   "old_equals_new_npz": true,
+   "old_equals_new_kicad_pcb": true
   }
  ],
  "check_env": {
@@ -627,5 +762,14 @@
   "numpy": "2.3.5",
   "scipy": "1.18.1",
   "kicad": "10.0.8-10.0.8~ubuntu26.04.1"
+ },
+ "cap_env": {
+  "label": "working reference, host .venv-pcb",
+  "image_id": null,
+  "interpreter": "/home/jerry/EE.Projects/due_oscilloscope_pcbtools/.venv-pcb/bin/python",
+  "python": "3.14.4",
+  "numpy": "2.3.5",
+  "kicad": "10.0.8-10.0.8~ubuntu26.04.1",
+  "scipy": "1.18.1"
  }
 }

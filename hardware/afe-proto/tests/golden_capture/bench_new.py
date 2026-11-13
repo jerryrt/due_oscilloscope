@@ -1,15 +1,13 @@
 """Measure pcbtools: read_board wall time / peak RSS per fixture, and the geom kernels at 10 000 x 10 000 segments.
 Each measurement is its own child process (peak RSS is per process), one at a time, under CAPPED when set.
 
-    [PCB_PYTHON=...] [CAPPED=<capped.sh>] [PCB_IMAGE_ID=<id>] python tests/golden/bench_new.py   -> tests/golden/v2-8a1f7ac/new_tools_bench.json
+    [CAPPED=<capped.sh>] [PCB_IMAGE_ID=<id>] python tests/golden_capture/bench_new.py [--out DIR | --into-golden]
+    -> DIR/new_tools_bench.json (default pcbtools/.scratch/golden_out/)
 """
 import glob, json, os, re, subprocess, sys
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))                  # hardware/afe-proto
-FX = os.path.join(ROOT, 'tests', 'fixtures', 'v2-8a1f7ac')
-OUT = os.path.join(HERE, 'v2-8a1f7ac', 'new_tools_bench.json')
-CAPPED = os.environ.get('CAPPED', '')
-PY = sys.executable
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C  # noqa: E402
+ROOT, FX, CAPPED, PY = C.ROOT, C.FX, C.CAPPED, C.PY
 
 CHILD = r'''
 import sys, time, json, resource
@@ -48,8 +46,8 @@ print(json.dumps(dict(wall_s=wall, child_peak_rss_mb=resource.getrusage(resource
 
 def env():
     import numpy, scipy, pcbnew
-    return dict(label='working reference, host .venv-pcb' if not os.environ.get('PCB_IMAGE_ID') else 'container',
-                image_id=os.environ.get('PCB_IMAGE_ID'), interpreter=PY, python=sys.version.split()[0],
+    return dict(label='working reference, host .venv-pcb' if not C.IMAGE_ID else 'container',
+                image_id=C.IMAGE_ID, interpreter=PY, python=sys.version.split()[0],
                 numpy=numpy.__version__, scipy=scipy.__version__, kicad=pcbnew.GetBuildVersion())
 
 
@@ -68,7 +66,9 @@ def run(*args, tmo=300):
     return dict(error='died with a signal 3 times')
 
 
-def main():
+def main(argv=None):
+    out_dir, args = C.parse_out(__doc__, argv)
+    OUT = os.path.join(out_dir, 'new_tools_bench.json')
     rows = []
     for f in sorted(glob.glob(os.path.join(FX, '*.kicad_pcb'))):
         n = os.path.basename(f)[:-10]
@@ -81,6 +81,8 @@ def main():
             rows.append(dict(what=w, rep=rep + 1, **run(w)))
             print(rows[-1], flush=True)
     json.dump(dict(env=env(), rows=rows), open(OUT, 'w'), indent=1)
+    C.done(args)
 
 
-main()
+if __name__ == '__main__':
+    main()

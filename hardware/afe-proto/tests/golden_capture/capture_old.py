@@ -1,40 +1,28 @@
-"""Capture goldens from the OLD reference tools (v2 tree, not modified). One heavy job at a time, each under capped.sh.
+"""Capture goldens from the OLD reference tools. One heavy job at a time, each under CAPPED when set.
 
-    OLD_TOOLS_DIR=<v2/kicad> [CAPPED=<capped.sh>] [PCB_IMAGE_ID=<id>] python tests/golden/capture_old.py   (writes into tests/golden/v2-8a1f7ac/)
+    python tests/golden_capture/capture_old.py [--out DIR | --into-golden]
 
-Writes tests/golden/<fixture>.<tool>.json and tests/golden/old_tools_bench.json. Retries a start-up segfault up to 3 times.
+Default output pcbtools/.scratch/golden_out/; --into-golden writes tests/golden/v2-8a1f7ac/ and prints the manifest reminder.
+The tools run are OLD_TOOLS_DIR (when set) or the frozen copy in tests/fixtures/v2-8a1f7ac/tools.
+Writes <fixture>.<tool>.json and old_tools_bench.json. Retries a start-up segfault up to 3 times.
 """
-import glob, json, os, re, subprocess, sys
-HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'v2-8a1f7ac')
-FX = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'fixtures', 'v2-8a1f7ac')
-# the reference tools (v2-layout-wip 8a1f7ac, v2/kicad) and the memory cap wrapper are outside this repo: say where
-V2 = os.environ['OLD_TOOLS_DIR']                       # e.g. <v2 worktree>/hardware/afe-proto/v2/kicad
-CAPPED = os.environ.get('CAPPED', '')                  # capped.sh path; empty = run uncapped (the container caps itself)
-IMAGE_ID = os.environ.get('PCB_IMAGE_ID')              # null until the pinned container exists
-PY = sys.executable
+import glob
+import json
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C  # noqa: E402
+
 BLOCK = {'v2-power3': 'POWER', 'v2-power': 'POWER', 'v2-refcal': 'REFCAL', 'v2-awg': 'AWG', 'v2-scope2east': 'SCOPE'}
 
 
 def env():
-    import numpy, pcbnew
-    return dict(label='working reference, host .venv-pcb' if not IMAGE_ID else 'container', image_id=IMAGE_ID, interpreter=PY, python=sys.version.split()[0], numpy=numpy.__version__, kicad=pcbnew.GetBuildVersion())
+    return C.env_record()
 
 
-def run(cmd, mem='3G', tmo=300):
-    """-> (rc, stdout, wall_s, rss_kb, attempts); retries on a signal death (segfault at start-up)"""
-    for attempt in range(1, 4):
-        p = subprocess.run(([CAPPED, '-m', mem, '-t', str(tmo)] if CAPPED else []) + ['/usr/bin/time', '-v'] + cmd, capture_output=True, text=True)
-        err = p.stderr
-        if p.returncode in (139, -11, 134, -6) or 'Command terminated by signal' in err:
-            continue
-        wall = re.search(r'Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)', err).group(1)
-        parts = [float(x) for x in wall.split(':')]
-        w = 0.0
-        for x in parts:
-            w = w * 60 + x
-        rss = int(re.search(r'Maximum resident set size \(kbytes\): (\d+)', err).group(1))
-        return p.returncode, p.stdout, w, rss, attempt
-    return p.returncode, p.stdout, None, None, 3
+run = C.run
 
 
 # One number or a slash group sharing one unit ('(46/58 mm)' -> 46 and 58), optionally preceded by a label word; plus the
@@ -67,20 +55,23 @@ def parse_rows(text):
     return rows
 
 
-def save(name, tool, data):
+def save(out, name, tool, data):
     data['env'] = env()
-    with open(os.path.join(HERE, f'{name}.{tool}.json'), 'w') as f:
+    with open(os.path.join(out, f'{name}.{tool}.json'), 'w') as f:
         json.dump(data, f, indent=1, sort_keys=True)
 
 
-def main():
+def main(argv=None):
+    out_dir, args = C.parse_out(__doc__, argv)
+    V2, PY = C.old_tools_dir(), C.PY
     bench = []
-    fx = {re.sub(r'-[0-9a-f]{8}$', '', os.path.basename(p)[:-10]): p for p in sorted(glob.glob(os.path.join(FX, '*.kicad_pcb')))}
+    fx = {re.sub(r'-[0-9a-f]{8}$', '', os.path.basename(p)[:-10]): p for p in sorted(glob.glob(os.path.join(C.FX, '*.kicad_pcb')))}
     full = {k: os.path.basename(p)[:-10] for k, p in fx.items()}
     base = fx['v2-BASE']
+    here = os.path.dirname(os.path.abspath(__file__))
     jobs = []
     for k in fx:
-        jobs.append((k, 'counts', [PY, '-I', '-B', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'old_counts.py'), fx[k]]))
+        jobs.append((k, 'counts', [PY, '-I', '-B', os.path.join(here, 'old_counts.py'), fx[k]]))
     for k in fx:
         if k != 'v2-BASE':
             jobs.append((k, 'lr_check', [PY, '-I', '-B', f'{V2}/lr_check.py', fx[k]]))
@@ -89,7 +80,8 @@ def main():
         jobs.append((k, 'fence_check', [PY, '-I', '-B', f'{V2}/fence_check.py', blk, fx[k], base]))
     jobs.append(('v2-integrated', 'cap', [PY, '-I', '-B', f'{V2}/cap.py', fx['v2-integrated']]))
     for k, tool, cmd in jobs:
-        rc, out, wall, rss, att = run(cmd, mem='3G', tmo=600 if tool in ('cap', 'lr_check_mutate') else 300)
+        rc, out, wall, rss, att = run(cmd, mem='3G', tmo=600 if tool in ('cap', 'lr_check_mutate') else 300,
+                                      env={'OLD_TOOLS_DIR': V2} if tool == 'counts' else None)
         rec = dict(fixture=full[k], tool=tool, cmd=' '.join(cmd[2:]), exit_code=rc, raw=out, wall_s=wall, peak_rss_kb=rss, attempts=att)
         if tool == 'counts':
             try:
@@ -103,11 +95,12 @@ def main():
             rec['clean'] = rc == 0
         else:
             rec['rows'] = parse_rows(out)
-        save(full[k], tool, rec)
+        save(out_dir, full[k], tool, rec)
         bench.append(dict(fixture=full[k], tool=tool, wall_s=wall, peak_rss_kb=rss, exit_code=rc, attempts=att))
         print(full[k], tool, rc, wall, rss, att, flush=True)
-    with open(os.path.join(HERE, 'old_tools_bench.json'), 'w') as f:
+    with open(os.path.join(out_dir, 'old_tools_bench.json'), 'w') as f:
         json.dump(dict(env=env(), rows=bench), f, indent=1)
+    C.done(args)
 
 
 if __name__ == '__main__':
