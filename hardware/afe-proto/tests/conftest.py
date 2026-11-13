@@ -148,8 +148,17 @@ def pytest_collection_finish(session):
     """count the pcbnew-marked tests that are really going to run: AFTER every modifyitems hook and after -m / -k deselection
     (counting in modifyitems also counted the items the marker expression later deselected, so the guard failed under
     -m "not slow")"""
+    required = {t.strip() for t in session.config.getoption("--require-tool").split(",") if t.strip()}
+
+    def runnable(item):
+        """a pcbnew test that also needs another tool (freerouting, ngspice, ...) skips where that tool is absent, which is not
+        the guard's business: it counts the group that CAN run here. A tool named by --require-tool stays counted, because
+        there the test fails instead of skipping and the guard must see it."""
+        return all(ok(probe()) or name in required or name == "pcbnew"
+                   for name, (probe, ok, _) in _PROBES.items() if name in item.keywords)
+
     session.config._pcbtools_ran["pcbnew_selected"] = sum(
-        1 for i in session.items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last"))
+        1 for i in session.items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last") and runnable(i))
 
 
 def pytest_collection_modifyitems(config, items):

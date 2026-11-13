@@ -1,10 +1,10 @@
 {
   "kicad": "10.0.8",
-  "current": "4",
+  "current": "5",
   "registry": "dcr.ca2324.servep2p.com:8443/due-scope/pcb-tools",
-  "digest": "sha256:39517120018277f55ab23395149c04d63a1c0b834f981d2e481c41c32b2a3293",
-  "installed": "0b8f08a358c52162c7b603658cd9afeff19e4536c57717ded37a04f0888d9ce6",
-  "recipe": "2b5c60763e39e9129cb8af17ab8dd191d61b657e1259324554b0992638ac0e67",
+  "digest": "sha256:69fe5abfb265ffc6c4f1cf85743e8b21b7f9605c452c389239d928a703d80c18",
+  "installed": "d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac",
+  "recipe": "4e4ef08bb0301dcaee9f57dddce3b94bc2fbbfd6f558f403088f7374c18d21db",
   "if_the_registry_is_unreachable": "docker/pcb/build-image.sh rebuilds the image from the recipe (all inputs are pinned); then `docker/pcb/image-id.sh installed pcb-tools:<kicad>-r<current>` must print the installed-set hash above and the recipe must equal the recipe above. The layer content hash will differ, so use DUE_PCB_IMAGE=pcb-tools:<kicad>-r<current>: run.sh then labels every row image=UNPINNED:<tag> and bench.py will not write budgets from it. The installed-set equality is the claim; do not take a figure of record from an unpinned image.",
   "freerouting": {
     "version": "2.5.0",
@@ -12,5 +12,6 @@
     "openjdk": "openjdk-25-jre-headless 25.0.4+7-1~26.04",
     "native_cli": "rejected for 2.5.0: dies with a GraalVM UnsupportedFeatureError on a 4-resistor board and hangs; see the Dockerfile"
   },
-  "networkx": "3.7"
+  "networkx": "3.7",
+  "rsvg_convert": "librsvg2-bin 2.61.3+dfsg-3 (docker/pcb/svg2png.sh: kicad-cli SVG -> PNG, crop with Pillow; replaces magick)"
 }
