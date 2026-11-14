@@ -31,6 +31,9 @@
 *   IQ 6.5m       FACTS s2 quiescent current per amplifier typ (curve reads 7.2 mA at 25 C, 5 V)
 *   EN 0          input voltage noise density, V/rtHz (0 = off). FACTS s7: 6.5n at 1 MHz; white only
 *   LO 10n        series output inductance, H. MODELLING CHOICE, raises the closed-loop Zout above ~10 MHz (FACTS s9 curve)
+*   PSRR_DB 80    supply rejection, dB, same figure for V+ and for V-. FACTS s4: PSRR min 80, typ 120 (VS 2.4..5.5 V, VCM VS/2, 25 C).
+*                 The MINIMUM is the default because it is conservative; PSRR_DB=120 selects typ (the model's own AOL still caps it, see PROVENANCE.md)
+*   VSREF 5       supply voltage at which VOS is defined and no PSRR error is added, V. MODELLING CHOICE (FACTS curves header: VS = 5 V)
 *   VMARG 4       how far the internal gain node may travel past the rails, V. MODELLING CHOICE
 * smooth max/min (rounding 1e-3 in the arguments' units) keep Newton happy at the clamp corners
 .func tph_smax(a,b) {0.5*(a+b+sqrt((a-b)**2+1e-6))}
@@ -39,12 +42,14 @@
 .func tph_smaxi(a,b) {0.5*(a+b+sqrt((a-b)**2+1e-14))}
 .subckt TPH2502_OPEN INP INN VP VN OUT params: AVOL_DB=110 GBW=128meg FZ=60meg FP2=200meg SR=235meg VOS=0 IB=0.3p
 + CDIFF=2.7p CCM=1p RIN=1e13 VCMLO=0.1 VCMHI=0.1 RO=21 VSAT0=2m RSAT=11.5 ISRC=290m ISNK=160m RLIM=1k
-+ IQ=6.5m EN=0 VMARG=4 LO=10n
++ IQ=6.5m EN=0 VMARG=4 LO=10n PSRR_DB=80 VSREF=5
 .param gm=1m
 .param a0={10**(AVOL_DB/20)}
 .param r1val={a0/gm}
 .param c1val={gm/(6.2831853*GBW)}
 .param imax={SR*c1val}
+.param psrr_lin={10**(PSRR_DB/20)}
+.param kdd={1/(1n*6.2831853*GBW)}
 .param rn_val={max(1m,(EN**2)/1.657e-20)}
 * input network: noise resistor (thermal noise of rn_val equals EN), capacitances, resistances, bias current
 Cd INP INN {CDIFF}
@@ -58,8 +63,14 @@ Bibp INP VN I = IB - 0.5*(V(VP)-V(VN))/RIN
 Bibn INN VN I = IB - 0.5*(V(VP)-V(VN))/RIN
 * optional input voltage noise: a resistor with no current in it, so its node holds only its thermal noise
 Rn nz 0 {rn_val}
+* supply rejection: input-referred error = (VS - VSREF) * [ 1/PSRR + 1/AOL(f) ], AOL taken as the dominant-pole model, 1/AOL = (1+s/wp)/A0.
+* Sum, not max, so it is never better than min(PSRR_DB, AOL(f)) and at most 3 dB worse at the corner. Positive sign for V+, negative for V- (VS = V+ - V-).
+Bsv sv 0 V = V(VP) - V(VN) - VSREF
+Cdd sv sd 1n
+Vsd sd 0 0
+* Bvd below adds psrr term: D/psrr_lin + D/a0 + I(Vsd)*kdd (D = V(sv); I(Vsd) = 1n*dD/dt, so I*kdd = dD/dt/(2*pi*GBW))
 * clamped differential input (conservative: no response outside the printed common-mode range)
-Bvd vd 0 V = tph_smin(tph_smax(V(INP),V(VN)-VCMLO),V(VP)-VCMHI) - tph_smin(tph_smax(V(INN),V(VN)-VCMLO),V(VP)-VCMHI) + VOS + V(nz)
+Bvd vd 0 V = tph_smin(tph_smax(V(INP),V(VN)-VCMLO),V(VP)-VCMHI) - tph_smin(tph_smax(V(INN),V(VN)-VCMLO),V(VP)-VCMHI) + VOS + V(nz) + V(sv)*(1/psrr_lin+1/a0) + I(Vsd)*kdd
 * slew-limited gm stage and dominant pole
 Bg 0 n1 I = imax*tanh(gm*V(vd)/imax)
 R1 n1 0 {r1val}

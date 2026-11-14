@@ -8,6 +8,7 @@ in context while writing it or its tests.
   unity-gain followers and one as a gain stage of about 1.85 driving a 50 ohm back-termination into 50 ohm.
   Cover open-loop gain and GBW/phase, slew, offset, bias, input capacitance, common-mode limits, output swing,
   short-circuit current, output impedance, supply current and optional noise.
+- Date: 2026-11-13 (initial model); supply rejection (PSRR) added 2026-11-13 - parameters `PSRR_DB`, `VSREF`, summary in the modelling-choices rows above. No vendor model was in context for the addition either.
 - Date: 2026-11-13. Test: `hardware/afe-proto/tests/open_models/test_tph2502_open.py`.
 
 ## What comes straight from FACTS.md
@@ -45,7 +46,12 @@ The model is white noise only; the 1/f rise in the s7 curve is not modelled.
 | Internal gain-node travel past the rails (VMARG) | 4 V | recovery speed after overload; FACTS has only tR = 50 ns | overload-recovery capture |
 | Rounding of the min/max clamps | 1 mV (voltages), 0.1 uA (currents) | Newton convergence; ngspice settled on a false DC point with hard corners | none |
 | gm of the input stage (1 mS) and the 1 kohm / 0.01 S helper values | internal | scale of the model, no effect on external figures | none |
-| No temperature, supply-range, CMRR, PSRR, thermal-shutdown or crosstalk behaviour | not modelled | none in the board's checks that FACTS would let me pin | CMRR, PSRR curves |
+| PSRR_DB | 80 dB default (FACTS s4 PSRR **min**; typ is 120) | the board estimates how a step on the op-amp supply reaches the output, so the conservative figure is the default. `PSRR_DB=120` selects typ, but see the frequency rule: the model's own AOL (110 dB, table) caps it, and it reads about 107 dB at 100 Hz | DC supply step on a follower at VCM = VS/2, VS = 5 V |
+| One PSRR figure for both pins | the same PSRR_DB applies to V+ and V- | FACTS gives a single PSRR figure, not one per supply pin | step each rail in turn on the bench |
+| PSRR sign and reference | the error is (V+ - V- - VSREF) / PSRR, input-referred: V+ up raises the follower output, V- up lowers it. VSREF = 5 V (FACTS curve header VS = 5 V); at any other supply the model adds (VS - 5)/PSRR of offset | FACTS gives no sign and no supply at which VOS is defined. An in-phase movement of both rails relative to ground is not seen (limitation) | sign by a step on each rail |
+| PSRR frequency rule | PSRR(f) = min(PSRR_DB, AOL(f)), built as 1/PSRR_DB + 1/AOL_dominant(f) (a sum, so it is never better than the min and at most 3 dB worse at the corner) | FACTS has no PSRR-vs-frequency curve (s4: "not in the datasheet"). The rule uses only figures FACTS already gives (AVOL, GBW). At 100 Hz-1 MHz AOL is the dominant-pole single pole, 1/AOL = (1 + s/wp)/A0, wp = 2 pi GBW/A0 | supply-ripple sweep at the output, 1 kHz to 100 MHz, follower at VS = 5 V |
+| PSRR corner frequency | GBW / 10^(80/20) = 128 MHz / 10^4 = **12.8 kHz** at PSRR_DB = 80 (the dominant-pole AOL falls to 80 dB there; the zero and second pole at 60/200 MHz do not matter at that frequency). Above it rejection falls 20 dB per decade, about 42 dB at 1 MHz and 22 dB at 10 MHz in the follower (ngspice: 42.1 and 22.2 dB against AOL 42.0 and 22.1) | consequence of the rule | the same supply-ripple sweep |
+| No temperature, supply-range (beyond the VSREF term), CMRR, thermal-shutdown or crosstalk behaviour | not modelled | none in the board's checks that FACTS would let me pin | CMRR curves; PSRR vs temperature (FACTS curve, 128 dB at 25 C, +/-5 dB, not used: the min is the default) |
 
 ## Test tolerances
 
@@ -68,6 +74,8 @@ drive edge.
 | swing from rail at 100 kohm | 1-3.5 mV | FACTS s9 typ 2 mV (max 30 mV); band chosen |
 | 17.5 mA headroom | 5 mV around the model's own RSAT formula | tests the labelled choice, not a FACTS figure |
 | short-circuit source / sink | +/-5 % of 290 / 160 mA | chosen; FACTS gives typ with min 100 mA |
+| PSRR at 100 Hz, V+ and V- | 79-81 dB at PSRR_DB = 80; 59-61 at 60; 105-111 at 120 (capped by AOL) | chosen: the dB parameter within 1 dB (FACTS s4 min 80 dB) |
+| PSRR at 1 MHz and 10 MHz | not above the model's own AOL + 0.5 dB, not below it - 6 dB | the frequency rule, a modelling choice; 0.5 dB covers the model's zero/pole shape |
 | supply current | +/-0.3 mA of 6.5 mA | FACTS s2 curve reading accuracy |
 | input capacitances | +/-2 % | chosen; the values are exact parameters |
 | input bias | 0.2-0.4 pA around 0.3 pA | chosen |
@@ -88,5 +96,5 @@ Each is a strict xfail in the test, so a model change that fixes one makes the s
   inductance gets 24 ohm but costs the G=+1 and G=+2 bandwidths, so the trade went the other way.
 - Open-loop gain at 10 Hz: curve 138 dB, model 110 dB (the AVOL table value was chosen deliberately).
 - Met after the joint refit: G=+1 245 MHz (-2 %), G=+2 87 MHz (-3 %), G=+10 11.1 MHz so GBW 111 MHz (-8 %), 4 V slew 198 V/us.
-- Not modelled or not tested: overload recovery, settling, HD2/HD3, differential gain and phase, crosstalk, CMRR, PSRR,
+- Not modelled or not tested: overload recovery, settling, HD2/HD3, differential gain and phase, crosstalk, CMRR,
   temperature, the IQ-vs-supply curve and 1/f noise.

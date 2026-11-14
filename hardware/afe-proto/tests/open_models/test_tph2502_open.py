@@ -299,3 +299,60 @@ def test_mutated_library_fails_swing_check(tmp_path):
     body = (SUPPLY + "Vi1 inp 0 3\nVi2 inn 0 2\n" + x() + "Rl out 2.5 100k\n.control\nop\nprint v(out)\n.endc")
     d = 5.0 - ng(tmp_path, "mutsw", body, lib=mut)[0]["v(out)"]
     assert not (1e-3 <= d <= 3.5e-3)
+
+
+# ---------------------------------------------------------------- supply rejection (PSRR)
+# FACTS s4: PSRR min 80 dB (typ 120), VS = 2.4..5.5 V, VCM = VS/2, 25 C; no PSRR-vs-frequency data, so the
+# frequency rule min(PSRR_DB, AOL(f)) is a MODELLING CHOICE (PROVENANCE.md). Test conditions: VS = 5 V, VCM = 2.5 V, G = +1.
+def psrr_db(tmp_path, name, pin, f, extra="", lib=LIB):
+    vp = "Vp vp 0 dc 5" + (" ac 1" if pin == "vp" else "") + "\n"
+    vn = "Vn vn 0 dc 0" + (" ac 1" if pin == "vn" else "") + "\n"
+    body = (vp + vn + "Vin inp 0 2.5\n" + x(extra, "inp out vp vn out") + "Rl out 0 1k\n"
+            f".control\nac lin 1 {f} {f}\nlet p=-db(v(out))\nprint p\n.endc")
+    return ng(tmp_path, name, body, lib=lib)[0]["p"]
+
+
+@pytest.mark.parametrize("pin", ["vp", "vn"])
+def test_psrr_dc_default_min(tmp_path, pin):
+    # 100 Hz is far below the ~12.8 kHz corner; the 1/AOL term costs ~0.3 dB at 80 dB
+    assert abs(psrr_db(tmp_path, f"ps80{pin}", pin, 100) - 80) < 1.0
+
+
+@pytest.mark.parametrize("pin", ["vp", "vn"])
+def test_psrr_parameter_selects_value(tmp_path, pin):
+    assert abs(psrr_db(tmp_path, f"ps60{pin}", pin, 100, "PSRR_DB=60") - 60) < 1.0
+
+
+def test_psrr_typ_is_capped_by_own_aol(tmp_path):
+    # PSRR_DB=120 exceeds the model's AOL (110 dB, FACTS table), so the rule min(PSRR, AOL) holds it at or below ~110 dB
+    p = psrr_db(tmp_path, "ps120", "vp", 100, "PSRR_DB=120")
+    assert 105 < p < 111       # reads 107.3 at 100 Hz: the sum of 1/120 dB and the 1/AOL term
+
+
+def test_psrr_no_better_than_aol_above_corner(tmp_path):
+    for f in (1e6, 1e7):
+        aol = open_loop_gain_at(tmp_path, f)
+        for pin in ("vp", "vn"):
+            p = psrr_db(tmp_path, f"psh{pin}{int(f)}", pin, f)
+            assert p <= aol + 0.5, (pin, f, p, aol)       # rejection (dB) not above AOL(dB); 0.5 dB is the model's own zero/pole shape
+            assert p >= aol - 6.0                            # and not wildly below it (sum of the two terms)
+
+
+def open_loop_gain_at(tmp_path, f):
+    # open-loop gain of the model at f, in dB
+    body = (SUPPLY + "Vin inp 0 dc 2.5 ac 1\n" + x("", "inp inn vp vn out") +
+            f"Lfb out inn 1e12\nCg inn 0 1\nRl out 0 1k\n.control\nac lin 1 {f} {f}\nlet g=db(v(out))\nprint g\n.endc")
+    return ng(tmp_path, f"aol{int(f)}", body)[0]["g"]
+
+
+def test_psrr_break_controls(tmp_path):
+    # PSRR term removed: rejection reads far above 80 dB at 100 Hz, so the DC check must fail
+    mut = tmp_path / "nopsrr.lib"
+    mut.write_text(LIB.read_text().replace("V(sv)*(1/psrr_lin+1/a0) + I(Vsd)*kdd", "0"))
+    assert not abs(psrr_db(tmp_path, "mut1", "vp", 100, lib=mut) - 80) < 1.0
+    # frequency term removed (rejection stays flat at 80 dB): the high-frequency rejection no longer follows AOL, so the above-corner check must fail
+    mut2 = tmp_path / "noHF.lib"
+    mut2.write_text(LIB.read_text().replace(" + I(Vsd)*kdd", ""))
+    p = psrr_db(tmp_path, "mut2", "vp", 1e7, lib=mut2)
+    aol = open_loop_gain_at(tmp_path, 1e7)
+    assert not (aol - 6.0 <= p <= aol + 0.5)
