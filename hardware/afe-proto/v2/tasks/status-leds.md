@@ -99,7 +99,7 @@ column is what a good answer reaches.
 |---|---|---|
 | 1 | LED current on the Due's 3.3 V / AREF | Zero in every state with this circuit; about 0.3 mA per LED, switching, if driven active-high (PW-1, PW-4) |
 | 2 | Extra load on +3V3A | About 1.5 mA with all five on, checked against the LM27762's positive-output rating and the rail's existing load |
-| 3 | +3V3A step at the ADC pin | **DC, from the datasheets (derived):** one LED's 0.3 mA × the LM27762's 11 µV/mA load regulation (typical, stated at 1.8 V out) ≈ 3.3 µV on +3V3A; through the TPH2502's 80 dB minimum PSRR ≈ 0.3 nV, and through the REF3030E's 240 µV/V maximum line regulation ≈ 0.8 nV. About six orders below one code (0.8 mV) and SC-6's 0.2 mV. **The transient at the edge is not in any datasheet** and is what the simulation is for; our own reference run is still to be done *(check)* |
+| 3 | +3V3A step at the ADC pin | **DC, from the datasheets (derived):** one LED's 0.3 mA × the LM27762's 11 µV/mA load regulation (typical, stated at 1.8 V out) ≈ 3.3 µV on +3V3A; through the TPH2502's 80 dB minimum PSRR ≈ 0.3 nV, and through the REF3030E's 240 µV/V maximum line regulation ≈ 0.8 nV. About six orders below one code (0.8 mV) and SC-6's 0.2 mV. **The transient at the edge is not in any datasheet** and is what the simulation is for. Our reference run, a 30 µV step on the amplifier rail (ten times the derived DC figure), gives a peak of 257 nV at the ADC pin on the clean-room TPH2502 and 8.1 nV on the vendor model: under 0.001 of a code on both (`models-open/VALIDATION.md`, section 1) |
 | 4 | Pin voltage in every state | Never above the Due's supply; with the Due off and ±12 V on a scope input, +3V3A stays below 0.5 V (PR-3), so the pin stays safe (PR-2) |
 | 5 | LED "off" but faintly lit | Pin high at about 3.27 V against +3V3A at about 3.3 V leaves tens of millivolts, far below the forward voltage: no current |
 | 6 | The switching edge | A fast GPIO edge; the traces kept on the digital edge, away from the scope's high-impedance side, inside SC-9's 2 LSB |
@@ -184,8 +184,15 @@ with numbers, over a rough layout, is a pass to be finished together.
 | Requirements and rules | `docs/afe.md` and `docs/afe-v2.md`, at the repository root |
 | Basic parts | `v2/jlc-basic.csv` |
 
-**The clean-room TPH2502 model has no supply rejection**, which is the
-figure row 3's simulation needs; it is being added from the datasheet's
-DC PSRR before the package goes out. If the intern's design is later
+**Using the clean-room models.** The TPH2502 model carries the
+datasheet's DC supply rejection; on 3.3 V circuits pass `VSREF=3.3`,
+and `EN=6.5n` when noise matters. Its supply rejection reads 30 to
+50 dB worse than the vendor model's, so the intern's row 3 figure
+should come out pessimistic, not optimistic. The REF3030E model follows
+the datasheet's output impedance, about 80 Ω at 1 kHz with the board's
+capacitors, where the project's own board simulations used 0.05 Ω; a
+kHz-range answer on the reference that differs from ours for that
+reason is right, not wrong. `models-open/VALIDATION.md` has the
+comparison. If the intern's design is later
 taken into the repository, it is re-entered through the project's own
 tools and checks; their files are not merged as they are.
