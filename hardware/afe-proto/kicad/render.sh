@@ -29,4 +29,6 @@ for (n, (bx0, by0, bx1, by1)), tag in zip(L.KEEPOUTS, ('band-south', 'band-north
     print(tag, '%dx%d+0+%d' % (int((x1 - x0) * k), min(int((top - bot) * k), H - off), off))
 PY
 rm -f "$O/F.svg" "$O/B.svg"
+# which board these renders were made from, by content (the gate-3 package reads it instead of file times)
+PYTHONPATH=$afe python3 -B $afe/pcbtools/gate3/rendersum.py "$B" "$O"
 ls -la "$O"
