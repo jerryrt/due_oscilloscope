@@ -20,90 +20,32 @@ not on the bench after the boards arrive.
 
 ## Version 1: the brief
 
-### Goal
+Add five LEDs to the COPPIA AFE-2 shield: one shows that the shield's
+power is up, and four are set by Due GPIO pins, their meanings to be
+decided later.
 
-Add five LEDs to the COPPIA AFE-2 shield for the Arduino Due:
+- The four status LEDs may change at any time, even during a capture,
+  with no measurable effect on the scope or the AWG.
+- Lowest cost: Basic parts, as few new part types as possible.
+- Before you design anything, write one page on what these LEDs could
+  do to the analog side, with numbers, and have it reviewed.
+- Then do the whole flow yourself, through simulation, layout,
+  manufacturing files, 3D renders and a bench test plan.
 
-- one **power LED**, lit while the shield's supplies are up;
-- four **status LEDs**, each driven by its own Due GPIO pin. What each
-  one means is decided later, in firmware.
+### Files you are given
 
-The status LEDs must be **free to change at any time, including in the
-middle of a capture**, with no measurable effect on any scope or AWG
-reading.
-
-### What you are given
-
-- The AFE-2 KiCad 10 project: schematic, board, libraries and 3D
-  models, plus the Arduino Due model for rendering the shield stacked
-  on it.
-- The SPICE netlists of the scope channel and the power section, with
-  the part models they use.
-- Datasheets for the parts on the board, and the SAM3X8E (the Due's
-  processor).
-- The Due's header pin table, and the list of pins already in use.
-- The shield's requirements and layout rules.
-- The board house's list of Basic parts.
-
-Some vendor models are licensed to us, not published: keep them to
-yourself.
-
-### Constraints
-
-- Lowest cost. On this board the number of distinct part types costs
-  more than the number of placements.
-- Board-house Basic parts only. No new ICs, no transistors, no driver
-  chips.
-- Follow the layout rules you are given. Change nothing else on the
-  board.
-
-### Step 1: the impact note, before you draw anything
-
-Write a one-page note and get it reviewed before any schematic work. It
-answers:
-
-1. Where does each LED's current come from, and where does it return?
-2. What else does each rail you touch feed, and what happens to it when
-   an LED switches?
-3. Which Due pins do you use, and why those? What is on each one
-   already?
-4. What voltage does each pin see in every state: running, reset,
-   being flashed, Due unpowered, a ±12 V signal on a scope input with
-   the Due off?
-5. What can the switching edge couple into, and how will your routing
-   prevent it?
-6. How would you show on the bench that the LEDs change nothing? How do
-   you know your test could have seen an effect if there were one?
-
-Every "negligible" comes with a number and where it came from: a
-datasheet page, a calculation, or "(check)" if it is a guess.
-
-### Step 2: the design and its validation
-
-Do the whole flow yourself:
-
-1. **Schematic**: the five LEDs and their resistors, added to the given
-   schematic.
-2. **Simulation**: show with the given SPICE netlists what one status
-   LED switching does at the scope's ADC pin. Compare it with one ADC
-   code and with the channel's noise budget.
-3. **Layout**: place and route the new parts on the given board. Design
-   rule check clean.
-4. **Manufacturing files**: Gerbers and drill files, BOM and placement
-   file, in the board house's format.
-5. **3D renders**: the shield alone, and stacked on the Due, with the
-   LEDs and their labels readable.
-6. **Bench test plan**: the test from question 6, written so that
-   someone else could run it.
-
-### Deliverables
-
-- The impact note (reviewed before step 2).
-- The modified KiCad project.
-- The simulation files and their results.
-- The manufacturing files and the renders.
-- A short report: what you changed, what the simulation shows, the
-  bench test, and the cost (placements and part types added).
+- `afe-v2.kicad_pro`, `afe-v2.kicad_sch`: the schematic project
+- `afe-v2-integrated.kicad_pcb` and its project file: the board
+- `afe.kicad_sym`, `afe.pretty/`, `afe.3dshapes/`: the libraries and 3D
+  models
+- the Arduino Due 3D model, for the stacked render
+- `scope_v2.cir`: the scope channel's SPICE netlist
+- `tph2502.lib`, `lm27762.lib`, `ref3030.lib`, `bav99.lib`,
+  `ads1115.lib`: SPICE models of the board's parts
+- the datasheets of the board's parts and of the SAM3X8E
+- `due-header-table.md`: the Due's pins
+- `afe.md`, `afe-v2.md`: the shield's requirements and layout rules
+- `jlc-basic.csv`: the board house's Basic parts
 
 ---
 
@@ -157,7 +99,7 @@ column is what a good answer reaches.
 |---|---|---|
 | 1 | LED current on the Due's 3.3 V / AREF | Zero in every state with this circuit; about 0.3 mA per LED, switching, if driven active-high (PW-1, PW-4) |
 | 2 | Extra load on +3V3A | About 1.5 mA with all five on, checked against the LM27762's positive-output rating and the rail's existing load |
-| 3 | +3V3A step at the ADC pin | One LED's step × the rail's output impedance, through the TPH2502's supply rejection and the REF3030E's line regulation; well below one code (about 0.8 mV) and SC-6's 0.2 mV. **Our own reference figure is not yet computed: run it on `v2/sim/scope/scope_v2.cir` before marking (check)** |
+| 3 | +3V3A step at the ADC pin | **DC, from the datasheets (derived):** one LED's 0.3 mA × the LM27762's 11 µV/mA load regulation (typical, stated at 1.8 V out) ≈ 3.3 µV on +3V3A; through the TPH2502's 80 dB minimum PSRR ≈ 0.3 nV, and through the REF3030E's 240 µV/V maximum line regulation ≈ 0.8 nV. About six orders below one code (0.8 mV) and SC-6's 0.2 mV. **The transient at the edge is not in any datasheet** and is what the simulation is for; our own reference run is still to be done *(check)* |
 | 4 | Pin voltage in every state | Never above the Due's supply; with the Due off and ±12 V on a scope input, +3V3A stays below 0.5 V (PR-3), so the pin stays safe (PR-2) |
 | 5 | LED "off" but faintly lit | Pin high at about 3.27 V against +3V3A at about 3.3 V leaves tens of millivolts, far below the forward voltage: no current |
 | 6 | The switching edge | A fast GPIO edge; the traces kept on the digital edge, away from the scope's high-impedance side, inside SC-9's 2 LSB |
@@ -229,19 +171,21 @@ with numbers, over a rough layout, is a pass to be finished together.
 
 ### The input package: what to hand the intern
 
-| Item | From |
+| Item in version 1's list | Repository path, under `hardware/afe-proto/` unless stated |
 |---|---|
-| KiCad project | `v2/kicad/afe-v2.kicad_sch`, `.kicad_pro`, `fp-lib-table`, `sym-lib-table`, `lib/`; the board `v2/layout/integrated/afe-v2-integrated.kicad_pcb` with its `.kicad_pro` and tables |
-| Shared libraries and 3D models | `kicad/lib/` (`afe.kicad_sym`, `afe.pretty`, `afe.3dshapes`) |
-| Due model for the stacked render | The Due STEP used for the project's renders (not in the repository; from the render scratch area) |
-| SPICE | `v2/sim/scope/scope_v2.cir` and its `models/`; the power section's study in `v2/sim/powercal/` |
-| Vendor models | From `models/` (not published; hand over privately) |
-| Datasheets | TPH2502, LM27762, REF3030E, ADS1115, BAV99, SAM3X8E, and the chosen LED's |
+| Schematic project | `v2/kicad/afe-v2.kicad_pro`, `afe-v2.kicad_sch`, `fp-lib-table`, `sym-lib-table`, `lib/` |
+| Board | `v2/layout/integrated/afe-v2-integrated.kicad_pcb`, its `.kicad_pro` and tables |
+| Libraries and 3D models | `kicad/lib/` (`afe.kicad_sym`, `afe.pretty`, `afe.3dshapes`) |
+| Due 3D model | The Due STEP used for the project's renders; not in the repository |
+| Scope netlist | `v2/sim/scope/scope_v2.cir`, **with its `.include` pointed at the clean-room TPH2502 model**: as committed it includes the vendor model |
+| SPICE models | The clean-room models, `models-open/{tph2502,lm27762,ref3030,bav99,ads1115}-open/`; no vendor file goes out |
+| Datasheets | TPH2502, LM27762, REF3030E, ADS1115, BAV99, SAM3X8E |
 | Pin table | `docs/due-header-table.md` |
-| Requirements and rules | `docs/afe.md` sections PW, PR, SC and LR, and `docs/afe-v2.md` |
+| Requirements and rules | `docs/afe.md` and `docs/afe-v2.md`, at the repository root |
 | Basic parts | `v2/jlc-basic.csv` |
 
-Paths are relative to `hardware/afe-proto/` except the two `docs/afe*`
-files, which are at the repository root. If the intern's design is later
+**The clean-room TPH2502 model has no supply rejection**, which is the
+figure row 3's simulation needs; it is being added from the datasheet's
+DC PSRR before the package goes out. If the intern's design is later
 taken into the repository, it is re-entered through the project's own
 tools and checks; their files are not merged as they are.
