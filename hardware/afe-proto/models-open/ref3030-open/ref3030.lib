@@ -1,0 +1,83 @@
+* ref3030.lib - open behavioural model of the TI REF3030E (3.0 V, SOT-23-3 series voltage reference, REF30E family).
+* Licence: CC BY-SA 4.0 (LICENSE beside this file), (c) the project authors.
+* Clean-room model: built only from FACTS.md (datasheet facts); no vendor SPICE model was consulted.
+* Provenance, every parameter's source, and the modelling choices: PROVENANCE.md beside this file.
+*
+* .subckt REF3030E_OPEN IN OUT GND        pin order: 1 IN (supply), 2 OUT (reference output), 3 GND
+*
+* Structure: an ideal source VT (3.000 V x initial accuracy, + line regulation, soft-limited to VIN - VDO, minus the
+* DC load-regulation drop and a hard-ish current limit) drives OUT through the fitted output-impedance network
+* ZNET (L1 || (R2+L2) || C, scaled by ZS).  IN supplies IQ plus the sourced current.  A zero-volt source VSENS
+* senses the output current (positive = sourcing).  Optional noise is added in series with VT (off by default).
+*
+* Parameters (all FACTS rows, see PROVENANCE.md):
+*   VNOM    nominal output, V                        3.0
+*   ACC     initial accuracy error, % of VNOM        0      (typ; datasheet limit is +/-0.1)
+*   LINE    line regulation, V per V                 16u    (typ; max is 240u)
+*   LSRC    load regulation, sourcing, ppm per mA    3      (typ; max 15)
+*   LSNK    load regulation, sinking, ppm per mA     3      (typ; max 150)
+*   VDO     dropout, V                               0.02   (typ; max 0.2)
+*   ISC     short-circuit (sourcing) limit, A        35m
+*   ISNK    sinking limit, A                         35m    (modelling choice, see PROVENANCE.md)
+*   IQ      quiescent current, A                     27u
+*   ZS      scale of the output-impedance network    1      (1 = the 5 V part's open-output curve of Fig 6-14)
+*   NOISE   1 enables the noise source               0
+*   NSCALE  noise level multiplier                   1
+*   NT      noise sample step, s                     2u     (transient only; bandwidth 1/(2 NT))
+.subckt REF3030E_OPEN IN OUT GND params: VNOM=3.0 ACC=0 LINE=16u LSRC=3 LSNK=3 VDO=0.02 ISC=35m ISNK=35m IQ=27u
++ ZS=1 NOISE=0 NSCALE=1 NT=2u
+.param RLIM=100k
+.param RSRC={LSRC*1e-6*VNOM/1e-3}
+.param RSNK={LSNK*1e-6*VNOM/1e-3}
+* ---- output current sense (0 V): positive current flows from the network out of OUT
+VSENS XO OUT 0
+* ---- ideal source behind the impedance network
+* a = reference incl. accuracy and line regulation (line referred to VIN = VNOM + 0.3 V); b = VIN - VDO;
+* soft minimum of the two (0.1 mV knee), floored at 0
+BVT VT GND V={max(0.5*((VNOM*(1+ACC/100)+LINE*(V(IN,GND)-VNOM-0.3)) + (V(IN,GND)-VDO)
++ - sqrt(((VNOM*(1+ACC/100)+LINE*(V(IN,GND)-VNOM-0.3)) - (V(IN,GND)-VDO))**2 + 1e-8)), 0)
++ - i(VSENS)*(RSRC*(0.5+0.5*tanh(i(VSENS)/1m)) + RSNK*(0.5-0.5*tanh(i(VSENS)/1m)))
++ - RLIM*0.5*((i(VSENS)-ISC) + sqrt((i(VSENS)-ISC)**2 + 1e-12))
++ + RLIM*0.5*((-i(VSENS)-ISNK) + sqrt((-i(VSENS)-ISNK)**2 + 1e-12))
++ + NOISE*V(NZ2,GND)}
+* ---- output-impedance network VT -> XO, the 5 V open-output fit of Fig 6-14, scaled by ZS
+L1  VT N1 {30.291m*ZS}
+R1  N1 XO 1u
+L2  VT N2 {9.2855m*ZS}
+R2  N2 XO {46.655*ZS}
+C3  VT N3 {2.8561u/ZS}
+R3  N3 XO {1m*ZS}
+* ---- supply current: quiescent plus the sourced current
+BIQ IN GND I={IQ + 0.5*(i(VSENS) + sqrt(i(VSENS)**2 + 1e-18))}
+* ---- noise: one white source shaped by H(f) = LL(f) x RES(f) + A x P(f)^2, fitted to Fig 6-13 (see PROVENANCE.md)
+*   LL  lag (1+s/2pi 127.49)/(1+s/2pi 34.076)   - the low-frequency rise (a shelf of 1 down to 0.267)
+*   RES 2nd-order low-pass, f0 1117.9 Hz, Q 0.9476
+*   P   1-pole 2559.6 Hz, twice, weight A = -0.5318  - shallower high-frequency tail
+* white density 3 uV/rtHz x NSCALE (= na*sqrt(2*NT)); the AC magnitude of VNW is that density, so an AC run with
+* NOISE=1 reads the spectral density straight off V(OUT)
+.param NDEN={3u*NSCALE}
+.param NG={34.0758/127.4924}
+.param NR1={1k*(1-NG)/NG}
+.param NC1={1/(2*3.14159265*127.4924*1k)}
+.param NCR={10n}
+.param NL={1/((2*3.14159265*1117.9)**2*NCR)}
+.param NRR={sqrt(NL/NCR)/0.9476}
+VNW NW GND dc 0 ac {NDEN} trnoise({NDEN/sqrt(2*NT)} {NT} 0 0)
+* path A: lag network (R1, then R2+C to ground; gain 1 at DC, NG at high f), RLC low-pass
+RNR1 NW NLL {NR1}
+RNR2 NLL NLC 1k
+CNC1 NLC GND {NC1}
+BNA NA GND V=V(NLL,GND)
+RNRR NA NLX {NRR}
+LNL NLX NRS {NL}
+CNCR NRS GND {NCR}
+* path B: two buffered poles
+RNP1 NW NP1 1k
+CNP1 NP1 GND {1/(2*3.14159265*2559.6*1k)}
+BNPB NPB GND V=V(NP1,GND)
+RNP2 NPB NP2 1k
+CNP2 NP2 GND {1/(2*3.14159265*2559.6*1k)}
+* sum
+BNZ NZ2 GND V={V(NRS,GND) - 0.5318*V(NP2,GND)}
+RNZ NZ2 GND 1G
+.ends REF3030E_OPEN

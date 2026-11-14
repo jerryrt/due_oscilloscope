@@ -1,0 +1,177 @@
+* LM27762_OPEN / LM27762_OPEN_AVG - open behavioural model of a dual-output
+* (positive LDO + inverting charge pump + negative LDO) power supply
+* License: CC-BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+* Clean-room model: built only from FACTS.md (datasheet facts); no vendor SPICE model was consulted.
+*
+* Pin order of both variants (and the datasheet pin each one is):
+*   .subckt LM27762_OPEN     VIN GND OUTP FBP OUTN FBN CPOUT C1P C1N ENP ENN PGOOD
+*   .subckt LM27762_OPEN_AVG VIN GND OUTP FBP OUTN FBN CPOUT C1P C1N ENP ENN PGOOD
+*     VIN=VIN(3)  GND=GND(4, and the thermal pad)  OUTP=OUT+(11)  FBP=FB+(2)
+*     OUTN=OUT-(6)  FBN=FB-(7)  CPOUT=CP(5, charge pump output)  C1P=C1+(10)
+*     C1N=C1-(9)  ENP=EN+(12)  ENN=EN-(8)  PGOOD=PGOOD(1, open drain, low = good)
+*
+* LM27762_OPEN_AVG : no switching; the pump is a -VIN source with a load-dependent
+*   droop. Use for .op/.dc/.ac and for long transients. C1P/C1N are not used (1 Gohm to GND).
+* LM27762_OPEN     : the pump switches (four switches, C1 on C1P/C1N, 2 MHz, pulse
+*   skipping at light load). Use for ripple studies; needs .tran with a step of
+*   <= 25 ns (the clock is a B-source and has no breakpoints).
+* Instance parameters (both): VFBP (1.182/1.2/1.218), VFBN (-1.238/-1.22/-1.202),
+*   FSW (1.7e6/2e6/2.3e6; only the switching variant uses it).
+* Other tunables are global .param names LM27762_* (override with .param after
+*   the .include only if the model's own PROVENANCE.md says what it pins).
+* Every constant is a FACTS.md value or a labelled MODELLING CHOICE; see PROVENANCE.md.
+*
+* Signs: OUTN and CPOUT are negative voltages. The negative LDO passes current from
+* OUTN into CPOUT.
+
+* ---- global defaults (FACTS = datasheet row; MC = modelling choice) -----------------
+.param LM27762_KGP=20         $ MC: pos gate gain 1/V; sets 11 uV/mA load reg at 1.8 V, VIN 5 V (FACTS 5 load reg OUT+)
+.param LM27762_KGN=4.8        $ MC: neg gate gain 1/V; sets 34 uV/mA load reg at -1.8 V, VIN 5 V (FACTS 5 load reg OUT-)
+.param LM27762_RDSP=0.47      $ FACTS Fig 5-3 OUT+ 117 mV at 250 mA
+.param LM27762_RDSN=0.32      $ FACTS Fig 5-3 OUT- 80 mV at 250 mA
+.param LM27762_ILIMP=0.5      $ FACTS Sec 4 positive LDO 500 mA typ
+.param LM27762_ILIMN=0.5      $ MC: neg LDO limit not given; the pump's 500 mA input limit bounds it
+.param LM27762_ILIMCP=0.5     $ FACTS Sec 4 charge pump 500 mA typ input limit
+.param LM27762_IQP=100u       $ MC: split of the 390 uA IQ (FACTS 5): positive LDO bias
+.param LM27762_IQNV=90u       $ MC: negative side bias drawn from VIN (reference, oscillator)
+.param LM27762_IQNC=200u      $ MC: negative LDO bias drawn from CP (carried to VIN by the pump)
+.param LM27762_ISD=0.5u       $ FACTS 5 shutdown current typ
+.param LM27762_VEN=0.8        $ MC: threshold between VIL max 0.4 and VIH min 1.2
+.param LM27762_REN=10meg      $ MC: enable input resistance (not given)
+.param LM27762_UVR=2.6        $ FACTS 4 UVLO rising
+.param LM27762_UVF=2.4        $ FACTS 4 UVLO falling
+.param LM27762_TSS=50u        $ MC: reference soft-start time constant (not given)
+.param LM27762_RPD=50k        $ FACTS 4 output discharge
+.param LM27762_RCPD=10k       $ MC: CP discharge in shutdown (not given)
+.param LM27762_RPG=100        $ MC: PGOOD pull-down on-resistance (not given)
+.param LM27762_PGTH=0.95      $ FACTS 7 PGOOD threshold
+.param LM27762_KLP=2.5m       $ MC: reference shift per V of VIN (output falls as VIN rises, FACTS Fig 5-6); 1.9 mV/V is the FACTS line regulation and 0.6 mV/V is added to cancel the pass device's headroom effect so the total over VIN 2.7-5 V at 50 mA is 1.9 mV/V
+.param LM27762_KLN=-1.2m      $ MC: reference shift per V of VIN; negative on purpose: the pass device's headroom effect alone is 2.7 mV/V, so this trims the total over VIN 2.7-5 V at 50 mA to FACTS 1.5 mV/V (sign of the FACTS figure: Fig 5-5)
+.param LM27762_KHP=0.07       $ MC: high-frequency PSRR path gain, positive LDO (shaped on Fig 7-4)
+.param LM27762_FHP=60k        $ MC: corner of the two-pole high-pass of that path
+.param LM27762_KHN=0.03       $ MC: same, negative LDO (Fig 7-3)
+.param LM27762_FHN=40k        $ MC
+.param LM27762_FLP=300k       $ MC: low-pass pole closing the PSRR paths (no data above 100 kHz)
+.param LM27762_RSWON=0.3      $ MC: on-resistance of each of the 4 pump switches, tuned so the simulated R at 100-300 mA matches FACTS Fig 5-4 (RNEG 2.5 ohm at 100 mA)
+.param LM27762_PFMVH=40m      $ MC: pulse-skip comparator hysteresis, total band in V; with the load it sets the burst spacing (no data)
+.param LM27762_IPWM=0.1       $ MC: load above which the pump runs continuously
+.param LM27762_TIAV=100u      $ MC: load-current averaging time of the pulse-skip law
+
+* Charge-pump droop (V) vs load current (A) at VIN 5.5 V, 25 C. A smooth monotone fit of FACTS Fig 5-4
+* (R*I points 1mA 0.30, 3mA 0.36, 10mA 0.35, 30mA 0.21, 60mA 0.21, 100mA 0.25, 300mA 0.66): the
+* pulse-skipping plateau 0.28 V (pool-adjacent-violators mean of the 1-100 mA points, the dip at 30-60 mA
+* is not followed because it would be a negative resistance), then ~2.1 ohm of constant-frequency output
+* resistance above a 120 mA knee. Zero droop at zero load and the shape under 1 mA are MODELLING
+* CHOICES (the figure starts at 1 mA).
+.func lm27762_dcp(i) {0.28*tanh(i/0.5m) + 2.11*0.5*((i-0.12)+sqrt((i-0.12)*(i-0.12)+4e-4))}
+* g = tanh(max(K*error,0)): the pass current is g*Vds/Rds-on, so in dropout g -> 1 and I = Vds/Rds-on, and
+* the small-signal gain is K*Vds/Rds-on (like a triode FET). Load regulation therefore worsens as headroom shrinks.
+.func lm27762_gate(k,e) {tanh(0.5*(k*e+sqrt(k*k*e*e+1e-18)))}
+
+* ---- core: UVLO, enables, soft start, both LDOs, discharge, PGOOD ----------------------
+.subckt LM27762_OPEN_CORE VIN GND OUTP FBP OUTN FBN CPOUT ENP ENN PGOOD ONP ONN
++ PARAMS: VFBP=1.2 VFBN=-1.22
+* UVLO with hysteresis; state held in node uvs (1 = running)
+Buv uvr GND V = V(VIN,GND) > (V(uvs,GND) > 0.5 ? {LM27762_UVF} : {LM27762_UVR}) ? 1 : 0
+Ruv uvr uvs 100
+Cuv uvs GND 10p
+Ren1 ENP GND {LM27762_REN}
+Ren2 ENN GND {LM27762_REN}
+Bonp ONP GND V = (V(ENP,GND) > {LM27762_VEN}) * (V(uvs,GND) > 0.5)
+Bonn ONN GND V = (V(ENN,GND) > {LM27762_VEN}) * (V(uvs,GND) > 0.5)
+* soft-started references
+Brfp rpi GND V = VFBP*V(ONP,GND)
+Rrp rpi rfp 1k
+Crp rfp GND {LM27762_TSS/1k}
+Brfn rni GND V = VFBN*V(ONN,GND)
+Rrn rni rfn 1k
+Crn rfn GND {LM27762_TSS/1k}
+* PSRR paths: two-pole high-pass then one low-pass, from VIN (pos) and CPOUT (neg)
+Bhp1 hpa GND V = V(VIN,GND)
+Chp1 hpa hpx {1/(6.2831853*LM27762_FHP*1k)}
+Rhp1 hpx GND 1k
+Bhp2 hpb GND V = V(hpx,GND)
+Chp2 hpb hpy {1/(6.2831853*LM27762_FHP*1k)}
+Rhp2 hpy GND 1k
+Bhp3 hpc GND V = V(hpy,GND)
+Rhp3 hpc hpz 1k
+Chp3 hpz GND {1/(6.2831853*LM27762_FLP*1k)}
+Bhn1 hna GND V = V(CPOUT,GND)
+Chn1 hna hnx {1/(6.2831853*LM27762_FHN*1k)}
+Rhn1 hnx GND 1k
+Bhn2 hnb GND V = V(hnx,GND)
+Chn2 hnb hny {1/(6.2831853*LM27762_FHN*1k)}
+Rhn2 hny GND 1k
+Bhn3 hnc GND V = V(hny,GND)
+Rhn3 hnc hnz 1k
+Chn3 hnz GND {1/(6.2831853*LM27762_FLP*1k)}
+* positive LDO. error = ref - FB + beta*dv, beta = FB/OUT, dv = output shift from line / PSRR
+Bep ep GND V = V(rfp,GND) - V(FBP,GND) + V(FBP,GND)/max(V(OUTP,GND),0.1) * (-{LM27762_KLP}*(V(VIN,GND)-5) + {LM27762_KHP}*V(hpz,GND))
+Rep ep epf 1k
+Cep epf GND 5.3p
+Vps VIN vp 0
+Bpp vp OUTP I = V(ONP,GND) * lm27762_gate({LM27762_KGP},V(epf,GND)) * (V(VIN,GND)-V(OUTP,GND))/{LM27762_RDSP} / (1+(I(Vps)/{LM27762_ILIMP})**40)
+Bpd OUTP GND I = (1-V(ONP,GND)) * V(OUTP,GND)/{LM27762_RPD}
+Biqp VIN GND I = V(ONP,GND) * {LM27762_IQP}
+* negative LDO: pass current OUTN -> CPOUT
+Ben en GND V = V(FBN,GND) - V(rfn,GND) - V(FBN,GND)/min(V(OUTN,GND),-0.1) * (-{LM27762_KLN}*(V(VIN,GND)-5) - {LM27762_KHN}*V(hnz,GND))
+Ren en enf 1k
+Cen enf GND 5.3p
+Vpn OUTN vn 0
+Bpn vn CPOUT I = V(ONN,GND) * lm27762_gate({LM27762_KGN},V(enf,GND)) * (V(OUTN,GND)-V(CPOUT,GND))/{LM27762_RDSN} / (1+(I(Vpn)/{LM27762_ILIMN})**40)
+Bpu OUTN GND I = (1-V(ONN,GND)) * V(OUTN,GND)/{LM27762_RPD}
+Bcd CPOUT GND I = (1-V(ONN,GND)) * V(CPOUT,GND)/{LM27762_RCPD}
+Biqnv VIN GND I = V(ONN,GND) * {LM27762_IQNV}
+Biqnc GND CPOUT I = V(ONN,GND) * {LM27762_IQNC} * min(max(-V(CPOUT,GND)/0.5,0),1)
+Bisd VIN GND I = (1-max(V(ONP,GND),V(ONN,GND))) * {LM27762_ISD}
+* PGOOD, open drain, low = good (FACTS 7 table 6-1)
+Bpg PGOOD GND I = ((V(ONP,GND)>0.5)||(V(ONN,GND)>0.5)) * (V(ONP,GND)>0.5 ? (V(FBP,GND) > {LM27762_PGTH}*VFBP ? 1 : 0) : 1) * (V(ONN,GND)>0.5 ? (V(FBN,GND) < {LM27762_PGTH}*VFBN ? 1 : 0) : 1) * V(PGOOD,GND)/{LM27762_RPG}
+.ends LM27762_OPEN_CORE
+
+* ---- averaged pump ----------------------------------------------------------------------
+.subckt LM27762_OPEN_PUMPAVG VIN GND CPOUT ONN
+Boc ci GND V = -V(VIN,GND)*V(ONN,GND)
+* series drop = f(current drawn from CPOUT) + 1 Gohm when off + soft input-current limit
+Vs CPOUT x 0
+Bd x ci V = lm27762_dcp(0.5*(I(Vs)+sqrt(I(Vs)*I(Vs)+1e-12))) + (1-V(ONN,GND))*1g*I(Vs) + 10*max(I(Vs)-{LM27762_ILIMCP},0)
+Bin VIN GND I = V(ONN,GND)*max(I(Vs),0)
+.ends LM27762_OPEN_PUMPAVG
+
+* ---- switching pump -----------------------------------------------------------------------
+.subckt LM27762_OPEN_PUMPSW VIN GND CPOUT C1P C1N ONN PARAMS: FSW=2meg
+.model LM27762SW SW(Vt=0.5 Vh=0.1 Ron={LM27762_RSWON} Roff=1e9)
+Bclk clk GND V = sin(6.2831853*FSW*time)
+Vs CPOUT cx 0
+* load estimate for the pulse-skip law: pump output current, averaged
+Bia iar GND V = I(Vs)
+Ria iar iav 1k
+Cia iav GND {LM27762_TIAV/1k}
+Bthr thr GND V = lm27762_dcp(max(V(iav,GND),0))*(1-0.5*(1+tanh((V(iav,GND)-{LM27762_IPWM})/(0.1*{LM27762_IPWM})))) - 0.5*(1+tanh((V(iav,GND)-{LM27762_IPWM})/(0.1*{LM27762_IPWM})))
+* pulse-skip comparator with memory in node pmp
+Bpmr pmpr GND V = (V(ONN,GND)>0.5) * ((V(VIN,GND)+V(CPOUT,GND)) > V(thr,GND)+{LM27762_PFMVH}/2 ? 1 : ((V(VIN,GND)+V(CPOUT,GND)) < V(thr,GND)-{LM27762_PFMVH}/2 ? 0 : V(pmp,GND)))
+Rpm pmpr pmp 100
+Cpm pmp GND 10p
+Bpa pa GND V = 0.5*(1+tanh((V(clk,GND)-0.1)/0.03)) * V(pmp,GND) * V(ONN,GND)
+Bpb pb GND V = 0.5*(1+tanh((-V(clk,GND)-0.1)/0.03)) * V(pmp,GND) * V(ONN,GND)
+S1 VIN C1P pa GND LM27762SW
+S3 C1N GND pa GND LM27762SW
+S2 C1P GND pb GND LM27762SW
+S4 C1N cx pb GND LM27762SW
+Rl1 C1P GND 1g
+Rl2 C1N GND 1g
+.ends LM27762_OPEN_PUMPSW
+
+* ---- the two top-level variants --------------------------------------------------------------
+.subckt LM27762_OPEN_AVG VIN GND OUTP FBP OUTN FBN CPOUT C1P C1N ENP ENN PGOOD
++ PARAMS: VFBP=1.2 VFBN=-1.22 FSW=2meg
+Xc VIN GND OUTP FBP OUTN FBN CPOUT ENP ENN PGOOD onp onn LM27762_OPEN_CORE PARAMS: VFBP={VFBP} VFBN={VFBN}
+Xp VIN GND CPOUT onn LM27762_OPEN_PUMPAVG
+Rl1 C1P GND 1g
+Rl2 C1N GND 1g
+.ends LM27762_OPEN_AVG
+
+.subckt LM27762_OPEN VIN GND OUTP FBP OUTN FBN CPOUT C1P C1N ENP ENN PGOOD
++ PARAMS: VFBP=1.2 VFBN=-1.22 FSW=2meg
+Xc VIN GND OUTP FBP OUTN FBN CPOUT ENP ENN PGOOD onp onn LM27762_OPEN_CORE PARAMS: VFBP={VFBP} VFBN={VFBN}
+Xp VIN GND CPOUT C1P C1N onn LM27762_OPEN_PUMPSW PARAMS: FSW={FSW}
+.ends LM27762_OPEN

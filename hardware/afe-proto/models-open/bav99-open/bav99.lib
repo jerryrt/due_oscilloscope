@@ -1,0 +1,36 @@
+* BAV99 dual series switching diode, open model.   SPDX-License-Identifier: CC-BY-SA-4.0   (CC-BY-SA 4.0)
+* Clean-room model: built only from FACTS.md (datasheet facts); no vendor SPICE model was consulted.
+* Subcircuit pin order: .subckt BAV99_OPEN A1 K2 CA   pin 1 = A1 (anode of diode 1), pin 2 = K2 (cathode of diode 2),
+*   pin 3 = CA (the common node: cathode of diode 1 joined to anode of diode 2).
+* Each diode = BAV99_OPEN_D (forward, junction capacitance, recovery, breakdown) + a fixed parallel capacitance +
+*   a reverse-leakage current source tabulated from the 'IR vs VR' curves at -40, 25, 85 and 150 C (log-linear in V
+*   between the digitised points, linear in 1/T between the curves, flat outside them, linear to 0 below 1 V).
+* Use .options gmin=1e-15 for reverse currents at the -40 C curve (ngspice's default gmin of 1e-12 S is larger than them).
+* Parameters fitted by make_lib.py; residuals in fit_residuals.json.  BV/IBV and TT are labelled modelling choices
+* (PROVENANCE.md): BV is not in the datasheet; TT is set so simulated trr = the 4 ns Table 7 maximum.
+* Parallel capacitance CP = 0.44579 pF is the constant part of the Cd-vs-VR curve (Fig. 3); CJO is the voltage-dependent part.
+.model BAV99_OPEN_D D(IS=2.9722e-09 N=1.8481 RS=1.1608 IKF=0.1081 TRS1=0.00067521 EG=1.2341 XTI=6.294e-14 CJO=1.5441e-13 VJ=0.85158 M=0.98 FC=0.5 TT=7.8385e-09 BV=125 IBV=1e-05 TNOM=25)
+
+.subckt BAV99_OPEN_HALF a k
+D1 a k BAV99_OPEN_D
+CP a k 0.44579p
+* reverse voltage, clamped to the digitised range 0..99 V
+Bvr vr 0 V = max(min(-v(a,k), 99), 0)
+* 1/T clamped to the range of the four curves; ngspice pwl() extrapolates, so each hat weight is floored at 0
+Bt t 0 V = max(min(1/(temper+273.15), 0.0042890843), 0.0023632282)
+Bw0 w0 0 V = max(pwl(v(t), 0.0023632282,1, 0.0027921262,0), 0)
+Bl0 l0 0 V = pwl(max(v(vr),1), 1,0.502367, 10,0.862105, 25,1.00344, 50,1.1199, 75,1.20897, 95,1.32386, 99,1.36134)
+Bw1 w1 0 V = max(pwl(v(t), 0.0023632282,0, 0.0027921262,1, 0.0033540164,0), 0)
+Bl1 l1 0 V = pwl(max(v(vr),1), 1,-1.05192, 10,-0.604268, 25,-0.44523, 50,-0.310929, 75,-0.208497, 95,-0.0763768, 99,-0.0274584)
+Bw2 w2 0 V = max(pwl(v(t), 0.0027921262,0, 0.0033540164,1, 0.0042890843,0), 0)
+Bl2 l2 0 V = pwl(max(v(vr),1), 1,-2.71495, 10,-2.40585, 25,-2.25745, 50,-2.12333, 75,-1.99022, 95,-1.78442, 99,-1.72061)
+Bw3 w3 0 V = max(pwl(v(t), 0.0033540164,0, 0.0042890843,1), 0)
+Bl3 l3 0 V = pwl(max(v(vr),1), 1,-4.49647, 10,-4.47004, 25,-4.41026, 50,-4.31984, 75,-4.2767, 95,-4.20844, 99,-4.20844)
+* extra reverse current in A: log10(uA) blended over 1/T, scaled to 0 below 1 V
+Bleak a k I = -min(v(vr),1) * 1e-6 * pwr(10, v(w0)*v(l0) + v(w1)*v(l1) + v(w2)*v(l2) + v(w3)*v(l3))
+.ends BAV99_OPEN_HALF
+
+.subckt BAV99_OPEN A1 K2 CA
+X1 A1 CA BAV99_OPEN_HALF
+X2 CA K2 BAV99_OPEN_HALF
+.ends BAV99_OPEN

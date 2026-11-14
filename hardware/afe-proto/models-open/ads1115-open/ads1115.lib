@@ -1,0 +1,54 @@
+* ads1115.lib: open behavioural model of the ADS1115 analog INPUT LOAD only (DC / low frequency).
+* License: CC-BY-SA 4.0 (LICENSE beside this file), (c) the project authors.
+* Clean-room model: built only from FACTS.md (datasheet facts); no vendor SPICE model was consulted.
+*
+* What it is: the load each AINx pin presents to its source. No conversion, no digital side, no
+* sampling-capacitor dynamics (FACTS sec 4: capacitor values and switch resistances are not in the
+* datasheet), so it is valid for DC and signals well below the 250 kHz modulator rate (FACTS sec 4).
+*
+* .subckt ADS1115_IN_OPEN  AIN0 AIN1 AIN2 AIN3 GND VDD   params: FSR MUXSEL ILEAK VINT
+*   FSR    full-scale range in volts, one of 6.144 4.096 2.048 1.024 0.512 0.256 (FACTS sec 6). Other values
+*          snap to the nearest setting by thresholds (a PGA code 110/111 is 0.256, FACTS sec 6).
+*   MUXSEL MUX[2:0] 0..7 (FACTS sec 2, Table 8-3): 0 AIN0-AIN1, 1 AIN0-AIN3, 2 AIN1-AIN3, 3 AIN2-AIN3,
+*          4 AIN0-GND, 5 AIN1-GND, 6 AIN2-GND, 7 AIN3-GND.
+*   ILEAK  leakage of an UNSELECTED input, A. MODELLING CHOICE (FACTS sec 5: analog leakage not in datasheet).
+*   VINT   internal common-mode node, V. FACTS sec 3 (Fig 7-5): ZCM returns to 0.7 V. Set 0 to make ZCM a
+*          plain resistor to GND (small-signal impedance is the same either way).
+*
+* Selected pin P (and N when it is an AINx): ZCM from the pin to VINT   (FACTS sec 3 table, per FSR).
+* Across the selected pair P-N (N = GND for MUX 4..7): ZDIFF            (FACTS sec 3 table, per FSR).
+* Every pin: diode clamp to GND and to VDD (FACTS sec 1 / sec 2 Fig 7-4); parameters are MODELLING CHOICES.
+
+.model ADS1115_ESD D(IS=1e-14 N=1 RS=50 CJO=0)
+
+.subckt ADS1115_IN_OPEN AIN0 AIN1 AIN2 AIN3 GND VDD params: FSR=2.048 MUXSEL=0 ILEAK=100n VINT=0.7
+* FSR lookup (FACTS sec 3, p5): ZCM 10/6/6/3/100/100 Mohm, ZDIFF 22/15/4.9/2.4/0.71/0.71 Mohm
+.param zcm={(FSR>5)?10e6:((FSR>3)?6e6:((FSR>1.5)?6e6:((FSR>0.8)?3e6:100e6)))}
+.param zdf={(FSR>5)?22e6:((FSR>3)?15e6:((FSR>1.5)?4.9e6:((FSR>0.8)?2.4e6:0.71e6)))}
+* selection weights from MUXSEL: P (positive) and N (negative) membership of each AINx
+.param p0={((MUXSEL==0)||(MUXSEL==1)||(MUXSEL==4))?1:0}
+.param p1={((MUXSEL==2)||(MUXSEL==5))?1:0}
+.param p2={((MUXSEL==3)||(MUXSEL==6))?1:0}
+.param p3={(MUXSEL==7)?1:0}
+.param n1={(MUXSEL==0)?1:0}
+.param n3={((MUXSEL==1)||(MUXSEL==2)||(MUXSEL==3))?1:0}
+* internal common-mode node
+Vint vint GND {VINT}
+* pair voltage Vp-Vn (N=GND when no AINx is the negative input), computed as a node voltage
+Bvd vd GND V={p0*(V(AIN0)-V(GND))+p1*(V(AIN1)-V(GND))+p2*(V(AIN2)-V(GND))+p3*(V(AIN3)-V(GND))-n1*(V(AIN1)-V(GND))-n3*(V(AIN3)-V(GND))}
+Rvd vd GND 1e12
+* per-pin load current into the pin: ZCM (selected) + ZDIFF (P positive, N negative) + leakage (unselected)
+B0 AIN0 GND I={p0*(V(AIN0)-V(vint))/zcm + p0*V(vd)/zdf + (1-p0)*ILEAK*tanh((V(AIN0)-V(GND))/0.1)}
+B1 AIN1 GND I={(p1+n1)*(V(AIN1)-V(vint))/zcm + (p1-n1)*V(vd)/zdf + (1-p1-n1)*ILEAK*tanh((V(AIN1)-V(GND))/0.1)}
+B2 AIN2 GND I={p2*(V(AIN2)-V(vint))/zcm + p2*V(vd)/zdf + (1-p2)*ILEAK*tanh((V(AIN2)-V(GND))/0.1)}
+B3 AIN3 GND I={(p3+n3)*(V(AIN3)-V(vint))/zcm + (p3-n3)*V(vd)/zdf + (1-p3-n3)*ILEAK*tanh((V(AIN3)-V(GND))/0.1)}
+* absolute-maximum clamps (MODELLING CHOICE: ideal-ish silicon diode with 50 ohm series resistance)
+D0u AIN0 VDD ADS1115_ESD
+D0d GND AIN0 ADS1115_ESD
+D1u AIN1 VDD ADS1115_ESD
+D1d GND AIN1 ADS1115_ESD
+D2u AIN2 VDD ADS1115_ESD
+D2d GND AIN2 ADS1115_ESD
+D3u AIN3 VDD ADS1115_ESD
+D3d GND AIN3 ADS1115_ESD
+.ends ADS1115_IN_OPEN

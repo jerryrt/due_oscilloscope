@@ -1,0 +1,83 @@
+* TPH2502 open behavioural model, one amplifier of the dual.  CC-BY-SA 4.0 (see LICENSE).
+* Clean-room model: built only from FACTS.md (datasheet facts); no vendor SPICE model was consulted.
+*
+* .subckt TPH2502_OPEN INP INN VP VN OUT
+*   pin order: 1 INP (+in), 2 INN (-in), 3 VP (V+), 4 VN (V-), 5 OUT
+*   Everything is referenced to node 0 inside; VP/VN may be any pair of voltages 2.5..5.5 V apart.
+*
+* Structure: clamped input -> slew-limited gm stage into R1||C1 (dominant pole, GBW) -> second pole
+* -> output stage (Ro, rail headroom that grows with load current, source/sink current limits).
+* Every default is a FACTS.md value or a labelled MODELLING CHOICE; see PROVENANCE.md.
+*
+* Parameters (defaults):
+*   AVOL_DB 110   open-loop DC gain, dB. FACTS s4 table AVOL typ (curves read 138-143 dB: inconsistency 5; table chosen)
+*   GBW 128meg    dominant-pole gain-bandwidth, Hz. FACTS s5 GBW typ is 120 MHz at G=+10; 128 is a MODELLING CHOICE (calibration)
+*                 so that the measured -3 dB of the G=+10 stage is within 10 % of 12 MHz alongside G=+1 and G=+2
+*   FZ 60meg, FP2 200meg   one zero and one pole above the dominant pole, Hz. MODELLING CHOICES, fitted so that G=+1
+*                 gives ~250 MHz, G=+2 ~90 MHz and the open-loop gain crosses 0 dB near 300 MHz (FACTS s5)
+*   SR 235meg     slew limit of the gm stage, V/s. MODELLING CHOICE: calibrated so the 20-80 % slope of a 4 V follower step at VS=5 V
+*                 reads 200 V/us (FACTS s6 typ; 180 at 2 V step, 160 at VS=3 V are not separately modelled)
+*   VOS 0         input offset, V. FACTS s3: +/-50 uV typ, +/-500 uV max; default 0
+*   IB 0.3p       FACTS s3 input bias current typ at 27 C (A); sign is a MODELLING CHOICE
+*   CDIFF 2.7p    FACTS s8 differential input capacitance
+*   CCM 1p        FACTS s8 common-mode input capacitance (each input to VN)
+*   RIN 1e13      FACTS s8 input resistance
+*   VCMLO 0.1, VCMHI 0.1   input common-mode range V- -0.1 .. V+ -0.1 (FACTS s3, as printed); clamped beyond
+*   RO 21         FACTS s9 open-loop output impedance at 1 kHz
+*   VSAT0 2m      FACTS s9 swing from rail, RL=100 kohm, typ (applied to both rails)
+*   RSAT 11.5     rail headroom per amp of load current. MODELLING CHOICE (from the 2.7 V at 100 mA text, FACTS s9)
+*   ISRC 290m, ISNK 160m   FACTS s9 short-circuit current typ (source, sink)
+*   RLIM 1k       slope of the current limit, MODELLING CHOICE
+*   IQ 6.5m       FACTS s2 quiescent current per amplifier typ (curve reads 7.2 mA at 25 C, 5 V)
+*   EN 0          input voltage noise density, V/rtHz (0 = off). FACTS s7: 6.5n at 1 MHz; white only
+*   LO 10n        series output inductance, H. MODELLING CHOICE, raises the closed-loop Zout above ~10 MHz (FACTS s9 curve)
+*   VMARG 4       how far the internal gain node may travel past the rails, V. MODELLING CHOICE
+* smooth max/min (rounding 1e-3 in the arguments' units) keep Newton happy at the clamp corners
+.func tph_smax(a,b) {0.5*(a+b+sqrt((a-b)**2+1e-6))}
+.func tph_smin(a,b) {0.5*(a+b-sqrt((a-b)**2+1e-6))}
+* the same for currents (rounding 0.1 uA)
+.func tph_smaxi(a,b) {0.5*(a+b+sqrt((a-b)**2+1e-14))}
+.subckt TPH2502_OPEN INP INN VP VN OUT params: AVOL_DB=110 GBW=128meg FZ=60meg FP2=200meg SR=235meg VOS=0 IB=0.3p
++ CDIFF=2.7p CCM=1p RIN=1e13 VCMLO=0.1 VCMHI=0.1 RO=21 VSAT0=2m RSAT=11.5 ISRC=290m ISNK=160m RLIM=1k
++ IQ=6.5m EN=0 VMARG=4 LO=10n
+.param gm=1m
+.param a0={10**(AVOL_DB/20)}
+.param r1val={a0/gm}
+.param c1val={gm/(6.2831853*GBW)}
+.param imax={SR*c1val}
+.param rn_val={max(1m,(EN**2)/1.657e-20)}
+* input network: noise resistor (thermal noise of rn_val equals EN), capacitances, resistances, bias current
+Cd INP INN {CDIFF}
+Ccp INP VN {CCM}
+Ccn INN VN {CCM}
+Rd INP INN {RIN}
+Rcp INP VN {RIN}
+Rcn INN VN {RIN}
+* bias current: IB is the net figure at VCM = VS/2, so the RIN leakage there is taken out of the source (MODELLING CHOICE)
+Bibp INP VN I = IB - 0.5*(V(VP)-V(VN))/RIN
+Bibn INN VN I = IB - 0.5*(V(VP)-V(VN))/RIN
+* optional input voltage noise: a resistor with no current in it, so its node holds only its thermal noise
+Rn nz 0 {rn_val}
+* clamped differential input (conservative: no response outside the printed common-mode range)
+Bvd vd 0 V = tph_smin(tph_smax(V(INP),V(VN)-VCMLO),V(VP)-VCMHI) - tph_smin(tph_smax(V(INN),V(VN)-VCMLO),V(VP)-VCMHI) + VOS + V(nz)
+* slew-limited gm stage and dominant pole
+Bg 0 n1 I = imax*tanh(gm*V(vd)/imax)
+R1 n1 0 {r1val}
+C1 n1 0 {c1val}
+Bcl n1 0 I = 0.01*(V(n1)-tph_smin(tph_smax(V(n1),V(VN)-VMARG),V(VP)+VMARG))
+* zero and second pole: lead-lag network, DC gain 1 (kz boosts, the divider takes it back)
+.param kz={FP2/FZ}
+Bb nb 0 V = V(n1)*kz
+Ra nb nx 1k
+Cz nb nx {1/(6.2831853*1k*FZ)}
+Rb nx 0 {1k/(kz-1)}
+Bn2 n2 0 V = V(nx)
+* output stage: series Ro, rail headroom growing with load current, current limit
+Bo ox 0 V = tph_smin(tph_smax(V(n2) - RO*I(Vs), V(VN)+VSAT0+RSAT*tph_smaxi(-I(Vs),0)), V(VP)-VSAT0-RSAT*tph_smaxi(I(Vs),0)) - RLIM*(tph_smaxi(I(Vs)-ISRC,0) - tph_smaxi(-I(Vs)-ISNK,0))
+Vs ox oy 0
+Lo oy OUT {max(LO,1p)}
+* supply current: quiescent plus the load current drawn from the rail it comes from
+Biq VP VN I = IQ
+Bip VP 0 I = tph_smaxi(I(Vs),0)
+Bin 0 VN I = tph_smaxi(-I(Vs),0)
+.ends TPH2502_OPEN
