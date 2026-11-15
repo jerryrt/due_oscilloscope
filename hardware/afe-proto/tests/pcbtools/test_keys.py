@@ -368,3 +368,10 @@ def test_a_cluster_span_bounds_a_cluster_in_a_dense_block():
     for _, rs in cut:
         xs = [row[r][0] for r in rs]
         assert max(xs) - min(xs) <= 3.5 + 1.0 + 1e-9                                  # a lone part may have joined: its own width more at most
+
+
+def test_free_rectangles_stay_inside_the_within_box():
+    g = K.Grid((0.0, 0.0, 40.0, 20.0))
+    assert K.free_rectangles(g, 3.0, 3.0, 1) == [(0.0, 0.0, 40.0, 20.0)]
+    assert K.free_rectangles(g, 3.0, 3.0, 1, within=(5.0, 4.0, 30.0, 12.0)) == [(5.0, 4.0, 30.0, 12.0)]
+    assert CFG.KEY_WITHIN == CFG.DUE_RECT                                              # v2: the legend stays over the Due, out of the pin-name bands

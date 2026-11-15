@@ -42,6 +42,7 @@ Config (`KEYS = {name: dict(parts=(refs...))}`, `KEY_BLOCKS = {heading: hundreds
   KEY_SPLIT_GAP         (optional) legend: a block's residue is cut into clusters of parts whose courtyards are within this, each its own key
   KEY_SPLIT_SPAN        (optional) legend: a cluster's part positions span at most this, mm (a number or (width, height)); bounds a cluster in a dense block
   KEY_AVOID_TRACKS      (optional) True counts tracks as taken in the free-area measure; default False: silk over a mask-covered track is allowed
+  KEY_WITHIN            (optional) (x0, y0, x1, y1): free rectangles found for a legend lie inside this (the overhang bands stay out of it)
   KEY_EDGE              (optional) free rectangles found for a legend stay this far in from the board's bounding box, mm (default 0.5)
   KEY_STROKE            line width of the box, mm
 """
@@ -439,10 +440,16 @@ def split_items(b, items, gap, span=None):
     return out
 
 
-def free_rectangles(g, min_w, min_h, count, edge=0.0, gap=0.0):
+def free_rectangles(g, min_w, min_h, count, edge=0.0, gap=0.0, within=None):
     """up to `count` rectangles (Due mm) wholly free on grid `g`, each at least min_w x min_h, taken greedily: the one of the largest area, then the next
-    in what is left (`gap` mm kept clear of the earlier ones), `edge` mm in from the board's bounding box. -> [(x0, y0, x1, y1)]"""
+    in what is left (`gap` mm kept clear of the earlier ones), `edge` mm in from the board's bounding box, and only inside `within` (x0, y0, x1, y1) if
+    given (a board with bands the legend must stay out of). -> [(x0, y0, x1, y1)]"""
     free = ~g.occ
+    if within is not None:
+        wx0, wy0, wx1, wy1 = (int(round((within[0] - g.x0) / RES)), int(round((within[1] - g.y0) / RES)), int(round((within[2] - g.x0) / RES)), int(round((within[3] - g.y0) / RES)))
+        keep = np.zeros_like(free)
+        keep[max(0, wy0):wy1, max(0, wx0):wx1] = True
+        free &= keep
     e = int(round(edge / RES))
     if e:
         free[:e, :] = False
@@ -512,7 +519,7 @@ def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None, span=
     g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
     regions = list(regions)
     if auto:                                                  # more regions: the biggest free rectangles of the board (what the given regions leave free is among them)
-        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5))
+        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5), within=getattr(cfg, 'KEY_WITHIN', None))
     xy = _positions(b, allrefs)
     last = None
     maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
@@ -560,7 +567,7 @@ def legend_fit(b, text, cfg, items, regions, grid=None, split=None, auto=None, s
     g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
     regions = list(regions)
     if auto:
-        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5))
+        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5), within=getattr(cfg, 'KEY_WITHIN', None))
     xy = _positions(b, allrefs)
     maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
     lays = []
