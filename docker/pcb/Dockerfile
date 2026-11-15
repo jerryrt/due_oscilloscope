@@ -85,6 +85,13 @@ ARG WITH_FREEROUTING=1
 # library KiCad already pulls in, so it adds one small binary package and no new library.
 ARG LIBRSVG_BIN_VERSION=2.61.3+dfsg-3
 
+# InteractiveHtmlBom, the KiCad plugin that writes a self-contained interactive BOM page. The project's own GitHub release
+# asset (a zip of the plugin directory, pure Python), verified against its sha256 before it is unpacked; nothing is
+# fetched at run time. It runs as a package under the image's KiCad Python with no display: ibom.sh sets
+# INTERACTIVE_HTML_BOM_NO_DISPLAY, which is the plugin's own switch for skipping the wx.App it would otherwise open.
+ARG IBOM_VERSION=2.12.0
+ARG IBOM_SHA256=2a7f7ca3eb75b174bfc86ecc321c4eed5813684b72341124d4e09416a912541e
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -164,6 +171,17 @@ RUN set -eux; \
     apt-get -o Acquire::Retries=5 install -y --no-install-recommends "librsvg2-bin=${LIBRSVG_BIN_VERSION}"; \
     rm -rf /var/lib/apt/lists/*; \
     rsvg-convert --version
+
+RUN set -eux; \
+    mkdir -p /opt/ibom; \
+    curl -fsSL --retry 5 "https://github.com/openscopeproject/InteractiveHtmlBom/releases/download/v${IBOM_VERSION}/InteractiveHtmlBom.zip" \
+        -o /tmp/ibom.zip; \
+    echo "${IBOM_SHA256}  /tmp/ibom.zip" | sha256sum -c -; \
+    python3.14 -c 'import zipfile; zipfile.ZipFile("/tmp/ibom.zip").extractall("/opt/ibom")'; \
+    rm -f /tmp/ibom.zip; \
+    chmod -R a+rX /opt/ibom; \
+    test -f /opt/ibom/InteractiveHtmlBom/generate_interactive_bom.py
+ENV IBOM_HOME=/opt/ibom
 
 # The numpy tier's interpreter: a venv on the system 3.14, with system site
 # packages so `import pcbnew` (installed under /usr/lib/python3/dist-packages

@@ -139,3 +139,36 @@ def test_the_same_export_without_the_models_has_no_bodies(tmp_path):
     size, names = _step_products(tmp_path, tmp_path / "nothing-here")
     assert "BNC_Amphenol_B6252HB-NPP3G-50_Horizontal" not in names
     assert size < 1_000_000
+
+
+IBOM = Path(__file__).resolve().parents[3] / "docker" / "pcb" / "ibom.sh"
+
+
+def test_the_interactive_bom_is_generated_headless_and_names_the_boards_parts(tmp_path):
+    """InteractiveHtmlBom in the image: one board in, one HTML page out, with no display and no network."""
+    if not os.environ.get("IBOM_HOME"):
+        if os.environ.get("DUE_PCB_IMAGE_CONTENT"):
+            pytest.fail("InteractiveHtmlBom is missing from the PCB image (r6 carries it)")
+        pytest.skip("needs InteractiveHtmlBom (the PCB image, r6 or later)")
+    import re
+    pcb = staged(tmp_path) / PCB.relative_to(FIX)
+    out = tmp_path / "bom"
+    r = subprocess.run([str(IBOM), str(pcb), "--dest-dir", str(out), "--name-format", "ibom", "--no-compression"],
+                       capture_output=True, text=True, timeout=250, env=dict(os.environ, HOME=str(tmp_path)))
+    assert r.returncode == 0 and (out / "ibom.html").exists(), r.stdout + r.stderr
+    html = (out / "ibom.html").read_text()
+    m = re.search(r"^var pcbdata = (\{.*\})\s*$", html, re.M)
+    assert m, "the page carries no uncompressed pcbdata"
+    data = json.loads(m.group(1))
+    in_page = {ref for group in data["bom"]["both"] for ref, _ in group}
+    on_board = set(re.findall(r'\(property "Reference" "([^"]+)"', pcb.read_text()))
+    assert {"R508", "C101"} <= in_page, sorted(in_page)[:20]
+    assert in_page <= on_board, sorted(in_page - on_board)
+    # the page must list the board's parts, not a token few: mounting holes and test points may be excluded, nothing more
+    assert len(in_page) >= 0.8 * len(on_board), (len(in_page), len(on_board))
+    # control: a file that is not a board is an error, so the page above is not produced by any input
+    bad = tmp_path / "bad.kicad_pcb"
+    bad.write_text("(not a board)")
+    r = subprocess.run([str(IBOM), str(bad), "--dest-dir", str(tmp_path / "bad")], capture_output=True, text=True,
+                       timeout=120, env=dict(os.environ, HOME=str(tmp_path)))
+    assert r.returncode != 0
