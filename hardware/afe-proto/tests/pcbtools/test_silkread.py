@@ -153,7 +153,7 @@ def test_read_keys_takes_unfilled_top_rectangles_with_their_texts():
     assert keys[0].box == pytest.approx((28.0, 12.0, 36.0, 14.0))
 
 
-BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3'}
+BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'}
 
 
 def far_cluster():
@@ -172,6 +172,18 @@ def legend(head, refs=('C201', 'C202')):
 
 def test_a_headed_key_may_sit_in_the_legend_area():
     assert silkread.findings(far_cluster(), [legend('CH2')], {}, blocks=BLOCKS) == []
+
+
+@pytest.mark.parametrize('head,refs', [('POWER', ('C401', 'C402')), ('REF / CAL', ('R501', 'R502'))])
+def test_the_power_and_ref_cal_headings_head_their_blocks_keys(head, refs):
+    s = Synth()
+    for r, x in zip(refs, (30.0, 32.0)):
+        s.part(r, x, 10.0, box=(x - 0.8, 9.6, x + 0.8, 10.4), silk=None)
+    b = s.build()
+    assert silkread.findings(b, [legend(head, refs=refs)], {}, blocks=BLOCKS) == []
+    wrong = 'CH2' if head == 'POWER' else 'POWER'
+    f = silkread.findings(b, [legend(wrong, refs=refs)], {}, blocks=BLOCKS)
+    assert any(f'{refs[0]} is not in block {wrong}' in x for x in f), f
 
 
 def test_an_unheaded_key_in_the_legend_area_is_too_far():
