@@ -308,3 +308,34 @@ of several rectangles is one star-shaped ring; and routability, as above.
 ## Pin labels on the overhang bands
 
 `pinlabels.py` builds, places and checks the Due's pin names printed in a board's overhang bands (LR-11): `python3 -m pcbtools.pinlabels BOARD --config v2_layout [--write [OUT]] [--check] [--list]`. Names are parsed from `docs/due-header-table.md` (never typed), the edge-row sockets and the layout numbers are config fields (`EDGE_SOCKETS`, `PIN_TABLE`, `PIN_LABEL_*` in `boards/v2_layout.py`), the placement and the check live in the module, and `rules.lr11` runs the check for a config that has `EDGE_SOCKETS`. Module docstring has the placement rules.
+
+## Silk labelling (D30, docs/afe.md): the tools, the config tables, the order
+
+The checker is `silkread.py` (`findings(b, bnc_labels, exempt, blocks, near_ok)`, `runs(b)`); the tools below make a board pass it. All are text splices (no pcbnew
+rewrite of zones), idempotent, run in the PCB image, and read the board's config (`--config v2_layout`).
+
+| tool | does |
+|---|---|
+| `silkruns.py` | finds runs (same-prefix parts in a straight line), renumbers them to count along the line, hides the members' Reference (F.Fab), labels each run's starter; `--write OUT`. Also `hide` / `show` (Reference F.SilkS <-> F.Fab) |
+| `silkplace.py`, `silkapply.py` | the placer (a designator beside its own part, nearest-wins, in its own block with `LABEL_IN_BLOCK`) and the splice that writes it (`apply_moves`; `--keep REF...`; the field's `(at)` is in the footprint's frame and its angle is the board's own) |
+| `silkbom.py` | the dense blocks' leftovers: re-place inside the block, else leave off the silk (`SILK_TO_BOM`); keeps `SILK_MUST_LABEL` parts visible, applies `SILK_AT` |
+| `bncframe.py` | the BNC function labels at one centred offset (`BNC_LABEL_OFFSET`), the three designators on B.SilkS mirrored at `BNC_DESIGNATOR_OFFSET`, `DESIGNATOR_AT` (J605) |
+
+Config tables (all in `boards/v2_layout.py`): `SILK_BLOCKS` {hundreds digit **as a string**: [rects]}, `SILK_NEAR_OK` (parts held only to "nearer its own courtyard than any other"),
+`SILK_TO_BOM` {ref: reason} (Reference on F.Fab), `SILK_EXEMPT` {ref: reason} (visible, named exception), `SILK_MUST_LABEL` (ICs, connectors, test points, never BOM-listed),
+`SILK_AT` {ref: (x, y, angle)} (a place chosen by hand and checked in the 3D render), `RENUMBER`, `SAME_ORIENTATION`, `RUN_GRID_ROWS` (count a grid row by row; off for POWER),
+`LABEL_IN_BLOCK`, `BNC_LABELS`, `BNC_LABEL_OFFSET`, `BNC_DESIGNATOR_OFFSET`. The board test passes `{**SILK_TO_BOM, **SILK_EXEMPT}`, `SILK_BLOCKS`, `SILK_NEAR_OK` to silkread (`tests/pcbtools/test_silkread.py`, a ratchet: the count may only fall).
+
+Order: `silkruns --write` (renumber and run labels) -> `silkapply` (beside placement for the rest) -> `silkbom --write` -> `bncframe --write` -> `render.sh`, `fab/build_fab.sh`, `gate3/build_gate3.sh`
+(then look at the 3D render at 2x: the checker estimates text extents; the render is the judge).
+
+Pitfalls found: a `(gr_text ... (justify left))` is anchored at its start while silkread reads the position as the centre (bncframe removes the justify); `SILK_BLOCKS` keys must be strings
+or the block rule is silently inert; a regex that deletes a ref from a config table also deletes it from `RENUMBER`'s line (run the whole tier); a check that a label is "clear" must include the
+footprint's own silk (U502's pin-1 polygon) and the pads (silk over copper is a DRC error).
+
+The renumber (the CH1/CH2 tight rows): `RENUMBER` (old -> new designator) in `v2_layout.py` carries every inherited table to the new names; `design.py` has `RN` / `CN` (the channel loop writes
+`R{b+RN[k]}`, `C{b+CN[k]}`) and the bridge `BR102`; `python3 -m pcbtools.boards.v2_checks --build OUT` regenerates the schematic, and `silkruns.rename` updates the board's schematic paths. Remapped and
+tested: the frozen schematic fixture (`test_v2_schematic.py` applies `RENUMBER_INVERSE`), the arms (named by sim, `PS`/`PB` helpers in `v2_checks.py`), the sim ranges, and `docs/afe-v2.md`. Not remapped
+(POWER's capacitor grid was not renumbered): the per-capacitor records `simtools/pw2.py`, `v2/sim/powercal/pw2_ac`, `gate3_v2.POWER_CAPS`; `tests/pcbtools/test_power_cap_keys.py` fails on a key that names a
+part the board lacks but NOT on a swap of two existing refs, so a POWER renumber must remap those records with the inverse map by hand. A renumber changes the fab F_Cu/F_Mask/F_Paste bytes (the
+Gerber X2 component attributes carry the designators) but not their geometry; the netlist was proven identical by function (112 of 112 parts), the BOM and CPL carry the new names.
