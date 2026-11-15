@@ -178,3 +178,25 @@ def test_the_design_is_the_old_one_renamed_nets_and_parts_by_function(tmp_path):
     assert old.PARTS_BY_REF['R201']['sim'] == 'scope.R1a' and pn['R203']['sim'] == 'scope.R1a'
 
 
+
+
+def _two_rows():
+    """R103 R102 R101 with room for a starter label at an end; C102 C103 C101 (out of order) boxed in by an IC at each end, so no label fits at either"""
+    s = Synth('/N')
+    for k, r in enumerate(['R103', 'R102', 'R101']):
+        part(s, r, 10.0 + k * 3.5, 30.0)
+    for k, r in enumerate(['C102', 'C103', 'C101']):
+        part(s, r, 30.0 + k * 3.5, 10.0)
+    for ref, x in (('U1', 27.1), ('U2', 40.0)):
+        s.part(ref, x, 10.0, box=(x - 1.0, 0.5, x + 1.0, 25.0), silk=False)
+    return board(s)
+
+
+def test_a_config_can_renumber_only_the_runs_that_carry_a_starter_label():
+    b = _two_rows()
+    every = S.plan(b, types.SimpleNamespace(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, RUN_EDGE=0.3))
+    only = S.plan(b, types.SimpleNamespace(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, RUN_EDGE=0.3, RENUMBER_LABELLED_ONLY=True))
+    assert any(k.startswith('C') for k in every.new) and every.new.get('R103') == 'R101'           # without the switch the boxed-in row is renamed too
+    assert [r.refs for r, _ in only.blocked] == [['C102', 'C103', 'C101']]                # it has no label slot
+    assert only.new.get('R103') == 'R101'                                                  # the labelled run still counts by one
+    assert not any(k.startswith('C') for k in only.new)                                    # the labelless run keeps its numbers

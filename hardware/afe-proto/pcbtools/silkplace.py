@@ -18,6 +18,7 @@ seen when the caller passes them as `silk` (pcbtools.silkapply does, from the bo
 """
 import argparse
 import importlib
+import re
 import sys
 
 import numpy as np
@@ -74,6 +75,10 @@ def _own_block(ref, cfg):
     """the outline rectangles of the block a part belongs to, when the config says labels stay in their block (LABEL_IN_BLOCK) and the block has an outline"""
     if not getattr(cfg, 'LABEL_IN_BLOCK', False):
         return None
+    sb = getattr(cfg, 'SILK_BLOCKS', None)                   # the drawn silk outlines by hundreds digit, when the config has them (a part's own block is its designator's)
+    if sb:
+        m = re.fullmatch(r'[A-Za-z]+(\d)\d\d', ref)
+        return sb.get(m.group(1)) if m else None
     blk = getattr(cfg, 'BLOCK', {}).get(ref)
     return getattr(cfg, 'OUTLINE', {}).get(blk)
 
@@ -105,7 +110,8 @@ def place(b, cfg, margin=0.30, keep=(), silk=(), gap_max=None):
         s = len(t) * getattr(cfg, 'DESIGNATOR_ADVANCE', 0.95) * h / 2              # the label's turn is not read: its square hull
         texts.append((x - s, y - s, x + s, y + s))
     texts = np.array(texts).reshape(-1, 4)
-    silk_obst = np.array(silk, float).reshape(-1, 4) + [-SILK_CLEAR, -SILK_CLEAR, SILK_CLEAR, SILK_CLEAR]
+    sc = getattr(cfg, 'SILK_LINE_CLEAR', SILK_CLEAR)                # a label keeps this far from every board-level silk line (the config may ask for more)
+    silk_obst = np.array(silk, float).reshape(-1, 4) + [-sc, -sc, sc, sc]
     ox, oy = b.outline[:, 0], b.outline[:, 1]
     edge = (ox.min() + EDGE_CLEAR, oy.min() + EDGE_CLEAR, ox.max() - EDGE_CLEAR, oy.max() - EDGE_CLEAR)
     cur = {}

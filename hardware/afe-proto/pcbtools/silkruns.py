@@ -258,6 +258,9 @@ def plan(b, cfg, text=''):
         order[id(r)] = list(r.refs) if e == 'first' else list(reversed(r.refs))
         w, hh = label_size('X' * n, spot[2], cfg)
         taken.append((spot[0] - w / 2, spot[1] - hh / 2, spot[0] + w / 2, spot[1] + hh / 2))
+    if _cfg(cfg, 'RENUMBER_LABELLED_ONLY', False):
+        # only a run that carries a starter label is renumbered (spec lead, AFE-1): the rest keep their numbers and fall back to beside-labels
+        runs = [r for r in runs if id(r) in label]
     inrun = {x for r in runs for x in r.refs}
     groups = {}
     for ref in b.fp_ref:
