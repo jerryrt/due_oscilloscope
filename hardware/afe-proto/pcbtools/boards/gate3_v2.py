@@ -73,7 +73,7 @@ BRIDGE_ACCEPT = (' **All {nb} bridges are accepted, including the {nover} over A
 # ---------------------------------------------------------------------------------------------------- section 5: deviations
 POWER_CAPS = dict(ic='U401', caps=('C401', 'C402', 'C403', 'C404', 'C405', 'C406', 'C407', 'C408', 'C409'), far_mm=5.0)
 POWER_CAPS_CAPTION = '**LM27762 capacitor distances on this board** (nearest U401 pad on the same net; the farther pin for the flying capacitor C409):'
-CFG_QUOTED = ('HOP_MAX', 'HOP_MAX_VIAS', 'DESIGNATOR_FOREIGN_WAIVED', 'DESIGNATOR_GAP_WAIVED', 'DESIGNATOR_GAP_MIN', 'DESIGNATOR_GAP_ONE_LABEL')   # config fields quoted
+CFG_QUOTED = ('HOP_MAX', 'HOP_MAX_VIAS', 'DESIGNATOR_GAP_MIN', 'DESIGNATOR_GAP_ONE_LABEL')   # config fields quoted
 CFG_FOREIGN_WAIVED = 'DESIGNATOR_FOREIGN_WAIVED'          # {ref: block}
 CFG_GAP_WAIVED = 'DESIGNATOR_GAP_WAIVED'                  # {(ref, ref): floor mm}
 CFG_GAP_MIN = 'DESIGNATOR_GAP_MIN'
@@ -83,11 +83,9 @@ DEV_COURT = ('DRC / courtyards', '{items}: courtyards overlap', 'documented; own
 DEV_POWER = ('LR-5 (generator caps at their pins)',
              'capacitors more than {far_mm:n3} mm from their {ic} pad: {far}; the nearer ones: {near} mm (all measured here, pad centre to pad centre; full list below)',
              'the far (second) capacitors accepted by the spec lead (gate brief; not a repo file *(check)*); PW-2 AC analysis, section 6')
-DEV_FOREIGN = ('LR-11 designators', '{n} label(s) waived as sitting in a foreign block outline{detail}',
-               'DESIGNATOR_FOREIGN_WAIVED in `pcbtools/boards/v2_layout.py`, read at run time')
-DEV_FOREIGN_EMPTY = ' (the table is empty in `v2_layout.py` as read now)'
-DEV_GAP = ('LR-11 designators', '{n} label pairs under the {gap_min} mm gap, each held to a floor: {pairs}',
-           'DESIGNATOR_GAP_WAIVED (floors in mm; same-baseline pairs under {one_label} mm are never waivable)')
+DEV_FOREIGN = None                                               # the legacy designator waiver tables are retired (silkread, D30): no row
+DEV_FOREIGN_EMPTY = ''
+DEV_GAP = None
 DEV_OUTLINE = ('MC-1 board outline',
                'the board overhangs the Due by {overhang} mm on each long edge: {w:.2f} x {h:.2f} mm against the {max0} x {max1} mm bound; each band is a top-layer keep-out and the bottom ground plane fills it ({band})',
                None)                                       # the authority text is MC1_FOUND or MC1_MISSING

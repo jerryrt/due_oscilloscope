@@ -62,32 +62,9 @@ DESIGNATOR_ADVANCE = 0.95        # length of the box per character, as a fractio
 DESIGNATOR_INK_H = 1.2           # width of the box across the text, as a fraction of the text height (ink plus stroke)
 DESIGNATOR_GAP_MIN = 1.0         # two designators are at least this far apart, edge to edge: one character height (1.0 mm text, the project's
                                  # DRC minimum text height)
-DESIGNATOR_GAP_ONE_LABEL = 0.6   # two labels on one baseline (vertical extents overlapping by more than half a box height) closer than this read as one
-                                 # label (C401C402): they fail whatever DESIGNATOR_GAP_WAIVED says, a waiver can never cover them
-DESIGNATOR_DIST_MAX = 3.0        # a designator is at most this far from the nearest pad of its own part
-# A label whose centre lies in another block's outline fails LR-11. These two cannot be moved home by any silk-only change, which was
-# searched exhaustively (every 0.1 mm place and both turns, clear of pads, vias, silk and its own part, within DESIGNATOR_DIST_MAX of
-# the part's pads): BR501 and BR504 sit against the REFCAL box's east side with CH2 beyond it. Closing them needs a part to move (a
-# human decision). R203 and R204 were waived too until CH2's resistor-capacitor array (R201-R207, C201-C203) moved 1.3 mm north,
-# which put the bottom row's labels inside CH2 under the row. {ref: the block whose outline the label sits in}, an exact match.
-DESIGNATOR_FOREIGN_WAIVED = {'BR501': 'CH2', 'BR504': 'CH2', 'C104': 'CH2', 'C301': 'CH2', 'R303': 'CH2'}
-# After the renumbering of runs (2026-11-15) C104's label is its run's starter, which lies on the run's line beyond its low end, inside CH2's box (the
-# shared dual's capacitors sit on CH1's south edge); C301 and R303 have no free place nearer than CH2's outline. A part with no free place within
-# DESIGNATOR_DIST_MAX of its pads has the nearest free place at all; each is recorded at the distance it has (rounded up to 0.1 mm), {ref: mm}.
-DESIGNATOR_DIST_WAIVED = {'BR503': 4.8, 'BR509': 3.1, 'C303': 4.5, 'R108': 3.3, 'R208': 4.0, 'R303': 3.8, 'R305': 4.9, 'R502': 4.9, 'R506': 3.2, 'U301': 4.8}
-# The pairs the room does not allow. The CH2 and AWG passives sit on a 1.5-3 mm grid and a 1 mm designator is 3.4-4.8 mm long, so
-# with every part where it is, no placement keeps every pair 1.0 mm apart: the placement search (v2/layout/place_designators.py)
-# got 74 pairs under 1.0 mm down to these 20 (none touching: closest 0.30 mm) and not lower, from several starts and with the
-# distance to the part relaxed to 3.5 and 4.5 mm. Each is recorded at the gap it reached, rounded down to 0.05; the check holds a
-# pair to its floor, so it still catches a label that moves toward its neighbour. Closing them means moving a part or shortening a
-# label (a human decision); the board house's minimum text height is the project's 1.0 mm, so a smaller label is not an option.
-DESIGNATOR_GAP_WAIVED = {('BR501', 'R204'): 0.90, ('BR502', 'R507'): 0.60, ('BR507', 'J501'): 0.30, ('C101', 'R101'): 0.35, ('C101', 'R104'): 0.35,
-                         ('C201', 'R201'): 0.35, ('C201', 'R204'): 0.35, ('C306', 'R301'): 0.80, ('J501', 'R509'): 0.40, ('R204', 'TP201'): 0.95,
-                         ('R304', 'R306'): 0.65}
-# 8 pairs after the CH2 array moved north (17 before it, 20 at first): v2/layout/refine_designators.py (silk only, after place_designators.py) turned and moved labels until none
-# reads as one label (DESIGNATOR_GAP_ONE_LABEL: no same-baseline pair is under 0.65 mm, and the rule below is not waivable). Three
-# pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
-# label - and none could be improved by any silk-only move (each label sits at its best admissible place with the others fixed).
+DESIGNATOR_GAP_ONE_LABEL = 0.6   # the gap the Due's pin-name labels keep from each other and from a designator (pcbtools/pinlabels.py)
+# The legacy LR-11 label rules (pair gap, one label, foreign outline, distance to the part) and their waiver tables are retired: silkread (D30, docs/afe.md)
+# judges where a label may sit, and SILK_TO_BOM below lists the parts left to the BOM.
 
 # The Due's own pin names, printed on top silk in the bands beside each edge-row socket (LR-11, owner 2026-11-13: the shield covers the
 # Due's silkscreen). pcbtools/pinlabels.py builds them from this config and the table; no name is typed here. EDGE_SOCKETS: which sockets

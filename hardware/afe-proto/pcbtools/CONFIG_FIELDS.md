@@ -105,7 +105,6 @@ the integrated layout, whose `OUTLINE` comes from `v2/layout/outlines.py`, the t
 | `SHARED_PARTS` | `{ref: home block}` | `{'U101': 'CH1'}` | LR-11 membership. A part that straddles two outlines (U101 is one dual op-amp serving CH1 and CH2, sitting on the fence between them; its designator says CH1 and both halves are labelled) is required inside its HOME outline and is not counted as an extra part in any other. Declared, so that it does not pass or fail by where the edge happens to fall |
 | `SHARED_MARGIN` | mm | `0.25` | the home outline is widened by this for a shared part (its centre sits on the outline's edge) |
 | `DESIGNATOR_GAP_MIN` | mm | `0.8` | LR-11 legibility: two visible silk designators are at least this far apart, edge to edge (boxes below) |
-| `DESIGNATOR_DIST_MAX` | mm | `3.0` | a designator box is at most this far from the nearest pad of its own part |
 | `DESIGNATOR_ADVANCE` | fraction of the text height | `0.95` | box length per character. Measured with pcbnew 10.x `GetEffectiveTextShape` on the 112 designators (1.0 mm text): 3.44-3.67 mm for 4 characters, 4.48-4.77 mm for 5 |
 | `DESIGNATOR_INK_H` | fraction of the text height | `1.2` | box width across the text (ink plus stroke: 1.15-1.20 mm measured) |
 

@@ -123,83 +123,6 @@ def test_shared_part_is_held_to_its_home_outline_and_is_no_extra_elsewhere():
     assert not r.ok and "lacks ['U101']" in r.detail
 
 
-# ----------------------------------------------------------------------------- designator legibility
-LEG = dict(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, DESIGNATOR_GAP_MIN=0.8, DESIGNATOR_DIST_MAX=3.0)
-
-
-def leg_board(dx=6.0, label_dy=2.0, h=1.0, dy2=0.0):
-    """two 0402-like parts, dx apart, each with a pad pair, designator text label_dy above its part"""
-    s = Synth('/A1', '/GND')
-    for ref, x in (('R101', 20.0), ('R102', 20.0 + dx)):
-        s.part(ref, x, 10.0, h=h)
-        s.p(ref, '1', x - 0.5, 10.0, '/A1', size=0.6).p(ref, '2', x + 0.5, 10.0, '/GND', size=0.6)
-    s.rt[0] = (20.0, 10.0 + label_dy, h, h, 0.15, 0.0, 0, True, 0)
-    s.rt[1] = (20.0 + dx, 10.0 + label_dy + dy2, h, h, 0.15, 0.0, 0, True, 1)
-    return s.build()
-
-
-def test_legibility_passes_for_well_separated_designators():
-    close, over, far, n = R.designator_findings(leg_board(dx=6.0), cfg(**LEG))
-    assert (close, over, far, n) == ([], [], [], 2)
-
-
-def test_legibility_fails_when_two_designators_are_moved_together():
-    c = cfg(**LEG)
-    assert not R.designator_findings(leg_board(dx=6.0), c)[0]
-    close = R.designator_findings(leg_board(dx=4.0), c)[0]                         # 4 mm pitch, 3.8 mm labels: 0.2 mm apart
-    assert [(a, b) for a, b, g in close] == [('R101', 'R102')] and close[0][2] == pytest.approx(0.2, abs=0.01)
-    close = R.designator_findings(leg_board(dx=3.0), c)[0]                         # overlapping
-    assert close and close[0][2] == 0.0
-    # the gap is the config's: at 0.1 mm the 0.2 mm pair is fine
-    assert not R.designator_findings(leg_board(dx=4.0), cfg(**{**LEG, 'DESIGNATOR_GAP_MIN': 0.1}))[0]
-
-
-def test_legibility_vertical_text_uses_the_rotated_box():
-    s = Synth('/A1', '/GND')
-    for ref, x in (('R101', 20.0), ('R102', 22.0)):
-        s.part(ref, x, 10.0).p(ref, '1', x, 10.0, '/A1').p(ref, '2', x, 10.5, '/GND')
-    s.rt[0] = (20.0, 12.0, 1.0, 1.0, 0.15, 90.0, 0, True, 0)
-    s.rt[1] = (22.1, 12.0, 1.0, 1.0, 0.15, 90.0, 0, True, 1)
-    c = cfg(**LEG)
-    # vertical boxes 1.2 wide, 3.8 tall, 2.1 mm apart centre to centre: 0.9 mm between them, over the 0.8 limit
-    assert R.designator_findings(s.build(), c)[0] == []
-    s.rt[1] = (21.8, 12.0, 1.0, 1.0, 0.15, 90.0, 0, True, 1)                         # 1.8 apart: 0.6 mm between them
-    assert len(R.designator_findings(s.build(), c)[0]) == 1
-
-
-def test_legibility_fails_over_another_parts_pad_and_far_from_its_own():
-    s = Synth('/A1', '/GND')
-    s.part('R101', 20.0, 10.0).p('R101', '1', 19.5, 10.0, '/A1').p('R101', '2', 20.5, 10.0, '/GND')
-    s.part('R102', 40.0, 10.0).p('R102', '1', 39.5, 10.0, '/A1').p('R102', '2', 40.5, 10.0, '/GND')
-    s.rt[0] = (40.0, 10.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0)                       # R101's label sits on R102's pads
-    s.rt[1] = (40.0, 12.0, 1.0, 1.0, 0.15, 0.0, 0, True, 1)
-    close, over, far, _ = R.designator_findings(s.build(), cfg(**LEG))
-    assert ('R101', 'R102') in over and [f[0] for f in far] == ['R101']
-    r = R.lr11(s.text('CH1').build(), cfg(BLOCK={'R101': 'CH1', 'R102': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]},
-                                          TEST_BLOCKS=(), TP_NETS={}, SILK_WORDS=('CH1',), LR_HUNDREDS={'1': 'CH1'}, **LEG))
-    assert not r.ok and 'over another part' in r.detail and 'from its part' in r.detail
-
-
-def test_lr11_reports_close_pairs_by_name_and_is_off_without_the_thresholds():
-    s = leg_board(dx=4.0)
-    base = dict(BLOCK={'R101': 'CH1', 'R102': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]}, TEST_BLOCKS=(), TP_NETS={},
-                SILK_WORDS=(), LR_HUNDREDS={'1': 'CH1'})
-    r = R.lr11(s, cfg(**base, **LEG))
-    assert not r.ok and 'R101/R102 0.2' in r.detail
-    assert R.lr11(s, cfg(**base)).ok                                               # a config without DESIGNATOR_GAP_MIN is not held to it
-
-
-def test_a_waived_pair_passes_on_its_recorded_floor_and_fails_below_it():
-    s = leg_board(dx=4.0)                                                          # the pair is 0.2 mm apart, under the 0.8 limit
-    base = dict(BLOCK={'R101': 'CH1', 'R102': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]}, TEST_BLOCKS=(), TP_NETS={},
-                SILK_WORDS=(), LR_HUNDREDS={'1': 'CH1'}, **LEG)
-    r = R.lr11(s, cfg(DESIGNATOR_GAP_WAIVED={('R101', 'R102'): 0.15}, **base))
-    assert r.ok and r.figures['waived_pairs'] == 1 and '1 designator pairs under the gap' in r.detail
-    r = R.lr11(s, cfg(DESIGNATOR_GAP_WAIVED={('R101', 'R102'): 0.25}, **base))        # moved closer than the floor it was recorded at
-    assert not r.ok and 'R101/R102 0.2' in r.detail
-    assert not R.lr11(s, cfg(DESIGNATOR_GAP_WAIVED={('R101', 'R103'): 0.0}, **base)).ok   # a waiver names its pair
-
-
 # ----------------------------------------------------------------------------- drawing what the silk lacks
 def test_draw_adds_only_the_missing_rectangle_and_is_idempotent():
     text = synth_text()
@@ -260,43 +183,7 @@ def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding
     i = refs.index('U101')
     assert R._in_rects(P[i:i + 1], grown)[0] and 'U101' not in inside['CH2']           # the shared dual: held to CH1, no extra in CH2
     assert 'TP101' in inside['CH1'] and 'D201' in inside['CH2'] and 'D201' not in inside['CH1']
-    close, over, far, n = R.designator_findings(b, c)
-    from pcbtools import silkruns
-    assert over == [] and far == [] and n == 112 - len(silkruns.hidden_members(b, c))              # a labelled run's members are off the silk
-    assert 0 < len(close) <= len(c.DESIGNATOR_GAP_WAIVED) == 11                          # 74 pairs were under 1.0 mm before the placement
-    assert all(g >= c.DESIGNATOR_GAP_WAIVED[(a, b_)] and g >= 0.3 for a, b_, g in close)   # each on its recorded floor, none touching
-    assert c.DESIGNATOR_FOREIGN_WAIVED == {'BR501': 'CH2', 'BR504': 'CH2', 'C104': 'CH2', 'C301': 'CH2', 'R303': 'CH2'}
     refs_ = list(b.fp_ref)
     for ref_ in ('R201', 'R204'):                                                    # the starters of CH2's two resistor rows                                                    # their labels sit inside the CH2 outline, with no waiver
         k = [k for k in range(len(b.r_fp)) if refs_[int(b.r_fp[k])] == ref_][0]
         assert any(x0 <= b.r_x[k] <= x1 and y0 <= b.r_y[k] <= y1 for x0, y0, x1, y1 in c.OUTLINE['CH2']), ref_
-    assert R.one_label_pairs(b, c) == [] and R.foreign_labels(b, c) == []                  # nothing reads as one label; no label in a foreign outline
-    assert not [k for k in c.DESIGNATOR_GAP_WAIVED if k not in {(a, b_) for a, b_, g in close}]   # every waiver names a live pair
-
-
-# ----------------------------------------------------------------------------- reads as one label, and a label in a foreign outline
-def test_two_labels_at_0_3_mm_on_one_baseline_fail_and_a_waiver_cannot_cover_them():
-    s = leg_board(dx=4.1)                                                          # 3.8 mm boxes, 4.1 pitch: 0.3 mm apart, same baseline
-    base = dict(BLOCK={'R101': 'CH1', 'R102': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]}, TEST_BLOCKS=(), TP_NETS={},
-                SILK_WORDS=(), LR_HUNDREDS={'1': 'CH1'}, DESIGNATOR_GAP_ONE_LABEL=0.6, **LEG)
-    assert [(a, b_) for a, b_, g in R.one_label_pairs(s, cfg(**base))] == [('R101', 'R102')]
-    r = R.lr11(s, cfg(DESIGNATOR_GAP_WAIVED={('R101', 'R102'): 0.25}, **base))
-    assert not r.ok and 'read as one label' in r.detail
-    assert R.lr11(s, cfg(DESIGNATOR_GAP_WAIVED={('R101', 'R102'): 0.25}, **{**base, 'DESIGNATOR_GAP_ONE_LABEL': 0.25})).ok   # the limit is the config's
-    assert not R.one_label_pairs(leg_board(dx=4.5), cfg(**base))                   # 0.7 mm apart: not one label
-
-
-def test_offset_rows_under_the_limit_are_not_one_label():
-    s = leg_board(dx=4.1, dy2=1.4)                                                 # 1.4 mm higher: next line, not the same baseline
-    assert not R.one_label_pairs(s, cfg(DESIGNATOR_GAP_ONE_LABEL=0.6, **LEG))
-
-
-def test_a_label_centred_in_another_blocks_outline_fails_unless_waived_exactly():
-    s = leg_board(dx=6.0)
-    base = dict(BLOCK={'R101': 'CH1', 'R102': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 24, 30)], 'CH2': [(24.5, 0, 60, 30)]},
-                TEST_BLOCKS=(), TP_NETS={}, SILK_WORDS=(), LR_HUNDREDS={'1': 'CH1'}, EDGE_BLOCK='EDGE', **LEG)
-    assert R.foreign_labels(s, cfg(**base)) == [('R102', 'CH2')]                   # R102's label sits at x 26, in CH2's outline
-    r = R.lr11(s, cfg(**base))
-    assert not r.ok and "inside another block's outline: R102 in CH2" in r.detail
-    assert not R.foreign_labels(s, cfg(DESIGNATOR_FOREIGN_WAIVED={'R102': 'CH2'}, **base))
-    assert R.foreign_labels(s, cfg(DESIGNATOR_FOREIGN_WAIVED={'R102': 'AWG'}, **base))

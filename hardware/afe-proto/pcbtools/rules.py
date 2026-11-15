@@ -823,89 +823,11 @@ def _convex_gap(P, Q):
     return min(min(pt_seg(p, Q) for p in P), min(pt_seg(q, P) for q in Q))
 
 
-def designator_findings(b, cfg):
-    """the visible silk designators judged as boxes (LR-11, legibility): ([(refA, refB, gap)] pairs closer than
-    DESIGNATOR_GAP_MIN, [(ref, other ref)] a box over another part's pad, [(ref, distance)] a box farther than
-    DESIGNATOR_DIST_MAX from every pad of its own part, number of designators judged). The box is the text's height by
-    len(designator) x DESIGNATOR_ADVANCE x height (the stroke font's character advance is an assumption, marked (check) in the
-    config); text is taken as centred on its position."""
-    rows = [k for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0]
-    refs = list(b.fp_ref)
-    box = {}
-    for k in rows:
-        ref = refs[int(b.r_fp[k])]
-        box[ref] = _box_corners(b.r_x[k], b.r_y[k], len(ref) * cfg.DESIGNATOR_ADVANCE * b.r_h[k], cfg.DESIGNATOR_INK_H * b.r_h[k], b.r_ang[k])
-    names = sorted(box)
-    close = []
-    for i, a in enumerate(names):
-        A = box[a]
-        for c in names[i + 1:]:
-            Bx = box[c]
-            if A[:, 0].min() - cfg.DESIGNATOR_GAP_MIN > Bx[:, 0].max() or Bx[:, 0].min() - cfg.DESIGNATOR_GAP_MIN > A[:, 0].max() \
-                    or A[:, 1].min() - cfg.DESIGNATOR_GAP_MIN > Bx[:, 1].max() or Bx[:, 1].min() - cfg.DESIGNATOR_GAP_MIN > A[:, 1].max():
-                continue
-            g = _convex_gap(A, Bx)
-            if g < cfg.DESIGNATOR_GAP_MIN:
-                close.append((a, c, round(float(g), 2)))
-    over, far = [], []
-    owner = b.p_fp.astype(int)
-    for ref, B in box.items():
-        fi = refs.index(ref)
-        near = np.flatnonzero((b.p_bx1 >= B[:, 0].min() - 1) & (b.p_bx0 <= B[:, 0].max() + 1)
-                              & (b.p_by1 >= B[:, 1].min() - 1) & (b.p_by0 <= B[:, 1].max() + 1) & (owner != fi))
-        hit = sorted({refs[owner[j]] for j in near if _convex_gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]],
-                                                                                [b.p_bx1[j], b.p_by1[j]], [b.p_bx0[j], b.p_by1[j]]])) <= 0})
-        over += [(ref, h) for h in hit]
-        mine = np.flatnonzero(owner == fi)
-        if len(mine):
-            d = min(_convex_gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]], [b.p_bx1[j], b.p_by1[j]],
-                                             [b.p_bx0[j], b.p_by1[j]]])) for j in mine)
-            if d > getattr(cfg, 'DESIGNATOR_DIST_WAIVED', {}).get(ref, cfg.DESIGNATOR_DIST_MAX):      # a part with no free place nearer has its own recorded limit
-                far.append((ref, round(float(d), 2)))
-    return close, over, far, len(box)
-
-
 def _label_boxes(b, cfg):
     refs = list(b.fp_ref)
     return {refs[int(b.r_fp[k])]: _box_corners(b.r_x[k], b.r_y[k], len(refs[int(b.r_fp[k])]) * cfg.DESIGNATOR_ADVANCE * b.r_h[k],
                                               cfg.DESIGNATOR_INK_H * b.r_h[k], b.r_ang[k])
             for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0}
-
-
-def one_label_pairs(b, cfg):
-    """[(refA, refB, gap)] pairs of visible designators that READ AS ONE LABEL: on a common baseline (the vertical extents of the
-    two boxes overlap by more than half of the smaller one) and the horizontal gap under cfg.DESIGNATOR_GAP_ONE_LABEL (touching or
-    overlapping included). The waiver list cannot cover them: whatever DRC says, 'C401C402' is one word to a reader."""
-    box = _label_boxes(b, cfg)
-    lim = cfg.DESIGNATOR_GAP_ONE_LABEL
-    names = sorted(box)
-    out = []
-    for i, a in enumerate(names):
-        A = box[a]
-        for c in names[i + 1:]:
-            Bx = box[c]
-            dx = max(0.0, max(Bx[:, 0].min() - A[:, 0].max(), A[:, 0].min() - Bx[:, 0].max()))
-            ov = min(A[:, 1].max(), Bx[:, 1].max()) - max(A[:, 1].min(), Bx[:, 1].min())
-            if dx < lim and ov > 0.5 * min(np.ptp(A[:, 1]), np.ptp(Bx[:, 1])):
-                out.append((a, c, round(float(dx), 2)))
-    return out
-
-
-def foreign_labels(b, cfg):
-    """[(ref, block it sits in)] visible designators whose centre lies inside another block's outline than the one holding their part
-    (a part with no block of its own, a shared part and the edge block's parts are not judged)"""
-    box = _label_boxes(b, cfg)
-    shared = getattr(cfg, 'SHARED_PARTS', {})
-    out = []
-    for ref, B in box.items():
-        home = cfg.BLOCK.get(ref)
-        if home is None or home == cfg.EDGE_BLOCK or ref in shared or ref in cfg.BLOCK_OVERRIDE:
-            continue
-        ctr = B.mean(axis=0, keepdims=True)
-        for blk, rects in cfg.OUTLINE.items():
-            if blk != home and _in_rects(ctr, rects)[0] and getattr(cfg, 'DESIGNATOR_FOREIGN_WAIVED', {}).get(ref) != blk:
-                out.append((ref, blk))
-    return sorted(out)
 
 
 def lr11(b, cfg):
@@ -952,39 +874,18 @@ def lr11(b, cfg):
         bad.append(f'block {blk} has no test point')
     refrow = {int(f): i for i, f in enumerate(b.r_fp)}
     from . import silkruns
-    hidden = silkruns.hidden_members(b, cfg)
+    hidden = silkruns.hidden_members(b, cfg)           # off the top silk by rule: run members, the BNCs (function label on top, designator below), SILK_TO_BOM
     ndes = 0
-    nwaived = 0
     for i, r in enumerate(refs):
         ndes += 1
         k = refrow.get(i)
-        if k is not None and not b.r_on_silk[k] and r in hidden:      # a member of a tight run that counts by one: only the lowest-numbered part is labelled
+        if k is not None and not b.r_on_silk[k] and r in hidden:
             continue
         if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
             bad.append(f'{r}: designator not on silk at 0.8 mm or more')
     for r, n in cfg.TP_NETS.items():
         if (r, cfg.TP_PIN) not in pt.lookup or pad_net(b, r, cfg.TP_PIN) != n:
             bad.append(f'{r}: missing or not on {n}')
-    if hasattr(cfg, 'DESIGNATOR_GAP_MIN'):                 # legibility: only a config that sets the thresholds is held to it
-        close, over, far, njudged = designator_findings(b, cfg)
-        waived = getattr(cfg, 'DESIGNATOR_GAP_WAIVED', {})   # {(refA, refB): the least gap accepted for that pair}: pairs the room
-        kept = [t for t in close if not (t[2] >= waived.get((t[0], t[1]), 9e9))]       # does not allow, each with its recorded floor
-        nwaived = len(close) - len(kept)
-        close = kept
-        one = one_label_pairs(b, cfg) if hasattr(cfg, 'DESIGNATOR_GAP_ONE_LABEL') else []
-        if one:
-            bad.append(f'{len(one)} designator pairs read as one label (same baseline, under {cfg.DESIGNATOR_GAP_ONE_LABEL} mm, no waiver): '
-                       + ', '.join(f'{a}/{c} {g}' for a, c, g in one[:12]) + (' ...' if len(one) > 12 else ''))
-        foreign = foreign_labels(b, cfg)
-        if foreign:
-            bad.append('designator inside another block\'s outline: ' + ', '.join(f'{a} in {c}' for a, c in foreign[:12]))
-        if close:
-            bad.append(f'{len(close)} designator pairs closer than {cfg.DESIGNATOR_GAP_MIN} mm: '
-                       + ', '.join(f'{a}/{c} {g}' for a, c, g in close[:12]) + (' ...' if len(close) > 12 else ''))
-        if over:
-            bad.append('designator over another part\'s pad: ' + ', '.join(f'{a} on {c}' for a, c in over[:12]))
-        if far:
-            bad.append(f'designator more than {cfg.DESIGNATOR_DIST_MAX} mm from its part: ' + ', '.join(f'{a} {d}' for a, d in far[:12]))
     npin = 0
     if hasattr(cfg, 'EDGE_SOCKETS'):                       # the Due's pin names in the bands (pcbtools/pinlabels.py): only a config that names its edge sockets
         from . import pinlabels
@@ -1008,9 +909,8 @@ def lr11(b, cfg):
     for w in cfg.SILK_WORDS:
         if w not in names:
             bad.append(f'silk word {w!r} missing')
-    note = f', {nwaived} designator pairs under the gap on their recorded floors' if nwaived else ''
-    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}' + (f', {npin} pin labels{pinsize}' if npin else '') + nid,
-                  dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad)), waived_pairs=float(nwaived)))
+    return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points' + (f', {npin} pin labels{pinsize}' if npin else '') + nid,
+                  dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad))))
 
 
 ROWS = [('LR-1', lr1), ('LR-2', lr2), ('LR-3', lr3), ('LR-4', lr4), ('LR-4 INV_MAX', lr4_inv), ('LR-12 DECOUP_MAX', lr12),
