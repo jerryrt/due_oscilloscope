@@ -1,13 +1,13 @@
 {
- "board_sha256": "8c7e8c39fdd6970e5a032f21f7bed20f622613c3cf26f1816142462d6ad274c1",
+ "board_sha256": "6edf8bd3a7d3894357da47fea8eb66d1f9fe15f0df69020735c1fef6e2c1a247",
  "files": {
   "afe-iso.png": "de2a248919bcfa5e0548b83705eb0a0bc62c353a1b364708f357cb9bb3ae042e",
   "afe-top.png": "a72fbd0fe5ae75b88238434eeea573da0c5ad198676bcd82565eeff12ef73427",
   "v1-3d-bottom.png": "59095dba4e3e3e01fe3eccaecbdeee6a0081e28c79f4b06e605aa2b7d9164c11",
-  "v1-3d.png": "5e738e912780df1c797d73d3b9dcc190c1accfc7c18b187705aa81d4ab9ef320",
+  "v1-3d.png": "70d8ea6a31a327085e7f85c0957875fd3d41420b432e55b4b37b1c403964ddf9",
   "v1-band-north.png": "d45b23f922ea45067093ebe66d7b2a50415fdee9c75fa96ab53dfab168da9d57",
   "v1-band-south.png": "1e5dec21aa41452d673346af3909cb213dc45b0796f366d2d2844fe9d9c318bc",
   "v1-bottom.png": "4236ebb9ac8feb05b6e2d5b5b639eff2f09ea9bf22a5caf8ee610a2b3e87344c",
-  "v1-top.png": "915b8c7ed4cd0f58b8a372313a74b5b6a54876fabb0c20f725dd6b451e116aa7"
+  "v1-top.png": "c15f9c06f70d85e927d471183057f578f4248cb17c0b085bd4c6e138072fb4e2"
  }
 }

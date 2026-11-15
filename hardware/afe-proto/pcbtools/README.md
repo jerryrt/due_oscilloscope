@@ -339,3 +339,8 @@ tested: the frozen schematic fixture (`test_v2_schematic.py` applies `RENUMBER_I
 (POWER's capacitor grid was not renumbered): the per-capacitor records `simtools/pw2.py`, `v2/sim/powercal/pw2_ac`, `gate3_v2.POWER_CAPS`; `tests/pcbtools/test_power_cap_keys.py` fails on a key that names a
 part the board lacks but NOT on a swap of two existing refs, so a POWER renumber must remap those records with the inverse map by hand. A renumber changes the fab F_Cu/F_Mask/F_Paste bytes (the
 Gerber X2 component attributes carry the designators) but not their geometry; the netlist was proven identical by function (112 of 112 parts), the BOM and CPL carry the new names.
+
+AFE-1 (`--config v1`, `kicad/silk_rev_a.py`): `silk_rev_a.py` splices the identity block, the five block outlines (`SILK_OUTLINE`, drawn as each block's union boundary, silk only), the BNC function labels and the block title words (`TITLE_AT`) from `boards/v1.py`; then run
+`bncframe`, `silkruns`, `silkapply --keep R112`, `silkbom` as above. `RENUMBER_LABELLED_ONLY` (silkruns) renumbers only a run that carries a starter label, which for AFE-1 leaves the rename set empty. `silkplace` takes a
+designator's block from `SILK_BLOCKS` when the config has it and keeps `SILK_LINE_CLEAR` mm off every board-level silk line. A channel passive with no readable place goes to `SILK_TO_BOM`; diodes, ICs, connectors and test points have priority for space.
+`identity.via_findings` (tests/pcbtools/test_identity_vias.py, both boards) keeps the S/N box and the name and model text 0.3 mm off every via.

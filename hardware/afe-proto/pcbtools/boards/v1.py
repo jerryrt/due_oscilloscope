@@ -361,7 +361,7 @@ SILK_OUTLINE = {
     'CH1': [(64.5, 32.15, 84.9, 48.5), (84.9, 33.4, 92.1, 48.5), (78.9, 30.45, 84.9, 32.15), (70.4, 27.3, 72.3, 30.9), (98.5, 35.5, 116.4, 51.3)],
     'CH2': [(72.3, 20.6, 76.0, 32.15), (76.0, 20.6, 92.1, 30.45), (84.9, 30.45, 92.1, 33.4), (98.5, 16.5, 116.4, 35.5)],
 }
-TITLE_AT = {'CH2': (79.0, 21.8)}      # the block title words (board text), Due mm centre: CH2's moved off the line it shared with CH1's outline
+TITLE_AT = {'CH2': (74.05, 21.4, 1.0)}      # the block title words (board text), Due mm centre: CH2's moved off the line it shared with CH1's outline
 SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}[k]: [tuple(r) for r in v] for k, v in SILK_OUTLINE.items()}   # {hundreds digit as a string: [rects]}
 
 # the BNC frame (D30 (2)): function labels on top, designators on the bottom silk, one offset each (board mm from each BNC's origin, the same for all three)
@@ -378,7 +378,7 @@ LABEL_IN_BLOCK = True            # a designator's centre lies in its own block's
 RUN_GRID_ROWS = False            # POWER's capacitor grid is not counted row by row (and not renumbered)
 SAME_ORIENTATION = True          # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one
 SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {r for r in BLOCK if _re.fullmatch(r'(?:U|J|TP)[1-5]\d\d', r)}      # held only to "nearer its own courtyard than any other"
-SILK_MUST_LABEL = {r for r in BLOCK if _re.fullmatch(r'(?:[A-Z]+[12]\d\d|(?:U|J|TP|MH)\d\d\d)', r)} - set(BNC_REFS) - {'R113', 'R207', 'C202', 'R202', 'R102', 'D201', 'C103'}   # channel parts, ICs, connectors, test points
+SILK_MUST_LABEL = {r for r in BLOCK if _re.fullmatch(r'(?:[A-Z]+[12]\d\d|(?:U|J|TP|MH)\d\d\d)', r)} - set(BNC_REFS) - {'R113', 'R207', 'C202', 'R202', 'R102', 'C103', 'R204'}   # channel parts, ICs, connectors, test points
 SILK_EXEMPT = {                  # a named exception: a label that reads correctly by eye in the 3D render at 2x (2026-11-15 review), with the reason
     'C102': 'above its own part at the head of the row of three; reads C102 (0.10 mm nearer C101 only)',
     'C104': 'above its own capacitor; reads C104',
@@ -387,12 +387,15 @@ SILK_EXEMPT = {                  # a named exception: a label that reads correct
     'R111': 'beside its own vertical part, below D101; reads R111',
     'R205': 'below its own part in the column of three; 0.11 mm from C201 only, reads R205',
     'TP301': 'vertical beside its own test point, the only test point there; reads TP301',
-    'TP201': 'below its own test point, the only place inside CH2 that is not nearer a part; 0.3 mm gap to D201\'s courtyard; reads TP201 once D201 is off the silk',
+    'TP201': 'vertical directly below its own test point, its courtyard touching the label; D201\'s label sits beside D201\'s body (spec lead, 2026-11-15)',
+    'J501': 'the J prefix and the only connector within reach name the CAL header; no free side (spec lead, 2026-11-15)',
+    'TP401': 'stacks in the same top-to-bottom order as its dot, TP405 above it; both in the column east of the dots (spec lead, 2026-11-15)',
+    'TP405': 'above TP401 in the same column, in the same order as its dot (spec lead, 2026-11-15)',
     'TP501': 'beside its own test point, the only one in its corner; reads TP501',
 }
 SILK_TO_BOM = {
+    'R204': 'channel passive with no readable place once TP201 takes the place beside its own dot (priority: diodes, ICs, connectors and test points before passives, spec lead 2026-11-15); found through the BOM',
     'C103': 'channel passive with no readable place: no place inside CH1 keeps its own courtyard nearer than any other with the 0.5 mm label gap, and the nearest one reads as C101\'s or R112\'s (spec lead rule for R207 and C202, 2026-11-15); found through the BOM',
-    'D201': 'channel diode with no readable place: its label would collide with TP201\'s, the test point that must keep one, and no other place inside CH2 keeps D201\'s courtyard nearest; found through the BOM',
     'R102': 'channel passive with no readable place: every place inside CH1 either touches J607\'s courtyard or is under 0.5 mm from R106\'s label (spec lead rule for R207 and C202, 2026-11-15); found through the BOM',
     'R202': 'channel passive with no readable place: its label would need the 0.5 mm gap to R206\'s and stay clear of J607, and no place inside CH2 does both (spec lead rule for R207 and C202, 2026-11-15); found through the BOM',
     'R207': 'channel passive with no readable place: none inside CH2 keeps its own courtyard nearer than any other (spec lead, 2026-11-15); found through the BOM',
@@ -442,6 +445,6 @@ SILK_TO_BOM = {
     'R518': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R519 (dense block)',
     'R520': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501',
 }   # {ref: reason}: a passive left off the silk, found through the BOM
-SILK_AT = {'J601': (23.9, 2.5, 0), 'J602': (59.49, 0.12, 0), 'J603': (79.94, 0.12, 0), 'J604': (62.21, 48.38, 0), 'J606': (25.98, 48.38, 0), 'J607': (100.24, 53.0, 0), 'MH601': (96.58, -1.06, 0), 'MH602': (90.2, 55.4, 0), 'J605': (66.17, 51.19, 90), 'TP404': (42.64, 22.4, 90), 'D201': (73.35, 26.15, 90), 'C203': (87.27, 30.96, 0), 'C105': (89.62, 38.63, 0), 'C104': (86.45, 36.93, 0), 'U101': (78.4, 34.45, 90), 'TP201': (75.2, 27.1, 0), 'TP401': (43.3, 7.3, 90), 'TP405': (43.3, 12.4, 90)}                     # {ref: (x, y, angle)}: a label placed by hand and checked in the 3D render
+SILK_AT = {'J601': (23.9, 2.5, 0), 'J602': (59.49, 0.12, 0), 'J603': (79.94, 0.12, 0), 'J604': (62.21, 48.38, 0), 'J606': (25.98, 48.38, 0), 'J607': (100.24, 53.0, 0), 'MH601': (96.58, -1.06, 0), 'MH602': (90.2, 55.4, 0), 'J605': (66.17, 51.19, 90), 'TP404': (42.64, 22.4, 90), 'D201': (73.35, 26.15, 90), 'TP201': (75.35, 25.68, 90), 'C201': (78.0, 21.8, 0), 'R205': (82.9, 22.4, 0), 'C203': (87.27, 30.96, 0), 'C105': (89.62, 38.63, 0), 'C104': (86.45, 36.93, 0), 'U101': (78.4, 34.45, 90), 'D201': (73.35, 26.15, 90), 'TP201': (75.35, 25.68, 90), 'C201': (78.0, 21.8, 0), 'R205': (82.9, 22.4, 0), 'TP401': (43.3, 7.3, 90), 'TP405': (43.3, 12.4, 90)}                     # {ref: (x, y, angle)}: a label placed by hand and checked in the 3D render
 RENUMBER_LABELLED_ONLY = True    # silkruns: renumber only a run that carries a starter label
 SILK_LINE_CLEAR = 0.3            # a label keeps 0.3 mm off any silk line (spec lead, AFE-1 brief item 6)

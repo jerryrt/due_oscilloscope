@@ -31,11 +31,16 @@ def bnc_labels(text):
 
 
 def titles(text):
-    """the block title words of cfg.TITLE_AT moved to their places (centre, Due mm); the rest of each record is kept"""
+    """the block title words of cfg.TITLE_AT ({word: (x, y) or (x, y, height)}) moved to their places (centre, Due mm); the rest of each record is kept"""
     import re
-    for word, (x, y) in getattr(cfg, 'TITLE_AT', {}).items():
-        pat = re.compile(r'(\n\t\(gr_text "%s"\n\t\t\(at )[-\d.]+ [-\d.]+' % re.escape(word))
-        text = pat.sub(lambda m: m.group(1) + f'{x + 50:g} {150 - y:g}', text, count=1)
+    for word, at in getattr(cfg, 'TITLE_AT', {}).items():
+        i = text.index('\n\t(gr_text "%s"\n' % word)
+        j = text.index('\n\t)', i)
+        rec = text[i:j]
+        rec = re.sub(r'(\(at )[-\d.]+ [-\d.]+', lambda m: m.group(1) + f'{at[0] + 50:g} {150 - at[1]:g}', rec, count=1)
+        if len(at) > 2:
+            rec = re.sub(r'\(size [\d.]+ [\d.]+\)', f'(size {at[2]:g} {at[2]:g})', rec, count=1)
+        text = text[:i] + rec + text[j:]
     return text
 
 
