@@ -210,7 +210,7 @@ LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 # Findings on 2026-11-14, before any D30 work. A ratchet, not a tolerance: a change may lower a count and must lower the
 # number here with it; a board at 0 changes its row to 0 and stays there. (A strict xfail would say the same, but the pcbnew
 # guard counts only passes.)
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 124, 'kicad/afe-proto.kicad_pcb': 79}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 48, 'kicad/afe-proto.kicad_pcb': 79}
 
 
 @pytest.mark.pcbnew

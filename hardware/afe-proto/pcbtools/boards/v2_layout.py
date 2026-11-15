@@ -54,8 +54,7 @@ DESIGNATOR_FOREIGN_WAIVED = {'BR501': 'CH2', 'BR504': 'CH2'}
 # distance to the part relaxed to 3.5 and 4.5 mm. Each is recorded at the gap it reached, rounded down to 0.05; the check holds a
 # pair to its floor, so it still catches a label that moves toward its neighbour. Closing them means moving a part or shortening a
 # label (a human decision); the board house's minimum text height is the project's 1.0 mm, so a smaller label is not an option.
-DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('C201', 'R201'): 0.80, ('C306', 'R301'): 0.80,
-                         ('J501', 'R509'): 0.40, ('R206', 'R207'): 0.75, ('R304', 'R306'): 0.65, ('R307', 'U301'): 0.40}
+DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('J501', 'R509'): 0.40}
 # 8 pairs after the CH2 array moved north (17 before it, 20 at first): v2/layout/refine_designators.py (silk only, after place_designators.py) turned and moved labels until none
 # reads as one label (DESIGNATOR_GAP_ONE_LABEL: no same-baseline pair is under 0.65 mm, and the rule below is not waivable). Three
 # pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical

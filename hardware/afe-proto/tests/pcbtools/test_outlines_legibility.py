@@ -261,8 +261,9 @@ def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding
     assert R._in_rects(P[i:i + 1], grown)[0] and 'U101' not in inside['CH2']           # the shared dual: held to CH1, no extra in CH2
     assert 'TP101' in inside['CH1'] and 'D201' in inside['CH2'] and 'D201' not in inside['CH1']
     close, over, far, n = R.designator_findings(b, c)
-    assert over == [] and far == [] and n == 112
-    assert 0 < len(close) <= len(c.DESIGNATOR_GAP_WAIVED) == 8                           # 74 pairs were under 1.0 mm before the placement
+    keyed = {r for r in refs if r in set(b.t_text)}                                       # designators gathered in a cluster key (D30 1b), off the silk
+    assert over == [] and far == [] and n == 112 - len(keyed) and len(keyed) >= 34
+    assert 0 < len(close) <= len(c.DESIGNATOR_GAP_WAIVED) == 3                           # 74 pairs were under 1.0 mm before the placement; five waived pairs went into keys
     assert all(g >= c.DESIGNATOR_GAP_WAIVED[(a, b_)] and g >= 0.3 for a, b_, g in close)   # each on its recorded floor, none touching
     assert c.DESIGNATOR_FOREIGN_WAIVED == {'BR501': 'CH2', 'BR504': 'CH2'}               # R203 and R204 left the waived set when the CH2 array moved north
     refs_ = list(b.fp_ref)
