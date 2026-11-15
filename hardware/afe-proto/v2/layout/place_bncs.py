@@ -172,12 +172,12 @@ def set_label(text, ref, x, y):
     fm = re.search(r'\n\t\t\(at ([-\d.]+) ([-\d.]+)( [-\d.]+)?\)', blk)
     assert not fm.group(3) or abs(float(fm.group(3))) < 1e-9, f'{ref} is rotated: set_label assumes an unrotated footprint'
     fx, fy = float(fm.group(1)), float(fm.group(2))
-    pat = re.compile(r'(\(property "Reference" "%s"\n\t\t\t\(at )([-\d.]+) ([-\d.]+)( [-\d.]+\))' % re.escape(ref))
+    pat = re.compile(r'(\(property "Reference" "%s"\n\t\t\t\(at )([-\d.]+) ([-\d.]+)( [-\d.]+)?\)' % re.escape(ref))     # the angle is optional: a 0 is not written
     m = pat.search(blk)
     new = (fmt(x + SX - fx), fmt(SY - y - fy))
     if (fmt(float(m.group(2))), fmt(float(m.group(3)))) == new:
         return text, False
-    blk = pat.sub(lambda m: m.group(1) + new[0] + ' ' + new[1] + m.group(4), blk, count=1)
+    blk = pat.sub(lambda m: m.group(1) + new[0] + ' ' + new[1] + (m.group(4) or '') + ')', blk, count=1)
     return text[:s] + blk + text[e:], True
 
 

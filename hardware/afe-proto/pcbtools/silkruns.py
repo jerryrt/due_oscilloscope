@@ -2,7 +2,7 @@
 
     find_runs(b, cfg)                       -> (runs, grids)       the rows and columns, and the parts that sit in both (a grid: not a run)
     plan(b, cfg, text)                      -> Plan                numbers, label ends and label places for every run
-    check(b, cfg)                           -> [str]               what a board's runs lack (counting, label end, label place, hidden members)
+    hidden_members(b)                       -> {ref}               the members of the labelled runs, as silkread reads them (the one statement of the rule)
 
 A RUN is two or more parts of one kind (the designator's letters: R, C, BR ...), turned alike (courtyard aspect), in a straight line (their
 centres within RUN_ALIGN of one line, along x for a row, along y for a column) and each neighbour's courtyard within RUN_GAP of the next. A part
@@ -113,6 +113,13 @@ def find_runs(b, cfg):
             elif dx <= align and dy > dx:
                 rel['col'][a].add(c)
                 rel['col'][c].add(a)
+    if _cfg(cfg, 'RUN_GRID_ROWS', False):
+        # a grid (parts in both a row and a column) counts row by row: a part that has a row neighbour has no column neighbour, each row its own run
+        for i in parts:
+            if rel['row'][i]:
+                for j in list(rel['col'][i]):
+                    rel['col'][j].discard(i)
+                rel['col'][i] = set()
     comps = []
     for kind in ('row', 'col'):
         seen = set()
@@ -189,6 +196,9 @@ def label_spot(b, cfg, run, end, ref_len, obst, taken=(), edge=None, step=0.05):
     c = (b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i])
     line = float(b.fp_y[i] if run.kind == 'row' else b.fp_x[i])          # the starter's own centre line: the checker measures the label from it
     w, hh = label_size('X' * ref_len, run.ang, cfg)
+    own_block = None
+    if _cfg(cfg, 'LABEL_IN_BLOCK', False):
+        own_block = _cfg(cfg, 'OUTLINE', {}).get(_cfg(cfg, 'BLOCK', {}).get(run.refs[0 if end == 'first' else -1]))
     best = None
     for g in np.arange(LABEL_CLEAR, lg + 1e-9, step):
         for off in np.arange(0.0, la + 1e-9, step):
@@ -201,6 +211,8 @@ def label_spot(b, cfg, run, end, ref_len, obst, taken=(), edge=None, step=0.05):
                     x = line + sgn * off
                 box = (x - w / 2, y - hh / 2, x + w / 2, y + hh / 2)
                 if edge is not None and (box[0] < edge[0] or box[1] < edge[1] or box[2] > edge[2] or box[3] > edge[3]):
+                    continue
+                if own_block and not any(q[0] <= x <= q[2] and q[1] <= y <= q[3] for q in own_block):
                     continue
                 if len(obst) and np.any(~((box[2] <= obst[:, 0]) | (obst[:, 2] <= box[0]) | (box[3] <= obst[:, 1]) | (obst[:, 3] <= box[1]))):
                     continue
@@ -390,65 +402,10 @@ def counts_by_one(nums):
     return s == list(range(s[0], s[0] + len(s))) and (list(nums) == s or list(nums) == s[::-1])
 
 
-def hidden_members(b, cfg):
-    """{ref} of the parts of runs that count by one and whose lowest-numbered part has a designator on the silk: they may be off the silk"""
-    runs, _ = find_runs(b, cfg)
-    vis = _visible(b)
-    out = set()
-    for r in (r for r in runs if r.axial):
-        nums = [number_of(x) for x in r.refs]
-        low = min(r.refs, key=number_of)
-        if counts_by_one(nums) and low in vis:
-            out |= {x for x in r.refs if x != low}
-    return out
-
-
-def check(b, cfg):
-    """what a board's runs lack, as strings: not counting by one, the label of the lowest-numbered part missing, off its line, not at the low end, too far
-    from it or turned the wrong way, a member other than the lowest still on the silk"""
-    la, lg = _cfg(cfg, 'RUN_LABEL_ALIGN', RUN_LABEL_ALIGN), _cfg(cfg, 'RUN_LABEL_GAP', RUN_LABEL_GAP)
-    runs, _ = find_runs(b, cfg)
-    vis = _visible(b)
-    bad = []
-    for r in runs:
-        nums = [number_of(x) for x in r.refs]
-        if not r.axial:
-            if not counts_by_one(nums):
-                bad.append(f'run {" ".join(r.refs)}: its numbers do not count by one along its line')
-            continue
-        where = f'run {" ".join(r.refs)}'
-        if not counts_by_one(nums):
-            bad.append(f'{where}: its numbers do not count by one along its line')
-            continue
-        low = min(r.refs, key=number_of)
-        first_low = number_of(r.refs[0]) < number_of(r.refs[-1])
-        if low not in vis:
-            bad.append(f'{where}: the lowest-numbered part {low} has no designator on the silk')
-            continue
-        for x in r.refs:
-            if x != low and x in vis:
-                bad.append(f'{where}: {x} is not the lowest and still has a designator on the silk')
-        x, y, a, h = vis[low]
-        i = b.ref_index(low)
-        w, hh = label_size(low, int(round(a)) % 180, cfg, h)
-        box = (x - w / 2, y - hh / 2, x + w / 2, y + hh / 2)
-        c = (b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i])
-        if int(round(a)) % 180 != r.ang:
-            bad.append(f'{where}: the label of {low} is turned {int(round(a))} degrees, the parts {r.ang}')
-        off = abs((y if r.kind == 'row' else x) - r.line)
-        if off > la + 1e-6:
-            bad.append(f'{where}: the label of {low} is {off:.2f} mm off the run\'s line (limit {la})')
-        if r.kind == 'row':
-            beyond = (box[2] <= c[0] + 1e-6) if first_low else (box[0] >= c[2] - 1e-6)
-            gap = (c[0] - box[2]) if first_low else (box[0] - c[2])
-        else:
-            beyond = (box[0 + 1] >= c[3] - 1e-6) if first_low else (box[3] <= c[1] + 1e-6)
-            gap = (box[1] - c[3]) if first_low else (c[1] - box[3])
-        if not beyond:
-            bad.append(f'{where}: the label of {low} is not beyond the low end')
-        elif gap > lg + 1e-6:
-            bad.append(f'{where}: the label of {low} is {gap:.2f} mm from the low end (limit {lg})')
-    return bad
+def hidden_members(b, cfg=None):
+    """{ref} of the members of the board's labelled runs, by the checker's own reading (silkread.runs): they may be off the silk"""
+    from . import silkread
+    return {x for members in silkread.runs(b).values() for x in members}
 
 
 if __name__ == '__main__':

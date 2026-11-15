@@ -46,7 +46,7 @@ SCOPE_PITCH = _t.SCOPE_PITCH                                                    
 # J605's designator sat at (100.0, 51.75), where CH1's BNC box and the BNC's own silk now reach (the BNC moved north 2.54 mm). It moves above the
 # socket, into the strip between the socket's own silk (top edge 52.13) and the Due's edge, beside the owner's pin labels' band and not in it
 # (silk only; v2/layout/place_bncs.py). {ref: (x, y) Due mm, centre of the label}
-DESIGNATOR_AT = {'J605': (96.2, 53.0)}
+DESIGNATOR_AT = {'J605': (96.2, 53.4)}
 # 3D models the board names by reference instead of the footprint's own (KiCad 10 ships none for the LM27762's WSON-12 package: the library's
 # link dangles). ${KIPRJMOD} is the board's folder (v2/layout/integrated); the file is the project's own VRML stand-in, render only (a KiCad
 # STEP export leaves it out). v2/layout/set_models.py applies it by text splice.
@@ -145,6 +145,10 @@ BOARD_SETUP = {
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
 SCH_NS = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'     # the uuid namespace of the schematic and the footprints' paths (boards/v2_sch.py NS)
+LABEL_IN_BLOCK = True        # a designator's centre lies in its own block's outline (LR-11); the placer looks only there
+RUN_GRID_ROWS = False        # POWER's capacitor grid stays as it is until POWER is re-placed into rows and renumbered once
+BNC_LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}      # the first one's label offset is every one's (D30 (2))
+BNC_LABEL_OFFSET = (2.2312, 3.99)     # board mm from each BNC's origin, all three (D30 (2)): J101's offset drawn nearer its pin by 0.6, so "AWG OUT", one character longer, clears its frame's far line
 SAME_ORIENTATION = True      # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one (LR-11, silkplace)
 IDENTITY_CHECK = True
 SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)

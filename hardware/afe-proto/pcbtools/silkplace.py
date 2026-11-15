@@ -70,6 +70,14 @@ def _cands(c, ref, h, cfg, angs=(0, 90), gap_max=None):
     return np.round(np.vstack(out), 2)
 
 
+def _own_block(ref, cfg):
+    """the outline rectangles of the block a part belongs to, when the config says labels stay in their block (LABEL_IN_BLOCK) and the block has an outline"""
+    if not getattr(cfg, 'LABEL_IN_BLOCK', False):
+        return None
+    blk = getattr(cfg, 'BLOCK', {}).get(ref)
+    return getattr(cfg, 'OUTLINE', {}).get(blk)
+
+
 def _angles(c, cfg, two_pads=True):
     """the turns a part's designator may have: with the config's SAME_ORIENTATION, a two-terminal part's designator reads along the part (0 for a
     courtyard wider than high, else 90); any other part's reads at 0 or 90"""
@@ -124,6 +132,10 @@ def place(b, cfg, margin=0.30, keep=(), silk=(), gap_max=None):
         hh = sz[(C[:, 2] == 90).astype(int), 1]
         B = np.column_stack([C[:, 0] - w / 2, C[:, 1] - hh / 2, C[:, 0] + w / 2, C[:, 1] + hh / 2])
         ok = (B[:, 0] >= edge[0]) & (B[:, 1] >= edge[1]) & (B[:, 2] <= edge[2]) & (B[:, 3] <= edge[3])
+        rects = _own_block(r, cfg)
+        if rects:                                   # LR-11: a designator's centre lies in its own block's outline (when the block has one)
+            cxs, cys = (B[:, 0] + B[:, 2]) / 2, (B[:, 1] + B[:, 3]) / 2
+            ok &= np.any([(cxs >= q[0]) & (cxs <= q[2]) & (cys >= q[1]) & (cys <= q[3]) for q in rects], axis=0)
         for obst in (pads, vias, inner, texts, silk_obst):
             if len(obst) and ok.any():
                 ok &= ~_overlaps(B, obst).any(axis=1)

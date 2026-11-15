@@ -90,18 +90,27 @@ def test_a_run_with_no_room_at_either_end_is_blocked_and_keeps_its_numbers_if_th
     assert [x for x, _ in [(r.refs, w) for r, w in p.blocked]] == [['R102', 'R101']] and id(run) not in p.label and p.new == {}
 
 
-def test_check_wants_the_label_on_the_lowest_and_the_rest_off_the_silk():
-    s = row(['R101', 'R102', 'R103'])
-    b = board(s)
-    bad = S.check(b, CFG)
-    assert any('R102 is not the lowest and still has a designator on the silk' in x for x in bad)            # all three are on the silk
+def test_the_labelled_runs_are_the_checkers_own_reading_and_a_label_off_the_line_loses_them():
     s2 = row(['R101', 'R102', 'R103'])
     s2.rt[0] = (5.5, 20.0, 1.0, 0.8, 0.12, 0.0, 0, True, 0)                                                      # R101's label beyond the left end, on the line
     s2.rt[1] = (13.5, 20.0, 1.0, 0.8, 0.12, 0.0, 0, False, 1)
     s2.rt[2] = (17.0, 20.0, 1.0, 0.8, 0.12, 0.0, 0, False, 2)
-    assert S.check(board(s2), CFG) == [], S.check(board(s2), CFG)
-    s2.rt[0] = (5.5, 21.0, 1.0, 0.8, 0.12, 0.0, 0, True, 0)                                                      # 1 mm off the line
-    assert any('off the run' in x for x in S.check(board(s2), CFG))
+    assert S.hidden_members(board(s2)) == {'R102', 'R103'}
+    s2.rt[0] = (5.5, 21.0, 1.0, 0.8, 0.12, 0.0, 0, True, 0)                                                      # 1 mm off the line: no run, nothing may be hidden
+    assert S.hidden_members(board(s2)) == set()
+
+
+def test_a_grid_counts_row_by_row_when_the_config_says_so():
+    s = Synth('/N')
+    for ref, x, y in (('C401', 10.0, 20.0), ('C402', 13.5, 20.0), ('C404', 10.0, 21.5), ('C403', 13.5, 21.5)):
+        part(s, ref, x, y)
+    b = board(s)
+    assert S.find_runs(b, CFG)[0] == []
+    cfg = types.SimpleNamespace(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, RUN_GRID_ROWS=True)
+    runs, grids = S.find_runs(b, cfg)
+    assert grids == [] and sorted(r.refs for r in runs) == [['C401', 'C402'], ['C404', 'C403']]
+    p = S.plan(b, cfg)
+    assert p.new == {'C404': 'C403', 'C403': 'C404'}                                                             # each row counts up from its left end
 
 
 def test_rename_is_a_whole_word_rewrite_with_the_schematic_path_following_and_it_reverses():
