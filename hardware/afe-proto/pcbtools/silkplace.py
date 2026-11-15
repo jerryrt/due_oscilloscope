@@ -54,12 +54,12 @@ def _size(ref, ang, h, cfg):
     return (w, l) if ang == 90 else (l, w)
 
 
-def _cands(c, ref, h, cfg):
+def _cands(c, ref, h, cfg, angs=(0, 90), gap_max=None):
     """candidate (cx, cy, ang) for a text around courtyard c = (x0, y0, x1, y1): on each side, sliding along it, GAP_MAX deep"""
     out = []
-    for ang in (0, 90):
+    for ang in angs:
         w, hh = _size(ref, ang, h, cfg)
-        gs = np.arange(0.0, GAP_MAX + 1e-9, STEP)
+        gs = np.arange(0.0, (GAP_MAX if gap_max is None else gap_max) + 1e-9, STEP)
         xs = np.arange(c[0] - w + STEP, c[2] + w, STEP)
         ys = np.arange(c[1] - hh + STEP, c[3] + hh, STEP)
         for g in gs:
@@ -70,13 +70,23 @@ def _cands(c, ref, h, cfg):
     return np.round(np.vstack(out), 2)
 
 
-def place(b, cfg, margin=0.30, keep=(), silk=()):
-    """`silk`: (x0, y0, x1, y1) boxes of board-level silk (block outlines, words), Due mm; the text lies on none of them (SILK_CLEAR)"""
+def _angles(c, cfg, two_pads=True):
+    """the turns a part's designator may have: with the config's SAME_ORIENTATION, a two-terminal part's designator reads along the part (0 for a
+    courtyard wider than high, else 90); any other part's reads at 0 or 90"""
+    if getattr(cfg, 'SAME_ORIENTATION', False) and two_pads:
+        return (0,) if (c[2] - c[0]) >= (c[3] - c[1]) else (90,)
+    return (0, 90)
+
+
+def place(b, cfg, margin=0.30, keep=(), silk=(), gap_max=None):
+    """`silk`: (x0, y0, x1, y1) boxes of board-level silk (block outlines, words), Due mm; the text lies on none of them (SILK_CLEAR). `gap_max`: the farthest
+    from its own courtyard a text is looked for (default GAP_MAX)"""
     refs = list(b.fp_ref)
     top = [int(s) == 0 for s in b.fp_side]
     cour = {r: (b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]) for i, r in enumerate(refs)
             if top[i] and not np.isnan(b.fp_cx0[i])}
     names = list(cour)
+    npads = np.bincount(np.asarray(b.p_fp, int), minlength=len(refs))[[refs.index(n) for n in names]] if len(b.p_fp) else np.zeros(len(names), int)
     CB = np.array([cour[r] for r in names])
     pads = np.column_stack([b.p_bx0, b.p_by0, b.p_bx1, b.p_by1])
     pads = np.vstack([pads - [PAD_CLEAR, PAD_CLEAR, -PAD_CLEAR, -PAD_CLEAR]])
@@ -108,7 +118,7 @@ def place(b, cfg, margin=0.30, keep=(), silk=()):
     inner = CB + [0.02, 0.02, -0.02, -0.02]
     for r in todo:
         x0, y0, a0, h = cur[r]
-        C = _cands(cour[r], r, h, cfg)
+        C = _cands(cour[r], r, h, cfg, _angles(cour[r], cfg, int(npads[names.index(r)]) == 2), gap_max)
         sz = np.array([_size(r, int(a), h, cfg) for a in (0, 90)])
         w = sz[(C[:, 2] == 90).astype(int), 0]
         hh = sz[(C[:, 2] == 90).astype(int), 1]

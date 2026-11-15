@@ -860,7 +860,7 @@ def designator_findings(b, cfg):
         if len(mine):
             d = min(_convex_gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]], [b.p_bx1[j], b.p_by1[j]],
                                              [b.p_bx0[j], b.p_by1[j]]])) for j in mine)
-            if d > cfg.DESIGNATOR_DIST_MAX:
+            if d > getattr(cfg, 'DESIGNATOR_DIST_WAIVED', {}).get(ref, cfg.DESIGNATOR_DIST_MAX):      # a part with no free place nearer has its own recorded limit
                 far.append((ref, round(float(d), 2)))
     return close, over, far, len(box)
 
@@ -951,11 +951,15 @@ def lr11(b, cfg):
     for blk in sorted(set(cfg.TEST_BLOCKS) - have):
         bad.append(f'block {blk} has no test point')
     refrow = {int(f): i for i, f in enumerate(b.r_fp)}
+    from . import silkruns
+    hidden = silkruns.hidden_members(b, cfg)
     ndes = 0
     nwaived = 0
     for i, r in enumerate(refs):
         ndes += 1
         k = refrow.get(i)
+        if k is not None and not b.r_on_silk[k] and r in hidden:      # a member of a tight run that counts by one: only the lowest-numbered part is labelled
+            continue
         if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
             bad.append(f'{r}: designator not on silk at 0.8 mm or more')
     for r, n in cfg.TP_NETS.items():

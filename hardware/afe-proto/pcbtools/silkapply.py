@@ -60,13 +60,14 @@ def apply_moves(text, b, placed):
 
 
 MAX_PASSES = 6
+FALLBACK_GAP_MAX = 4.5      # mm: a part with no place beside it is looked for this far from its courtyard
 
 
-def settle(b, text, cfg, margin=0.30, keep=()):
+def settle(b, text, cfg, margin=0.25, keep=()):
     """the placer's result with the board's own silk lines and words as obstacles, and each part it could not place counted as staying where its
     text is for the others (run again until the unplaced set stops growing): a placed text then lies on no residue text either"""
-    from . import keys
-    silk = keys.silk_boxes(text, cfg)
+    from . import silkruns
+    silk = silkruns.silk_boxes(text, cfg)
     stay = set(keep)
     while True:
         placed, unplaced = silkplace.place(b, cfg, margin, tuple(stay), silk)
@@ -79,7 +80,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog='python3 -m pcbtools.silkapply', description=__doc__.split('\n')[0])
     ap.add_argument('board')
     ap.add_argument('--config', default='v2_layout')
-    ap.add_argument('--margin', type=float, default=0.30)
+    ap.add_argument('--margin', type=float, default=0.25, help='D30 asks 0.25 (the placer\'s own default is 0.30)')
+    ap.add_argument('--no-fallback', action='store_true', help='leave a part with no "beside" place where its text is (default: give it the least-bad free place, nearest its own courtyard, and list it)')
     ap.add_argument('--keep', nargs='*', default=[])
     ap.add_argument('--write')
     a = ap.parse_args(argv)
@@ -103,8 +105,30 @@ def main(argv=None):
         moved |= set(changed)
         if not changed:
             break
+    fb = []
+    if unplaced and not a.no_fallback:
+        # the parts with no place that meets the margin: the nearest free place at all (no pad, via, courtyard, silk or text under it), whatever the neighbour
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'fb.kicad_pcb')
+            with open(path, 'w') as fh:
+                fh.write(text)
+            b = boardio.read_board(path)
+            from . import silkruns
+            vis = {b.fp_ref[int(b.r_fp[k])] for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0}
+            silk = silkruns.silk_boxes(text, cfg)
+            stay = set()                                   # parts that find no place even so: their old text is an obstacle for the others
+            while True:
+                keep_fb = tuple(sorted((vis - set(unplaced)) | set(a.keep) | stay))
+                placed_fb, left = silkplace.place(b, cfg, -9.0, keep_fb, silk, FALLBACK_GAP_MAX)
+                if set(left) <= stay:
+                    break
+                stay |= set(left)
+        text, ch = apply_moves(text, b, placed_fb)
+        fb = sorted(placed_fb)
+        moved |= set(ch)
+        unplaced = sorted(stay)
     new = text
-    print(f'placed {len(placed)} ({len(moved)} moved), unplaced {len(unplaced)}: {" ".join(unplaced)}')
+    print(f'placed {len(placed)} ({len(moved)} moved), no place beside the part {len(unplaced) + len(fb)}: {" ".join(sorted(set(unplaced) | set(fb)))}; of them placed anyway, nearest free: {len(fb)}')
     if a.write:
         with open(a.write, 'w') as fh:
             fh.write(new)
