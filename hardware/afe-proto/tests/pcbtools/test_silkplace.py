@@ -103,3 +103,27 @@ def test_two_designators_keep_apart():
     placed, un = silkplace.place(board(s), CFG, keep=['B0', 'B1'])
     assert un == [] and set(placed) == {'C1', 'C2'}
     assert gap(box_of('C1', placed['C1']), box_of('C2', placed['C2'])) >= silkplace.HARD_GAP - 1e-9
+
+
+def test_a_board_silk_line_is_an_obstacle_when_the_caller_passes_it():
+    """the placer's text may not lie on a block-outline silk line: every candidate around the part but one side is walled off, and the text goes there"""
+    s = part(Synth('/GND'), 'C1', 30, 20, text_at=(30, 20))
+    b = board(s)
+    free, _ = silkplace.place(b, CFG)
+    walls = [(20.0, 15.0, 40.0, 15.5), (20.0, 24.5, 40.0, 25.0), (20.0, 15.0, 20.5, 25.0), (39.5, 15.0, 40.0, 25.0)]       # a box 20 x 10 mm round C1, lines 0.5 thick
+    inside, _ = silkplace.place(b, CFG, silk=walls)
+    for r, p in inside.items():
+        B = box_of(r, p)
+        assert not any(B[0] < w[2] and B[2] > w[0] and B[1] < w[3] and B[3] > w[1] for w in walls), (r, p)
+    tight = [(23.0, 13.0, 37.0, 27.0)]                                       # a solid wall 2.5 mm out from the part: nothing within GAP_MAX clears it
+    assert silkplace.place(b, CFG, silk=[(0.0, 0.0, 60.0, 40.0)])[1] == ['C1']      # a wall over the whole board: the part is listed, not forced
+    assert 'C1' in free and tight
+
+
+def test_the_spacing_between_designators_is_the_boards_own_rule_when_it_has_one():
+    s = part(Synth('/GND'), 'C1', 30, 20, text_at=(30, 20))
+    part(s, 'C2', 32.3, 20, text_at=(32.3, 20))
+    b = board(s)
+    wide = types.SimpleNamespace(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, DESIGNATOR_GAP_MIN=1.0)
+    placed, un = silkplace.place(b, wide)
+    assert not un and gap(box_of('C1', placed['C1']), box_of('C2', placed['C2'])) >= 1.0 - 1e-9
