@@ -114,23 +114,6 @@ BOARD_SETUP = {
     'net_settings': {'classes': [{"bus_width": 12, "clearance": 0.15, "diff_pair_gap": 0.25, "diff_pair_via_gap": 0.25, "diff_pair_width": 0.15, "line_style": 0, "microvia_diameter": 0.3, "microvia_drill": 0.1, "name": "Default", "pcb_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647, "schematic_color": "rgba(0, 0, 0, 0.000)", "track_width": 0.15, "tuning_profile": "", "via_diameter": 0.6, "via_drill": 0.3, "wire_width": 6}], 'meta': {'version': 5}, 'net_colors': {}, 'netclass_assignments': {}, 'netclass_patterns': []},
 }
 
-# Cluster keys (D30 1b, pcbtools/keys.py): where parts are held tight on purpose their designators come off and one outlined key in free area
-# carries them in the parts' rows and columns. `parts` is the residue the silk-only placer could not place beside the part; until the placer has
-# run, CH2's whole input network stands in (no key is applied to the board before the placer has run).
-KEYS = {'CH2': dict(parts=('R201', 'R202', 'R203', 'R204', 'R205', 'R206', 'R207', 'R208', 'C201', 'C202', 'C203'))}
-KEY_TEXT_H = 1.0                  # mm, the board house's minimum silk text height
-KEY_ADVANCE = DESIGNATOR_ADVANCE  # as the designators (stroke font advance per character, fraction of the height)
-KEY_INK_H = DESIGNATOR_INK_H
-KEY_COL_GAP = 0.7                 # mm between two designators of a row
-KEY_ROW_PITCH = 1.6               # mm centre to centre of two rows (ink 1.2 high)
-KEY_MARGIN = 0.5                  # mm inside the box all round
-KEY_ROW_TOL = 0.5                 # mm: parts within this span in y are one row, in x one column: silkread's ORDER_MIN, past which two texts must be ordered, not tied
-KEY_CLEAR = 0.15                  # mm: pads, vias, silk and courtyards are grown by this when free area is measured
-KEY_ADJOIN_MAX = 2.0              # mm: the key box lies this close to its cluster's extent at most (spec lead's ruling: "adjoins" = 2 mm)
-KEY_STROKE = 0.15
-KEY_GAP = 1.0                     # mm between two keys of a legend
-KEY_BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'}     # heading -> the hundreds digit of its designators (LR-11)
-
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
 IDENTITY_CHECK = True

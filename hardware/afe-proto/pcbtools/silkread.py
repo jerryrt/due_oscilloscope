@@ -1,29 +1,31 @@
 """D30 (docs/afe.md): can a technician with only the board find a part from its designator?
 
-    findings(b, keys, bnc_labels, exempt={}, blocks={})  -> [str]     the reasons it cannot (empty = it can)
-    read_keys(txt)                              -> [Key]     the cluster keys drawn in a .kicad_pcb text
+    findings(b, bnc_labels=None, exempt=None)  -> [str]     the reasons it cannot (empty = it can)
+    runs(b)                                     -> {starter ref: [member refs]}   the labelled runs the board carries
 
-Three properties, each on the top side (the board has no bottom parts):
+The owner's convention (2026-11-15), on the top side (the board has no bottom parts):
 
-1. Own designator. A top part's visible silk designator is beside its own part: the gap from the text's box to its own courtyard
-   is at least OWN_MARGIN smaller than the gap to any other top courtyard, the box covers no pad and no other part's courtyard,
-   and the text reads at 0 or 90 degrees.
-2. Or a cluster key. A part whose designator is hidden is named exactly once, in exactly one key. A key is an unfilled
-   rectangle on F.SilkS holding at least two designators and, besides them, at most one other text: a block heading, one of
-   `blocks` ({heading: the hundreds digit of its designators}, e.g. {'CH2': '2'}). Its designators keep their parts' order
-   (a pair of parts more than ORDER_MIN apart along x or y has its two texts in the same order along that axis) and it lies on
-   no top courtyard or pad. An unheaded key is no further than KEY_GAP_MAX from the box around its parts' courtyards; a headed
-   key may sit anywhere (the owner's legend area, 2026-11-14), and every part in it belongs to its heading's block.
-3. One BNC frame. Each connector named in `bnc_labels` ({ref: function label}) carries its designator and its function label
-   at the same offset in its own frame as the first one does, to BNC_TOL.
+1. Beside its part. A visible designator is beside its own part: the gap from the text's box to its own courtyard is at
+   least OWN_MARGIN smaller than the gap to any other top courtyard, the box covers no pad and no other part's courtyard,
+   and a two-terminal part's designator reads along the part (0 degrees on a horizontal part, 90 on a vertical one;
+   any other part's reads at 0 or 90).
+2. Or a labelled run. Where same-type parts sit tight in a straight row or column, only the lowest-numbered one is
+   labelled and the rest follow in order. The label lies on the run's own line (its centre within RUN_ALIGN of the
+   starter's centre line), on the starter's side away from the run, within RUN_GAP_MAX of its courtyard, and covers no
+   pad and no other part's courtyard; it reads along the line. The members are the starter's prefix with numbers n+1,
+   n+2, ... for as long as each next one sits on the same line (RUN_ALIGN), at the same orientation, further along, and
+   within RUN_ADJ of the previous member's courtyard, with its own designator hidden.
+   Rule 1's margin is not asked of a starter: its label is read by the line, not by distance.
+3. Every top part is labelled: its own designator is visible (rules 1 or 2), or it is a member of a labelled run.
+4. One BNC frame. Each connector named in `bnc_labels` ({ref: function label}) carries its designator and its function
+   label at the same offset in its own frame as the first one does, to BNC_TOL.
 
-A part may be exempted by name, with its reason (`exempt`); the reason is the board's gate-3 notes' to give, not this module's.
+A part may be exempted by name with its reason (`exempt`); the reason is the board's gate-3 notes' to give.
 
 Text extents are estimated, not read: a stroke-font character is CHAR_ADV of its width wide *(check: 0.9 matches the
 1.0 mm designators in the AFE-2 render to within a pixel at 13.5 px/mm; other fonts or sizes are unmeasured)*.
 Everything is in Due mm, y up (boardio's frame).
 """
-import dataclasses
 import re
 
 import numpy as np
@@ -32,15 +34,10 @@ from pcbtools import boardio
 
 OWN_MARGIN = 0.25      # mm, D30
 BNC_TOL = 0.05         # mm, D30
-KEY_GAP_MAX = 2.0      # mm: "adjoins its cluster's extent"
-ORDER_MIN = 1.5        # mm: parts closer than this along an axis are in one row (or column) along it (owner, 2026-11-15; was 0.5)
+RUN_ALIGN = 0.3        # mm: on one line
+RUN_ADJ = 1.2          # mm: courtyard to courtyard, neighbours in a run
+RUN_GAP_MAX = 1.5      # mm: a starter's label from its courtyard
 CHAR_ADV = 0.9         # see the module text
-
-
-@dataclasses.dataclass(frozen=True)
-class Key:
-    box: tuple          # (x0, y0, x1, y1), Due mm
-    texts: tuple        # ((text, x, y), ...), Due mm
 
 
 def _box(x0, y0, x1, y1):
@@ -65,116 +62,133 @@ def text_box(s, x, y, w, h, ang=0.0):
     return (x - tw / 2, y - h / 2, x + tw / 2, y + h / 2)
 
 
-def read_keys(txt):
-    """the unfilled F.SilkS rectangles of a board text, with the board texts inside each; designator-ness is judged later"""
-    texts = []
-    for m in re.finditer(r'\(gr_text "([^"]*)"\s*\(at ([-\d.]+) ([-\d.]+)[^)]*\)\s*\(layer "F\.SilkS"\)', txt):
-        x, y = boardio.to_due(float(m.group(2)), float(m.group(3)))
-        texts.append((m.group(1), x, y))
-    keys = []
-    for m in re.finditer(r'\(gr_rect(.*?)\n\t\)', txt, re.S):
-        body = m.group(1)
-        if '(layer "F.SilkS")' not in body or '(fill yes)' in body:
-            continue
-        s = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', body)
-        e = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', body)
-        x0, y0 = boardio.to_due(float(s.group(1)), float(s.group(2)))
-        x1, y1 = boardio.to_due(float(e.group(1)), float(e.group(2)))
-        box = _box(x0, y0, x1, y1)
-        inside = tuple(t for t in texts if box[0] < t[1] < box[2] and box[1] < t[2] < box[3])
-        keys.append(Key(box, inside))
-    return keys
+def _split(ref):
+    m = re.match(r'([A-Z]+)(\d+)$', ref)
+    return (m.group(1), int(m.group(2))) if m else (None, None)
 
 
-def findings(b, keys=(), bnc_labels=None, exempt=None, blocks=None):
-    bad = []
+class _Board:
+    """the lookups the rules share"""
+
+    def __init__(self, b):
+        self.b = b
+        self.refs = list(b.fp_ref)
+        self.by_ref = {r: i for i, r in enumerate(self.refs)}
+        row = {int(k): i for i, k in enumerate(b.fp_idx)}
+        self.row = row
+        self.top = [int(s) == 0 for s in b.fp_side]
+        self.cour = [_box(*c) if not np.isnan(c).any() else None for c in zip(b.fp_cx0, b.fp_cy0, b.fp_cx1, b.fp_cy1)]
+        self.pads = [(int(f), (x0, y0, x1, y1)) for f, x0, y0, x1, y1 in zip(b.p_fp, b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
+        self.npads = np.bincount(np.asarray(b.p_fp, int), minlength=len(self.refs)) if len(b.p_fp) else np.zeros(len(self.refs), int)
+        self.others = [i for i in range(len(self.refs)) if self.top[i] and self.cour[i] is not None]
+        self.label = {}                                  # ref -> (box, angle, x, y) of its visible top designator
+        for j in range(len(b.r_fp)):
+            i = row[int(b.r_fp[j])]
+            if self.top[i] and b.r_on_silk[j] and int(b.r_layer[j]) == boardio.R_LAYERS['F.SilkS']:
+                r = self.refs[i]
+                self.label[r] = (text_box(r, b.r_x[j], b.r_y[j], b.r_w[j], b.r_h[j], b.r_ang[j]), float(b.r_ang[j]),
+                                 float(b.r_x[j]), float(b.r_y[j]))
+
+    def horizontal(self, i):
+        """a two-terminal part lies along x (True) or along y (False); None if it has not two pads"""
+        if self.npads[i] != 2 or self.cour[i] is None:
+            return None
+        c = self.cour[i]
+        return (c[2] - c[0]) >= (c[3] - c[1])
+
+    def along(self, i, ang):
+        """does a text at `ang` read along part i (at 0 or 90 when the part has no axis)?"""
+        a = ang % 180.0
+        flat, upright = min(a, 180.0 - a) < 0.5, abs(a - 90.0) < 0.5
+        h = self.horizontal(i)
+        return (flat or upright) if h is None else (flat if h else upright)
+
+    def blocked(self, box, own):
+        """refs whose courtyard the box lies on (own excluded), and whether it lies on a pad"""
+        hits = sorted({self.refs[k] for k in self.others if k != own and _overlap(box, self.cour[k])})
+        return hits, any(_overlap(box, p) for f, p in self.pads)
+
+
+def _run_from(B, r):
+    """the members after starter r, if its label sits on a run's line; [] if it is no starter"""
+    i = B.by_ref[r]
+    box, ang, lx, ly = B.label[r]
+    h = B.horizontal(i)
+    pre, n = _split(r)
+    if h is None or pre is None:
+        return []
+    b = B.b
+    cx, cy = b.fp_x[i], b.fp_y[i]
+    if h and abs(ly - cy) <= RUN_ALIGN:
+        axis, sign = 0, (1.0 if lx < cx else -1.0)       # the run goes away from the label
+    elif not h and abs(lx - cx) <= RUN_ALIGN:
+        axis, sign = 1, (1.0 if ly < cy else -1.0)
+    else:
+        return []
+    members, prev = [], i
+    while True:
+        q = B.by_ref.get(f'{pre}{n + len(members) + 1}')
+        if q is None or not B.top[q] or B.horizontal(q) != h or B.refs[q] in B.label:
+            break
+        if abs((b.fp_y[q] - cy) if axis == 0 else (b.fp_x[q] - cx)) > RUN_ALIGN:
+            break
+        d = ((b.fp_x[q] - b.fp_x[prev]) if axis == 0 else (b.fp_y[q] - b.fp_y[prev])) * sign
+        if d <= 0 or _gap(B.cour[prev], B.cour[q]) > RUN_ADJ:
+            break
+        members.append(B.refs[q])
+        prev = q
+    return members
+
+
+def runs(b):
+    B = _Board(b)
+    return {r: m for r in B.label for m in [_run_from(B, r)] if m}
+
+
+def findings(b, bnc_labels=None, exempt=None):
+    B = _Board(b)
     exempt = dict(exempt or {})
-    refs = list(b.fp_ref)
-    row = {int(k): i for i, k in enumerate(b.fp_idx)}
-    top = [int(s) == 0 for s in b.fp_side]
-    cour = [_box(*c) if not np.isnan(c).any() else None for c in zip(b.fp_cx0, b.fp_cy0, b.fp_cx1, b.fp_cy1)]
-    pads = [(int(f), (x0, y0, x1, y1)) for f, x0, y0, x1, y1 in zip(b.p_fp, b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
-    others = [i for i in range(len(refs)) if top[i] and cour[i] is not None]
+    bad = []
+    starters = {r: m for r in B.label for m in [_run_from(B, r)] if m}
+    member = {x for m in starters.values() for x in m}
 
-    # 1. own designators
-    shown = set()
-    for j in range(len(b.r_fp)):
-        i = row[int(b.r_fp[j])]
-        if not top[i] or not b.r_on_silk[j] or int(b.r_layer[j]) != boardio.R_LAYERS['F.SilkS']:
-            continue
-        r = refs[i]
-        shown.add(r)
+    for r, (box, ang, lx, ly) in B.label.items():
         if r in exempt:
             continue
-        t = text_box(r, b.r_x[j], b.r_y[j], b.r_w[j], b.r_h[j], b.r_ang[j])
-        if min(abs(b.r_ang[j] % 360.0 - a) for a in (0.0, 90.0, 360.0)) > 0.5:
-            bad.append(f'{r}: designator at {b.r_ang[j]:g} degrees, not 0 or 90')
-        if cour[i] is None:
+        i = B.by_ref[r]
+        if not B.along(i, ang):
+            bad.append(f'{r}: designator at {ang:g} degrees does not read along its part')
+        if B.cour[i] is None:
             bad.append(f'{r}: no courtyard to be beside')
             continue
-        own = _gap(t, cour[i])
-        near = min(((_gap(t, cour[k]), refs[k]) for k in others if k != i), default=(np.inf, ''))
-        if near[0] - own < OWN_MARGIN:
-            bad.append(f'{r}: designator {own:.2f} mm from its part and {near[0]:.2f} mm from {near[1]}, margin under {OWN_MARGIN}')
-        hits = sorted({refs[k] for k in others if k != i and _overlap(t, cour[k])})
+        hits, on_pad = B.blocked(box, i)
         if hits:
             bad.append(f'{r}: designator lies on the courtyard of {", ".join(hits)}')
-        if any(_overlap(t, p) for f, p in pads):
+        if on_pad:
             bad.append(f'{r}: designator lies on a pad')
-
-    # 2. cluster keys
-    named = {}
-    for n, k in enumerate(keys):
-        ts = [t for t in k.texts if t[0] in refs]
-        words = [t[0] for t in k.texts if t[0] not in refs]
-        if len(ts) < 2 or len(words) > 1 or (words and words[0] not in (blocks or {})):
-            continue                                    # a rectangle that is not a key (a block outline, a box with a word in it)
-        head = words[0] if words else None
-        where = f'key {n} at ({k.box[0]:.1f}, {k.box[1]:.1f})' + (f' headed {head}' if head else '')
-        if head:
-            for s, _, _ in ts:
-                m = re.match(r'[A-Z]+(\d)\d\d$', s)
-                if not m or m.group(1) != blocks[head]:
-                    bad.append(f'{where}: {s} is not in block {head}')
-        for s, x, y in ts:
-            named.setdefault(s, []).append(where)
-        for i in others:
-            if _overlap(k.box, cour[i]):
-                bad.append(f'{where}: lies on the courtyard of {refs[i]}')
-        if any(_overlap(k.box, p) for f, p in pads):
-            bad.append(f'{where}: lies on a pad')
-        idx = [refs.index(s) for s, _, _ in ts]
-        ext = (min(cour[i][0] for i in idx if cour[i]), min(cour[i][1] for i in idx if cour[i]),
-               max(cour[i][2] for i in idx if cour[i]), max(cour[i][3] for i in idx if cour[i]))
-        if head is None and _gap(k.box, ext) > KEY_GAP_MAX:
-            bad.append(f'{where}: {_gap(k.box, ext):.2f} mm from its parts, more than {KEY_GAP_MAX}')
-        for a in range(len(ts)):
-            for c in range(a + 1, len(ts)):
-                pa, pc = idx[a], idx[c]
-                for ax, name in ((1, 'x'), (2, 'y')):
-                    dp = (b.fp_x[pc] - b.fp_x[pa]) if ax == 1 else (b.fp_y[pc] - b.fp_y[pa])
-                    dt = ts[c][ax] - ts[a][ax]
-                    if abs(dp) > ORDER_MIN and np.sign(dp) != np.sign(dt):
-                        bad.append(f'{where}: {ts[a][0]} and {ts[c][0]} are out of order along {name}')
-    for i in others:
-        r = refs[i]
-        if r in shown or r in exempt:
-            if r in named and r in shown:
-                bad.append(f'{r}: has its own designator and a place in {named[r][0]}')
+        if _overlap(box, B.cour[i]):
+            bad.append(f'{r}: designator lies on its own part, which hides it')
+        own = _gap(box, B.cour[i])
+        if r in starters:
+            if own > RUN_GAP_MAX:
+                bad.append(f'{r}: run label {own:.2f} mm from its starter, more than {RUN_GAP_MAX}')
             continue
-        if r not in named:
-            bad.append(f'{r}: no designator and in no key')
-        elif len(named[r]) > 1:
-            bad.append(f'{r}: named {len(named[r])} times in keys')
+        near = min(((_gap(box, B.cour[k]), B.refs[k]) for k in B.others if k != i), default=(np.inf, ''))
+        if near[0] - own < OWN_MARGIN:
+            bad.append(f'{r}: designator {own:.2f} mm from its part and {near[0]:.2f} mm from {near[1]}, margin under {OWN_MARGIN}')
 
-    # 3. BNC frames
+    for i in B.others:
+        r = B.refs[i]
+        if r not in B.label and r not in member and r not in exempt:
+            bad.append(f'{r}: no designator and in no labelled run')
+
     first = None
     for r, label in (bnc_labels or {}).items():
-        if r not in refs:
+        if r not in B.by_ref:
             bad.append(f'{r}: no such connector')
             continue
-        i = refs.index(r)
-        js = [j for j in range(len(b.r_fp)) if row[int(b.r_fp[j])] == i and b.r_on_silk[j]]
+        i = B.by_ref[r]
+        js = [j for j in range(len(b.r_fp)) if B.row[int(b.r_fp[j])] == i and b.r_on_silk[j]]
         ls = [n for n, t in enumerate(b.t_text) if t == label]
         if len(js) != 1 or len(ls) != 1:
             bad.append(f'{r}: {len(js)} designators and {len(ls)} "{label}" labels, wanted one each')
