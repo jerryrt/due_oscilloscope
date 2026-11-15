@@ -199,7 +199,7 @@ def test_the_frame_follows_the_connector_rotation():
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 # Findings on 2026-11-15 under the run convention, before any board work for it: held exactly (a ratchet, not a tolerance).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 0, 'kicad/afe-proto.kicad_pcb': 18}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 0, 'kicad/afe-proto.kicad_pcb': 3}
 
 
 @pytest.mark.pcbnew

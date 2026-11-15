@@ -3223,7 +3223,7 @@
 		(descr "SMD pad as test Point, diameter 1.0mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP201"
-			(at -1.9 5.25)
+			(at -1.8 1.98)
 			(layer "F.SilkS")
 			(uuid "23038894-447e-5a3b-870e-62553675fee0")
 			(effects
@@ -6665,7 +6665,7 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C105"
-			(at 3.42 1.17)
+			(at 4.22 0.37)
 			(layer "F.SilkS")
 			(uuid "0e000015-5c92-5bcf-8085-a8e8b869c24e")
 			(effects
@@ -9179,8 +9179,8 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C103"
-			(at 5.03 8.28)
-			(layer "F.SilkS")
+			(at -0.674999 -2.725001 90)
+			(layer "F.Fab")
 			(uuid "b0512f75-ba0f-5571-8ef0-2205ab0dd0b3")
 			(effects
 				(font
@@ -10764,7 +10764,7 @@
 		(tags "resistor")
 		(property "Reference" "R202"
 			(at -0.975 2.674999 90)
-			(layer "F.SilkS")
+			(layer "F.Fab")
 			(uuid "f33c2f9b-5aae-59c7-91d4-ba911aa620ea")
 			(effects
 				(font
@@ -10961,7 +10961,7 @@
 		(descr "Capacitor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf, https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing)")
 		(tags "capacitor")
 		(property "Reference" "C104"
-			(at 2.85 -4.13)
+			(at -0.45 -1.63)
 			(layer "F.SilkS")
 			(uuid "93a02429-32f4-526b-81d8-2aac514c30f7")
 			(effects
@@ -11753,7 +11753,7 @@
 		(descr "SMD pad as test Point, diameter 1.0mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP401"
-			(at -0.35 1.4 0)
+			(at 2.3 -1.4 90)
 			(layer "F.SilkS")
 			(uuid "7d3530d7-62ab-5d0f-9896-d5f4ab2e5b66")
 			(effects
@@ -11903,7 +11903,7 @@
 		(descr "SOIC, 8 Pin (JEDEC MS-012AA, https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/soic_narrow-r/r_8.pdf)")
 		(tags "SOIC SO")
 		(property "Reference" "U101"
-			(at -0.64 4.64)
+			(at 0.16 -3.34 90)
 			(layer "F.SilkS")
 			(uuid "76b11743-7b39-5ce9-8c2c-86f53ef2cbfb")
 			(effects
@@ -12707,8 +12707,8 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R207"
-			(at -9.93 0.33)
-			(layer "F.SilkS")
+			(at -6.475 1.875 0)
+			(layer "F.Fab")
 			(uuid "8775040f-33a8-5d83-b700-974e8bbba5c7")
 			(effects
 				(font
@@ -15207,7 +15207,7 @@
 		(descr "SMD pad as test Point, diameter 1.0mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP405"
-			(at 1.45 -3.42 90)
+			(at 1.7 -4.3 90)
 			(layer "F.SilkS")
 			(uuid "be3501a2-a7f5-57fc-9c54-3f97ae987749")
 			(effects
@@ -16711,7 +16711,7 @@
 		(tags "SOT TO_SOT_SMD")
 		(property "Reference" "D201"
 			(at 3.87 0.75 90)
-			(layer "F.SilkS")
+			(layer "F.Fab")
 			(uuid "62b302aa-341f-50b1-8a59-2fdaabd4a47f")
 			(effects
 				(font
@@ -17524,8 +17524,8 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C202"
-			(at 3.43 -3.28)
-			(layer "F.SilkS")
+			(at 4.33 -0.07)
+			(layer "F.Fab")
 			(uuid "6faf2b12-b761-5fbc-85f3-b6385296050a")
 			(effects
 				(font
@@ -17920,7 +17920,7 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C203"
-			(at 3.875 -0.674999 90)
+			(at 1.87 -1.38)
 			(layer "F.SilkS")
 			(uuid "0f7c8fb4-9890-5c90-a20c-449b4ee4aeeb")
 			(effects
@@ -20722,8 +20722,8 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R102"
-			(at 0.4 -1.43)
-			(layer "F.SilkS")
+			(at -0.175 -1.425 0)
+			(layer "F.Fab")
 			(uuid "0dc4425d-fa06-5755-8606-800ba8fae688")
 			(effects
 				(font
@@ -34183,7 +34183,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "22b22d2c-7ec0-4dcb-baa8-929e21f3f2fb")
+		(uuid "d957b657-9850-4320-b202-e73b17f58d50")
 	)
 	(gr_line
 		(start 88.3000 145.4000)
@@ -34193,7 +34193,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "64a8489e-5b1a-4c43-b70f-3e81fc08373d")
+		(uuid "a8bc93c7-dd26-46b9-a47d-89ed564b8ba8")
 	)
 	(gr_line
 		(start 67.9000 124.0000)
@@ -34203,7 +34203,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "a49af273-e25a-4b05-819d-dedf2e1607ce")
+		(uuid "f978d58b-b319-4ea0-8bdb-6b5a0a3adedb")
 	)
 	(gr_line
 		(start 67.9000 145.4000)
@@ -34213,7 +34213,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "f878bd82-ebcf-4b30-8458-88464a0edbd3")
+		(uuid "48d01689-4e74-40cc-91c2-6609b6d1e7c0")
 	)
 	(gr_line
 		(start 94.1000 145.4000)
@@ -34223,7 +34223,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "2fba96b6-6a77-4015-b761-1195e3e043ce")
+		(uuid "626af291-4ec8-4282-87ea-4aec8c8c4b66")
 	)
 	(gr_line
 		(start 84.7000 145.8000)
@@ -34233,7 +34233,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "fefb782e-f693-489c-8825-9b4a348e1d1c")
+		(uuid "0db36f7a-c396-4678-a300-04c52a3bf839")
 	)
 	(gr_line
 		(start 84.7000 145.8000)
@@ -34243,7 +34243,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "f69bf57b-91c2-4846-ac43-1412dec7946c")
+		(uuid "7a30665f-10ff-449c-b72b-97670592057d")
 	)
 	(gr_line
 		(start 88.3000 145.8000)
@@ -34253,7 +34253,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "8a3dae2e-65a4-47d2-a45a-4023cae5bfce")
+		(uuid "aed5b777-4f73-4aed-9457-d809db53a417")
 	)
 	(gr_line
 		(start 88.5000 104.6000)
@@ -34263,7 +34263,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "4986c603-2dbe-49b3-871b-ed182f88e447")
+		(uuid "200c62dd-0986-4a66-b9fe-5792640d2402")
 	)
 	(gr_line
 		(start 88.5000 101.2500)
@@ -34273,7 +34273,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "b60e7574-956a-4f5b-8200-21e4b92f6b3c")
+		(uuid "db9c9dbe-65a9-43c3-a370-0c05f34934d5")
 	)
 	(gr_line
 		(start 88.5000 104.6000)
@@ -34283,7 +34283,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "87099770-717a-41b0-8931-93bc84e45056")
+		(uuid "9f0c4dfc-8811-435e-9c3b-75a123fff86e")
 	)
 	(gr_line
 		(start 93.5000 104.6000)
@@ -34293,7 +34293,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "e9d94f59-8ddc-4641-a3c5-9553438f3909")
+		(uuid "5a0bc8cf-f3ed-4bfa-9e84-f6365cfba1ac")
 	)
 	(gr_line
 		(start 94.4000 145.0000)
@@ -34303,7 +34303,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "9b32dea9-9a00-4d89-8b1d-293797cc8cb8")
+		(uuid "526248c3-a955-4baa-b509-6b8462b52e80")
 	)
 	(gr_line
 		(start 94.4000 114.1000)
@@ -34313,7 +34313,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "a96ee3f1-b4e4-42a6-adf2-132bbf25d907")
+		(uuid "bbd331cf-8834-403f-a6be-64e50c117b92")
 	)
 	(gr_line
 		(start 94.4000 145.0000)
@@ -34323,7 +34323,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "09e87172-2dca-49bd-9d55-a5ceeabba1ce")
+		(uuid "73ceaf17-5481-415d-bdcf-7272c9bf3313")
 	)
 	(gr_line
 		(start 114.5000 145.0000)
@@ -34333,7 +34333,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "08df68a9-5ec3-4bc3-b37c-2dc5e68c2647")
+		(uuid "1e74e07d-1eff-43fd-9312-9695995a7211")
 	)
 	(gr_line
 		(start 114.5000 124.4000)
@@ -34343,7 +34343,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "f368b1e5-61f8-461d-9a84-26e7e2b467a9")
+		(uuid "73d4c50a-323d-4a9c-a2ca-5ee9967bea14")
 	)
 	(gr_line
 		(start 114.5000 128.0500)
@@ -34353,7 +34353,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "21a26933-24f8-48c4-981c-2567a6db549a")
+		(uuid "5daccbef-d748-42d7-81c4-409c6d64341c")
 	)
 	(gr_line
 		(start 114.5000 124.4000)
@@ -34363,7 +34363,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "ef494cde-6233-42c9-be97-ff1a54b457c8")
+		(uuid "b93ea92d-954f-4a4d-a540-bc26fa60b9d3")
 	)
 	(gr_line
 		(start 120.4000 128.0500)
@@ -34373,7 +34373,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "ca6b9223-1bc4-4e15-9a18-dabe2196d0d4")
+		(uuid "93909ddb-0209-478c-955b-0a5d4392a856")
 	)
 	(gr_line
 		(start 119.7000 145.7000)
@@ -34383,7 +34383,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "31187bf7-6a03-47de-9605-e85920d997dc")
+		(uuid "b8380086-cdc3-493d-8691-f114df75d596")
 	)
 	(gr_line
 		(start 120.4000 129.4000)
@@ -34393,7 +34393,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "c79ff0a5-36b9-4399-9ad6-3b5bbc3b93a3")
+		(uuid "5d0dcad0-f492-45a9-bca9-301f93abc8dd")
 	)
 	(gr_line
 		(start 119.7000 145.7000)
@@ -34403,7 +34403,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "c209de65-9c5f-4654-9e81-99cc50321938")
+		(uuid "1c6e5ec4-a32d-4a6b-8cd7-081591e31a2d")
 	)
 	(gr_line
 		(start 142.1000 145.7000)
@@ -34413,7 +34413,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "3c044468-cc7d-46ed-8f24-c305fd25a79f")
+		(uuid "31fab822-1844-45d4-91ba-96a58414e697")
 	)
 	(gr_line
 		(start 148.5000 149.4000)
@@ -34423,7 +34423,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "230eafa8-27b3-4304-9d86-64158574e907")
+		(uuid "9740732e-5908-499d-b683-2c70f0dddd11")
 	)
 	(gr_line
 		(start 148.5000 134.5000)
@@ -34433,7 +34433,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "44c51d48-8a9a-4fe2-94bd-05f87d78f4cc")
+		(uuid "fda5bc94-a70f-4249-ad66-2a969699173b")
 	)
 	(gr_line
 		(start 148.5000 149.4000)
@@ -34443,7 +34443,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "bd795ff1-320d-4842-9638-a63a9c2288d0")
+		(uuid "12a9ea5d-0bcd-4aba-adbb-5272e692dd35")
 	)
 	(gr_line
 		(start 166.4000 149.4000)
@@ -34453,7 +34453,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "6d121c28-940d-4ef7-8932-504751fad649")
+		(uuid "2ec61232-6e5e-48e1-83d0-a37bd41c351f")
 	)
 	(gr_line
 		(start 114.5000 131.6000)
@@ -34463,7 +34463,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "5bf0f8f1-f3b1-4c25-97cb-735702df8807")
+		(uuid "aeeb8d3a-8c61-4e15-b78f-2ef2aa272c37")
 	)
 	(gr_line
 		(start 114.5000 131.6000)
@@ -34473,7 +34473,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "27010333-164f-4b7e-89e0-b16aa10f9a2b")
+		(uuid "689b344f-f745-466d-b3b6-4f2f8acb7caa")
 	)
 	(gr_line
 		(start 120.4000 129.4000)
@@ -34483,7 +34483,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "03da3722-dc52-4136-ad33-26a40e5c63f0")
+		(uuid "cffaad32-9ec6-4a1c-b7a5-af8413b5ede3")
 	)
 	(gr_line
 		(start 114.5000 117.8500)
@@ -34493,27 +34493,17 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "44b202e0-402e-45dc-a66b-d4946539fd85")
-	)
-	(gr_line
-		(start 134.6000 117.8500)
-		(end 142.1000 117.8500)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "01790950-87b0-4631-9687-cab3c9661301")
+		(uuid "015d20fd-a9c6-456b-a1d3-c13084e28c1e")
 	)
 	(gr_line
 		(start 114.5000 101.5000)
-		(end 142.1000 101.5000)
+		(end 134.9000 101.5000)
 		(stroke
 			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "b97733ca-ce74-4398-8df4-75358ec8ba7b")
+		(uuid "6ab59829-47a0-4603-a56a-5c307527d27a")
 	)
 	(gr_line
 		(start 114.5000 117.8500)
@@ -34523,27 +34513,57 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "fc8bfad4-2f78-4a4f-9a41-63f217365a65")
+		(uuid "4f2302bd-c1bb-4e81-bb62-e8117e7c9f3c")
 	)
 	(gr_line
-		(start 142.1000 117.8500)
+		(start 134.9000 117.8500)
+		(end 134.9000 116.6000)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "7b34acb5-098f-4f79-81b6-c53d3ec4ede1")
+	)
+	(gr_line
+		(start 134.9000 116.6000)
+		(end 142.1000 116.6000)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "c07038f2-5500-45ab-b2aa-d6c761a8e872")
+	)
+	(gr_line
+		(start 134.9000 101.5000)
 		(end 142.1000 101.5000)
 		(stroke
 			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "dc066692-6d96-4bc3-b605-570f603ef362")
+		(uuid "0f0d0d2c-80cf-4b48-83eb-d1c7691f095d")
 	)
 	(gr_line
-		(start 128.9000 119.5500)
-		(end 134.6000 119.5500)
+		(start 142.1000 116.6000)
+		(end 142.1000 101.5000)
 		(stroke
 			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "e318c494-7e5c-4c24-89be-6e455f7e610e")
+		(uuid "7632c0b8-5cd3-4337-9441-1413b35e913f")
+	)
+	(gr_line
+		(start 128.9000 119.5500)
+		(end 134.9000 119.5500)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "7cac0cbb-781e-4634-8e60-f87acecb030f")
 	)
 	(gr_line
 		(start 128.9000 119.5500)
@@ -34553,17 +34573,17 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "11ffabeb-c629-454a-b44d-9906e50a0acf")
+		(uuid "f1aa1992-6779-4015-8fc1-10eda96dfa00")
 	)
 	(gr_line
-		(start 134.6000 119.5500)
-		(end 134.6000 117.8500)
+		(start 134.9000 119.5500)
+		(end 134.9000 117.8500)
 		(stroke
 			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "d7f28b36-ab4b-4d6d-b0b9-94cbe8b45f10")
+		(uuid "54c5dd25-d2ed-4f77-be8e-5dcfbe6a03b5")
 	)
 	(gr_line
 		(start 120.4000 122.7000)
@@ -34573,7 +34593,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "5284f145-305f-4dbf-9ce0-6ba0b01239b0")
+		(uuid "504f5cc3-c149-4849-9fa8-29446c2b6462")
 	)
 	(gr_line
 		(start 120.4000 119.1000)
@@ -34583,7 +34603,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "37cd1389-abdd-4e5c-82ca-937906b99cfa")
+		(uuid "6f782deb-072b-439c-95f4-3d25afafc595")
 	)
 	(gr_line
 		(start 120.4000 122.7000)
@@ -34593,7 +34613,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "d8691fe4-b339-4965-a3eb-904d70cd291a")
+		(uuid "25ed1f12-7a73-4e0b-af67-7d831644bb62")
 	)
 	(gr_line
 		(start 122.3000 122.7000)
@@ -34603,7 +34623,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "22ea5b9e-cb23-4483-a51f-c7dc7703d9ac")
+		(uuid "52ff3241-4332-44d3-a11b-8babd4a11b27")
 	)
 	(gr_line
 		(start 148.5000 114.5000)
@@ -34613,7 +34633,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "b02a672f-9020-4266-b896-bc749997d9d6")
+		(uuid "ffd14382-34e3-4995-b701-9b95717699bd")
 	)
 	(gr_line
 		(start 148.5000 98.7000)
@@ -34623,7 +34643,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "26ac0df9-0a10-43d6-b924-211e9c2c248c")
+		(uuid "5f127f4d-890d-4fcc-9732-1077ee85e680")
 	)
 	(gr_line
 		(start 148.5000 114.5000)
@@ -34633,7 +34653,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "39b54230-dfc5-4e44-8fe8-99f1fcc87c17")
+		(uuid "f69cedda-2ce7-4d90-b297-8482af204f22")
 	)
 	(gr_line
 		(start 166.4000 114.5000)
@@ -34643,7 +34663,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "bd3ca776-2242-4ad8-b3e5-c66aa2a37253")
+		(uuid "3456bc35-90a7-4968-be49-b1e43ceace43")
 	)
 	(gr_line
 		(start 122.3000 129.4000)
@@ -34653,7 +34673,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "569fa2d7-4522-4425-bf07-ca0bd78b751e")
+		(uuid "df0ffd42-3467-4f15-bfa0-408533f386ca")
 	)
 	(gr_line
 		(start 122.3000 117.8500)
@@ -34663,7 +34683,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "f81b91a0-cb65-43ba-9a09-efec53807738")
+		(uuid "4d4fec85-f04b-4ba4-8a35-e3d16ff71aa0")
 	)
 	(gr_line
 		(start 122.3000 129.4000)
@@ -34673,7 +34693,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "8e2d7431-56fb-4b2f-b051-c955ba9f8201")
+		(uuid "8748dd43-9ad8-449f-84c7-231a74dd8ef8")
 	)
 	(gr_line
 		(start 126.0000 119.5500)
@@ -34683,7 +34703,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "e79fd7e2-03c0-4daf-91a7-3d9f4197b9ca")
+		(uuid "3bf88c42-9492-41fe-834b-7e86d5f6cf1f")
 	)
 	(gr_line
 		(start 126.0000 129.4000)
@@ -34693,17 +34713,17 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "3964a7d1-0055-47c4-95a7-12c34a9efecc")
+		(uuid "79718cd2-9449-4964-9aae-cb762a2e1328")
 	)
 	(gr_line
 		(start 126.0000 119.5500)
-		(end 142.1000 119.5500)
+		(end 134.9000 119.5500)
 		(stroke
 			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "4b9748ad-9a2b-4988-bdf3-9ef9b08715c8")
+		(uuid "e52893ad-2827-4aaf-ae81-5ed229490f6d")
 	)
 	(gr_line
 		(start 142.1000 129.4000)
@@ -34713,7 +34733,27 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "6cdf8aa9-c3d7-444d-b2b2-d313649d058e")
+		(uuid "9ecdfb7a-527d-48d9-ba4b-1b72f7b3e68f")
+	)
+	(gr_line
+		(start 134.9000 119.5500)
+		(end 134.9000 116.6000)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "409391d2-b863-4937-b5a2-1cdc8e57cb77")
+	)
+	(gr_line
+		(start 142.1000 119.5500)
+		(end 142.1000 116.6000)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "384d556b-ab4a-4bd8-8b43-4f1b78ba898a")
 	)
 	(gr_line
 		(start 148.5000 133.5000)
@@ -34723,7 +34763,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "1e7210ed-18e9-43f3-859a-680d57a0113a")
+		(uuid "dd7dea81-7705-4508-9025-45066e255a7c")
 	)
 	(gr_line
 		(start 148.5000 133.5000)
@@ -34733,7 +34773,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "40cc9f6a-9b69-4171-b473-9367ef01ff98")
+		(uuid "218a6a9f-81a4-4b99-8234-ae97e1364bb7")
 	)
 	(gr_line
 		(start 166.4000 133.5000)
@@ -34743,6 +34783,6 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "38ef7e68-fa77-46b0-9a69-3f928e4733f6")
+		(uuid "e45136e3-1e55-4eda-8c9e-a406fceadf4c")
 	)
 )
