@@ -100,8 +100,8 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP404"
-			(at 2.39 -5.75 90)
-			(layer "F.Fab")
+			(at -2.7 3.75 90)
+			(layer "F.SilkS")
 			(uuid "dbb797f4-96cd-55ef-b28d-dc11f71541e4")
 			(effects
 				(font
@@ -6070,8 +6070,8 @@
 		(descr "Through hole straight pin header, 1x03, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x03 2.54mm single row")
 		(property "Reference" "J501"
-			(at 3.65 5.25 0)
-			(layer "F.Fab")
+			(at 3.72 6.39 90)
+			(layer "F.SilkS")
 			(uuid "9a92f5ab-7add-5793-83a6-0aeb58f70c8b")
 			(effects
 				(font
@@ -7782,8 +7782,8 @@
 		(descr "SOT, 3 Pin (JEDEC TO-236 Var AB https://www.jedec.org/document_search?search_api_views_fulltext=TO-236)")
 		(tags "SOT TO_SOT_SMD")
 		(property "Reference" "U501"
-			(at 2.375 0.35 90)
-			(layer "F.Fab")
+			(at 3.8725 0.35)
+			(layer "F.SilkS")
 			(uuid "62fc3fe3-c11c-59e3-97dc-440bb0d15369")
 			(effects
 				(font
@@ -11906,8 +11906,8 @@
 		(descr "SOIC, 8 Pin (JEDEC MS-012AA, https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/soic_narrow-r/r_8.pdf)")
 		(tags "SOIC SO")
 		(property "Reference" "U301"
-			(at 3.35 -8.845)
-			(layer "F.Fab")
+			(at -4.15 6.245)
+			(layer "F.SilkS")
 			(uuid "e54ebc94-1cc3-5f33-968b-0bd139701528")
 			(effects
 				(font
@@ -13880,8 +13880,8 @@
 		(descr "MSOP, 10 Pin (JEDEC MO-187 variation BA, 0.85mm body thickness, https://www.jedec.org/system/files/docs/mo-187F.pdf)")
 		(tags "MSOP SO TSSOP-10_3x3mm_P0.5mm")
 		(property "Reference" "U502"
-			(at 3.65 -1.875 90)
-			(layer "F.Fab")
+			(at 5.86 2.6 90)
+			(layer "F.SilkS")
 			(uuid "fda22fb4-5e3b-51a1-b821-458ae901d184")
 			(effects
 				(font
@@ -14828,7 +14828,7 @@
 		(tags "resistor")
 		(property "Reference" "R208"
 			(at 0.82 5.075 90)
-			(layer "F.Fab")
+			(layer "F.SilkS")
 			(uuid "f452df06-538a-5a51-8fad-c339cf6e139e")
 			(effects
 				(font
@@ -17132,7 +17132,7 @@
 		(tags "resistor")
 		(property "Reference" "R108"
 			(at -0.025 -4.275 90)
-			(layer "F.Fab")
+			(layer "F.SilkS")
 			(uuid "da2050d4-edca-530c-beac-5ac66a8f67b7")
 			(effects
 				(font
@@ -18312,8 +18312,8 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP201"
-			(at 0.65 1.45 0)
-			(layer "F.Fab")
+			(at 1.89 -0.05 90)
+			(layer "F.SilkS")
 			(uuid "976188ed-4b01-52f4-ac7a-6bd5eeb13c96")
 			(effects
 				(font
@@ -18439,8 +18439,8 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP501"
-			(at -2.45 2.25 90)
-			(layer "F.Fab")
+			(at -1.9 -1.25 90)
+			(layer "F.SilkS")
 			(uuid "fec0921b-edd1-59a2-9f16-813030c37122")
 			(effects
 				(font
@@ -21412,8 +21412,8 @@
 		(descr "WSON-12 http://www.ti.com/lit/ds/symlink/lm27762.pdf")
 		(tags "WSON-12")
 		(property "Reference" "U401"
-			(at 2.49 3.1 90)
-			(layer "F.Fab")
+			(at 3.39 1.9)
+			(layer "F.SilkS")
 			(uuid "55caef72-207c-5980-84ef-8ff37d511523")
 			(effects
 				(font
@@ -23073,7 +23073,7 @@
 		)
 	)
 	(gr_text "AWG OUT"
-		(at 154.2312 137.12 90)
+		(at 149.25 140.11 90)
 		(layer "F.SilkS")
 		(uuid "132f7958-902d-491d-9918-de7678914f76")
 		(effects
@@ -23081,7 +23081,6 @@
 				(size 1 1)
 				(thickness 0.15)
 			)
-			(justify left)
 		)
 	)
 	(gr_text "CAL"
@@ -23107,7 +23106,7 @@
 		)
 	)
 	(gr_text "CH1 IN"
-		(at 154.2312 100.41 90)
+		(at 149.25 103.4 90)
 		(layer "F.SilkS")
 		(uuid "eb3f9bf3-8ec4-4059-91a2-59ded81a6663")
 		(effects
@@ -23118,7 +23117,7 @@
 		)
 	)
 	(gr_text "CH2 IN"
-		(at 154.2312 118.19 90)
+		(at 149.25 121.18 90)
 		(layer "F.SilkS")
 		(uuid "d1543edd-25f1-470b-a8bd-9d3f789779cf")
 		(effects

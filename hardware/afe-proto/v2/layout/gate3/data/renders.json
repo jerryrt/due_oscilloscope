@@ -6,7 +6,7 @@
   "exists": true,
   "current": true,
   "why": "",
-  "sha256": "0b7c36a1033d5de4"
+  "sha256": "a6cfc470cb79bc39"
  },
  {
   "view": "bottom (B.Cu)",
@@ -24,7 +24,7 @@
   "exists": true,
   "current": true,
   "why": "",
-  "sha256": "a61e77529b40fcb2"
+  "sha256": "aa23ce2b2002c768"
  },
  {
   "view": "3D bottom",
@@ -33,6 +33,6 @@
   "exists": true,
   "current": true,
   "why": "",
-  "sha256": "f26cf3db33315d66"
+  "sha256": "6cc77cddbbc95a1c"
  }
 ]
