@@ -2,6 +2,7 @@
 
 Ground truth is built by the tests: a synthetic occupancy grid with a known free rectangle, CH2's part positions read from the board text, and
 the edit's own diff. Broken once on purpose, as the suite requires."""
+import dataclasses
 import pathlib
 import re
 import types
@@ -11,6 +12,7 @@ import pytest
 
 from pcbtools import keys as K
 from pcbtools.boards import v2_layout as CFG
+from tests.pcbtools.synth import Synth
 
 BOARD = pathlib.Path(__file__).resolve().parents[2] / 'v2' / 'layout' / 'integrated' / 'afe-v2-integrated.kicad_pcb'
 
@@ -257,3 +259,90 @@ def test_the_packer_tries_other_orders_so_two_keys_that_only_fit_one_way_are_pla
     small = (0.0, 30.0, max(a.W, 1) + 0.3, 30.0 + a.H + 0.3)                  # holds CH1 only if CH2 did not take its place first
     res = K.legend(fake_board(PARTS), '', CFG, [('CH1', list(CH1)), ('CH2', list(CH2))], [small, big], grid=FREE)
     assert isinstance(res, list) and {p.heading for p in res} == {'CH1', 'CH2'}
+
+
+# ------------------------------------------------------------------------------------------------ splitting a block's residue, free regions
+def fake_board_c(parts, half=0.8):
+    """positions and a courtyard of +-half round each part"""
+    refs = list(parts)
+    b = fake_board(parts)
+    b.fp_cx0 = np.array([parts[r][0] - half for r in refs])
+    b.fp_cx1 = np.array([parts[r][0] + half for r in refs])
+    b.fp_cy0 = np.array([parts[r][1] - half for r in refs])
+    b.fp_cy1 = np.array([parts[r][1] + half for r in refs])
+    return b
+
+
+TWO = {'R101': (10.0, 20.0), 'R102': (12.0, 20.0), 'C101': (11.0, 18.0),          # a cluster
+       'R103': (50.0, 20.0), 'R104': (52.0, 20.0), 'C102': (51.0, 18.0)}          # another, 38 mm away
+
+
+def test_a_blocks_residue_splits_into_spatial_clusters_one_key_each_under_the_same_heading():
+    items = K.split_items(fake_board_c(TWO), [('CH1', list(TWO))], 2.0)
+    assert [h for h, _ in items] == ['CH1', 'CH1'] and sorted(map(sorted, (r for _, r in items))) == [['C101', 'R101', 'R102'], ['C102', 'R103', 'R104']]
+
+
+def test_a_lone_part_joins_the_nearest_cluster_and_a_block_of_lone_parts_stays_one_key():
+    parts = {**TWO, 'R105': (14.0, 24.0)}                                          # 2.8 mm off the first cluster, 36 off the other
+    items = K.split_items(fake_board_c(parts), [('CH1', list(parts))], 2.0)
+    assert len(items) == 2 and 'R105' in [r for h, rs in items for r in rs if 'R101' in rs]
+    alone = {'R101': (10.0, 20.0), 'R102': (30.0, 20.0), 'R103': (50.0, 20.0)}
+    items = K.split_items(fake_board_c(alone), [('CH1', list(alone))], 2.0)
+    assert len(items) == 1 and len(items[0][1]) == 3
+    assert all(len(rs) >= 2 for _, rs in K.split_items(fake_board_c(parts), [('CH1', list(parts))], 2.0))                 # a key never has one designator
+
+
+def test_broken_once_without_the_distance_test_everything_is_one_cluster():
+    real = K._cgap
+    try:
+        K._cgap = lambda a, c: 0.0
+        assert len(K.split_items(fake_board_c(TWO), [('CH1', list(TWO))], 2.0)) == 1
+    finally:
+        K._cgap = real
+    assert len(K.split_items(fake_board_c(TWO), [('CH1', list(TWO))], 2.0)) == 2
+
+
+def test_a_legend_with_split_packs_each_cluster_as_its_own_key_with_only_its_own_rows():
+    res = K.legend(fake_board_c(TWO), '', CFG, [('CH1', list(TWO))], [(0.0, 0.0, 40.0, 20.0)], grid=FREE, split=2.0)
+    assert [p.heading for p in res] == ['CH1', 'CH1']
+    for p in res:
+        assert len(p.texts) == 3 and all(len(r) <= 2 for r in p.rows)
+    whole = K.legend(fake_board(TWO), '', CFG, [('CH1', list(TWO))], [(0.0, 0.0, 80.0, 30.0)], grid=FREE, split=None)
+    assert whole[0].box[2] - whole[0].box[0] > max(p.box[2] - p.box[0] for p in res)                 # one key over both clusters is the wider
+
+
+def test_free_rectangles_are_the_biggest_free_ones_in_turn():
+    g = K.Grid((0.0, 0.0, 40.0, 20.0))
+    g.mark(0, 0, 40, 20)
+    g.occ[20:120, 20:220] = False                                                                       # y 2..12, x 2..22 : 20 x 10
+    g.occ[150:190, 250:380] = False                                                                     # y 15..19, x 25..38: 13 x 4
+    rects = K.free_rectangles(g, 3.0, 3.0, 5)
+    assert rects == [(2.0, 2.0, 22.0, 12.0), (25.0, 15.0, 38.0, 19.0)]
+    assert K.free_rectangles(g, 14.0, 3.0, 5) == [(2.0, 2.0, 22.0, 12.0)]                              # the second is too narrow for 14
+    assert K.free_rectangles(g, 3.0, 3.0, 1, edge=2.5) == [(2.5, 2.5, 21.5, 11.5)] or K.free_rectangles(g, 3.0, 3.0, 1, edge=2.5)[0][0] >= 2.5
+
+
+def test_a_legend_uses_the_boards_free_rectangles_when_the_given_region_is_too_small():
+    small = [(0.0, 0.0, 5.0, 5.0)]
+    assert isinstance(K.legend(fake_board_c(TWO), '', CFG, [('CH1', list(TWO))], small, grid=FREE, split=2.0), K.LegendNoFit)
+    res = K.legend(fake_board_c(TWO), '', CFG, [('CH1', list(TWO))], small, grid=FREE, split=2.0, auto=(8.0, 5.0, 4))
+    assert isinstance(res, list) and len(res) == 2
+    for p in res:
+        assert p.box[2] > 5.0 or p.box[3] > 5.0                                                          # not in the small region: in a rectangle found
+
+
+def synth_with_track():
+    s = Synth('/N')
+    s.part('R1', 20.0, 10.0, box=(19.0, 9.5, 21.0, 10.5))
+    s.s('/N', 0, 30.0, 25.0, 45.0, 25.0)                                                              # a track along y 25
+    return dataclasses.replace(s.build(), outline=np.array([[0.0, 0.0], [60.0, 0.0], [60.0, 40.0], [0.0, 40.0]]))
+
+
+def test_tracks_are_free_for_silk_by_default_and_taken_when_the_flag_says():
+    b = synth_with_track()
+    free = K.board_grid(b, '', CFG)
+    taken = K.board_grid(b, '', CFG, tracks=True)
+    assert free.box_free(34.0, 24.5, 40.0, 25.5) and not taken.box_free(34.0, 24.5, 40.0, 25.5)       # over the track
+    assert taken.box_free(34.0, 27.0, 40.0, 28.0)                                                     # clear of it
+    flagged = types.SimpleNamespace(**{k: getattr(CFG, k) for k in dir(CFG) if k.isupper()}, KEY_AVOID_TRACKS=True)
+    assert not K.board_grid(b, '', flagged).box_free(34.0, 24.5, 40.0, 25.5)                           # the config's flag does the same

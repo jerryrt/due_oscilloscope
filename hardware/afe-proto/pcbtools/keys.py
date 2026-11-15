@@ -9,7 +9,9 @@ Two places for a key:
     the top left so the boxes line up, and every part of a key belongs to its heading's block by its designator's hundreds digit.
 
     plan(b, text, cfg, name, parts=None)         -> Plan | NoFit            a local key, from the board arrays (pcbnew read, in the image) and its text
-    legend(b, text, cfg, items, regions)         -> [Plan] | LegendNoFit    items [(heading, [refs])]; regions [(x0, y0, x1, y1)] Due mm, each wholly free
+    legend(b, text, cfg, items, regions, split=, auto=) -> [Plan] | LegendNoFit    items [(heading, [refs])]; regions [(x0, y0, x1, y1)] Due mm, each wholly free;
+                                                 split: cut each block's residue into spatial clusters, one key each (several keys may share a heading);
+                                                 auto (min_w, min_h, count): also the biggest free rectangles of the board
     apply(text, plans, cfg)                      -> new text                the keys added and their parts' designators taken off the silk
     python3 -m pcbtools.keys BOARD.kicad_pcb --config v2_layout NAME [--parts R1,R2] [--write OUT]
     python3 -m pcbtools.keys BOARD.kicad_pcb --config v2_layout --legend "CH2=R1,R2;CH1=R3,R4" --region x0,y0,x1,y1 [--region ...] [--write OUT]
@@ -37,6 +39,9 @@ Config (`KEYS = {name: dict(parts=(refs...))}`, `KEY_BLOCKS = {heading: hundreds
   KEY_CLEAR             free area is measured with pads, vias, silk and courtyards grown by this, mm
   KEY_ADJOIN_MAX        a local key's box is at most this far from its cluster's extent (the union of the parts' courtyards), mm
   KEY_GAP               clear space between two keys in a legend, mm
+  KEY_SPLIT_GAP         (optional) legend: a block's residue is cut into clusters of parts whose courtyards are within this, each its own key
+  KEY_AVOID_TRACKS      (optional) True counts tracks as taken in the free-area measure; default False: silk over a mask-covered track is allowed
+  KEY_EDGE              (optional) free rectangles found for a legend stay this far in from the board's bounding box, mm (default 0.5)
   KEY_STROKE            line width of the box, mm
 """
 from __future__ import annotations
@@ -303,9 +308,10 @@ def silk_boxes(text, cfg):
     return out
 
 
-def board_grid(b, text, cfg, keyed=()):
+def board_grid(b, text, cfg, keyed=(), tracks=None):
     """the free-area measure: courtyards, pads, vias, every silk line and word, and every designator still on the silk, each grown by KEY_CLEAR;
-    `keyed` designators are not counted (they are coming off)"""
+    `keyed` designators are not counted (they are coming off). Tracks are NOT taken by default: silk over a mask-covered track is allowed, so a
+    free area may lie over copper. `tracks=True` (or the config's KEY_AVOID_TRACKS) counts them too, for a board whose tracks are bare."""
     x0, y0, x1, y1 = (float(b.outline[:, 0].min()), float(b.outline[:, 1].min()), float(b.outline[:, 0].max()), float(b.outline[:, 1].max()))
     g = Grid((x0, y0, x1, y1))
     c = cfg.KEY_CLEAR
@@ -317,6 +323,18 @@ def board_grid(b, text, cfg, keyed=()):
     for k in range(len(b.v_x)):
         r = b.v_dia[k] / 2 + c
         g.mark(b.v_x[k] - r, b.v_y[k] - r, b.v_x[k] + r, b.v_y[k] + r)
+    if tracks if tracks is not None else getattr(cfg, 'KEY_AVOID_TRACKS', False):
+        for k in range(len(b.s_x0)):                      # a segment as the boxes along it, so a long diagonal does not take its whole bounding box
+            n = max(1, int(np.hypot(b.s_x1[k] - b.s_x0[k], b.s_y1[k] - b.s_y0[k]) / 0.5))
+            for j in range(n + 1):
+                x, y = b.s_x0[k] + (b.s_x1[k] - b.s_x0[k]) * j / n, b.s_y0[k] + (b.s_y1[k] - b.s_y0[k]) * j / n
+                g.mark(x, y, x, y, b.s_w[k] / 2 + c)
+        for k in range(len(b.a_x0)):
+            for pts in (((b.a_x0[k], b.a_y0[k]), (b.a_xm[k], b.a_ym[k])), ((b.a_xm[k], b.a_ym[k]), (b.a_x1[k], b.a_y1[k]))):
+                (xa, ya), (xb, yb) = pts
+                n = max(1, int(np.hypot(xb - xa, yb - ya) / 0.5))
+                for j in range(n + 1):
+                    g.mark(xa + (xb - xa) * j / n, ya + (yb - ya) * j / n, xa + (xb - xa) * j / n, ya + (yb - ya) * j / n, b.a_w[k] / 2 + c)
     for k in range(len(b.r_x)):
         ref = b.fp_ref[int(b.r_fp[k])]
         if not b.r_on_silk[k] or ref in keyed:
@@ -370,6 +388,85 @@ def plan(b, text, cfg, name, parts=None):
     return NoFit(name, (ly.W, ly.H), None if j is None else float(gaps[j]), None if j is None else (round(float(x[j]), 1), round(float(y[j]), 1)), big)
 
 
+def _cour(b, r):
+    i = b.ref_index(r)
+    return (float(b.fp_cx0[i]), float(b.fp_cy0[i]), float(b.fp_cx1[i]), float(b.fp_cy1[i]))
+
+
+def _cgap(a, c):
+    return float(np.hypot(max(c[0] - a[2], a[0] - c[2], 0.0), max(c[1] - a[3], a[1] - c[3], 0.0)))
+
+
+def split_items(b, items, gap):
+    """each block's residue cut into spatial clusters: parts whose courtyards are within `gap` mm of each other (chained) are one cluster, and each
+    cluster is one key under the block's heading (several keys may share a heading). A key needs two designators, so a cluster of one part joins the
+    cluster nearest to it; a block whose parts are all alone stays one key. -> [(heading, [refs])] in the items' order, a cluster's parts in theirs"""
+    out = []
+    for head, refs in items:
+        cour = {r: _cour(b, r) for r in refs}
+        par = {r: r for r in refs}
+
+        def find(x):
+            while par[x] != x:
+                par[x] = par[par[x]]
+                x = par[x]
+            return x
+        for i, a in enumerate(refs):
+            for c in refs[i + 1:]:
+                if _cgap(cour[a], cour[c]) <= gap:
+                    par[find(a)] = find(c)
+        comps = {}
+        for r in refs:
+            comps.setdefault(find(r), []).append(r)
+        groups = list(comps.values())
+        big = [g_ for g_ in groups if len(g_) > 1]
+        if not big:
+            out.append((head, list(refs)))
+            continue
+        for g_ in [g_ for g_ in groups if len(g_) == 1]:
+            near = min(big, key=lambda c_: min(_cgap(cour[g_[0]], cour[q]) for q in c_))
+            near.append(g_[0])
+        for g_ in big:
+            out.append((head, [r for r in refs if r in g_]))
+    return out
+
+
+def free_rectangles(g, min_w, min_h, count, edge=0.0, gap=0.0):
+    """up to `count` rectangles (Due mm) wholly free on grid `g`, each at least min_w x min_h, taken greedily: the one of the largest area, then the next
+    in what is left (`gap` mm kept clear of the earlier ones), `edge` mm in from the board's bounding box. -> [(x0, y0, x1, y1)]"""
+    free = ~g.occ
+    e = int(round(edge / RES))
+    if e:
+        free[:e, :] = False
+        free[-e:, :] = False
+        free[:, :e] = False
+        free[:, -e:] = False
+    out = []
+    gcells = int(round(gap / RES))
+    for _ in range(count):
+        best = (0, 0, 0, 0, 0)
+        hts = np.zeros(g.nx, np.int64)
+        for iy in range(g.ny):
+            hts = np.where(free[iy], hts + 1, 0)
+            stack = []                                       # (start column, height): the classic histogram scan
+            for ix in range(g.nx + 1):
+                h = int(hts[ix]) if ix < g.nx else 0
+                start = ix
+                while stack and stack[-1][1] >= h:
+                    s, sh = stack.pop()
+                    area = (ix - s) * sh
+                    if area > best[0]:
+                        best = (area, s, iy - sh + 1, ix, iy + 1)
+                    start = s
+                stack.append((start, h))
+        area, ix0, iy0, ix1, iy1 = best
+        if (ix1 - ix0) * RES < min_w or (iy1 - iy0) * RES < min_h:
+            break
+        out.append((round(g.x0 + ix0 * RES, 2), round(g.y0 + iy0 * RES, 2), round(g.x0 + ix1 * RES, 2), round(g.y0 + iy1 * RES, 2)))
+        free[max(0, iy0 - gcells):iy1 + gcells, max(0, ix0 - gcells):ix1 + gcells] = False
+    return out
+
+
 def existing_keys(text):
     """{heading-or-None: [set of the words inside]} for each unfilled F.SilkS gr_rect of the board text, from the texts whose centre is inside it"""
     words = [(m.group(1), float(m.group(2)) - 50, 150 - float(m.group(3))) for m in re.finditer(
@@ -384,7 +481,7 @@ def existing_keys(text):
     return out
 
 
-def legend(b, text, cfg, items, regions, grid=None):
+def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None):
     """the keys of `items` [(heading, [refs])] packed into `regions` [(x0, y0, x1, y1)] (an L of several rectangles is fine; a key lies in one), each
     wholly on free area, first-fit from the top left of the first region that takes it, tallest first, so the boxes line up in rows. Grid layouts
     first; if they do not all fit, compact ones. -> [Plan] in the order of `items`, or LegendNoFit (the last attempt, each key in its smallest layout)"""
@@ -395,12 +492,22 @@ def legend(b, text, cfg, items, regions, grid=None):
         bad = [r for r in refs if next((c for c in r if c.isdigit()), None) != blocks[head]]
         if bad:
             raise ValueError(f'{bad} are not in block {head} by their designators')
+    split = split if split is not None else getattr(cfg, 'KEY_SPLIT_GAP', None)
+    if split is not None:
+        items = split_items(b, items, split)
     have = existing_keys(text)
     items = [(h, refs) for h, refs in items if not any(h in w and set(refs) <= w for w in have)]       # a key already on the board is left as it is
     if not items:
         return []
     allrefs = [r for _, refs in items for r in refs]
     g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
+    regions = list(regions)
+    if auto:                                                  # more regions: the biggest free rectangles of the board outside the given ones
+        g2 = Grid((g.x0, g.y0, g.x0 + g.nx * RES, g.y0 + g.ny * RES))
+        g2.occ = g.occ.copy()
+        for r in regions:
+            g2.mark(*r, grow=cfg.KEY_GAP)
+        regions += free_rectangles(g2, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5), gap=cfg.KEY_GAP)
     xy = _positions(b, allrefs)
     last = None
     maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
@@ -421,7 +528,7 @@ def legend(b, text, cfg, items, regions, grid=None):
         if lays is None:
             continue
         base = sorted(range(len(lays)), key=lambda i: (-lays[i][1].H, -lays[i][1].W))
-        for order in itertools.chain([tuple(base)], (o for o in itertools.permutations(range(len(lays))) if list(o) != base)):
+        for order in itertools.chain([tuple(base)], itertools.islice((o for o in itertools.permutations(range(len(lays))) if list(o) != base), 200)):
             placed, failed = _pack(lays, order, regions, g, cfg)
             if failed is None:
                 return [placed[i] for i in range(len(lays))]
@@ -523,6 +630,8 @@ def main(argv=None):
     ap.add_argument('--parts', help='comma separated residue list instead of the config\'s KEYS[name][\'parts\']')
     ap.add_argument('--legend', help='"HEADING=R1,R2;HEADING=R3,R4": keys gathered in the legend --region(s)')
     ap.add_argument('--region', action='append', default=[], help='x0,y0,x1,y1 in Due mm; repeat for an L')
+    ap.add_argument('--split', type=float, help='cut each block\'s residue into clusters whose courtyards are within this many mm (default: the config\'s KEY_SPLIT_GAP, else one key per block)')
+    ap.add_argument('--auto', help='MIN_W,MIN_H,COUNT: also use the biggest free rectangles of the board (silk over tracks allowed unless KEY_AVOID_TRACKS)')
     ap.add_argument('--config', default='v2_layout')
     ap.add_argument('--write', help='write the edited board here (default: report only)')
     a = ap.parse_args(argv)
@@ -534,7 +643,10 @@ def main(argv=None):
     if a.legend:
         items = [(h.strip(), r.split(',')) for h, r in (s.split('=') for s in a.legend.split(';'))]
         regions = [tuple(float(v) for v in r.split(',')) for r in a.region]
-        res = legend(b, text, cfg, items, regions)
+        auto = tuple(float(v) for v in a.auto.split(',')) if a.auto else None
+        if auto:
+            auto = (auto[0], auto[1], int(auto[2]))
+        res = legend(b, text, cfg, items, regions, split=a.split, auto=auto)
         if isinstance(res, LegendNoFit):
             print(res)
             return 1
