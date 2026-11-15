@@ -11906,7 +11906,7 @@
 		(descr "SOIC, 8 Pin (JEDEC MS-012AA, https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/soic_narrow-r/r_8.pdf)")
 		(tags "SOIC SO")
 		(property "Reference" "U301"
-			(at -0.45 3.545 90)
+			(at -0.45 3.845 90)
 			(layer "F.SilkS")
 			(uuid "e54ebc94-1cc3-5f33-968b-0bd139701528")
 			(effects
