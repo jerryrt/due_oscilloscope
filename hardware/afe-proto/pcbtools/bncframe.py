@@ -19,16 +19,22 @@ def _origin(text, ref):
     return float(m.group(1)) - 50.0, 150.0 - float(m.group(2)), float(m.group(3) or 0.0)
 
 
-def _designator_offset(text, ref):
-    """the designator's centre, board mm (Due, y up) from the footprint's origin"""
+def _bottom_designator(text, ref, x, y):
+    """the Reference of `ref` on B.SilkS, mirrored (it reads from the bottom), its centre at (x, y) Due mm, angle 0; idempotent"""
     s, e = silkapply._span(text, ref)
     blk = text[s:e]
     fm = re.search(r'\n\t\t\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)', blk)
-    fa = float(fm.group(3) or 0)
-    m = re.search(r'\(property "Reference" "%s"\n\t\t\t\(at ([-\d.]+) ([-\d.]+)' % ref, blk)
-    lx, ly = float(m.group(1)), float(m.group(2))
-    bx, by = silkapply._rot(fa, lx, ly)                                                          # footprint frame -> sheet offset
-    return bx, -by
+    fx, fy, fa = float(fm.group(1)), float(fm.group(2)), float(fm.group(3) or 0)
+    lx, ly = silkapply._rot(-fa, (x + 50.0) - fx, (150.0 - y) - fy)
+    i = blk.index('(property "Reference" "%s"' % ref)
+    j = blk.index('\n\t\t)', i)                                                                   # the property's closing paren
+    prop = blk[i:j]
+    prop = re.sub(r'\(at [-\d.]+ [-\d.]+(?: [-\d.]+)?\)', f'(at {silkapply._fmt(lx)} {silkapply._fmt(ly)})', prop, count=1)
+    prop = re.sub(r'\(layer "[^"]*"\)', '(layer "B.SilkS")', prop, count=1)
+    if '(justify mirror)' not in prop:
+        k = prop.rindex('\n\t\t\t)')                                                               # the effects block's closing paren
+        prop = prop[:k] + '\n\t\t\t\t(justify mirror)' + prop[k:]
+    return text[:s] + blk[:i] + prop + blk[j:] + text[e:]
 
 
 def _label(text, word):
@@ -43,18 +49,15 @@ def apply(text, cfg):
         first = refs[0]
         ox, oy, rot0 = _origin(text, first)
         off = getattr(cfg, 'BNC_LABEL_OFFSET')                                                      # board mm from each BNC's origin, the same for all three
-        dx, dy = _designator_offset(text, first)                                                 # the first BNC's designator offset is every one's
-        placed = {}
+        dx, dy = cfg.BNC_DESIGNATOR_OFFSET                                                       # board mm from each BNC's origin, the same for all three
         for ref in refs:
             x, y, rot = _origin(text, ref)
             assert abs(rot - rot0) < 1e-6, f'{ref} is turned differently from {first}: the frame offset is not a board offset'
-            placed[ref] = (round(x + dx, 3), round(y + dy, 3), getattr(cfg, 'BNC_DESIGNATOR_ANGLE', 0))
             lm = _label(text, labels[ref])
             nx, ny = x + off[0] + 50.0, 150.0 - (y + off[1])
             old = lm.group(0)
-            new = old.replace(f'(at {lm.group(1)} {lm.group(2)}', f'(at {silkapply._fmt(nx)} {silkapply._fmt(ny)}', 1)
-            text = text.replace(old, new, 1)
-        text, _ = silkapply.apply_moves(text, None, placed)
+            text = text.replace(old, old.replace(f'(at {lm.group(1)} {lm.group(2)}', f'(at {silkapply._fmt(nx)} {silkapply._fmt(ny)}', 1), 1)
+            text = _bottom_designator(text, ref, x + dx, y + dy)
     at = {r: (x, y, 0) for r, (x, y) in getattr(cfg, 'DESIGNATOR_AT', {}).items()}
     if at:
         text, _ = silkapply.apply_moves(text, None, at)

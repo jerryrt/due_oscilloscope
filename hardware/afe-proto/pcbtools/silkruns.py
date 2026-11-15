@@ -403,9 +403,10 @@ def counts_by_one(nums):
 
 
 def hidden_members(b, cfg=None):
-    """{ref} of the members of the board's labelled runs, by the checker's own reading (silkread.runs): they may be off the silk"""
+    """{ref} of the parts whose designator may be off the top silk: the members of the board's labelled runs, by the checker's own reading
+    (silkread.runs), and the BNCs, whose designator is on the bottom silk and whose function label names them on top"""
     from . import silkread
-    return {x for members in silkread.runs(b).values() for x in members}
+    return {x for members in silkread.runs(b).values() for x in members} | set(getattr(cfg, 'BNC_LABELS', {}))
 
 
 if __name__ == '__main__':

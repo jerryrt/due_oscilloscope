@@ -148,6 +148,7 @@ SCH_NS = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'     # the uuid namespace of the 
 LABEL_IN_BLOCK = True        # a designator's centre lies in its own block's outline (LR-11); the placer looks only there
 RUN_GRID_ROWS = False        # POWER's capacitor grid stays as it is until POWER is re-placed into rows and renumbered once
 BNC_LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}      # the first one's label offset is every one's (D30 (2))
+BNC_DESIGNATOR_OFFSET = (3.2, 0.0)    # board mm from each BNC's origin, all three: the designator on the bottom silk beside the pin, mirrored, clear of the pin ring and the two mounting holes
 BNC_LABEL_OFFSET = (2.2312, 3.99)     # board mm from each BNC's origin, all three (D30 (2)): J101's offset drawn nearer its pin by 0.6, so "AWG OUT", one character longer, clears its frame's far line
 SAME_ORIENTATION = True      # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one (LR-11, silkplace)
 IDENTITY_CHECK = True
