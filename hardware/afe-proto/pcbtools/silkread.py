@@ -33,7 +33,7 @@ from pcbtools import boardio
 OWN_MARGIN = 0.25      # mm, D30
 BNC_TOL = 0.05         # mm, D30
 KEY_GAP_MAX = 2.0      # mm: "adjoins its cluster's extent"
-ORDER_MIN = 0.5        # mm: parts closer than this along an axis are in one row (or column) along it
+ORDER_MIN = 1.5        # mm: parts closer than this along an axis are in one row (or column) along it (owner, 2026-11-15; was 0.5)
 CHAR_ADV = 0.9         # see the module text
 
 
