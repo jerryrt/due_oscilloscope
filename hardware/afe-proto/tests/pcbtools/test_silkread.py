@@ -153,6 +153,47 @@ def test_read_keys_takes_unfilled_top_rectangles_with_their_texts():
     assert keys[0].box == pytest.approx((28.0, 12.0, 36.0, 14.0))
 
 
+BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3'}
+
+
+def far_cluster():
+    """C201 and C202 in a row with hidden designators, and nothing else"""
+    s = Synth()
+    for r, x in (('C201', 30.0), ('C202', 32.0)):
+        s.part(r, x, 10.0, box=(x - 0.8, 9.6, x + 0.8, 10.4), silk=None)
+    return s.build()
+
+
+def legend(head, refs=('C201', 'C202')):
+    """a key 20 mm from the cluster, with an optional heading text"""
+    t = tuple((r, 2.0 + 3.0 * n, 31.0) for n, r in enumerate(refs)) + (((head, 4.0, 33.0),) if head else ())
+    return Key((0.0, 30.0, 8.0, 34.0), t)
+
+
+def test_a_headed_key_may_sit_in_the_legend_area():
+    assert silkread.findings(far_cluster(), [legend('CH2')], {}, blocks=BLOCKS) == []
+
+
+def test_an_unheaded_key_in_the_legend_area_is_too_far():
+    f = silkread.findings(far_cluster(), [legend(None)], {}, blocks=BLOCKS)
+    assert any('mm from its parts' in x for x in f), f
+
+
+def test_a_key_headed_with_the_wrong_block_fails():
+    f = silkread.findings(far_cluster(), [legend('CH1')], {}, blocks=BLOCKS)
+    assert any('C201 is not in block CH1' in x for x in f), f
+
+
+def test_a_heading_that_is_not_a_block_makes_no_key():
+    f = silkread.findings(far_cluster(), [legend('NOTE')], {}, blocks=BLOCKS)
+    assert any('C201: no designator and in no key' in x for x in f), f
+
+
+def test_a_headed_key_keeps_its_order():
+    f = silkread.findings(far_cluster(), [legend('CH2', refs=('C202', 'C201'))], {}, blocks=BLOCKS)
+    assert any('out of order along x' in x for x in f), f
+
+
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 # Findings on 2026-11-14, before any D30 work. A ratchet, not a tolerance: a change may lower a count and must lower the
 # number here with it; a board at 0 changes its row to 0 and stays there. (A strict xfail would say the same, but the pcbnew
@@ -164,6 +205,6 @@ OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 124, 'kicad/afe-prot
 @pytest.mark.parametrize('rel', sorted(OPEN))
 def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
-    f = silkread.findings(boardio.read_board(str(p)), silkread.read_keys(p.read_text()), LABELS)
+    f = silkread.findings(boardio.read_board(str(p)), silkread.read_keys(p.read_text()), LABELS, blocks=BLOCKS)
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
     assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'

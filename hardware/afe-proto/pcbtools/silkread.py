@@ -1,6 +1,6 @@
 """D30 (docs/afe.md): can a technician with only the board find a part from its designator?
 
-    findings(b, keys, bnc_labels, exempt={})  -> [str]     the reasons it cannot (empty = it can)
+    findings(b, keys, bnc_labels, exempt={}, blocks={})  -> [str]     the reasons it cannot (empty = it can)
     read_keys(txt)                              -> [Key]     the cluster keys drawn in a .kicad_pcb text
 
 Three properties, each on the top side (the board has no bottom parts):
@@ -9,9 +9,11 @@ Three properties, each on the top side (the board has no bottom parts):
    is at least OWN_MARGIN smaller than the gap to any other top courtyard, the box covers no pad and no other part's courtyard,
    and the text reads at 0 or 90 degrees.
 2. Or a cluster key. A part whose designator is hidden is named exactly once, in exactly one key. A key is an unfilled
-   rectangle on F.SilkS holding at least two board texts, every one of them a designator. Its texts keep their parts' order
-   (a pair of parts more than ORDER_MIN apart along x or y has its two texts in the same order along that axis), it lies on no
-   top courtyard or pad, and it is no further than KEY_GAP_MAX from the box around its parts' courtyards.
+   rectangle on F.SilkS holding at least two designators and, besides them, at most one other text: a block heading, one of
+   `blocks` ({heading: the hundreds digit of its designators}, e.g. {'CH2': '2'}). Its designators keep their parts' order
+   (a pair of parts more than ORDER_MIN apart along x or y has its two texts in the same order along that axis) and it lies on
+   no top courtyard or pad. An unheaded key is no further than KEY_GAP_MAX from the box around its parts' courtyards; a headed
+   key may sit anywhere (the owner's legend area, 2026-11-14), and every part in it belongs to its heading's block.
 3. One BNC frame. Each connector named in `bnc_labels` ({ref: function label}) carries its designator and its function label
    at the same offset in its own frame as the first one does, to BNC_TOL.
 
@@ -84,7 +86,7 @@ def read_keys(txt):
     return keys
 
 
-def findings(b, keys=(), bnc_labels=None, exempt=None):
+def findings(b, keys=(), bnc_labels=None, exempt=None, blocks=None):
     bad = []
     exempt = dict(exempt or {})
     refs = list(b.fp_ref)
@@ -124,9 +126,16 @@ def findings(b, keys=(), bnc_labels=None, exempt=None):
     named = {}
     for n, k in enumerate(keys):
         ts = [t for t in k.texts if t[0] in refs]
-        if len(k.texts) < 2 or len(ts) != len(k.texts):
+        words = [t[0] for t in k.texts if t[0] not in refs]
+        if len(ts) < 2 or len(words) > 1 or (words and words[0] not in (blocks or {})):
             continue                                    # a rectangle that is not a key (a block outline, a box with a word in it)
-        where = f'key {n} at ({k.box[0]:.1f}, {k.box[1]:.1f})'
+        head = words[0] if words else None
+        where = f'key {n} at ({k.box[0]:.1f}, {k.box[1]:.1f})' + (f' headed {head}' if head else '')
+        if head:
+            for s, _, _ in ts:
+                m = re.match(r'[A-Z]+(\d)\d\d$', s)
+                if not m or m.group(1) != blocks[head]:
+                    bad.append(f'{where}: {s} is not in block {head}')
         for s, x, y in ts:
             named.setdefault(s, []).append(where)
         for i in others:
@@ -137,7 +146,7 @@ def findings(b, keys=(), bnc_labels=None, exempt=None):
         idx = [refs.index(s) for s, _, _ in ts]
         ext = (min(cour[i][0] for i in idx if cour[i]), min(cour[i][1] for i in idx if cour[i]),
                max(cour[i][2] for i in idx if cour[i]), max(cour[i][3] for i in idx if cour[i]))
-        if _gap(k.box, ext) > KEY_GAP_MAX:
+        if head is None and _gap(k.box, ext) > KEY_GAP_MAX:
             bad.append(f'{where}: {_gap(k.box, ext):.2f} mm from its parts, more than {KEY_GAP_MAX}')
         for a in range(len(ts)):
             for c in range(a + 1, len(ts)):
