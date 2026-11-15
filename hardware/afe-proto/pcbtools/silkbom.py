@@ -5,7 +5,8 @@
 A part silkread (with the config's SILK_BLOCKS and SILK_NEAR_OK) finds fault with is treated in two steps:
   1. a passive in SILK_NEAR_OK gets its label re-placed inside its own block, nearer its own courtyard than any other (pcbtools.silkplace, margin just
      above zero), where such a place exists;
-  2. every part still found fault with has its Reference moved to F.Fab (silkruns.hide) and is reported, for the config's SILK_TO_BOM table.
+  2. every part still found fault with, and every part the config's SILK_TO_BOM lists, has its Reference moved to F.Fab (silkruns.hide); the ones found are
+     reported, for the SILK_TO_BOM table.
 Text splices only: no part, track or zone moves. Idempotent: a board it has made reports nothing more to do.
 """
 import argparse
@@ -47,10 +48,10 @@ def run(text, cfg):
             placed = {r: v for r, v in placed.items() if r in cand}
             text, replaced = silkapply.apply_moves(text, b, placed)
             b, f, refs = read(text)
-        hid = {r: v for r, v in refs.items() if r not in exempt}
-        if hid:
-            text = silkruns.hide(text, sorted(hid))
-            b, f, refs = read(text)
+        keep_as_is = set(getattr(cfg, 'SILK_KEEP', ()))
+        hid = {r: v for r, v in refs.items() if r not in exempt and r not in keep_as_is}
+        text = silkruns.hide(text, sorted(set(hid) | set(exempt)))          # the listed parts and the ones just found are off the top silk (idempotent)
+        b, f, refs = read(text)
         return text, sorted(replaced), hid, f
 
 

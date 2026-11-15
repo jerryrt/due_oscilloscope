@@ -136,8 +136,10 @@ SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; 
 # courtyard than any other; every other leftover is left off the silk and found through the BOM (SILK_TO_BOM, in silk_to_bom.py's table below).
 import re as _re
 
-SILK_BLOCKS = {{'CH1': 1, 'CH2': 2, 'AWG': 3, 'POWER': 4, 'REFCAL': 5}[k]: [tuple(r) for r in v] for k, v in OUTLINE.items()}       # {hundreds digit: [rects, Due mm]}
+SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}[k]: [tuple(r) for r in v] for k, v in OUTLINE.items()}       # {hundreds digit as a string: [rects, Due mm]}
 SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)}          # the dense blocks' passives: nearer its own courtyard than any other
+# Left as they are (owner, option C: the CH1 and CH2 runs are not touched): the CH1 run starters whose label lies outside CH1's outline; silkread names them.
+SILK_KEEP = {'BR101', 'C104'}
 SILK_TO_BOM = {
     'BR401': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
     'BR501': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of TP201',
@@ -180,4 +182,20 @@ SILK_TO_BOM = {
     'U401': 'not a leftover passive; no place inside its block nearer it than R404 (dense block)',
     'U501': 'not a leftover passive; its label would lie on its own body',
     'U502': 'not a leftover passive; its label would lie on its own body',
+    'BR503': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'C407': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R301': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R304': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R305': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R402': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R403': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R506': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R507': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R512': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'R514': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
+    'BR502': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
+    'BR504': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
+    'BR509': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
+    'R501': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
+    'TP404': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
 }

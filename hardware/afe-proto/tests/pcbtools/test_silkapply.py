@@ -26,7 +26,7 @@ def board_pos(text, ref):
 
 def test_a_placed_designator_reads_back_where_it_was_put_and_a_second_pass_moves_nothing():
     text = BOARD.read_text()
-    placed = {'R513': (86.0, 20.0, 90), 'C104': (88.0, 30.0, 0), 'R501': (80.0, 31.0, 90)}     # R513 and R501 are on footprints turned by 90 degrees
+    placed = {'R309': (86.0, 20.0, 90), 'C104': (88.0, 30.0, 0), 'R308': (80.0, 31.0, 90)}     # R309 and R308 are on footprints turned by 90 degrees
     new, changed = A.apply_moves(text, None, placed)
     assert sorted(changed) == sorted(placed)
     for r, (x, y, a) in placed.items():
@@ -44,14 +44,14 @@ def test_a_part_whose_designator_is_off_the_silk_is_not_moved():
 
 
 def test_broken_once_a_wrong_frame_is_caught_by_the_read_back():
-    """a splice that forgot the footprint's turn would put R501 (a turned part) elsewhere: the read-back test above must fail for it"""
+    """a splice that forgot the footprint's turn would put R308 (a turned part) elsewhere: the read-back test above must fail for it"""
     text = BOARD.read_text()
     real = A._rot
     try:
         A._rot = lambda a, x, y: real(0.0, x, y)
-        new, _ = A.apply_moves(text, None, {'R501': (80.0, 31.0, 90)})
+        new, _ = A.apply_moves(text, None, {'R308': (80.0, 31.0, 90)})
         with pytest.raises(AssertionError):
             A._rot = real
-            assert board_pos(new, 'R501') == (80.0, 31.0, 90.0)
+            assert board_pos(new, 'R308') == (80.0, 31.0, 90.0)
     finally:
         A._rot = real
