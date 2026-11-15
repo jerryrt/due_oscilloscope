@@ -127,6 +127,23 @@ def test_an_exempt_part_needs_no_label():
     assert has(silkread.findings(board({'A': None}), BNC), 'A:', 'in no labelled run')
 
 
+def test_near_ok_relaxes_only_the_margin():
+    tie_ish = {'A': (14.9, 10.0, 0.0)}            # 2.95 mm from A, 3.15 from B: nearer A by 0.20
+    assert has(silkread.findings(board(tie_ish), BNC), 'A:', 'margin under 0.25')
+    assert not has(silkread.findings(board(tie_ish), BNC, near_ok={'A'}), 'A:', 'margin')
+    assert has(silkread.findings(board({'A': (18.0, 12.0, 0.0)}), BNC, near_ok={'A'}), 'A:', 'margin under')   # nearer B
+
+
+def test_a_label_outside_its_block_fails():
+    blocks = {'2': [(0.0, 0.0, 5.0, 5.0)]}
+    s = Synth()
+    two(s, 'R201', 2.0, 2.0)
+    s.rt.append((2.0, 4.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0))
+    assert not has(silkread.findings(s.build(), blocks=blocks), 'R201:', 'outside its block')
+    s.rt[-1] = (2.0, 6.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0)
+    assert has(silkread.findings(s.build(), blocks=blocks), 'R201:', 'outside its block')
+
+
 def test_a_bnc_label_off_its_frame_fails():
     b = board()
     ty = list(b.t_y)

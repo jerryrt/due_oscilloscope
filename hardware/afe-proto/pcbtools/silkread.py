@@ -1,6 +1,6 @@
 """D30 (docs/afe.md): can a technician with only the board find a part from its designator?
 
-    findings(b, bnc_labels=None, exempt=None)  -> [str]     the reasons it cannot (empty = it can)
+    findings(b, bnc_labels=None, exempt=None, blocks=None, near_ok=())  -> [str]     the reasons it cannot (empty = it can)
     runs(b)                                     -> {starter ref: [member refs]}   the labelled runs the board carries
 
 The owner's convention (2026-11-15), on the top side (the board has no bottom parts):
@@ -22,7 +22,13 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    does not read mirroring), none on top, each at the same offset in its own frame as the first one's, to BNC_TOL. A
    bottom designator counts as shown when it is on B.SilkS: the board arrays carry no visibility for the bottom.
 
-A part may be exempted by name with its reason (`exempt`); the reason is the board's gate-3 notes' to give.
+5. Inside its own block. With `blocks` ({hundreds digit: [(x0, y0, x1, y1), ...]}, Due mm), a visible designator's centre
+   lies inside one of its block's rectangles (the block is its designator's hundreds digit).
+6. Where the board is dense (owner, 2026-11-15, option C). For a part in `near_ok`, rule 1's margin is relaxed to nearer
+   its own courtyard than any other (a margin above zero); everything else in rule 1 still holds.
+
+A part may be exempted by name with its reason (`exempt`): it carries no label and is found through the documentation
+package; the reasons live in the board's configuration.
 
 Text extents are estimated, not read: a stroke-font character is CHAR_ADV of its width wide *(check: 0.9 matches the
 1.0 mm designators in the AFE-2 render to within a pixel at 13.5 px/mm; other fonts or sizes are unmeasured)*.
@@ -147,9 +153,10 @@ def runs(b):
     return {r: m for r in B.label for m in [_run_from(B, r)] if m}
 
 
-def findings(b, bnc_labels=None, exempt=None):
+def findings(b, bnc_labels=None, exempt=None, blocks=None, near_ok=()):
     B = _Board(b)
     exempt = dict(exempt or {})
+    near_ok = set(near_ok)
     bad = []
     starters = {r: m for r in B.label for m in [_run_from(B, r)] if m}
     member = {x for m in starters.values() for x in m}
@@ -160,6 +167,10 @@ def findings(b, bnc_labels=None, exempt=None):
         i = B.by_ref[r]
         if not B.along(i, ang):
             bad.append(f'{r}: designator at {ang:g} degrees does not read along its part')
+        digit = re.match(r'[A-Z]+(\d)\d\d$', r)
+        if blocks and digit and digit.group(1) in blocks and not any(
+                x0 <= lx <= x1 and y0 <= ly <= y1 for x0, y0, x1, y1 in blocks[digit.group(1)]):
+            bad.append(f'{r}: designator lies outside its block')
         if B.cour[i] is None:
             bad.append(f'{r}: no courtyard to be beside')
             continue
@@ -176,8 +187,9 @@ def findings(b, bnc_labels=None, exempt=None):
                 bad.append(f'{r}: run label {own:.2f} mm from its starter, more than {RUN_GAP_MAX}')
             continue
         near = min(((_gap(box, B.cour[k]), B.refs[k]) for k in B.others if k != i), default=(np.inf, ''))
-        if near[0] - own < OWN_MARGIN:
-            bad.append(f'{r}: designator {own:.2f} mm from its part and {near[0]:.2f} mm from {near[1]}, margin under {OWN_MARGIN}')
+        need = 1e-9 if r in near_ok else OWN_MARGIN
+        if near[0] - own < need:
+            bad.append(f'{r}: designator {own:.2f} mm from its part and {near[0]:.2f} mm from {near[1]}, margin under {need:g}')
 
     for i in B.others:
         r = B.refs[i]
