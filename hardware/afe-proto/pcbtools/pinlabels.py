@@ -337,6 +337,9 @@ def label_block(p):
             f'\t\t(effects\n\t\t\t(font\n\t\t\t\t(size {_fmt(p.h)} {_fmt(p.w)})\n\t\t\t\t(thickness {{t}})\n\t\t\t)\n\t\t)\n\t)\n')
 
 
+from .keys import KEY_UUID_PREFIX  # noqa: E402
+
+
 def apply_labels(text, plan, cfg, all_ids=None):
     """the board text with one gr_text per planned label and no stale one: a block whose uuid is one a label of this config can have
     (all_ids: every (ref, pin) of the edge sockets, so a label dropped from the table goes too) is removed and the planned ones are
@@ -346,7 +349,8 @@ def apply_labels(text, plan, cfg, all_ids=None):
     text = blk.sub(lambda m: '' if any(f'(uuid "{u}")' in m.group(0) for u in ids) else m.group(0), text)
     last = None
     for m in re.finditer(r'\n\t\(gr_text .*?\n\t\)(?=\n)', text, re.S):
-        last = m
+        if '(uuid "' + KEY_UUID_PREFIX not in m.group(0):                 # a cluster key's texts (pcbtools.keys) are not where the labels go
+            last = m
     blocks = ''.join(label_block(p).replace('{t}', _fmt(cfg.PIN_LABEL_THICK)) for p in plan)
     at = last.end() + 1 if last else text.index('\n\t(gr_line\n') + 1
     return text[:at] + blocks + text[at:]

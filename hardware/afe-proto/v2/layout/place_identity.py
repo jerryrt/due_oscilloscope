@@ -15,6 +15,7 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..'))
 from pcbtools.boards import v2 as cfg  # noqa: E402
+from pcbtools.keys import KEY_UUID_PREFIX  # noqa: E402
 
 NS = uuid.UUID('6f1f6d0e-3b1a-4c5e-9b1f-0a1d2c3b4a59')
 
@@ -58,7 +59,7 @@ def apply(text):
         return '' if '(fill yes)' in b and '(layer "F.SilkS")' in b else b
     text = re.sub(r'\n\t\((?:gr_text|gr_rect)\n?[^\n]*(?:\n\t\t[^\n]*)*\n\t\)', drop, text)
     # before the first board-level text: pinlabels.apply_labels inserts its labels after the last one, so the two splices keep each other's bytes
-    i = text.find('\n\t(gr_text ')
+    i = next((m.start() for m in re.finditer(r'\n\t\(gr_text .*?\n\t\)(?=\n)', text, re.S) if '(uuid "' + KEY_UUID_PREFIX not in m.group(0)), -1)       # not a key's text (pcbtools.keys)
     if i < 0:
         i = text.rfind('\n\t(embedded_fonts')
     return text[:i] + '\n' + ''.join(items()).rstrip('\n') + text[i:]

@@ -236,7 +236,7 @@ def test_a_key_already_on_the_board_is_left_alone_so_planning_again_adds_nothing
     text = BOARD.read_text()
     res = K.legend(fake_board(xy), text, CFG, [('POWER', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0)))
     new = K.apply(text, res, CFG)
-    assert K.existing_keys(new)[-1] >= set(real) | {'POWER'}
+    assert any(w >= set(real) | {'POWER'} for w in K.existing_keys(new))
     assert K.legend(fake_board(xy), new, CFG, [('POWER', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0))) == []
 
 

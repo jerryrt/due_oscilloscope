@@ -51,6 +51,7 @@ import numpy as np
 
 RES = 0.1                    # occupancy grid, mm
 STEP = 0.1                   # a legend is scanned for a free place at this step, mm
+KEY_UUID_PREFIX = 'ffff0000-'  # the uuid of every item a key writes starts so: the other silk splices (pinlabels, the identity block) skip them when they look for the last or first board text
 DELTA = 0.1                  # compact layout: the least step between two groups' text centres, mm
 
 
@@ -506,9 +507,9 @@ def apply(text, plans, cfg):
         else:
             have = f'\n\t(gr_rect\n\t\t(start {key[1]} {key[2]})\n\t\t(end {key[3]} {key[4]})' in text
         if not have:
-            new += body.replace('{u}', str(uuid.uuid5(uuid.NAMESPACE_URL, f'keys {key}')))
+            new += body.replace('{u}', KEY_UUID_PREFIX + str(uuid.uuid5(uuid.NAMESPACE_URL, f'keys {key}'))[len(KEY_UUID_PREFIX):])
     if new:
-        i = text.rstrip().rfind(')')
+        i = text.rstrip().rfind(')')                        # the end of the file; the splices of the pin labels and the identity block skip KEY_UUID_PREFIX items
         text = text[:i] + new + text[i:]
     return text
 
