@@ -124,10 +124,12 @@ KEY_INK_H = DESIGNATOR_INK_H
 KEY_COL_GAP = 0.7                 # mm between two designators of a row
 KEY_ROW_PITCH = 1.6               # mm centre to centre of two rows (ink 1.2 high)
 KEY_MARGIN = 0.5                  # mm inside the box all round
-KEY_ROW_TOL = 0.8                 # mm: parts this close in y are one row, in x one column (CH2's rows are 1.56 apart; R208 and C203 differ by 0.41 in y)
+KEY_ROW_TOL = 0.5                 # mm: parts within this span in y are one row, in x one column: silkread's ORDER_MIN, past which two texts must be ordered, not tied
 KEY_CLEAR = 0.15                  # mm: pads, vias, silk and courtyards are grown by this when free area is measured
 KEY_ADJOIN_MAX = 2.0              # mm: the key box lies this close to its cluster's extent at most (spec lead's ruling: "adjoins" = 2 mm)
 KEY_STROKE = 0.15
+KEY_GAP = 1.0                     # mm between two keys of a legend
+KEY_BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'}     # heading -> the hundreds digit of its designators (LR-11)
 
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
