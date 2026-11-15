@@ -11,8 +11,8 @@ and, of the places that do, takes the one with the smallest gap to its own court
 Parts are placed densest first, each against the places already taken. A part with no such place keeps its text and is LISTED: it
 needs room (a spread block, D30 1a) or a place in a cluster key (D30 1b), and this tool never decides which.
 
-Not seen by it: a footprint's own silk lines (they lie inside the courtyard, which is avoided) and the board-level silk lines
-(block outlines), which are drawn after the designators are placed.
+Not seen by it: a footprint's own silk lines (they lie inside the courtyard, which is avoided). The board-level silk lines (block outlines) are
+seen when the caller passes them as `silk` (pcbtools.silkapply does, from the board text); a board whose outlines are drawn after placing passes none.
 
     place(b, cfg, margin=0.30, keep=()) -> (placed {ref: (x, y, angle)}, unplaced [ref])     pure numpy on BoardArrays, Due mm
 """
@@ -26,6 +26,7 @@ STEP = 0.1
 PAD_CLEAR = 0.1
 VIA_CLEAR = 0.1
 EDGE_CLEAR = 0.3
+SILK_CLEAR = 0.05        # between a designator's box and a board-level silk line
 HARD_GAP = 0.3           # between two designators' boxes
 GAP_MAX = 1.0            # the farthest from its own courtyard a text is looked for
 
@@ -69,7 +70,8 @@ def _cands(c, ref, h, cfg):
     return np.round(np.vstack(out), 2)
 
 
-def place(b, cfg, margin=0.30, keep=()):
+def place(b, cfg, margin=0.30, keep=(), silk=()):
+    """`silk`: (x0, y0, x1, y1) boxes of board-level silk (block outlines, words), Due mm; the text lies on none of them (SILK_CLEAR)"""
     refs = list(b.fp_ref)
     top = [int(s) == 0 for s in b.fp_side]
     cour = {r: (b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]) for i, r in enumerate(refs)
@@ -85,6 +87,7 @@ def place(b, cfg, margin=0.30, keep=()):
         s = len(t) * getattr(cfg, 'DESIGNATOR_ADVANCE', 0.95) * h / 2              # the label's turn is not read: its square hull
         texts.append((x - s, y - s, x + s, y + s))
     texts = np.array(texts).reshape(-1, 4)
+    silk_obst = np.array(silk, float).reshape(-1, 4) + [-SILK_CLEAR, -SILK_CLEAR, SILK_CLEAR, SILK_CLEAR]
     ox, oy = b.outline[:, 0], b.outline[:, 1]
     edge = (ox.min() + EDGE_CLEAR, oy.min() + EDGE_CLEAR, ox.max() - EDGE_CLEAR, oy.max() - EDGE_CLEAR)
     cur = {}
@@ -111,12 +114,12 @@ def place(b, cfg, margin=0.30, keep=()):
         hh = sz[(C[:, 2] == 90).astype(int), 1]
         B = np.column_stack([C[:, 0] - w / 2, C[:, 1] - hh / 2, C[:, 0] + w / 2, C[:, 1] + hh / 2])
         ok = (B[:, 0] >= edge[0]) & (B[:, 1] >= edge[1]) & (B[:, 2] <= edge[2]) & (B[:, 3] <= edge[3])
-        for obst in (pads, vias, inner, texts):
+        for obst in (pads, vias, inner, texts, silk_obst):
             if len(obst) and ok.any():
                 ok &= ~_overlaps(B, obst).any(axis=1)
         if taken and ok.any():
             T = np.array(list(taken.values()))
-            ok &= (_gaps(B, T) >= HARD_GAP).all(axis=1)
+            ok &= (_gaps(B, T) >= getattr(cfg, 'DESIGNATOR_GAP_MIN', HARD_GAP)).all(axis=1)      # the board's own spacing rule, else HARD_GAP
         if not ok.any():
             unplaced.append(r)
             continue
