@@ -94,23 +94,28 @@ part('U101', 'TPH2502', {'1': 'CH1_OUT', '2': 'CH1_OUT', '3': 'CH1_NP', '4': G, 
 two('C104', '100n', P33A_U, G, B, 'scope.C (shared) 100nF', 'dual supply decoupling, at the pin')
 two('C105', '1u', P33A_U, G, B, 'scope.C (shared) 1uF', 'dual supply decoupling, at the pin')
 ADCPIN = {1: 'A1', 2: 'A0'}               # CH1 on A1, CH2 on A0 (version 1, afe.md)
+# LR-11, the numbering of runs (2026-11-15): the parts of a tight row count by one from the end that carries the label, so the number a function
+# takes inside its channel's hundred is not the order of the study's names.  Function index (b + k, the study's order) -> number in the hundred;
+# both channels take the same one, so R1nn and R2nn do the same job.
+RN = {1: 3, 2: 2, 3: 6, 4: 7, 5: 5, 6: 4, 7: 1, 8: 8}      # R1a R1b R2a R2b R3a R3b Rnp Riso
+CN = {1: 2, 2: 1, 3: 3}                                       # C1 Cn Cpx
 for ch in (1, 2):
     n = lambda s: f'CH{ch}_{s}'
     b = ch * 100
     B = f'CH{ch}'
     other(f'J{b + 1}', 'Connector:Conn_Coaxial', 'KH-BNC50-3511', BNC, {'1': n('IN'), '2': G}, B,
           f'CH{ch} input BNC, right-angle', nc=(), lcsc='C2837587')
-    two(f'R{b + 1}', '470k', n('IN'), n('M1'), B, 'scope.R1a', 'R1 first of two (770k)')
-    two(f'R{b + 2}', '300k', n('M1'), n('N'), B, 'scope.R1b', 'R1 second of two')
-    two(f'C{b + 1}', '18p', n('IN'), n('N'), B, 'scope.C1', 'C1 across R1')
-    two(f'R{b + 3}', '470k', n('N'), n('M2'), B, 'scope.R2a', 'R2 first of two (800k)')
-    two(f'R{b + 4}', '330k', n('M2'), G, B, 'scope.R2b', 'R2 second of two, to ground')
-    two(f'R{b + 5}', '330k', n('N'), n('M3'), B, 'scope.R3a', 'R3 first of two (330k)')
-    two(f'R{b + 6}', '0R', n('M3'), VREF, B, 'scope.R3b', 'R3 second of two (0R: R3 is 330k), to the REF3030E output')
-    two(f'C{b + 2}', '47p', n('N'), G, B, 'scope.Cn', 'Cn at the node')
-    two(f'R{b + 7}', '470R', n('N'), n('NP'), B, 'scope.Rnp', 'Rnp, ahead of +IN')
-    two(f'C{b + 3}', '10p', n('NP'), G, B, 'scope.Cpx', 'Cpx, +IN to ground')
-    two(f'R{b + 8}', '22R', n('OUT'), 'CH2_RISO' if ch == 2 else ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
+    two(f'R{b + RN[1]}', '470k', n('IN'), n('M1'), B, 'scope.R1a', 'R1 first of two (770k)')
+    two(f'R{b + RN[2]}', '300k', n('M1'), n('N'), B, 'scope.R1b', 'R1 second of two')
+    two(f'C{b + CN[1]}', '18p', n('IN'), n('N'), B, 'scope.C1', 'C1 across R1')
+    two(f'R{b + RN[3]}', '470k', n('N'), n('M2'), B, 'scope.R2a', 'R2 first of two (800k)')
+    two(f'R{b + RN[4]}', '330k', n('M2'), G, B, 'scope.R2b', 'R2 second of two, to ground')
+    two(f'R{b + RN[5]}', '330k', n('N'), n('M3'), B, 'scope.R3a', 'R3 first of two (330k)')
+    two(f'R{b + RN[6]}', '0R', n('M3'), VREF, B, 'scope.R3b', 'R3 second of two (0R: R3 is 330k), to the REF3030E output')
+    two(f'C{b + CN[2]}', '47p', n('N'), G, B, 'scope.Cn', 'Cn at the node')
+    two(f'R{b + RN[7]}', '470R', n('N'), n('NP'), B, 'scope.Rnp', 'Rnp, ahead of +IN')
+    two(f'C{b + CN[3]}', '10p', n('NP'), G, B, 'scope.Cpx', 'Cpx, +IN to ground')
+    two(f'R{b + RN[8]}', '22R', n('OUT'), 'CH2_RISO' if ch == 2 else ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
     part(f'D{b + 1}', 'BAV99', {'1': G, '3': 'CH2_RISO' if ch == 2 else ADCPIN[ch], '2': P33A_U if ch == 2 else P33A}, B,
          'scope.Dp',
          'ADC-pin clamp: GND / pin / +3.3 V_A')
@@ -171,10 +176,10 @@ two('C503', '100n', P33A, G, B, 'pc.C_ADS', 'ADS1115 VDD')
 two('R512', '4.7k', P33A, 'SDA', 'REFCAL', '', 'I2C pull-up SDA (required; 4.7k Basic, not in powercal/parts.csv)')
 two('R513', '4.7k', P33A, 'SCL', 'REFCAL', '', 'I2C pull-up SCL (required)')
 # Top-layer 0 ohm bridges the layout needs (afe.md LR-11 placeholders until the layout names the exact nets):
-# BR101 (CH1) carries +3V3A over the A0 column to the scope dual's V+ pad; BR201 (CH2) carries CH2's route over CH1's run
+# BR102 (CH1) carries +3V3A over the A0 column to the scope dual's V+ pad; BR201 (CH2) carries CH2's route over CH1's run
 # (the gap is in CH2's ADC-pin net, between Riso/the clamp D201 and the A0 pin).  Each joins two segment names of ONE electrical net; the
 # netlist comparison merges them (pcbtools.spicecmp BR rule: every BR part is a short).  Each sits in the block it serves.
-two('BR101', '0R', P33A, P33A_U, 'CH1', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
+two('BR102', '0R', P33A, P33A_U, 'CH1', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
 two('BR201', '0R', 'CH2_RISO', 'A0', 'CH2', '', 'top-layer 0R bridge: CH2 Riso to the A0 pin segment (placeholder net)')
 two('R514', '0R', VREF, 'AREF', 'REFCAL', '', 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
 

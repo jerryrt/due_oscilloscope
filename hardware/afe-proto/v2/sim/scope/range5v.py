@@ -39,7 +39,7 @@ TOL = 0.01
 TC = 100e-6
 RIN = 1e6
 
-# (R1a, R1b), (R2a, R2b), (R3a, R3b); the board's positions are CH1 R101/R102, R103/R104, R105/R106 (+100 for CH2)
+# (R1a, R1b), (R2a, R2b), (R3a, R3b); the board's positions are CH1 R103/R102, R106/R107, R105/R104 (+100 for CH2)
 VALUES = {
     'v2 old': dict(R1=(510e3, 30e3), R2=(1e6, 510e3), R3=(470e3, 200e3), C1=22e-12, Cn=12e-12, Rnp=470.0, Cpx=10e-12),
     '5 V': dict(R1=(470e3, 300e3), R2=(470e3, 330e3), R3=(330e3, 0.0), C1=12e-12, Cn=30e-12, Rnp=470.0, Cpx=10e-12),

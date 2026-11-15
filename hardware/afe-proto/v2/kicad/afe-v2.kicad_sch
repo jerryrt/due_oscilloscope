@@ -4738,7 +4738,7 @@
 	)
 	(wire
 		(pts
-			(xy 252.73 134.62) (xy 250.19 134.62)
+			(xy 153.67 134.62) (xy 151.13 134.62)
 		)
 		(stroke
 			(width 0)
@@ -4788,7 +4788,7 @@
 	)
 	(wire
 		(pts
-			(xy 727.71 45.72) (xy 730.25 45.72)
+			(xy 791.21 45.72) (xy 793.75 45.72)
 		)
 		(stroke
 			(width 0)
@@ -4828,7 +4828,7 @@
 	)
 	(wire
 		(pts
-			(xy 64.77 134.62) (xy 67.31 134.62)
+			(xy 321.31 134.62) (xy 323.85 134.62)
 		)
 		(stroke
 			(width 0)
@@ -4858,7 +4858,7 @@
 	)
 	(wire
 		(pts
-			(xy 687.07 45.72) (xy 684.53 45.72)
+			(xy 588.01 45.72) (xy 585.47 45.72)
 		)
 		(stroke
 			(width 0)
@@ -4968,6 +4968,16 @@
 	)
 	(wire
 		(pts
+			(xy 580.39 99.06) (xy 577.85 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2e0ed21c-9087-537f-b27c-77354afbaf7b")
+	)
+	(wire
+		(pts
 			(xy 506.73 45.72) (xy 509.27 45.72)
 		)
 		(stroke
@@ -4988,7 +4998,7 @@
 	)
 	(wire
 		(pts
-			(xy 595.63 45.72) (xy 598.17 45.72)
+			(xy 455.93 99.06) (xy 458.47 99.06)
 		)
 		(stroke
 			(width 0)
@@ -5088,7 +5098,7 @@
 	)
 	(wire
 		(pts
-			(xy 654.05 45.72) (xy 651.51 45.72)
+			(xy 814.07 45.72) (xy 811.53 45.72)
 		)
 		(stroke
 			(width 0)
@@ -5218,7 +5228,7 @@
 	)
 	(wire
 		(pts
-			(xy 57.15 134.62) (xy 54.61 134.62)
+			(xy 313.69 134.62) (xy 311.15 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5258,7 +5268,7 @@
 	)
 	(wire
 		(pts
-			(xy 821.69 45.72) (xy 824.23 45.72)
+			(xy 661.67 45.72) (xy 664.21 45.72)
 		)
 		(stroke
 			(width 0)
@@ -5318,7 +5328,7 @@
 	)
 	(wire
 		(pts
-			(xy 661.67 45.72) (xy 664.21 45.72)
+			(xy 821.69 45.72) (xy 824.23 45.72)
 		)
 		(stroke
 			(width 0)
@@ -5358,7 +5368,7 @@
 	)
 	(wire
 		(pts
-			(xy 588.01 45.72) (xy 585.47 45.72)
+			(xy 448.31 99.06) (xy 445.77 99.06)
 		)
 		(stroke
 			(width 0)
@@ -5398,7 +5408,7 @@
 	)
 	(wire
 		(pts
-			(xy 290.83 134.62) (xy 293.37 134.62)
+			(xy 130.81 134.62) (xy 133.35 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5418,7 +5428,7 @@
 	)
 	(wire
 		(pts
-			(xy 153.67 134.62) (xy 151.13 134.62)
+			(xy 57.15 134.62) (xy 54.61 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5428,7 +5438,7 @@
 	)
 	(wire
 		(pts
-			(xy 123.19 134.62) (xy 120.65 134.62)
+			(xy 283.21 134.62) (xy 280.67 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5518,7 +5528,7 @@
 	)
 	(wire
 		(pts
-			(xy 694.69 45.72) (xy 697.23 45.72)
+			(xy 595.63 45.72) (xy 598.17 45.72)
 		)
 		(stroke
 			(width 0)
@@ -5568,7 +5578,7 @@
 	)
 	(wire
 		(pts
-			(xy 313.69 134.62) (xy 311.15 134.62)
+			(xy 189.23 134.62) (xy 186.69 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5668,7 +5678,17 @@
 	)
 	(wire
 		(pts
-			(xy 161.29 134.62) (xy 163.83 134.62)
+			(xy 588.01 99.06) (xy 590.55 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6dcb22a0-d9b7-5b33-85ec-39bc5cc5aefd")
+	)
+	(wire
+		(pts
+			(xy 64.77 134.62) (xy 67.31 134.62)
 		)
 		(stroke
 			(width 0)
@@ -5688,17 +5708,7 @@
 	)
 	(wire
 		(pts
-			(xy 580.39 99.06) (xy 577.85 99.06)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "749ee145-2951-53cb-bc51-8736eb1bcc89")
-	)
-	(wire
-		(pts
-			(xy 283.21 134.62) (xy 280.67 134.62)
+			(xy 123.19 134.62) (xy 120.65 134.62)
 		)
 		(stroke
 			(width 0)
@@ -6038,7 +6048,7 @@
 	)
 	(wire
 		(pts
-			(xy 783.59 45.72) (xy 781.05 45.72)
+			(xy 687.07 45.72) (xy 684.53 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6128,7 +6138,7 @@
 	)
 	(wire
 		(pts
-			(xy 791.21 45.72) (xy 793.75 45.72)
+			(xy 694.69 45.72) (xy 697.23 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6178,7 +6188,7 @@
 	)
 	(wire
 		(pts
-			(xy 130.81 134.62) (xy 133.35 134.62)
+			(xy 290.83 134.62) (xy 293.37 134.62)
 		)
 		(stroke
 			(width 0)
@@ -6278,23 +6288,13 @@
 	)
 	(wire
 		(pts
-			(xy 260.35 134.62) (xy 262.89 134.62)
+			(xy 161.29 134.62) (xy 163.83 134.62)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "baf0fad7-7950-5746-bde7-fc2445da69fa")
-	)
-	(wire
-		(pts
-			(xy 588.01 99.06) (xy 590.55 99.06)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bc7f831b-bcff-5c92-ad88-bad0e923f2d3")
 	)
 	(wire
 		(pts
@@ -6358,7 +6358,7 @@
 	)
 	(wire
 		(pts
-			(xy 189.23 134.62) (xy 186.69 134.62)
+			(xy 252.73 134.62) (xy 250.19 134.62)
 		)
 		(stroke
 			(width 0)
@@ -6458,7 +6458,7 @@
 	)
 	(wire
 		(pts
-			(xy 448.31 99.06) (xy 445.77 99.06)
+			(xy 720.09 45.72) (xy 717.55 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6478,7 +6478,7 @@
 	)
 	(wire
 		(pts
-			(xy 455.93 99.06) (xy 458.47 99.06)
+			(xy 727.71 45.72) (xy 730.25 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6488,7 +6488,7 @@
 	)
 	(wire
 		(pts
-			(xy 321.31 134.62) (xy 323.85 134.62)
+			(xy 196.85 134.62) (xy 199.39 134.62)
 		)
 		(stroke
 			(width 0)
@@ -6658,7 +6658,7 @@
 	)
 	(wire
 		(pts
-			(xy 196.85 134.62) (xy 199.39 134.62)
+			(xy 260.35 134.62) (xy 262.89 134.62)
 		)
 		(stroke
 			(width 0)
@@ -6728,7 +6728,7 @@
 	)
 	(wire
 		(pts
-			(xy 814.07 45.72) (xy 811.53 45.72)
+			(xy 654.05 45.72) (xy 651.51 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6768,7 +6768,7 @@
 	)
 	(wire
 		(pts
-			(xy 720.09 45.72) (xy 717.55 45.72)
+			(xy 783.59 45.72) (xy 781.05 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6946,8 +6946,8 @@
 		)
 		(uuid "04c20501-7ba6-5e9e-8d6c-283a0ba45b41")
 	)
-	(label "CH1_N"
-		(at 445.77 99.06 180)
+	(label "CH1_M2"
+		(at 717.55 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7056,8 +7056,8 @@
 		)
 		(uuid "0a43e67b-a8c9-520a-b6bb-e8b5effd8565")
 	)
-	(label "CH2_IN"
-		(at 120.65 134.62 180)
+	(label "CH2_N"
+		(at 280.67 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7076,8 +7076,8 @@
 		)
 		(uuid "15543a0e-d609-5731-9aad-1351df6a60a1")
 	)
-	(label "CH2_M3"
-		(at 250.19 134.62 180)
+	(label "CH2_N"
+		(at 151.13 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7306,8 +7306,8 @@
 		)
 		(uuid "3611585e-d470-5bff-bbdf-8fe401fe05b8")
 	)
-	(label "CH1_M1"
-		(at 598.17 45.72 0)
+	(label "CH1_NP"
+		(at 458.47 99.06 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7315,16 +7315,6 @@
 			(justify left bottom)
 		)
 		(uuid "378f798e-a9fe-565f-9c45-6e653e95038e")
-	)
-	(label "+3V3A_U"
-		(at 590.55 99.06 0)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify left bottom)
-		)
-		(uuid "39bcf53b-998e-51c5-b8bb-9aed47028c1f")
 	)
 	(label "+5V_F"
 		(at 121.92 48.26 180)
@@ -7346,8 +7336,8 @@
 		)
 		(uuid "3b12be0d-2291-54bc-8b00-76f02157d78f")
 	)
-	(label "CH1_M2"
-		(at 717.55 45.72 180)
+	(label "CH1_M3"
+		(at 781.05 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7396,8 +7386,8 @@
 		)
 		(uuid "40892777-039f-5c39-aa9a-07c65fecd4f7")
 	)
-	(label "VREF"
-		(at 262.89 134.62 0)
+	(label "CH2_M2"
+		(at 163.83 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7405,6 +7395,16 @@
 			(justify left bottom)
 		)
 		(uuid "42057394-a250-500a-b8d4-0fa06f3b52d6")
+	)
+	(label "+3V3A"
+		(at 577.85 99.06 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "43b7f4e9-e911-5308-87cf-ff74128e846a")
 	)
 	(label "LM_FBN"
 		(at 149.86 50.8 0)
@@ -7416,8 +7416,8 @@
 		)
 		(uuid "455dca81-d912-53dc-9866-b3541cd01e42")
 	)
-	(label "CH1_IN"
-		(at 585.47 45.72 180)
+	(label "CH1_N"
+		(at 445.77 99.06 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7436,8 +7436,8 @@
 		)
 		(uuid "46cf1a63-b4d8-57a9-b8f1-6255c2b86b3d")
 	)
-	(label "GND"
-		(at 293.37 134.62 0)
+	(label "CH2_N"
+		(at 133.35 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7676,8 +7676,8 @@
 		)
 		(uuid "5ee48553-7b97-54ab-9f63-6a79b9b6dc8b")
 	)
-	(label "CH1_M3"
-		(at 781.05 45.72 180)
+	(label "CH1_N"
+		(at 684.53 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7736,8 +7736,8 @@
 		)
 		(uuid "6402741a-7f15-571e-a922-091fdf36d0b6")
 	)
-	(label "CH2_N"
-		(at 133.35 134.62 0)
+	(label "GND"
+		(at 293.37 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7816,8 +7816,8 @@
 		)
 		(uuid "6ef828eb-d1fa-57e5-99db-6a31ac4b19d8")
 	)
-	(label "CH1_N"
-		(at 664.21 45.72 0)
+	(label "GND"
+		(at 824.23 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7886,8 +7886,8 @@
 		)
 		(uuid "77c46003-c09c-5be4-849b-aebad6c700b5")
 	)
-	(label "CH1_N"
-		(at 684.53 45.72 180)
+	(label "CH1_IN"
+		(at 585.47 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7916,8 +7916,8 @@
 		)
 		(uuid "78c79946-2912-5ce2-8d70-6e367e95f284")
 	)
-	(label "CH2_M2"
-		(at 186.69 134.62 180)
+	(label "CH2_M3"
+		(at 250.19 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -7936,8 +7936,8 @@
 		)
 		(uuid "79cebe5b-de5d-5ca5-a9e1-1e7d012fa0cd")
 	)
-	(label "GND"
-		(at 730.25 45.72 0)
+	(label "VREF"
+		(at 793.75 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7976,8 +7976,8 @@
 		)
 		(uuid "7d70fb52-c289-5d2c-b2f9-39bb454dad89")
 	)
-	(label "CH2_N"
-		(at 151.13 134.62 180)
+	(label "CH2_IN"
+		(at 54.61 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8066,8 +8066,8 @@
 		)
 		(uuid "854e29b6-ebe7-5729-bec2-8c97587be36f")
 	)
-	(label "GND"
-		(at 199.39 134.62 0)
+	(label "VREF"
+		(at 262.89 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8116,8 +8116,8 @@
 		)
 		(uuid "89365b90-6432-5c7f-92f9-fbee4ac965f2")
 	)
-	(label "CH1_N"
-		(at 811.53 45.72 180)
+	(label "CH1_IN"
+		(at 651.51 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8176,8 +8176,8 @@
 		)
 		(uuid "912ada94-e683-5681-b95c-0193a1e300cc")
 	)
-	(label "CH2_NP"
-		(at 323.85 134.62 0)
+	(label "GND"
+		(at 199.39 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8216,8 +8216,8 @@
 		)
 		(uuid "94ef0993-7cae-5852-8fe5-a91cda05b176")
 	)
-	(label "CH1_IN"
-		(at 651.51 45.72 180)
+	(label "CH1_N"
+		(at 811.53 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8256,6 +8256,16 @@
 		)
 		(uuid "98e8d10e-e9cc-5398-99b4-1407f9a67f07")
 	)
+	(label "+3V3A_U"
+		(at 590.55 99.06 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "999fcc14-8bc6-5503-8799-16d2e8f57ee8")
+	)
 	(label "GND"
 		(at 134.62 68.58 270)
 		(effects
@@ -8286,8 +8296,8 @@
 		)
 		(uuid "9ae5ddeb-e6a6-5a67-8899-b5855340ba4b")
 	)
-	(label "CH1_M2"
-		(at 697.23 45.72 0)
+	(label "CH1_M1"
+		(at 598.17 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8366,16 +8376,6 @@
 		)
 		(uuid "a29a8aad-d172-53a0-929e-54fe96ccdc3d")
 	)
-	(label "+3V3A"
-		(at 577.85 99.06 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "a31f7a8c-fde7-5114-a676-60c44e428e25")
-	)
 	(label "GND"
 		(at 121.92 45.72 180)
 		(effects
@@ -8406,8 +8406,8 @@
 		)
 		(uuid "a4595f6e-b5da-56f2-b571-1dba2ed9d7f0")
 	)
-	(label "CH2_M2"
-		(at 163.83 134.62 0)
+	(label "CH2_M1"
+		(at 67.31 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8476,8 +8476,8 @@
 		)
 		(uuid "ab05cd06-5cea-51f6-8bab-40cc3223c6ab")
 	)
-	(label "CH2_M1"
-		(at 67.31 134.62 0)
+	(label "CH2_NP"
+		(at 323.85 134.62 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8536,8 +8536,8 @@
 		)
 		(uuid "b0756e33-2840-5109-98eb-bf16f2666cae")
 	)
-	(label "CH2_N"
-		(at 280.67 134.62 180)
+	(label "CH2_IN"
+		(at 120.65 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8636,8 +8636,8 @@
 		)
 		(uuid "beb33417-5156-5b43-b6fb-c817dc62a01e")
 	)
-	(label "CH1_NP"
-		(at 458.47 99.06 0)
+	(label "GND"
+		(at 730.25 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -8796,8 +8796,8 @@
 		)
 		(uuid "cfa4bc58-2000-5bb3-8455-1a5391dc6381")
 	)
-	(label "VREF"
-		(at 793.75 45.72 0)
+	(label "CH1_M2"
+		(at 697.23 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -9106,8 +9106,8 @@
 		)
 		(uuid "f5c0944d-8ee5-5383-bf24-4a9b8d646bba")
 	)
-	(label "CH2_N"
-		(at 311.15 134.62 180)
+	(label "CH2_M2"
+		(at 186.69 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -9136,8 +9136,8 @@
 		)
 		(uuid "f7c40eb0-48d5-5d04-992a-543701de91e5")
 	)
-	(label "GND"
-		(at 824.23 45.72 0)
+	(label "CH1_N"
+		(at 664.21 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -9196,8 +9196,8 @@
 		)
 		(uuid "fcdfc1d1-109a-5a96-b14c-9dabe753e1d2")
 	)
-	(label "CH2_IN"
-		(at 54.61 134.62 180)
+	(label "CH2_N"
+		(at 311.15 134.62 180)
 		(effects
 			(font
 				(size 1 1)
@@ -10019,7 +10019,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 723.9 45.72 90)
+		(at 787.4 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10029,7 +10029,7 @@
 		(dnp no)
 		(uuid "11bde09a-846c-53b9-bb54-1f57e9a90bc5")
 		(property "Reference" "R104"
-			(at 723.9 35.052 0)
+			(at 787.4 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10038,8 +10038,8 @@
 				)
 			)
 		)
-		(property "Value" "330k 1%"
-			(at 723.9 37.592 0)
+		(property "Value" "0R"
+			(at 787.4 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10049,7 +10049,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 723.9 45.72 0)
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10060,7 +10060,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 723.9 45.72 0)
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10071,7 +10071,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 723.9 45.72 0)
+			(at 787.4 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10080,8 +10080,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23137"
-			(at 723.9 45.72 0)
+		(property "LCSC" "C21189"
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10091,8 +10091,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R2b"
-			(at 723.9 45.72 0)
+		(property "Sim" "scope.R3b"
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10103,7 +10103,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 723.9 45.72 0)
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10114,7 +10114,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 723.9 45.72 0)
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10124,8 +10124,8 @@
 				)
 			)
 		)
-		(property "Note" "R2 second of two, to ground"
-			(at 723.9 45.72 0)
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
+			(at 787.4 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10548,7 +10548,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 690.88 45.72 90)
+		(at 591.82 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10558,7 +10558,7 @@
 		(dnp no)
 		(uuid "189a9b1d-278a-5395-9e91-3bd2ce5e2a8f")
 		(property "Reference" "R103"
-			(at 690.88 35.052 0)
+			(at 591.82 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10568,7 +10568,7 @@
 			)
 		)
 		(property "Value" "470k 1%"
-			(at 690.88 37.592 0)
+			(at 591.82 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10578,7 +10578,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10589,7 +10589,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10600,7 +10600,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10610,7 +10610,7 @@
 			)
 		)
 		(property "LCSC" "C23178"
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10620,8 +10620,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R2a"
-			(at 690.88 45.72 0)
+		(property "Sim" "scope.R1a"
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10632,7 +10632,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10643,7 +10643,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 690.88 45.72 0)
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10653,8 +10653,8 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (800k)"
-			(at 690.88 45.72 0)
+		(property "Note" "R1 first of two (770k)"
+			(at 591.82 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12482,7 +12482,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 317.5 134.62 90)
+		(at 193.04 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12492,7 +12492,7 @@
 		(dnp no)
 		(uuid "461f49ed-4021-5c49-89c5-f459932d2698")
 		(property "Reference" "R207"
-			(at 317.5 123.952 0)
+			(at 193.04 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12501,8 +12501,8 @@
 				)
 			)
 		)
-		(property "Value" "470R 1%"
-			(at 317.5 126.492 0)
+		(property "Value" "330k 1%"
+			(at 193.04 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12512,7 +12512,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 317.5 134.62 0)
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12523,7 +12523,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 317.5 134.62 0)
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12534,7 +12534,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 317.5 134.62 0)
+			(at 193.04 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12543,8 +12543,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23179"
-			(at 317.5 134.62 0)
+		(property "LCSC" "C23137"
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12554,8 +12554,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.Rnp"
-			(at 317.5 134.62 0)
+		(property "Sim" "scope.R2b"
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12566,7 +12566,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 317.5 134.62 0)
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12577,7 +12577,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 317.5 134.62 0)
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12587,8 +12587,8 @@
 				)
 			)
 		)
-		(property "Note" "Rnp, ahead of +IN"
-			(at 317.5 134.62 0)
+		(property "Note" "R2 second of two, to ground"
+			(at 193.04 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13280,7 +13280,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 60.96 134.62 90)
+		(at 317.5 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13290,7 +13290,7 @@
 		(dnp no)
 		(uuid "50b684a2-3b82-559c-837c-b142ae7d782b")
 		(property "Reference" "R201"
-			(at 60.96 123.952 0)
+			(at 317.5 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13299,8 +13299,8 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
-			(at 60.96 126.492 0)
+		(property "Value" "470R 1%"
+			(at 317.5 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13310,7 +13310,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 60.96 134.62 0)
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13321,7 +13321,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 60.96 134.62 0)
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13332,7 +13332,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 60.96 134.62 0)
+			(at 317.5 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13341,8 +13341,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
-			(at 60.96 134.62 0)
+		(property "LCSC" "C23179"
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13352,8 +13352,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R1a"
-			(at 60.96 134.62 0)
+		(property "Sim" "scope.Rnp"
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13364,7 +13364,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 60.96 134.62 0)
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13375,7 +13375,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 60.96 134.62 0)
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13385,8 +13385,8 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (770k)"
-			(at 60.96 134.62 0)
+		(property "Note" "Rnp, ahead of +IN"
+			(at 317.5 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13413,7 +13413,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 787.4 45.72 90)
+		(at 690.88 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13423,7 +13423,7 @@
 		(dnp no)
 		(uuid "51b8536b-db88-5491-a283-15bb10a3e320")
 		(property "Reference" "R106"
-			(at 787.4 35.052 0)
+			(at 690.88 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13432,8 +13432,8 @@
 				)
 			)
 		)
-		(property "Value" "0R"
-			(at 787.4 37.592 0)
+		(property "Value" "470k 1%"
+			(at 690.88 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13443,7 +13443,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 787.4 45.72 0)
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13454,7 +13454,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 787.4 45.72 0)
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13465,7 +13465,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 787.4 45.72 0)
+			(at 690.88 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13474,8 +13474,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C21189"
-			(at 787.4 45.72 0)
+		(property "LCSC" "C23178"
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13485,8 +13485,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R3b"
-			(at 787.4 45.72 0)
+		(property "Sim" "scope.R2a"
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13497,7 +13497,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 787.4 45.72 0)
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13508,7 +13508,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 787.4 45.72 0)
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13518,8 +13518,8 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
-			(at 787.4 45.72 0)
+		(property "Note" "R2 first of two (800k)"
+			(at 690.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14813,7 +14813,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 591.82 45.72 90)
+		(at 452.12 99.06 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14823,7 +14823,7 @@
 		(dnp no)
 		(uuid "68da91a9-ec5c-53d0-9834-19a962731ecf")
 		(property "Reference" "R101"
-			(at 591.82 35.052 0)
+			(at 452.12 88.392 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14832,8 +14832,8 @@
 				)
 			)
 		)
-		(property "Value" "470k 1%"
-			(at 591.82 37.592 0)
+		(property "Value" "470R 1%"
+			(at 452.12 90.932 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14843,7 +14843,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 591.82 45.72 0)
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14854,7 +14854,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 591.82 45.72 0)
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14865,7 +14865,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 591.82 45.72 0)
+			(at 452.12 99.06 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14874,8 +14874,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23178"
-			(at 591.82 45.72 0)
+		(property "LCSC" "C23179"
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14885,8 +14885,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R1a"
-			(at 591.82 45.72 0)
+		(property "Sim" "scope.Rnp"
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14897,7 +14897,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 591.82 45.72 0)
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14908,7 +14908,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 591.82 45.72 0)
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14918,8 +14918,8 @@
 				)
 			)
 		)
-		(property "Note" "R1 first of two (770k)"
-			(at 591.82 45.72 0)
+		(property "Note" "Rnp, ahead of +IN"
+			(at 452.12 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15206,7 +15206,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 817.88 45.72 90)
+		(at 657.86 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15216,7 +15216,7 @@
 		(dnp no)
 		(uuid "6c91c0ce-75f7-5936-9bc6-54b1d0380060")
 		(property "Reference" "C102"
-			(at 817.88 35.052 0)
+			(at 657.86 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15225,8 +15225,8 @@
 				)
 			)
 		)
-		(property "Value" "47p C0G"
-			(at 817.88 37.592 0)
+		(property "Value" "18p C0G"
+			(at 657.86 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15236,7 +15236,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 817.88 45.72 0)
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15247,7 +15247,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 817.88 45.72 0)
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15258,7 +15258,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 817.88 45.72 0)
+			(at 657.86 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15267,8 +15267,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C1671"
-			(at 817.88 45.72 0)
+		(property "LCSC" "C1647"
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15278,8 +15278,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.Cn"
-			(at 817.88 45.72 0)
+		(property "Sim" "scope.C1"
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15290,7 +15290,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 817.88 45.72 0)
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15301,7 +15301,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 817.88 45.72 0)
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15311,8 +15311,8 @@
 				)
 			)
 		)
-		(property "Note" "Cn at the node"
-			(at 817.88 45.72 0)
+		(property "Note" "C1 across R1"
+			(at 657.86 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18457,139 +18457,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 584.2 99.06 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "a7419fa2-1711-5c6b-94ac-998883955ce6")
-		(property "Reference" "BR101"
-			(at 584.2 88.392 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "0R"
-			(at 584.2 90.932 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 584.2 99.06 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C21189"
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sim" ""
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Block" "CH1"
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Fitted by" "JLC"
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Note" "top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)"
-			(at 584.2 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "e3de0608-f79a-5a48-9c18-58ada05470fe")
-		)
-		(pin "2"
-			(uuid "bd8cb638-60e3-5e43-a1b3-ce3458daacfd")
-		)
-		(instances
-			(project "afe-v2"
-				(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055"
-					(reference "BR101")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Device:C")
 		(at 96.52 45.72 90)
 		(unit 1)
@@ -19676,7 +19543,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 193.04 134.62 90)
+		(at 256.54 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -19686,7 +19553,7 @@
 		(dnp no)
 		(uuid "bc5a0ff3-bbe4-5e05-8fce-b49467f9b77c")
 		(property "Reference" "R204"
-			(at 193.04 123.952 0)
+			(at 256.54 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -19695,8 +19562,8 @@
 				)
 			)
 		)
-		(property "Value" "330k 1%"
-			(at 193.04 126.492 0)
+		(property "Value" "0R"
+			(at 256.54 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -19706,7 +19573,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 193.04 134.62 0)
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19717,7 +19584,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 193.04 134.62 0)
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19728,7 +19595,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 193.04 134.62 0)
+			(at 256.54 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -19737,8 +19604,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23137"
-			(at 193.04 134.62 0)
+		(property "LCSC" "C21189"
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19748,8 +19615,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R2b"
-			(at 193.04 134.62 0)
+		(property "Sim" "scope.R3b"
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19760,7 +19627,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 193.04 134.62 0)
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19771,7 +19638,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 193.04 134.62 0)
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19781,8 +19648,8 @@
 				)
 			)
 		)
-		(property "Note" "R2 second of two, to ground"
-			(at 193.04 134.62 0)
+		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
+			(at 256.54 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20547,7 +20414,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 657.86 45.72 90)
+		(at 817.88 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -20557,7 +20424,7 @@
 		(dnp no)
 		(uuid "c7b32487-5292-5b4b-9658-a14eab4270c5")
 		(property "Reference" "C101"
-			(at 657.86 35.052 0)
+			(at 817.88 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20566,8 +20433,8 @@
 				)
 			)
 		)
-		(property "Value" "18p C0G"
-			(at 657.86 37.592 0)
+		(property "Value" "47p C0G"
+			(at 817.88 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20577,7 +20444,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 657.86 45.72 0)
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20588,7 +20455,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 657.86 45.72 0)
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20599,7 +20466,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 657.86 45.72 0)
+			(at 817.88 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20608,8 +20475,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C1647"
-			(at 657.86 45.72 0)
+		(property "LCSC" "C1671"
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20619,8 +20486,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.C1"
-			(at 657.86 45.72 0)
+		(property "Sim" "scope.Cn"
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20631,7 +20498,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 657.86 45.72 0)
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20642,7 +20509,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 657.86 45.72 0)
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20652,8 +20519,8 @@
 				)
 			)
 		)
-		(property "Note" "C1 across R1"
-			(at 657.86 45.72 0)
+		(property "Note" "Cn at the node"
+			(at 817.88 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21209,7 +21076,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 256.54 134.62 90)
+		(at 157.48 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -21219,7 +21086,7 @@
 		(dnp no)
 		(uuid "d2409399-c5a9-59b5-9523-2a1a5a17c343")
 		(property "Reference" "R206"
-			(at 256.54 123.952 0)
+			(at 157.48 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21228,8 +21095,8 @@
 				)
 			)
 		)
-		(property "Value" "0R"
-			(at 256.54 126.492 0)
+		(property "Value" "470k 1%"
+			(at 157.48 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21239,7 +21106,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 256.54 134.62 0)
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21250,7 +21117,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 256.54 134.62 0)
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21261,7 +21128,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 256.54 134.62 0)
+			(at 157.48 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21270,8 +21137,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C21189"
-			(at 256.54 134.62 0)
+		(property "LCSC" "C23178"
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21281,8 +21148,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R3b"
-			(at 256.54 134.62 0)
+		(property "Sim" "scope.R2a"
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21293,7 +21160,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 256.54 134.62 0)
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21304,7 +21171,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 256.54 134.62 0)
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21314,8 +21181,8 @@
 				)
 			)
 		)
-		(property "Note" "R3 second of two (0R: R3 is 330k), to the REF3030E output"
-			(at 256.54 134.62 0)
+		(property "Note" "R2 first of two (800k)"
+			(at 157.48 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21475,7 +21342,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 287.02 134.62 90)
+		(at 127 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -21485,7 +21352,7 @@
 		(dnp no)
 		(uuid "da5430b9-ec36-5c87-ac2d-ed9060947d0e")
 		(property "Reference" "C202"
-			(at 287.02 123.952 0)
+			(at 127 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21494,8 +21361,8 @@
 				)
 			)
 		)
-		(property "Value" "47p C0G"
-			(at 287.02 126.492 0)
+		(property "Value" "18p C0G"
+			(at 127 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21505,7 +21372,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 287.02 134.62 0)
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21516,7 +21383,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 287.02 134.62 0)
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21527,7 +21394,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 287.02 134.62 0)
+			(at 127 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21536,8 +21403,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C1671"
-			(at 287.02 134.62 0)
+		(property "LCSC" "C1647"
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21547,8 +21414,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.Cn"
-			(at 287.02 134.62 0)
+		(property "Sim" "scope.C1"
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21559,7 +21426,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 287.02 134.62 0)
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21570,7 +21437,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 287.02 134.62 0)
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21580,8 +21447,8 @@
 				)
 			)
 		)
-		(property "Note" "Cn at the node"
-			(at 287.02 134.62 0)
+		(property "Note" "C1 across R1"
+			(at 127 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21892,6 +21759,139 @@
 	)
 	(symbol
 		(lib_id "Device:R")
+		(at 584.2 99.06 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e2d86742-34fb-5001-a9cd-72e96e478a91")
+		(property "Reference" "BR102"
+			(at 584.2 88.392 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "0R"
+			(at 584.2 90.932 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 584.2 99.06 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C21189"
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim" ""
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Block" "CH1"
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Fitted by" "JLC"
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Note" "top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)"
+			(at 584.2 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "5b67cf9f-2cdd-52ee-986f-13c721a0f0f5")
+		)
+		(pin "2"
+			(uuid "45d0def4-f8b8-52ee-9fb3-ad866567163c")
+		)
+		(instances
+			(project "afe-v2"
+				(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055"
+					(reference "BR102")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
 		(at 66.04 269.24 90)
 		(unit 1)
 		(body_style 1)
@@ -22025,7 +22025,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 127 134.62 90)
+		(at 287.02 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -22035,7 +22035,7 @@
 		(dnp no)
 		(uuid "e84934c7-d294-5336-91fd-b61773fc5a18")
 		(property "Reference" "C201"
-			(at 127 123.952 0)
+			(at 287.02 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22044,8 +22044,8 @@
 				)
 			)
 		)
-		(property "Value" "18p C0G"
-			(at 127 126.492 0)
+		(property "Value" "47p C0G"
+			(at 287.02 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22055,7 +22055,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 127 134.62 0)
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22066,7 +22066,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 127 134.62 0)
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22077,7 +22077,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 127 134.62 0)
+			(at 287.02 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22086,8 +22086,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C1647"
-			(at 127 134.62 0)
+		(property "LCSC" "C1671"
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22097,8 +22097,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.C1"
-			(at 127 134.62 0)
+		(property "Sim" "scope.Cn"
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22109,7 +22109,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 127 134.62 0)
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22120,7 +22120,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 127 134.62 0)
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22130,8 +22130,8 @@
 				)
 			)
 		)
-		(property "Note" "C1 across R1"
-			(at 127 134.62 0)
+		(property "Note" "Cn at the node"
+			(at 287.02 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22557,7 +22557,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 157.48 134.62 90)
+		(at 60.96 134.62 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -22567,7 +22567,7 @@
 		(dnp no)
 		(uuid "f3dbf2ff-8eca-5b43-92b0-fb0e0a24b49e")
 		(property "Reference" "R203"
-			(at 157.48 123.952 0)
+			(at 60.96 123.952 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22577,7 +22577,7 @@
 			)
 		)
 		(property "Value" "470k 1%"
-			(at 157.48 126.492 0)
+			(at 60.96 126.492 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22587,7 +22587,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22598,7 +22598,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22609,7 +22609,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22619,7 +22619,7 @@
 			)
 		)
 		(property "LCSC" "C23178"
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22629,8 +22629,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.R2a"
-			(at 157.48 134.62 0)
+		(property "Sim" "scope.R1a"
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22641,7 +22641,7 @@
 			)
 		)
 		(property "Block" "CH2"
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22652,7 +22652,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 157.48 134.62 0)
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22662,8 +22662,8 @@
 				)
 			)
 		)
-		(property "Note" "R2 first of two (800k)"
-			(at 157.48 134.62 0)
+		(property "Note" "R1 first of two (770k)"
+			(at 60.96 134.62 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22690,7 +22690,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 452.12 99.06 90)
+		(at 723.9 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -22700,7 +22700,7 @@
 		(dnp no)
 		(uuid "f6532820-73af-5cb7-a3dd-6a105702d36b")
 		(property "Reference" "R107"
-			(at 452.12 88.392 0)
+			(at 723.9 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22709,8 +22709,8 @@
 				)
 			)
 		)
-		(property "Value" "470R 1%"
-			(at 452.12 90.932 0)
+		(property "Value" "330k 1%"
+			(at 723.9 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22720,7 +22720,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 452.12 99.06 0)
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22731,7 +22731,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 452.12 99.06 0)
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22742,7 +22742,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 452.12 99.06 0)
+			(at 723.9 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22751,8 +22751,8 @@
 				)
 			)
 		)
-		(property "LCSC" "C23179"
-			(at 452.12 99.06 0)
+		(property "LCSC" "C23137"
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22762,8 +22762,8 @@
 				)
 			)
 		)
-		(property "Sim" "scope.Rnp"
-			(at 452.12 99.06 0)
+		(property "Sim" "scope.R2b"
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22774,7 +22774,7 @@
 			)
 		)
 		(property "Block" "CH1"
-			(at 452.12 99.06 0)
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22785,7 +22785,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 452.12 99.06 0)
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22795,8 +22795,8 @@
 				)
 			)
 		)
-		(property "Note" "Rnp, ahead of +IN"
-			(at 452.12 99.06 0)
+		(property "Note" "R2 second of two, to ground"
+			(at 723.9 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

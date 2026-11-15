@@ -46,17 +46,23 @@ OLD_SCOPE_NETLIST = os.path.join('scope', 'scope_v2.cir')
 @pytest.fixture
 def frozen(monkeypatch):
     """The first revision's design and studies: the old tools (tests/fixtures/v2-kicad-276a116/kicad, goldens in tests/golden) can only be compared with the
-    port on the design they were run on, so the values landed on 2026-11-13 are put back for the test and restored after it."""
+    port on the design they were run on, so the values landed on 2026-11-13 are put back for the test and restored after it. That design is also numbered
+    as it was before the renumbering of runs (2026-11-15): the live parts take their old designators (and the config's tables that name one) for the test."""
+    from pcbtools.boards.v2_layout import RENUMBER_INVERSE as INV
     old = {p['ref']: p for p in v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS}
     saved = {}
     for p in v2_sch.PARTS:
-        saved[p['ref']] = {k: p[k] for k in ('value', 'lcsc', 'note')}
+        saved[p['ref']] = {k: p[k] for k in ('ref', 'value', 'lcsc', 'note')}
+        p['ref'] = INV.get(p['ref'], p['ref'])
         p.update({k: old[p['ref']][k] for k in ('value', 'lcsc', 'note')})
+    kp = {k: {INV.get(r, r) for r in v} for k, v in v2.KEY_PARTS.items()}
+    monkeypatch.setattr(v2, 'KEY_PARTS', kp)
+    monkeypatch.setattr(v2, 'BRIDGE_JOINS', {INV.get(k, k): v for k, v in v2.BRIDGE_JOINS.items()})
     monkeypatch.setattr(sys.modules[__name__], 'SIM', SIM_OLD)
     monkeypatch.setattr(v2, 'SPICE_ROWS', (('N1', 'scope', OLD_SCOPE_NETLIST), ('N2', 'awg', os.path.join('awg', 'awg.cir'))))
     yield
-    for p in v2_sch.PARTS:
-        p.update(saved[p['ref']])
+    for p, s in zip(v2_sch.PARTS, saved.values()):
+        p.update(s)
 
 
 def pure_rows(parts=None, spice=None, tag=''):
@@ -83,14 +89,16 @@ def test_the_design_is_loaded_from_one_place_and_leaves_no_plain_module_name():
     assert 'design' not in sys.modules and v2_sch._design.__name__ == 'pcbtools._live_v2.design'
     # the frozen design is the first revision's; the live one differs from it only by the values landed on 2026-11-13 (D-V2-17):
     # the scope's six resistors and two capacitors per channel, and the AWG's R305 and R306. Anything else that moves is a failure.
-    old, new = v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS, v2_sch.PARTS
+    from pcbtools.boards.v2_layout import RENUMBER as REN
+    old = [dict(p, ref=REN.get(p['ref'], p['ref'])) for p in v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS]    # the same parts under their numbers of 2026-11-15
+    new = v2_sch.PARTS
     assert [p['ref'] for p in old] == [p['ref'] for p in new]
     changed = set()
     for a, b in zip(old, new):
         assert {k: v for k, v in a.items() if k not in ('value', 'lcsc', 'note')} == {k: v for k, v in b.items() if k not in ('value', 'lcsc', 'note')}, a['ref']
         if a != b:
             changed.add(a['ref'])
-    assert changed == {f'{k}{ch * 100 + n}' for ch in (1, 2) for k, n in (('R', 1), ('R', 2), ('R', 3), ('R', 4), ('R', 5), ('R', 6), ('C', 1), ('C', 2))} | {'R305', 'R306'}
+    assert changed == {REN.get(f'{k}{ch * 100 + n}', f'{k}{ch * 100 + n}') for ch in (1, 2) for k, n in (('R', 1), ('R', 2), ('R', 3), ('R', 4), ('R', 5), ('R', 6), ('C', 1), ('C', 2))} | {'R305', 'R306'}
 
 
 def test_the_old_tools_are_frozen_with_what_they_read():
@@ -173,7 +181,7 @@ def test_compare_on_the_real_blocks_has_no_difference_and_a_changed_value_is_one
 
 def test_a_bridge_that_is_not_zero_ohm_is_refused():
     p = sch_synth.project_from_parts(copy.deepcopy(v2.PARTS), v2.DATASHEET_PINS)
-    p.comps['BR101']['value'] = '1k 1%'
+    p.comps['BR102']['value'] = '1k 1%'                  # the design's CH1 bridge (BR101 before the renumbering of 2026-11-15)
     with pytest.raises(ValueError, match='0 ohm'):
         spicecmp.schematic_elements(p.comps, p.nets, 'scope', v2)
 
@@ -341,11 +349,11 @@ def test_known_figures_of_the_power_calibration_and_scope_rows():
     assert d['C1'].startswith('V+ = 3.3176 V (R1 120000, R2 68000), V- = -2.0032 V (R3 64200, R4 100000)')
     assert d['C2'].startswith('6 rungs of [330.0]') and d['C3'].startswith('k = 0.400, Rm 10000 vs Rs + Rt||Rb 9900')
     assert "B touches ['R508', 'R509', 'R511'] only" in d['C4']
-    assert "reference loaded by ['R106', 'R206', 'R305']" in d['C5']
+    assert "reference loaded by ['R104', 'R204', 'R305']" in d['C5']          # R3b of both channels (R106 and R206 before the renumbering)
     assert d['N1'] == 'scope: 29 SPICE elements after reduction, 29 schematic elements'
     assert d['N2'] == 'awg: 14 SPICE elements after reduction, 14 schematic elements'
     assert d['D2'].startswith('each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9')
-    assert d['B1'] == '64 studied parts against 65 parts.csv keys' and d['C6'].startswith("BR101 joins ['+3V3A', '+3V3A_U']")
+    assert d['B1'] == '64 studied parts against 65 parts.csv keys' and d['C6'].startswith("BR102 joins ['+3V3A', '+3V3A_U']")
 
 
 def test_study_rows_known_entries():

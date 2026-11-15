@@ -519,7 +519,7 @@
 		(at 100.5 127.399999)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR510"
+		(property "Reference" "BR511"
 			(at -1.925 -3.175 0)
 			(layer "F.SilkS")
 			(uuid "958e3ef5-a25f-5c63-8a92-de5fa5c42b3f")
@@ -612,7 +612,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/c274bb0c-f32c-5816-931a-868608b45833")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/3a218ded-3716-5209-987d-c2920ee5448b")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -2171,7 +2171,7 @@
 		(at 137.575 127.69)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R203"
+		(property "Reference" "R206"
 			(at -1.925 1.425 0)
 			(layer "F.SilkS")
 			(uuid "b2aa75bd-a7c3-5cdc-8a14-1a1f2f1c6eaa")
@@ -2264,7 +2264,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/f3dbf2ff-8eca-5b43-92b0-fb0e0a24b49e")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/d2409399-c5a9-59b5-9523-2a1a5a17c343")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -3159,7 +3159,7 @@
 		(at 134.475 106.53 180)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
-		(property "Reference" "C102"
+		(property "Reference" "C101"
 			(at 4.125 2.775 0)
 			(layer "F.SilkS")
 			(uuid "99825d73-1da0-5253-bf90-96afd5f8cb17")
@@ -3252,7 +3252,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/6c91c0ce-75f7-5936-9bc6-54b1d0380060")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/c7b32487-5292-5b4b-9658-a14eab4270c5")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -3491,7 +3491,7 @@
 		(at 131.465 104.97 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R106"
+		(property "Reference" "R104"
 			(at 4.125 -2.225 90)
 			(layer "F.SilkS")
 			(uuid "b670e61e-ceb7-5bd5-a83b-e618da18daf0")
@@ -3584,7 +3584,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/51b8536b-db88-5491-a283-15bb10a3e320")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/11bde09a-846c-53b9-bb54-1f57e9a90bc5")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -3657,7 +3657,7 @@
 		(at 137.525 126.13 180)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
-		(property "Reference" "C201"
+		(property "Reference" "C202"
 			(at -1.075 2.775 0)
 			(layer "F.SilkS")
 			(uuid "53f08b83-bbe2-56ba-8d8e-96f9619d79d9")
@@ -3750,7 +3750,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/e84934c7-d294-5336-91fd-b61773fc5a18")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/da5430b9-ec36-5c87-ac2d-ed9060947d0e")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -3823,7 +3823,7 @@
 		(at 131.465 127.69 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R206"
+		(property "Reference" "R204"
 			(at 3.925 3.475 0)
 			(layer "F.SilkS")
 			(uuid "e05f23f4-0ea1-5be1-95f2-9cfda597559a")
@@ -3916,7 +3916,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/d2409399-c5a9-59b5-9523-2a1a5a17c343")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/bc5a0ff3-bbe4-5e05-8fce-b49467f9b77c")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -4819,7 +4819,7 @@
 		(at 134.425 108.09 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R107"
+		(property "Reference" "R101"
 			(at 3.625 -3.325 90)
 			(layer "F.SilkS")
 			(uuid "a254e4ef-cdf7-5ecb-94fb-b4dfd248de91")
@@ -4912,7 +4912,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/f6532820-73af-5cb7-a3dd-6a105702d36b")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/68da91a9-ec5c-53d0-9834-19a962731ecf")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -5317,7 +5317,7 @@
 		(at 108.42 135.6 90)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR508"
+		(property "Reference" "BR507"
 			(at -1.275 3.325 0)
 			(layer "F.SilkS")
 			(uuid "7c7f7310-7acf-527a-8a94-f9d2f97853b3")
@@ -5410,7 +5410,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/8a36c936-4be9-57f0-9ce4-8e4755f6c625")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/793d6fd3-3d79-5c31-8c1b-9d388add1042")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -6804,7 +6804,7 @@
 		(at 112.8 114.3)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR102"
+		(property "Reference" "BR101"
 			(at -1.425 -3.375 0)
 			(layer "F.SilkS")
 			(uuid "ed38bf50-68cd-5eab-ab05-0e3db52f522c")
@@ -6897,7 +6897,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/e2d86742-34fb-5001-a9cd-72e96e478a91")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/a7419fa2-1711-5c6b-94ac-998883955ce6")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -8271,7 +8271,7 @@
 		(at 140.535 127.69)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R204"
+		(property "Reference" "R207"
 			(at -0.025 1.225 0)
 			(layer "F.SilkS")
 			(uuid "07298bc4-50ee-5734-8afc-0dd77ac67d20")
@@ -8364,7 +8364,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/bc5a0ff3-bbe4-5e05-8fce-b49467f9b77c")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/461f49ed-4021-5c49-89c5-f459932d2698")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -9267,7 +9267,7 @@
 		(at 140.535 108.09 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R101"
+		(property "Reference" "R103"
 			(at -0.575 -2.625 90)
 			(layer "F.SilkS")
 			(uuid "b5b7ecd7-bffa-59e5-bca3-a8046bd8f228")
@@ -9360,7 +9360,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/68da91a9-ec5c-53d0-9834-19a962731ecf")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/189a9b1d-278a-5395-9e91-3bd2ce5e2a8f")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -9680,7 +9680,7 @@
 				)
 			)
 		)
-		(property "Note" "PCB-only top-layer 0R bridge: scope +3V3A feed: POWER side to the BR102 side, over the AREF lane (AREF stays continuous on top)"
+		(property "Note" "PCB-only top-layer 0R bridge: scope +3V3A feed: POWER side to the BR101 side, over the AREF lane (AREF stays continuous on top)"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -10908,7 +10908,7 @@
 		(at 134.425 124.569999 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R207"
+		(property "Reference" "R201"
 			(at 3.625 2.175 90)
 			(layer "F.SilkS")
 			(uuid "609cf606-a5d1-5a5b-85de-aafd28c70861")
@@ -11001,7 +11001,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/461f49ed-4021-5c49-89c5-f459932d2698")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/50b684a2-3b82-559c-837c-b142ae7d782b")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -11572,7 +11572,7 @@
 		(at 137.575 104.97)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R103"
+		(property "Reference" "R106"
 			(at -2.425 -3.475 0)
 			(layer "F.SilkS")
 			(uuid "2f238766-1792-5070-b0bf-f913ad46885f")
@@ -11665,7 +11665,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/189a9b1d-278a-5395-9e91-3bd2ce5e2a8f")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/51b8536b-db88-5491-a283-15bb10a3e320")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -12817,7 +12817,7 @@
 		(at 99 140.25 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR507"
+		(property "Reference" "BR508"
 			(at 3.025 -2.425 90)
 			(layer "F.SilkS")
 			(uuid "a0efb4a4-1839-5134-af2a-d6066ad585bc")
@@ -12910,7 +12910,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/793d6fd3-3d79-5c31-8c1b-9d388add1042")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/8a36c936-4be9-57f0-9ce4-8e4755f6c625")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -14289,7 +14289,7 @@
 		(at 116.04 114.3)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR101"
+		(property "Reference" "BR102"
 			(at 2.575 -1.575 0)
 			(layer "F.SilkS")
 			(uuid "d2b849ed-b421-5bf2-9efc-e64965ea629a")
@@ -14382,7 +14382,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/a7419fa2-1711-5c6b-94ac-998883955ce6")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/e2d86742-34fb-5001-a9cd-72e96e478a91")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -17294,7 +17294,7 @@
 		(at 100.5 125.6)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "BR511"
+		(property "Reference" "BR510"
 			(at -3.725 0.925 0)
 			(layer "F.SilkS")
 			(uuid "36899c12-b906-53b8-832b-a10aaa897e14")
@@ -17387,7 +17387,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/3a218ded-3716-5209-987d-c2920ee5448b")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/c274bb0c-f32c-5816-931a-868608b45833")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -17977,7 +17977,7 @@
 		(at 137.525 106.53 180)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
-		(property "Reference" "C101"
+		(property "Reference" "C102"
 			(at 1.625 2.775 0)
 			(layer "F.SilkS")
 			(uuid "6c187237-cf89-5405-80b9-eb4e633cf6df")
@@ -18070,7 +18070,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/c7b32487-5292-5b4b-9658-a14eab4270c5")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/6c91c0ce-75f7-5936-9bc6-54b1d0380060")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -19850,7 +19850,7 @@
 		(at 140.535 124.569999 180)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R201"
+		(property "Reference" "R203"
 			(at -1.375 2.975 90)
 			(layer "F.SilkS")
 			(uuid "5e8d4b5b-a33e-529a-b769-b784c01cdf45")
@@ -19943,7 +19943,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/50b684a2-3b82-559c-837c-b142ae7d782b")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/f3dbf2ff-8eca-5b43-92b0-fb0e0a24b49e")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -20016,7 +20016,7 @@
 		(at 140.535 104.97)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
-		(property "Reference" "R104"
+		(property "Reference" "R107"
 			(at -0.525 -3.475 0)
 			(layer "F.SilkS")
 			(uuid "cafe8a41-0f3a-5c78-9573-6ea88eef5d4c")
@@ -20109,7 +20109,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/11bde09a-846c-53b9-bb54-1f57e9a90bc5")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/f6532820-73af-5cb7-a3dd-6a105702d36b")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -21799,7 +21799,7 @@
 		(at 134.475 126.13 180)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
-		(property "Reference" "C202"
+		(property "Reference" "C201"
 			(at 4.125 -0.325 0)
 			(layer "F.SilkS")
 			(uuid "ca136665-188f-54d6-9668-1b73c0f2bad3")
@@ -21892,7 +21892,7 @@
 				)
 			)
 		)
-		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/da5430b9-ec36-5c87-ac2d-ed9060947d0e")
+		(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055/e84934c7-d294-5336-91fd-b61773fc5a18")
 		(sheetname "Root")
 		(sheetfile "afe-v2.kicad_sch")
 		(attr smd)
@@ -22046,7 +22046,7 @@
 				)
 			)
 		)
-		(property "Note" "PCB-only top-layer 0R bridge: middle segment to CH2 R206"
+		(property "Note" "PCB-only top-layer 0R bridge: middle segment to CH2 R204"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)

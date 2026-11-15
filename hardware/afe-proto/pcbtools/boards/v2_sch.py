@@ -54,7 +54,7 @@ BLOCK_TITLE = {
     'EDGE': 'EDGE (6xx): Due header pass-throughs, I2C pull-ups, AREF link, mounting',
 }
 FLAG_BLOCK = 'POWER'
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', '+3V3A_U']       # +3V3A_U: driven through the 0R bridge BR101, which is not a source
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', '+3V3A_U']       # +3V3A_U: driven through the 0R bridge BR102, which is not a source
 SCH_COMMENTS = ['Generated from design.py by pcbtools.schematic (python -m pcbtools.boards.v2_checks --build): edit design.py, not this file',
                 'Values and parts: v2/sim/{scope,awg,powercal}/parts.csv. Connectivity: the studies SPICE netlists',
                 'Own work, CC BY-SA 4.0']

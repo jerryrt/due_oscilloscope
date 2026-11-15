@@ -14,15 +14,15 @@ Per channel; CH1 is the 1xx refs, CH2 is the same + 100 (`v2/kicad/design.py`). 
 
 | Ref (CH1 / CH2) | Role | Old | **New** | LCSC (new) | Basic |
 |---|---|---|---|---|---|
-| R101 / R201 | R1a, IN to M1 | 510k | **470k** | C23178 | yes |
+| R103 / R203 | R1a, IN to M1 | 510k | **470k** | C23178 | yes |
 | R102 / R202 | R1b, M1 to N | 30k | **300k** | C23024 | yes |
-| R103 / R203 | R2a, N to M2 | 1M | **470k** | C23178 | yes |
-| R104 / R204 | R2b, M2 to GND | 510k | **330k** | C23137 | yes |
+| R106 / R206 | R2a, N to M2 | 1M | **470k** | C23178 | yes |
+| R107 / R207 | R2b, M2 to GND | 510k | **330k** | C23137 | yes |
 | R105 / R205 | R3a, N to M3 | 470k | **330k** | C23137 | yes |
-| R106 / R206 | R3b, M3 to VREF | 200k | **0R** | C21189 | yes |
-| C101 / C201 | C1 across R1 | 22p C0G | **18p C0G** | C1647 | yes (jlc-basic.csv, 0603, read 2026-11-12) |
-| C102 / C202 | Cn, N to GND | 12p C0G | **47p C0G** | C1671 | yes (same read) |
-| R107 / R207, C103 / C203, R108 / R208, D101 / D201 | Rnp 470, Cpx 10p, Riso 22, BAV99 | | **unchanged** | | |
+| R104 / R204 | R3b, M3 to VREF | 200k | **0R** | C21189 | yes |
+| C102 / C202 | C1 across R1 | 22p C0G | **18p C0G** | C1647 | yes (jlc-basic.csv, 0603, read 2026-11-12) |
+| C101 / C201 | Cn, N to GND | 12p C0G | **47p C0G** | C1671 | yes (same read) |
+| R101 / R201, C103 / C203, R108 / R208, D101 / D201 | Rnp 470, Cpx 10p, Riso 22, BAV99 | | **unchanged** | | |
 
 The resistors are version 1's values (`kicad/design.py` of version 1: R101 470k + 300k, R201 470k + 330k, R3 330k) in version 2's positions, with a 0R
 where version 1 has one part (R3). R1 = 770k, R2 = 800k, R3 = 330k. **Rnp stays 470 ohm** (version 1 has 680): the 12 V edge reads 0.82 mA with
@@ -35,7 +35,7 @@ Version 1's capacitors, C1 12p (C38523) / Cn 30p (C1658), are kept in the figure
 
 BOM effect (derived from `v2/kicad/design.py`, which uses each removed value only in the scope): part types out 510k C23192, 30k C22984, 1M C22935,
 200k C25811, 22p C1653, 12p C38523; in 300k C23024, 330k C23137, 18p C1647, 47p C1671 (470k C23178 and 0R C21189 are already on the board).
-Placements are unchanged except R106 / R206, a resistor that becomes a 0R. Prices not re-read *(check)*.
+Placements are unchanged except R104 / R204, a resistor that becomes a 0R. Prices not re-read *(check)*.
 
 ## 2. Derivation
 

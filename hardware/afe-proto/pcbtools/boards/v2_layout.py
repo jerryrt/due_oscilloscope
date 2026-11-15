@@ -10,6 +10,29 @@ import os
 
 from .v2 import *  # noqa: F401,F403  every public name of the frozen config
 
+# The renumbering of 2026-11-15 (LR-11, the runs): old designator -> the one the board and the design have now. boards/v2.py is frozen on the old
+# fixture and keeps the old names; every inherited field is carried to the new ones here, so a table written once (a channel's parts, the VREF
+# branches, the groups) still names the same parts. Everything this file defines after the loop is written with the new names.
+RENUMBER = {
+    'BR101': 'BR102', 'BR102': 'BR101', 'BR507': 'BR508', 'BR508': 'BR507', 'BR510': 'BR511', 'BR511': 'BR510', 'C101': 'C102',
+    'C102': 'C101', 'C201': 'C202', 'C202': 'C201', 'R101': 'R103', 'R103': 'R106', 'R104': 'R107', 'R106': 'R104', 'R107':
+    'R101', 'R201': 'R203', 'R203': 'R206', 'R204': 'R207', 'R206': 'R204', 'R207': 'R201'}
+RENUMBER_INVERSE = {v: k for k, v in RENUMBER.items()}
+
+
+def _renamed(v):
+    if isinstance(v, str):
+        return RENUMBER.get(v, v)
+    if isinstance(v, dict):
+        return {_renamed(k): _renamed(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple, set, frozenset)):
+        return type(v)(_renamed(x) for x in v)
+    return v
+
+
+for _k in [_k for _k in list(globals()) if _k.isupper()]:
+    globals()[_k] = _renamed(globals()[_k])
+
 _TABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'v2', 'layout', 'outlines.py')
 _spec = importlib.util.spec_from_file_location('_pcbtools_v2_layout_outlines', _TABLE)
 _t = importlib.util.module_from_spec(_spec)
@@ -47,15 +70,20 @@ DESIGNATOR_DIST_MAX = 3.0        # a designator is at most this far from the nea
 # the part's pads): BR501 and BR504 sit against the REFCAL box's east side with CH2 beyond it. Closing them needs a part to move (a
 # human decision). R203 and R204 were waived too until CH2's resistor-capacitor array (R201-R207, C201-C203) moved 1.3 mm north,
 # which put the bottom row's labels inside CH2 under the row. {ref: the block whose outline the label sits in}, an exact match.
-DESIGNATOR_FOREIGN_WAIVED = {'BR501': 'CH2', 'BR504': 'CH2'}
+DESIGNATOR_FOREIGN_WAIVED = {'BR501': 'CH2', 'BR504': 'CH2', 'C104': 'CH2', 'C301': 'CH2', 'R303': 'CH2'}
+# After the renumbering of runs (2026-11-15) C104's label is its run's starter, which lies on the run's line beyond its low end, inside CH2's box (the
+# shared dual's capacitors sit on CH1's south edge); C301 and R303 have no free place nearer than CH2's outline. A part with no free place within
+# DESIGNATOR_DIST_MAX of its pads has the nearest free place at all; each is recorded at the distance it has (rounded up to 0.1 mm), {ref: mm}.
+DESIGNATOR_DIST_WAIVED = {'BR503': 4.8, 'BR509': 3.1, 'C303': 4.5, 'R108': 3.3, 'R208': 4.0, 'R303': 3.8, 'R305': 4.9, 'R502': 4.9, 'R506': 3.2, 'U301': 4.8}
 # The pairs the room does not allow. The CH2 and AWG passives sit on a 1.5-3 mm grid and a 1 mm designator is 3.4-4.8 mm long, so
 # with every part where it is, no placement keeps every pair 1.0 mm apart: the placement search (v2/layout/place_designators.py)
 # got 74 pairs under 1.0 mm down to these 20 (none touching: closest 0.30 mm) and not lower, from several starts and with the
 # distance to the part relaxed to 3.5 and 4.5 mm. Each is recorded at the gap it reached, rounded down to 0.05; the check holds a
 # pair to its floor, so it still catches a label that moves toward its neighbour. Closing them means moving a part or shortening a
 # label (a human decision); the board house's minimum text height is the project's 1.0 mm, so a smaller label is not an option.
-DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('C201', 'R201'): 0.80, ('C306', 'R301'): 0.80,
-                         ('J501', 'R509'): 0.40, ('R206', 'R207'): 0.75, ('R304', 'R306'): 0.65, ('R307', 'U301'): 0.40}
+DESIGNATOR_GAP_WAIVED = {('BR501', 'R204'): 0.90, ('BR502', 'R507'): 0.60, ('BR507', 'J501'): 0.30, ('C101', 'R101'): 0.35, ('C101', 'R104'): 0.35,
+                         ('C201', 'R201'): 0.35, ('C201', 'R204'): 0.35, ('C306', 'R301'): 0.80, ('J501', 'R509'): 0.40, ('R204', 'TP201'): 0.95,
+                         ('R304', 'R306'): 0.65}
 # 8 pairs after the CH2 array moved north (17 before it, 20 at first): v2/layout/refine_designators.py (silk only, after place_designators.py) turned and moved labels until none
 # reads as one label (DESIGNATOR_GAP_ONE_LABEL: no same-baseline pair is under 0.65 mm, and the rule below is not waivable). Three
 # pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
@@ -116,5 +144,7 @@ BOARD_SETUP = {
 
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
+SCH_NS = '6f1f0d3e-4a52-4c1b-9a4e-0ad5e0a1f001'     # the uuid namespace of the schematic and the footprints' paths (boards/v2_sch.py NS)
+SAME_ORIENTATION = True      # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one (LR-11, silkplace)
 IDENTITY_CHECK = True
 SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)

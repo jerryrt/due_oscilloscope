@@ -38,8 +38,8 @@ each part's `block` field in `design.py` says the same (`D1` and `D2` check it):
 
 | block field | range | holds |
 |---|---|---|
-| CH1 | 1xx | CH1 chain R101-R108, C101-C103, D101, bridge BR101, BNC J101, test point TP101 (A1), and **U101, the TPH2502 dual both channels share, with its two supply capacitors C104, C105**: the shared dual takes the 1xx number |
-| CH2 | 2xx | CH2 chain R201-R208, C201-C203, D201, bridge BR201, BNC J201, TP201 (A0) |
+| CH1 | 1xx | CH1 chain R103-R108, C102-C103, D101, bridge BR102, BNC J101, test point TP101 (A1), and **U101, the TPH2502 dual both channels share, with its two supply capacitors C104, C105**: the shared dual takes the 1xx number |
+| CH2 | 2xx | CH2 chain R203-R208, C202-C203, D201, bridge BR201, BNC J201, TP201 (A0) |
 | AWG | 3xx | U301, R301-R309, C301, C303-C306, BNC J301, TP301 (AWG_OUT) |
 | POWER | 4xx | LM27762 U401, R401-R405 feedback, R406 5 V sense, R407 bleed, C401-C409, TP401-TP404 (+3V3A, VNEG, +5V_F, GND) |
 | REFCAL | 5xx | REF3030E U501 with C501 C502, ADS1115 U502 with C503, ladder R501-R506, sense divider R507-R511, the I2C pull-ups R512 (SDA) and R513 (SCL), the AREF link R514 (0R, unfitted), CAL header J501, TP501 (VREF); the loose shunt is SH501 (hand-fitted, no symbol) |
@@ -55,7 +55,7 @@ MH602; TP1..TP6 were replaced by the eight test points below. Everything else ke
 `A0`, TP301 `AWG_OUT` (the stage output net `AWG_VO`, before the back-termination), TP401 `+3V3A`, TP402 `VNEG`, TP403
 `+5V_F` (the LM27762's filtered 5 V feed, after the sense resistor R406), TP404 `GND`, TP501 `VREF`.
 
-**Bridges (placeholders until the layout names the nets).** BR101 (block CH1) joins `+3V3A` and `+3V3A_U` (the scope dual's
+**Bridges (placeholders until the layout names the nets).** BR102 (block CH1) joins `+3V3A` and `+3V3A_U` (the scope dual's
 V+ pad and C104, C105 sit on `+3V3A_U`); BR201 (block CH2) joins `CH2_RISO` (Riso R208's output) and `A0` (the Due pin,
 TP201). Both are Basic 0R 0603 (C21189), each in the block it serves. The netlist comparison treats a `BR` part as a short
 (merging the two segment names) and fails if a bridge is not 0 ohm; the layout work names the nets the bridges really split

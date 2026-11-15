@@ -59,7 +59,7 @@ def _rng(prefix, a, b):
 
 
 KEY_PARTS = {
-    'CH1': {'J101', 'U101', 'D101', 'TP101', 'BR101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
+    'CH1': {'J101', 'U101', 'D101', 'TP101', 'BR102'} | _rng('R', 101, 108) | _rng('C', 101, 105),
     'CH2': {'J201', 'D201', 'TP201', 'BR201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
     'AWG': {'U301', 'J301', 'C301', 'TP301'} | _rng('R', 301, 309) | _rng('C', 303, 306),
     'POWER': {'U401'} | _rng('R', 401, 407) | _rng('C', 401, 409) | _rng('TP', 401, 404),
@@ -67,9 +67,9 @@ KEY_PARTS = {
     'EDGE': _rng('J', 601, 607) | {'MH601', 'MH602'},
 }
 
-# the bridges (placeholders until the layout names the nets): BR101 from the +3V3A rail (the LM27762's OUT+) to the dual's V+
+# the bridges (placeholders until the layout names the nets): BR102 from the +3V3A rail (the LM27762's OUT+) to the dual's V+
 # segment, BR201 from CH2's Riso / clamp side to the Due A0 pin; the CH2 clamp D201 sits on the dual side of both
-BRIDGE_JOINS = {'BR101': (('fn', 'U401', 'OUT+'), ('fn', 'U101', 'V+')), 'BR201': (('pin', 'R208', '2'), ('pin', 'J602', '8'))}
+BRIDGE_JOINS = {'BR102': (('fn', 'U401', 'OUT+'), ('fn', 'U101', 'V+')), 'BR201': (('pin', 'R208', '2'), ('pin', 'J602', '8'))}
 BRIDGE_SIDES = [(('pin', 'D201', '3'), ('pin', 'R208', '2')), (('pin', 'D201', '2'), ('fn', 'U101', 'V+'))]
 BRIDGE_TEXT = 'the CH2 clamp D201 sits on the dual side of both'
 
@@ -353,8 +353,18 @@ def P(parts, ref):
     return next(p for p in parts if p['ref'] == ref)
 
 
+def PS(parts, sim, block):
+    """a part by its study name and block, not by its designator (a renumbering moves the designators and leaves the function)"""
+    return next(p for p in parts if p['sim'] == sim and p['block'] == block)
+
+
+def PB(parts, block):
+    """the bridge of a block (the design has one in CH1 and one in CH2)"""
+    return next(p for p in parts if p['ref'].startswith(BRIDGE_PREFIX) and p['block'] == block)
+
+
 def arm_value_scope(parts):
-    P(parts, 'R101')['value'] = '51k 1%'                          # the scope's first R1 part, 510k -> 51k
+    PS(parts, 'scope.R1a', 'CH1')['value'] = '51k 1%'            # the scope's first R1 part, 510k -> 51k
 
 
 def arm_value_awg(parts):
@@ -415,7 +425,7 @@ def arm_designator(parts):
 
 
 def arm_bridge_value(parts):
-    P(parts, 'BR101')['value'] = '1k 1%'                          # a bridge that is not 0 ohm
+    PB(parts, 'CH1')['value'] = '1k 1%'                           # a bridge that is not 0 ohm
 
 
 def arm_bridge_open(parts):
