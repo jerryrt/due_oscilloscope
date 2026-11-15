@@ -346,3 +346,25 @@ def test_tracks_are_free_for_silk_by_default_and_taken_when_the_flag_says():
     assert taken.box_free(34.0, 27.0, 40.0, 28.0)                                                     # clear of it
     flagged = types.SimpleNamespace(**{k: getattr(CFG, k) for k in dir(CFG) if k.isupper()}, KEY_AVOID_TRACKS=True)
     assert not K.board_grid(b, '', flagged).box_free(34.0, 24.5, 40.0, 25.5)                           # the config's flag does the same
+
+
+def test_legend_fit_places_the_keys_that_fit_and_lists_the_rest():
+    b = fake_board_c(TWO)
+    k1 = K.build(['R101', 'R102', 'C101'], TWO, CFG, heading='CH1')
+    one = [(0.0, 0.0, k1.W + 0.2, k1.H + 0.2)]                                   # room for one of the two clusters' keys
+    plans, left = K.legend_fit(b, '', CFG, [('CH1', list(TWO))], one, grid=FREE, split=2.0)
+    assert len(plans) == 1 and len(left) == 1 and left[0][0] == 'CH1' and len(left[0][1]) == 3
+    assert sorted(plans[0].texts) != sorted(left[0][1])                          # the two are different clusters
+    both, none_left = K.legend_fit(b, '', CFG, [('CH1', list(TWO))], one + [(0.0, 30.0, 20.0, 40.0)], grid=FREE, split=2.0)
+    assert len(both) == 2 and none_left == []
+
+
+def test_a_cluster_span_bounds_a_cluster_in_a_dense_block():
+    row = {f'R1{i:02d}': (10.0 + 1.0 * i, 20.0) for i in range(8)}                  # eight parts in a row, courtyards touching
+    b = fake_board_c(row, half=0.5)
+    assert len(K.split_items(b, [('CH1', list(row))], 0.2)) == 1                      # chained: one cluster
+    cut = K.split_items(b, [('CH1', list(row))], 0.2, span=3.5)
+    assert len(cut) >= 2 and all(len(rs) >= 2 for _, rs in cut) and sorted(r for _, rs in cut for r in rs) == sorted(row)
+    for _, rs in cut:
+        xs = [row[r][0] for r in rs]
+        assert max(xs) - min(xs) <= 3.5 + 1.0 + 1e-9                                  # a lone part may have joined: its own width more at most

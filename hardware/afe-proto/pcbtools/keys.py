@@ -40,6 +40,7 @@ Config (`KEYS = {name: dict(parts=(refs...))}`, `KEY_BLOCKS = {heading: hundreds
   KEY_ADJOIN_MAX        a local key's box is at most this far from its cluster's extent (the union of the parts' courtyards), mm
   KEY_GAP               clear space between two keys in a legend, mm
   KEY_SPLIT_GAP         (optional) legend: a block's residue is cut into clusters of parts whose courtyards are within this, each its own key
+  KEY_SPLIT_SPAN        (optional) legend: a cluster's part positions span at most this, mm (a number or (width, height)); bounds a cluster in a dense block
   KEY_AVOID_TRACKS      (optional) True counts tracks as taken in the free-area measure; default False: silk over a mask-covered track is allowed
   KEY_EDGE              (optional) free rectangles found for a legend stay this far in from the board's bounding box, mm (default 0.5)
   KEY_STROKE            line width of the box, mm
@@ -397,37 +398,44 @@ def _cgap(a, c):
     return float(np.hypot(max(c[0] - a[2], a[0] - c[2], 0.0), max(c[1] - a[3], a[1] - c[3], 0.0)))
 
 
-def split_items(b, items, gap):
-    """each block's residue cut into spatial clusters: parts whose courtyards are within `gap` mm of each other (chained) are one cluster, and each
-    cluster is one key under the block's heading (several keys may share a heading). A key needs two designators, so a cluster of one part joins the
-    cluster nearest to it; a block whose parts are all alone stays one key. -> [(heading, [refs])] in the items' order, a cluster's parts in theirs"""
+def split_items(b, items, gap, span=None):
+    """each block's residue cut into spatial clusters, one key each under the block's heading (several keys may share a heading). Agglomerative:
+    every part starts alone, and the two clusters whose courtyards are nearest, if within `gap` mm and if the part positions of the merged cluster
+    span at most `span` (a (width, height) in mm, or one number for both; None = no limit), are merged, until none can be. With no span that is
+    plain chaining by courtyard distance. A key needs two designators, so a cluster of one part joins the cluster nearest to it (span or not); a
+    block whose parts are all alone stays one key. -> [(heading, [refs])] in the items' order, a cluster's parts in theirs"""
+    sw, sh = (span, span) if isinstance(span, (int, float)) else (span or (None, None))
     out = []
     for head, refs in items:
         cour = {r: _cour(b, r) for r in refs}
-        par = {r: r for r in refs}
+        ctr = {r: ((cour[r][0] + cour[r][2]) / 2, (cour[r][1] + cour[r][3]) / 2) for r in refs}
+        clusters = [[r] for r in refs]
 
-        def find(x):
-            while par[x] != x:
-                par[x] = par[par[x]]
-                x = par[x]
-            return x
-        for i, a in enumerate(refs):
-            for c in refs[i + 1:]:
-                if _cgap(cour[a], cour[c]) <= gap:
-                    par[find(a)] = find(c)
-        comps = {}
-        for r in refs:
-            comps.setdefault(find(r), []).append(r)
-        groups = list(comps.values())
-        big = [g_ for g_ in groups if len(g_) > 1]
+        def merged_ok(a, c):
+            pts = [ctr[r] for r in a + c]
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            return (sw is None or max(xs) - min(xs) <= sw) and (sh is None or max(ys) - min(ys) <= sh)
+        while True:
+            best = None
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    d = min(_cgap(cour[p], cour[q]) for p in clusters[i] for q in clusters[j])
+                    if d <= gap and merged_ok(clusters[i], clusters[j]) and (best is None or d < best[0]):
+                        best = (d, i, j)
+            if best is None:
+                break
+            _, i, j = best
+            clusters[i] = clusters[i] + clusters[j]
+            del clusters[j]
+        big = [c for c in clusters if len(c) > 1]
         if not big:
             out.append((head, list(refs)))
             continue
-        for g_ in [g_ for g_ in groups if len(g_) == 1]:
-            near = min(big, key=lambda c_: min(_cgap(cour[g_[0]], cour[q]) for q in c_))
-            near.append(g_[0])
-        for g_ in big:
-            out.append((head, [r for r in refs if r in g_]))
+        for c in [c for c in clusters if len(c) == 1]:
+            near = min(big, key=lambda k: min(_cgap(cour[c[0]], cour[q]) for q in k))
+            near.append(c[0])
+        for c in big:
+            out.append((head, [r for r in refs if r in c]))
     return out
 
 
@@ -455,7 +463,7 @@ def free_rectangles(g, min_w, min_h, count, edge=0.0, gap=0.0):
                 while stack and stack[-1][1] >= h:
                     s, sh = stack.pop()
                     area = (ix - s) * sh
-                    if area > best[0]:
+                    if area > best[0] and (ix - s) * RES >= min_w - 1e-9 and sh * RES >= min_h - 1e-9:       # a maximal rectangle that is big enough both ways
                         best = (area, s, iy - sh + 1, ix, iy + 1)
                     start = s
                 stack.append((start, h))
@@ -481,7 +489,7 @@ def existing_keys(text):
     return out
 
 
-def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None):
+def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None, span=None):
     """the keys of `items` [(heading, [refs])] packed into `regions` [(x0, y0, x1, y1)] (an L of several rectangles is fine; a key lies in one), each
     wholly on free area, first-fit from the top left of the first region that takes it, tallest first, so the boxes line up in rows. Grid layouts
     first; if they do not all fit, compact ones. -> [Plan] in the order of `items`, or LegendNoFit (the last attempt, each key in its smallest layout)"""
@@ -493,8 +501,9 @@ def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None):
         if bad:
             raise ValueError(f'{bad} are not in block {head} by their designators')
     split = split if split is not None else getattr(cfg, 'KEY_SPLIT_GAP', None)
-    if split is not None:
-        items = split_items(b, items, split)
+    span = span if span is not None else getattr(cfg, 'KEY_SPLIT_SPAN', None)
+    if split is not None or span is not None:
+        items = split_items(b, items, split if split is not None else float('inf'), span)
     have = existing_keys(text)
     items = [(h, refs) for h, refs in items if not any(h in w and set(refs) <= w for w in have)]       # a key already on the board is left as it is
     if not items:
@@ -502,12 +511,8 @@ def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None):
     allrefs = [r for _, refs in items for r in refs]
     g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
     regions = list(regions)
-    if auto:                                                  # more regions: the biggest free rectangles of the board outside the given ones
-        g2 = Grid((g.x0, g.y0, g.x0 + g.nx * RES, g.y0 + g.ny * RES))
-        g2.occ = g.occ.copy()
-        for r in regions:
-            g2.mark(*r, grow=cfg.KEY_GAP)
-        regions += free_rectangles(g2, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5), gap=cfg.KEY_GAP)
+    if auto:                                                  # more regions: the biggest free rectangles of the board (what the given regions leave free is among them)
+        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5))
     xy = _positions(b, allrefs)
     last = None
     maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
@@ -527,41 +532,102 @@ def legend(b, text, cfg, items, regions, grid=None, split=None, auto=None):
             lays = [(h, build(refs, xy, cfg, heading=h, compact=(mode == 'compact'))) for h, refs in items]
         if lays is None:
             continue
+        cache = {}
         base = sorted(range(len(lays)), key=lambda i: (-lays[i][1].H, -lays[i][1].W))
         for order in itertools.chain([tuple(base)], itertools.islice((o for o in itertools.permutations(range(len(lays))) if list(o) != base), 200)):
-            placed, failed = _pack(lays, order, regions, g, cfg)
+            placed, failed = _pack(lays, order, regions, g, cfg, cache)
             if failed is None:
                 return [placed[i] for i in range(len(lays))]
         last = LegendNoFit([(h, ly.W, ly.H, ly.mode) for h, ly in lays], [(r[2] - r[0], r[3] - r[1]) for r in regions],
-                           [lays[i][0] for i in base if i in _pack(lays, tuple(base), regions, g, cfg)[0]], _pack(lays, tuple(base), regions, g, cfg)[1])
+                           [lays[i][0] for i in base if i in _pack(lays, tuple(base), regions, g, cfg, cache)[0]], _pack(lays, tuple(base), regions, g, cfg, cache)[1])
     return last
 
 
-def _pack(lays, order, regions, g, cfg):
+def legend_fit(b, text, cfg, items, regions, grid=None, split=None, auto=None, span=None):
+    """as legend(), but when not every key fits, the keys that do: ([Plan], [(heading, refs, W, H)] left over). Each key (a cluster, if split) in its smallest
+    layout; of three orders (as given, smallest first, largest first) the one that keys the most parts wins, ties to the first. Every Plan is a complete
+    key, so a board with some of its keys placed is as valid as one with all of them"""
+    res = legend(b, text, cfg, items, regions, grid=grid, split=split, auto=auto, span=span)
+    if isinstance(res, list):
+        return res, []
+    split = split if split is not None else getattr(cfg, 'KEY_SPLIT_GAP', None)
+    span = span if span is not None else getattr(cfg, 'KEY_SPLIT_SPAN', None)
+    if split is not None or span is not None:
+        items = split_items(b, items, split if split is not None else float('inf'), span)
+    have = existing_keys(text)
+    items = [(h, refs) for h, refs in items if not any(h in w and set(refs) <= w for w in have)]
+    allrefs = [r for _, refs in items for r in refs]
+    g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
+    regions = list(regions)
+    if auto:
+        regions += free_rectangles(g, auto[0], auto[1], auto[2], edge=getattr(cfg, 'KEY_EDGE', 0.5))
+    xy = _positions(b, allrefs)
+    maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
+    lays = []
+    for h, refs in items:
+        opts = dense_options(refs, xy, cfg, h, (maxw, maxh)) + [build(refs, xy, cfg, heading=h), build(refs, xy, cfg, heading=h, compact=True)]
+        lays.append((h, min(opts, key=lambda o: (o.W * o.H, max(o.W, o.H)))))
+    cache = {}
+    orders = [list(range(len(lays))), sorted(range(len(lays)), key=lambda i: lays[i][1].W * lays[i][1].H),
+              sorted(range(len(lays)), key=lambda i: -lays[i][1].W * lays[i][1].H)]
+    best = None
+    for order in orders:
+        placed, boxes = {}, np.zeros((0, 4))
+        for i in order:
+            h, ly = lays[i]
+            c = _candidates(ly, regions, g, cache)
+            ok = np.ones(len(c), bool)
+            if len(boxes) and len(c):
+                gp = cfg.KEY_GAP
+                ok = np.all((c[:, None, 0] + ly.W + gp <= boxes[None, :, 0]) | (boxes[None, :, 2] + gp <= c[:, None, 0])
+                            | (c[:, None, 1] + ly.H + gp <= boxes[None, :, 1]) | (boxes[None, :, 3] + gp <= c[:, None, 1]), axis=1)
+            idx = np.flatnonzero(ok)
+            if len(idx):
+                x, y = (round(float(v), 1) for v in c[idx[0]])
+                boxes = np.vstack([boxes, [x, y, x + ly.W, y + ly.H]])
+                placed[i] = _plan_at(h, ly, x, y, None, cfg, heading=h)
+        n = sum(len(lays[i][1].refs) for i in placed)
+        if best is None or n > best[0]:
+            best = (n, placed)
+    placed = best[1]
+    left = [(lays[i][0], lays[i][1].refs, lays[i][1].W, lays[i][1].H) for i in range(len(lays)) if i not in placed]
+    return [placed[i] for i in sorted(placed)], left
+
+
+def _candidates(ly, regions, g, cache):
+    """lower-left corners (x, y) where a W x H box is wholly free and wholly in one region: region by region (the given order), top row first, left to right"""
+    key = (round(ly.W, 3), round(ly.H, 3))
+    if key not in cache:
+        xs, ys = g.free_positions(ly.W, ly.H)
+        out = []
+        for (rx0, ry0, rx1, ry1) in regions:
+            m = (xs >= rx0 - 1e-6) & (ys >= ry0 - 1e-6) & (xs + ly.W <= rx1 + 1e-6) & (ys + ly.H <= ry1 + 1e-6)
+            sel = np.flatnonzero(m)
+            sel = sel[np.lexsort((xs[sel], -ys[sel]))]
+            out.append(np.column_stack([xs[sel], ys[sel]]))
+        cache[key] = np.vstack(out) if out else np.zeros((0, 2))
+    return cache[key]
+
+
+def _pack(lays, order, regions, g, cfg, cache=None):
     """first-fit of the layouts in `order`: ({index: Plan}, the heading that found no place or None)"""
+    cache = {} if cache is None else cache
     placed = {}
-    boxes = []
+    boxes = np.zeros((0, 4))
     for i in order:
         h, ly = lays[i]
-        spot = None
-        for (rx0, ry0, rx1, ry1) in regions:
-            y = ry1 - ly.H
-            while y >= ry0 - 1e-9 and spot is None:
-                x = rx0
-                while x + ly.W <= rx1 + 1e-9:
-                    bx = (x, y, x + ly.W, y + ly.H)
-                    if g.box_free(*bx) and not any(not (bx[2] + cfg.KEY_GAP <= q[0] or q[2] + cfg.KEY_GAP <= bx[0] or bx[3] + cfg.KEY_GAP <= q[1]
-                                                        or q[3] + cfg.KEY_GAP <= bx[1]) for q in boxes):
-                        spot = (round(x, 1), round(y, 1))
-                        break
-                    x += STEP
-                y -= STEP
-            if spot:
-                break
-        if spot is None:
+        c = _candidates(ly, regions, g, cache)
+        ok = np.ones(len(c), bool)
+        if len(boxes) and len(c):
+            gap = cfg.KEY_GAP
+            ok = np.all((c[:, None, 0] + ly.W + gap <= boxes[None, :, 0]) | (boxes[None, :, 2] + gap <= c[:, None, 0])
+                        | (c[:, None, 1] + ly.H + gap <= boxes[None, :, 1]) | (boxes[None, :, 3] + gap <= c[:, None, 1]), axis=1)
+        idx = np.flatnonzero(ok)
+        if not len(idx):
             return placed, h
-        boxes.append((spot[0], spot[1], spot[0] + ly.W, spot[1] + ly.H))
-        placed[i] = _plan_at(h, ly, spot[0], spot[1], None, cfg, heading=h)
+        x, y = (round(float(v), 1) for v in c[idx[0]])
+        boxes = np.vstack([boxes, [x, y, x + ly.W, y + ly.H]])
+        placed[i] = _plan_at(h, ly, x, y, None, cfg, heading=h)
     return placed, None
 
 
@@ -631,7 +697,9 @@ def main(argv=None):
     ap.add_argument('--legend', help='"HEADING=R1,R2;HEADING=R3,R4": keys gathered in the legend --region(s)')
     ap.add_argument('--region', action='append', default=[], help='x0,y0,x1,y1 in Due mm; repeat for an L')
     ap.add_argument('--split', type=float, help='cut each block\'s residue into clusters whose courtyards are within this many mm (default: the config\'s KEY_SPLIT_GAP, else one key per block)')
+    ap.add_argument('--span', help='W,H (or one number): a cluster span at most this wide and high (default: the config KEY_SPLIT_SPAN)')
     ap.add_argument('--auto', help='MIN_W,MIN_H,COUNT: also use the biggest free rectangles of the board (silk over tracks allowed unless KEY_AVOID_TRACKS)')
+    ap.add_argument('--fit', action='store_true', help='with --legend: place the keys that fit and list the rest, instead of all or none')
     ap.add_argument('--config', default='v2_layout')
     ap.add_argument('--write', help='write the edited board here (default: report only)')
     a = ap.parse_args(argv)
@@ -646,10 +714,18 @@ def main(argv=None):
         auto = tuple(float(v) for v in a.auto.split(',')) if a.auto else None
         if auto:
             auto = (auto[0], auto[1], int(auto[2]))
-        res = legend(b, text, cfg, items, regions, split=a.split, auto=auto)
-        if isinstance(res, LegendNoFit):
-            print(res)
-            return 1
+        span = tuple(float(v) for v in a.span.split(',')) if a.span else None
+        if span and len(span) == 1:
+            span = span[0]
+        if a.fit:
+            res, left = legend_fit(b, text, cfg, items, regions, split=a.split, auto=auto, span=span)
+            for h, refs, w, hh in left:
+                print(f'NOT PLACED {h} {w:.1f} x {hh:.1f}: {" ".join(refs)}')
+        else:
+            res = legend(b, text, cfg, items, regions, split=a.split, auto=auto, span=span)
+            if isinstance(res, LegendNoFit):
+                print(res)
+                return 1
         for p in res:
             print(f'key {p.heading} ({p.mode}): box {p.box}, {len(p.texts)} designators in {len(p.rows)} rows')
         plans = res
