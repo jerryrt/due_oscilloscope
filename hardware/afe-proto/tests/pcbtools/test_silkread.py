@@ -160,6 +160,18 @@ def test_a_missing_bnc_label_fails():
     assert has(silkread.findings(board(), {'J1': 'CH1 IN', 'J2': 'AWG OUT'}), 'J2:', '0 "AWG OUT" labels')
 
 
+def test_a_bnc_label_under_a_body_fails():
+    b = board()
+    tx = list(b.t_x)
+    tx[0] = 62.0                                     # "CH1 IN" onto J1's courtyard (58-66, 39-41)
+    ty = list(b.t_y)
+    ty[0] = 40.0
+    ty[1] = 60.0
+    tx[1] = 62.0
+    b2 = boardio.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 't_x': tx, 't_y': ty})
+    assert has(silkread.findings(b2, BNC), 'J1:', 'whose body hides it')
+
+
 def test_a_bnc_designator_belongs_on_the_bottom():
     assert has(silkread.findings(board({'J2': None}), BNC), 'J2:', '0 designators on the bottom')
     assert has(silkread.findings(board({'J2': (60.0, 58.0, 0.0)}), BNC), 'J2:', '1 on top')

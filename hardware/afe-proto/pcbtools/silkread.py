@@ -18,7 +18,8 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    Rule 1's margin is not asked of a starter: its label is read by the line, not by distance.
 3. Every top part is labelled: its own designator is visible (rules 1 or 2), or it is a member of a labelled run.
 4. One BNC frame (owner, 2026-11-15). Each connector named in `bnc_labels` ({ref: function label}) carries its function
-   label on the top silk and its designator on the bottom silk beside its pins (mirrored there by the layout; this module
+   label on the top silk, clear of every courtyard (its own BNC's body would hide it), and its designator on the bottom
+   silk beside its pins (mirrored there by the layout; this module
    does not read mirroring), none on top, each at the same offset in its own frame as the first one's, to BNC_TOL. A
    bottom designator counts as shown when it is on B.SilkS: the board arrays carry no visibility for the bottom.
 
@@ -212,6 +213,10 @@ def findings(b, bnc_labels=None, exempt=None, blocks=None, near_ok=()):
         a = np.radians(b.fp_rot[i])
         R = np.array([[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]])     # board -> the part's own frame (y up, ccw angles)
         o = np.array([b.fp_x[i], b.fp_y[i]])
+        lb = text_box(label, b.t_x[ls[0]], b.t_y[ls[0]], b.t_h[ls[0]], b.t_h[ls[0]], 90.0 if abs((b.fp_rot[i] % 180.0) - 90.0) < 1.0 else 0.0)
+        hidden = sorted({B.refs[k] for k in B.others if _overlap(lb, B.cour[k])})
+        if hidden:
+            bad.append(f'{r}: "{label}" lies on the courtyard of {", ".join(hidden)}, whose body hides it')
         frames[r] = (label, R @ (np.array([b.t_x[ls[0]], b.t_y[ls[0]]]) - o), R @ (np.array([b.r_x[bot[0]], b.r_y[bot[0]]]) - o))
     if frames:
         r0, (_, lab0, des0) = next(iter(frames.items()))
