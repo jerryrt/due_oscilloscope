@@ -20,7 +20,7 @@ FILE_STEM = f'{NAME}-{MODEL}-REV{REV}'
 SN_LABEL = 'S/N'
 JLC_ORDER_TEXT = 'JLCJLCJLCJLC'                 # the board house replaces it with the order number (bottom silk)
 # top silk, Due mm, text centres (h in mm): in the free area west of the first fence, outside the bands
-IDENT = dict(name=(26.0, 33.0, 2.0), line=(27.0, 30.4, 1.2), sn_label=(22.0, 27.6, 1.0), sn_box=(24.5, 26.1, 34.5, 29.1),
+IDENT = dict(name=(35.2, 43.9, 2.0), line=(36.2, 41.3, 1.2), sn_label=(31.2, 38.5, 1.0), sn_box=(33.7, 37.0, 43.7, 40.0),
              jlc=(35.0, 27.0, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
@@ -348,3 +348,92 @@ VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', '
 CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
 CAP_SELF = (('/AWG_INV', 3.0, 0.1), ('/AWG_BIN', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))
 DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')
+
+
+# D30 (docs/afe.md): the silk outline of each block, Due mm, one rectangle list per block (silkscreen only; LR-1's fences and LR-11's OUTLINE above are
+# untouched). The five outlines are drawn from the final part extents. CH1 and CH2 share v1's one SCOPE fence but not the silk: CH1 holds the
+# amplifier U101 and the north row, CH2 the south row, and a small box takes R111, a CH1 part that sits in CH2's corner. Where two outlines meet they
+# share a line.
+SILK_OUTLINE = {
+    'POWER': [(17.9, 4.6, 44.1, 26.0), (34.7, 4.2, 38.3, 4.6), (38.5, 45.4, 43.5, 48.75)],
+    'REFCAL': [(44.4, 5.0, 64.5, 35.9), (64.5, 21.95, 70.4, 25.6)],
+    'AWG': [(69.7, 4.3, 92.1, 20.6), (98.5, 0.6, 116.4, 15.5), (64.5, 18.4, 70.4, 21.95)],
+    'CH1': [(64.5, 32.15, 92.1, 48.5), (78.9, 30.45, 84.6, 32.15), (70.4, 27.3, 72.3, 30.9), (98.5, 35.5, 116.4, 51.3)],
+    'CH2': [(72.3, 20.6, 76.0, 32.15), (76.0, 20.6, 92.1, 30.45), (98.5, 16.5, 116.4, 35.5)],
+}
+TITLE_AT = {'CH2': (79.0, 21.8)}      # the block title words (board text), Due mm centre: CH2's moved off the line it shared with CH1's outline
+SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}[k]: [tuple(r) for r in v] for k, v in SILK_OUTLINE.items()}   # {hundreds digit as a string: [rects]}
+
+# the BNC frame (D30 (2)): function labels on top, designators on the bottom silk, one offset each (board mm from each BNC's origin, the same for all three)
+BNC_LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
+BNC_DESIGNATOR_OFFSET = (3.2, 0.0)
+BNC_LABEL_OFFSET = (-2.75, 2.4)
+
+# D30 under the run scheme (owner, 2026-11-15; spec lead's rulings for AFE-1): AFE-1's rows get no channel renumber, POWER's capacitor grid stays as it is, and only a
+# run that carries a starter label is renumbered. The channel parts, the ICs, connectors, jumper headers and test points always keep a visible label;
+# the POWER, REF / CAL and AWG leftovers, never those, are listed in SILK_TO_BOM with the reason (option C).
+import re as _re
+SCH_NS = NS                      # the uuid namespace of the schematic symbols and the footprints' paths
+LABEL_IN_BLOCK = True            # a designator's centre lies in its own block's silk outline; the placer looks only there
+RUN_GRID_ROWS = False            # POWER's capacitor grid is not counted row by row (and not renumbered)
+SAME_ORIENTATION = True          # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one
+SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {r for r in BLOCK if _re.fullmatch(r'(?:U|J|TP)[1-5]\d\d', r)}      # held only to "nearer its own courtyard than any other"
+SILK_MUST_LABEL = {r for r in BLOCK if _re.fullmatch(r'(?:[A-Z]+[12]\d\d|(?:U|J|TP|MH)\d\d\d)', r)} - set(BNC_REFS) - {'R113'}   # channel parts, ICs, connectors, test points
+SILK_EXEMPT = {                  # a named exception: a label that reads correctly by eye in the 3D render at 2x (2026-11-15 review), with the reason
+    'C102': 'above its own part at the head of the row of three; reads C102 (0.10 mm nearer C101 only)',
+    'C104': 'beside its own capacitor, with C105 below; reads C104 (2.6 mm out because the part sits at the block edge)',
+    'R105': 'above its own part, the row of three reads R105 then R101; nearer R101 by 0.1 mm only',
+    'R111': 'beside its own vertical part, below D101; reads R111',
+    'R205': 'below its own part in the column of three; 0.11 mm from C201 only, reads R205',
+    'TP301': 'vertical beside its own test point, the only test point there; reads TP301',
+    'TP501': 'beside its own test point, the only one in its corner; reads TP501',
+}
+SILK_TO_BOM = {
+    'C405': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'R409': 'passive with no place for a label inside its block nearer it than any other (dense block); its run with R406 has no room for a starter label',
+    'R406': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'R401': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'R308': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C407': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C302': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C304': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J603',
+    'C305': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C306': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than C305 (dense block)',
+    'C402': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C403': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R406 (dense block)',
+    'C404': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R401 (dense block)',
+    'C409': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'C502': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'C504': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than C501 (dense block)',
+    'D501': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than D502 (dense block)',
+    'R302': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than U301 (dense block)',
+    'R303': 'passive with no place for a label inside its block nearer it than any other (dense block)',
+    'R305': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than C304 (dense block)',
+    'R309': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R310': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of D501',
+    'R402': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than J601 (dense block)',
+    'R403': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R409, U401',
+    'R404': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than C409 (dense block)',
+    'R405': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R408': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J601',
+    'R411': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R412': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R413': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R501': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R502': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501',
+    'R503': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R504': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R505': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R506': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R507': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of TP501',
+    'R508': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R513': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R514': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R515': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'R516': 'passive with no place for a label inside its block nearer it than any other; no place inside its block',
+    'R518': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R519 (dense block)',
+    'R520': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501',
+}   # {ref: reason}: a passive left off the silk, found through the BOM
+SILK_AT = {'J601': (23.9, 2.5, 0), 'J602': (59.49, 0.12, 0), 'J603': (79.94, 0.12, 0), 'J604': (62.21, 48.38, 0), 'J606': (25.98, 48.38, 0), 'J607': (100.24, 53.0, 0), 'MH601': (96.58, -1.06, 0), 'MH602': (90.2, 55.4, 0), 'J605': (66.17, 51.19, 90), 'TP404': (42.64, 22.4, 90), 'D201': (73.35, 26.15, 90)}                     # {ref: (x, y, angle)}: a label placed by hand and checked in the 3D render
+RENUMBER_LABELLED_ONLY = True    # silkruns: renumber only a run that carries a starter label
+SILK_LINE_CLEAR = 0.3            # a label keeps 0.3 mm off any silk line (spec lead, AFE-1 brief item 6)

@@ -199,7 +199,7 @@ def test_the_frame_follows_the_connector_rotation():
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 # Findings on 2026-11-15 under the run convention, before any board work for it: held exactly (a ratchet, not a tolerance).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 0, 'kicad/afe-proto.kicad_pcb': 140}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 0, 'kicad/afe-proto.kicad_pcb': 13}
 
 
 @pytest.mark.pcbnew
@@ -209,6 +209,9 @@ def test_the_board_only_gets_closer_to_d30(rel):
     kw = {}
     if rel.startswith('v2/'):                                    # AFE-2 carries the owner's option C rules (docs/afe.md D30): blocks, dense-block passives, the BOM list
         from pcbtools.boards import v2_layout as C
+        kw = dict(exempt={**C.SILK_TO_BOM, **C.SILK_EXEMPT}, blocks=C.SILK_BLOCKS, near_ok=C.SILK_NEAR_OK)
+    if rel.startswith('kicad/'):                                 # AFE-1: the same rules, its own tables (pcbtools/boards/v1.py)
+        from pcbtools.boards import v1 as C
         kw = dict(exempt={**C.SILK_TO_BOM, **C.SILK_EXEMPT}, blocks=C.SILK_BLOCKS, near_ok=C.SILK_NEAR_OK)
     f = silkread.findings(boardio.read_board(str(p)), LABELS, **kw)
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
