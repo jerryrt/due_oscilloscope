@@ -100,7 +100,7 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP404"
-			(at -2.7 3.75 90)
+			(at 0.8 -2.2)
 			(layer "F.SilkS")
 			(uuid "dbb797f4-96cd-55ef-b28d-dc11f71541e4")
 			(effects
@@ -227,7 +227,7 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP402"
-			(at 1.9 -3.67 90)
+			(at 0 -3.85 90)
 			(layer "F.SilkS")
 			(uuid "b3758dd8-dedf-59b9-8b22-cb31cb36e2f8")
 			(effects
@@ -5943,7 +5943,7 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP401"
-			(at 2.05 1.9)
+			(at -0.005 3.85 90)
 			(layer "F.SilkS")
 			(uuid "254faaf2-acc6-5aef-8ff4-b97978731247")
 			(effects
@@ -11906,7 +11906,7 @@
 		(descr "SOIC, 8 Pin (JEDEC MS-012AA, https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/soic_narrow-r/r_8.pdf)")
 		(tags "SOIC SO")
 		(property "Reference" "U301"
-			(at -4.15 6.245)
+			(at -0.45 3.245 90)
 			(layer "F.SilkS")
 			(uuid "e54ebc94-1cc3-5f33-968b-0bd139701528")
 			(effects
@@ -13880,7 +13880,7 @@
 		(descr "MSOP, 10 Pin (JEDEC MO-187 variation BA, 0.85mm body thickness, https://www.jedec.org/system/files/docs/mo-187F.pdf)")
 		(tags "MSOP SO TSSOP-10_3x3mm_P0.5mm")
 		(property "Reference" "U502"
-			(at 5.86 2.6 90)
+			(at -1.55 -3.9)
 			(layer "F.SilkS")
 			(uuid "fda22fb4-5e3b-51a1-b821-458ae901d184")
 			(effects
@@ -14827,7 +14827,7 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R208"
-			(at 0.82 5.075 90)
+			(at 0.03 4.275 90)
 			(layer "F.SilkS")
 			(uuid "f452df06-538a-5a51-8fad-c339cf6e139e")
 			(effects
@@ -16155,7 +16155,7 @@
 		(descr "SMD pad as test Point, diameter 1.5mm")
 		(tags "test point SMD pad")
 		(property "Reference" "TP403"
-			(at -0.95 -1.9)
+			(at -0.005 3.85 90)
 			(layer "F.SilkS")
 			(uuid "fa1674e9-718f-5460-a6dc-632dee71d0a7")
 			(effects
@@ -17131,7 +17131,7 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R108"
-			(at -0.025 -4.275 90)
+			(at 0.625 -1.305 90)
 			(layer "F.SilkS")
 			(uuid "da2050d4-edca-530c-beac-5ac66a8f67b7")
 			(effects
