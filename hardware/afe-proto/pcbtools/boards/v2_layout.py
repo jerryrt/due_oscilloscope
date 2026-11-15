@@ -148,8 +148,8 @@ SILK_EXEMPT = {
 # label, beside the part inside its block (the nearest-only rule of SILK_NEAR_OK); one with no such place is named, never dropped.
 # Labels placed by hand where the placer's search could not (Due mm, centre and angle): each is against its own part and checked by the board test and the 3D render.
 SILK_AT = {
-    'U502': (50.98, 17.75, 0), 'U301': (86.43, 10.75, 90), 'R108': (80.66, 39.2, 90),
-    'TP401': (20.995, 18.95, 90), 'TP403': (26.995, 18.95, 90), 'TP404': (30.8, 25.0, 0), 'TP402': (38.8, 13.45, 90),
+    'U502': (50.98, 17.75, 0), 'U301': (86.73, 10.75, 90), 'R108': (80.66, 39.1, 90),
+    'TP401': (22.85, 20.0, 90), 'TP403': (26.995, 18.95, 90), 'TP404': (30.8, 25.25, 0), 'TP402': (38.8, 13.45, 90),
 }
 SILK_MUST_LABEL = {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108'}
 SILK_TO_BOM = {
