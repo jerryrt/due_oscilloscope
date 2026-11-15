@@ -144,6 +144,17 @@ def test_a_label_outside_its_block_fails():
     assert has(silkread.findings(s.build(), blocks=blocks), 'R201:', 'outside its block')
 
 
+def test_two_labels_closer_than_the_gap_fail():
+    s = Synth()
+    two(s, 'A', 10.0, 10.0)
+    two(s, 'B', 10.0, 16.0)
+    s.rt.append((10.0, 12.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0))
+    s.rt.append((10.0, 14.6, 1.0, 1.0, 0.15, 0.0, 0, True, 1))      # boxes 1.6 apart: fine
+    assert not [x for x in silkread.findings(s.build()) if 'under 0.5' in x]
+    s.rt[-1] = (10.0, 13.2, 1.0, 1.0, 0.15, 0.0, 0, True, 1)        # 0.2 apart
+    assert has(silkread.findings(s.build()), 'A:', "from B's, under 0.5")
+
+
 def test_a_bnc_label_off_its_frame_fails():
     b = board()
     ty = list(b.t_y)

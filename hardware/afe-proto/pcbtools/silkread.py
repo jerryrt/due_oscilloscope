@@ -16,7 +16,8 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    n+2, ... for as long as each next one sits on the same line (RUN_ALIGN), at the same orientation, further along, and
    within RUN_ADJ of the previous member's courtyard, with its own designator hidden.
    Rule 1's margin is not asked of a starter: its label is read by the line, not by distance.
-3. Every top part is labelled: its own designator is visible (rules 1 or 2), or it is a member of a labelled run.
+3. Two visible designators are at least LABEL_GAP apart, box to box, so that two labels never read as one word.
+   Every top part is labelled: its own designator is visible (rules 1 or 2), or it is a member of a labelled run.
 4. One BNC frame (owner, 2026-11-15). Each connector named in `bnc_labels` ({ref: function label}) carries its function
    label on the top silk, clear of every courtyard (its own BNC's body would hide it), and its designator on the bottom
    silk beside its pins (mirrored there by the layout; this module
@@ -46,6 +47,7 @@ BNC_TOL = 0.05         # mm, D30
 RUN_ALIGN = 0.3        # mm: on one line
 RUN_ADJ = 1.2          # mm: courtyard to courtyard, neighbours in a run
 RUN_GAP_MAX = 1.5      # mm: a starter's label from its courtyard
+LABEL_GAP = 0.5        # mm: between two visible designators' boxes, so two labels never read as one
 CHAR_ADV = 0.9         # see the module text
 
 
@@ -191,6 +193,13 @@ def findings(b, bnc_labels=None, exempt=None, blocks=None, near_ok=()):
         need = 1e-9 if r in near_ok else OWN_MARGIN
         if near[0] - own < need:
             bad.append(f'{r}: designator {own:.2f} mm from its part and {near[0]:.2f} mm from {near[1]}, margin under {need:g}')
+
+    L = sorted(B.label.items())
+    for a in range(len(L)):
+        for c in range(a + 1, len(L)):
+            g = _gap(L[a][1][0], L[c][1][0])
+            if g < LABEL_GAP:
+                bad.append(f'{L[a][0]}: designator {g:.2f} mm from {L[c][0]}\'s, under {LABEL_GAP}')
 
     for i in B.others:
         r = B.refs[i]
