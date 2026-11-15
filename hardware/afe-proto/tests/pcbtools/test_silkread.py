@@ -1,0 +1,167 @@
+"""pcbtools.silkread (docs/afe.md D30) on hand-built boards with known answers, each property broken once on purpose, and on
+the two real boards, where D30 is not met yet: those two runs are strict xfails that name the count, so the run that meets it
+fails until the mark comes off."""
+import pathlib
+
+import pytest
+
+from pcbtools import boardio, silkread
+from pcbtools.silkread import Key
+
+from synth import Synth
+
+HERE = pathlib.Path(__file__).resolve().parents[2]
+BNC = {'J1': 'CH1 IN', 'J2': 'CH2 IN'}
+
+
+def board(**over):
+    """parts A and B labelled beside themselves; C1-C3 a cluster in a row with its designators in a key; two BNCs.
+    `over` replaces a part's designator position ({ref: (x, y, ang)}) or hides it ({ref: None})."""
+    s = Synth()
+    lab = {'A': (10.0, 12.0, 0.0), 'B': (20.0, 12.0, 0.0), 'J1': (40.0, 18.0, 0.0), 'J2': (40.0, 38.0, 0.0)}
+    lab.update({k: v for k, v in over.items() if k in lab})
+    for r, x in (('A', 10.0), ('B', 20.0)):
+        s.part(r, x, 10.0, box=(x - 1, 9.5, x + 1, 10.5), silk=None)
+    for r, x in (('C1', 30.0), ('C2', 32.0), ('C3', 34.0)):
+        s.part(r, x, 10.0, box=(x - 0.8, 9.6, x + 0.8, 10.4), silk=None)
+    for r, y in (('J1', 20.0), ('J2', 40.0)):
+        s.part(r, 40.0, y, box=(38.0, y - 1.0, 46.0, y + 1.0), silk=None)
+    refs = [f[0] for f in s.fp]
+    for r, (x, y, a) in lab.items():
+        if over.get(r, 0) is None:
+            continue
+        s.rt.append((x, y, 1.0, 1.0, 0.15, a, 0, True, refs.index(r)))
+    for r in ('C1', 'C2', 'C3'):
+        if r in over and over[r] is not None:
+            x, y, a = over[r]
+            s.rt.append((x, y, 1.0, 1.0, 0.15, a, 0, True, refs.index(r)))
+    s.text('CH1 IN', 43.0, 22.0).text('CH2 IN', 43.0, 42.0)
+    return s.build()
+
+
+KEY = Key(box=(28.0, 12.0, 36.0, 14.0), texts=(('C1', 29.5, 13.0), ('C2', 32.0, 13.0), ('C3', 34.5, 13.0)))
+
+
+def test_the_good_board_has_no_findings():
+    assert silkread.findings(board(), [KEY], BNC) == []
+
+
+def test_a_designator_nearer_another_part_fails():
+    f = silkread.findings(board(A=(18.0, 12.0, 0.0)), [KEY], BNC)       # A's text moved next to B
+    assert any(x.startswith('A:') and 'margin under' in x for x in f), f
+
+
+def test_a_tie_fails():
+    f = silkread.findings(board(A=(15.0, 12.0, 0.0)), [KEY], BNC)       # halfway between A and B
+    assert any(x.startswith('A:') and 'margin under' in x for x in f), f
+
+
+def test_a_designator_on_another_courtyard_fails():
+    f = silkread.findings(board(A=(20.0, 10.0, 0.0)), [KEY], BNC)
+    assert any(x.startswith('A:') and 'courtyard of B' in x for x in f), f
+
+
+def test_a_slanted_designator_fails():
+    f = silkread.findings(board(A=(10.0, 12.0, 45.0)), [KEY], BNC)
+    assert any(x.startswith('A:') and '45 degrees' in x for x in f), f
+
+
+def test_a_hidden_designator_in_no_key_fails():
+    f = silkread.findings(board(), [], BNC)
+    assert {x for x in f if 'in no key' in x} == {'C1: no designator and in no key', 'C2: no designator and in no key',
+                                                   'C3: no designator and in no key'}, f
+
+
+def test_a_part_named_twice_fails():
+    second = Key(box=(28.0, 15.0, 36.0, 17.0), texts=(('C1', 29.5, 16.0), ('C2', 32.0, 16.0)))
+    f = silkread.findings(board(), [KEY, second], BNC)
+    assert any('C1: named 2 times' in x for x in f), f
+
+
+def test_a_designator_shown_and_keyed_fails():
+    f = silkread.findings(board(C1=(30.0, 8.0, 0.0)), [KEY], BNC)
+    assert any(x.startswith('C1: has its own designator and a place in key') for x in f), f
+
+
+def test_a_key_out_of_order_fails():
+    swapped = Key(KEY.box, (('C2', 29.5, 13.0), ('C1', 32.0, 13.0), ('C3', 34.5, 13.0)))
+    f = silkread.findings(board(), [swapped], BNC)
+    assert any('C2 and C1 are out of order along x' in x or 'C1 and C2 are out of order along x' in x for x in f), f
+
+
+def test_a_row_does_not_need_an_order_along_y():
+    wobble = Key(KEY.box, (('C1', 29.5, 12.9), ('C2', 32.0, 13.1), ('C3', 34.5, 13.0)))
+    assert silkread.findings(board(), [wobble], BNC) == []
+
+
+def test_a_key_on_a_courtyard_fails():
+    over = Key((28.0, 9.0, 36.0, 14.0), KEY.texts)
+    f = silkread.findings(board(), [over], BNC)
+    assert any('lies on the courtyard of C1' in x for x in f), f
+
+
+def test_a_key_far_from_its_parts_fails():
+    far = Key((28.0, 20.0, 36.0, 22.0), tuple((t, x, 21.0) for t, x, _ in KEY.texts))
+    f = silkread.findings(board(), [far], BNC)
+    assert any('mm from its parts' in x for x in f), f
+
+
+def test_a_rectangle_with_a_word_is_not_a_key():
+    outline = Key((0.0, 0.0, 60.0, 60.0), (('CH1', 5.0, 5.0), ('A', 10.0, 12.0)))
+    assert silkread.findings(board(), [KEY, outline], BNC) == []
+
+
+def test_a_bnc_label_off_its_frame_fails():
+    b = board()
+    s = list(b.t_y)
+    s[1] += 0.1                                                      # CH2 IN, 0.1 mm off J1's offset
+    f = silkread.findings(boardio.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 't_y': s}), [KEY], BNC)
+    assert any(x.startswith('J2: "CH2 IN"') for x in f), f
+
+
+def test_a_bnc_designator_off_its_frame_fails():
+    f = silkread.findings(board(J2=(41.0, 38.0, 0.0)), [KEY], BNC)
+    assert any(x.startswith('J2: designator') for x in f), f
+
+
+def test_a_missing_bnc_label_fails():
+    f = silkread.findings(board(), [KEY], {'J1': 'CH1 IN', 'J2': 'AWG OUT'})
+    assert any('0 "AWG OUT" labels' in x for x in f), f
+
+
+def test_the_frame_follows_the_connector_rotation():
+    """two BNCs at -90 degrees, the second's labels where the first's are in its own frame: no finding"""
+    s = Synth()
+    s.part('J1', 40.0, 20.0, box=(39.0, 12.0, 41.0, 20.0), rot=-90.0, silk=None)
+    s.part('J2', 50.0, 20.0, box=(49.0, 12.0, 51.0, 20.0), rot=-90.0, silk=None)
+    s.rt.append((42.0, 18.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0))
+    s.rt.append((52.0, 18.0, 1.0, 1.0, 0.15, 0.0, 0, True, 1))
+    s.text('CH1 IN', 38.0, 15.0).text('CH2 IN', 48.0, 15.0)
+    f = silkread.findings(s.build(), [], BNC)
+    assert not [x for x in f if 'frame' in x], f
+
+
+def test_read_keys_takes_unfilled_top_rectangles_with_their_texts():
+    x0, y0 = boardio.from_due(28.0, 12.0)
+    x1, y1 = boardio.from_due(36.0, 14.0)
+    tx, ty = boardio.from_due(32.0, 13.0)
+    rect = lambda fill: (f'\t(gr_rect\n\t\t(start {float(x0)} {float(y0)})\n\t\t(end {float(x1)} {float(y1)})\n\t\t(fill {fill})\n'
+                         f'\t\t(layer "F.SilkS")\n\t)\n')
+    txt = f'(kicad_pcb\n{rect("no")}{rect("yes")}\t(gr_text "C2"\n\t\t(at {float(tx)} {float(ty)} 0)\n\t\t(layer "F.SilkS")\n\t)\n)\n'
+    keys = silkread.read_keys(txt)
+    assert len(keys) == 1 and [t[0] for t in keys[0].texts] == ['C2'], keys
+    assert keys[0].box == pytest.approx((28.0, 12.0, 36.0, 14.0))
+
+
+LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
+
+
+@pytest.mark.pcbnew
+@pytest.mark.parametrize('rel', ['v2/layout/integrated/afe-v2-integrated.kicad_pcb', 'kicad/afe-proto.kicad_pcb'])
+@pytest.mark.xfail(strict=True, reason='D30 not met yet on 2026-11-14 (AFE-2: 75 of 112 designators under the margin, the BNC '
+                                       'labels at three offsets; AFE-1: 55 of 122, no BNC function labels); remove this mark '
+                                       'when the board passes')
+def test_the_board_meets_d30(rel):
+    p = HERE / rel
+    f = silkread.findings(boardio.read_board(str(p)), silkread.read_keys(p.read_text()), LABELS)
+    assert f == [], f'{len(f)} findings, first: {f[:5]}'
