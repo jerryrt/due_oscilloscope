@@ -951,11 +951,14 @@ def lr11(b, cfg):
     for blk in sorted(set(cfg.TEST_BLOCKS) - have):
         bad.append(f'block {blk} has no test point')
     refrow = {int(f): i for i, f in enumerate(b.r_fp)}
+    keyed = set(b.t_text)
     ndes = 0
     nwaived = 0
     for i, r in enumerate(refs):
         ndes += 1
         k = refrow.get(i)
+        if k is not None and not b.r_on_silk[k] and r in keyed:      # D30 1b: the designator is in a cluster key (a board silk text of that name); silkread judges the key
+            continue
         if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
             bad.append(f'{r}: designator not on silk at 0.8 mm or more')
     for r, n in cfg.TP_NETS.items():

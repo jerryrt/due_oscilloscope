@@ -62,7 +62,7 @@ def apply_moves(text, b, placed):
 MAX_PASSES = 6
 
 
-def settle(b, text, cfg, margin=0.30, keep=()):
+def settle(b, text, cfg, margin=0.25, keep=()):
     """the placer's result with the board's own silk lines and words as obstacles, and each part it could not place counted as staying where its
     text is for the others (run again until the unplaced set stops growing): a placed text then lies on no residue text either"""
     from . import keys
@@ -79,7 +79,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog='python3 -m pcbtools.silkapply', description=__doc__.split('\n')[0])
     ap.add_argument('board')
     ap.add_argument('--config', default='v2_layout')
-    ap.add_argument('--margin', type=float, default=0.30)
+    ap.add_argument('--margin', type=float, default=0.25, help='D30 asks 0.25 (the placer\'s own default is 0.30)')
     ap.add_argument('--keep', nargs='*', default=[])
     ap.add_argument('--write')
     a = ap.parse_args(argv)
