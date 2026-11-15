@@ -37,6 +37,14 @@ def _bottom_designator(text, ref, x, y):
     return text[:s] + blk[:i] + prop + blk[j:] + text[e:]
 
 
+def _centred(text, x, y, word):
+    """the label's `(justify left)` taken off, so the position is the text's centre (the checker reads it as one)"""
+    i = text.index('(gr_text "%s"' % word)
+    j = text.index('\n\t)', i)
+    blk = text[i:j].replace('\n\t\t\t(justify left)', '')
+    return text[:i] + blk + text[j:]
+
+
 def _label(text, word):
     m = re.search(r'\n\t\(gr_text "%s"\n\t\t\(at ([-\d.]+) ([-\d.]+)( [-\d.]+)?\)' % re.escape(word), text)
     return m
@@ -57,6 +65,7 @@ def apply(text, cfg):
             nx, ny = x + off[0] + 50.0, 150.0 - (y + off[1])
             old = lm.group(0)
             text = text.replace(old, old.replace(f'(at {lm.group(1)} {lm.group(2)}', f'(at {silkapply._fmt(nx)} {silkapply._fmt(ny)}', 1), 1)
+            text = _centred(text, nx, ny, labels[ref])
             text = _bottom_designator(text, ref, x + dx, y + dy)
     at = {r: (x, y, 0) for r, (x, y) in getattr(cfg, 'DESIGNATOR_AT', {}).items()}
     if at:

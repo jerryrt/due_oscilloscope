@@ -126,7 +126,7 @@ LABEL_IN_BLOCK = True        # a designator's centre lies in its own block's out
 RUN_GRID_ROWS = False        # POWER's capacitor grid stays as it is until POWER is re-placed into rows and renumbered once
 BNC_LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}      # the first one's label offset is every one's (D30 (2))
 BNC_DESIGNATOR_OFFSET = (3.2, 0.0)    # board mm from each BNC's origin, all three: the designator on the bottom silk beside the pin, mirrored, clear of the pin ring and the two mounting holes
-BNC_LABEL_OFFSET = (2.2312, 3.99)     # board mm from each BNC's origin, all three (D30 (2)): J101's offset drawn nearer its pin by 0.6, so "AWG OUT", one character longer, clears its frame's far line
+BNC_LABEL_OFFSET = (-2.75, 1.0)     # board mm from each BNC origin, all three (D30 (2)): the label centred, vertical, in the 1.4 mm strip between the BNC courtyard and J605, so it is not under the body
 SAME_ORIENTATION = True      # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one (LR-11, silkplace)
 IDENTITY_CHECK = True
 SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)
@@ -137,9 +137,12 @@ SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; 
 import re as _re
 
 SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}[k]: [tuple(r) for r in v] for k, v in OUTLINE.items()}       # {hundreds digit as a string: [rects, Due mm]}
-SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)}          # the dense blocks' passives: nearer its own courtyard than any other
+SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108', 'R208'}          # the dense blocks' passives: nearer its own courtyard than any other
 # Left as they are (owner, option C: the CH1 and CH2 runs are not touched): the CH1 run starters whose label lies outside CH1's outline; silkread names them.
 SILK_KEEP = {'BR101', 'C104'}
+# Option C covers the leftover passives only (owner): every IC, connector, jumper header and test point, and the channels' R108 and R208, keeps a visible
+# label, beside the part inside its block (the nearest-only rule of SILK_NEAR_OK); one with no such place is named, never dropped.
+SILK_MUST_LABEL = {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108', 'R208'}
 SILK_TO_BOM = {
     'BR401': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
     'BR501': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of TP201',
@@ -159,9 +162,6 @@ SILK_TO_BOM = {
     'C501': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
     'C502': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R506',
     'C503': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R511 (dense block)',
-    'J501': 'not a leftover passive; no place inside its block nearer it than BR507 (dense block)',
-    'R108': 'not a leftover passive; no place inside its block nearer it than C105 (dense block)',
-    'R208': 'not a leftover passive; no place inside its block nearer it than D201 (dense block)',
     'R302': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
     'R303': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R206 (dense block)',
     'R306': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R304 (dense block)',
@@ -176,12 +176,6 @@ SILK_TO_BOM = {
     'R509': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R507',
     'R510': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
     'R511': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
-    'TP201': 'not a leftover passive; its label would lie on its own body',
-    'TP501': 'not a leftover passive; no place inside its block nearer it than BR508 (dense block)',
-    'U301': 'not a leftover passive; no place inside its block nearer it than R308 (dense block)',
-    'U401': 'not a leftover passive; no place inside its block nearer it than R404 (dense block)',
-    'U501': 'not a leftover passive; its label would lie on its own body',
-    'U502': 'not a leftover passive; its label would lie on its own body',
     'BR503': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
     'C407': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
     'R301': 'passive with no place for a label inside its block nearer it than any other (the best place the placer finds fails the checker)',
@@ -197,5 +191,4 @@ SILK_TO_BOM = {
     'BR504': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
     'BR509': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
     'R501': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
-    'TP404': 'its label would lie outside its own block (the block outline), and no place inside it is nearer this part than any other',
 }

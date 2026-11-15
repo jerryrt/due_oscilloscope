@@ -370,6 +370,18 @@ def hide(text, refs):
     return text
 
 
+def show(text, refs):
+    """the inverse of hide: the Reference field of each part in `refs` back from F.Fab to F.SilkS (its place is where it was left)"""
+    for ref in refs:
+        for s, e in _footprint_spans(text):
+            blk = text[s:e]
+            if re.search(r'\(property "Reference" "%s"' % re.escape(ref), blk):
+                pat = re.compile(r'(\(property "Reference" "%s"\n\t\t\t\(at [^)]*\)\n\t\t\t\(layer ")F\.Fab(")' % re.escape(ref))
+                text = text[:s] + pat.sub(r'\1F.SilkS\2', blk, count=1) + text[e:]
+                break
+    return text
+
+
 def label_runs(text, p):
     """run labels: the lowest-numbered part of each run (its name AFTER the renaming `p.new`) gets the planned place and angle, the rest of the run is
     taken off the silk. -> (new text, {ref: (x, y, ang)}, [hidden refs])"""
