@@ -131,7 +131,7 @@ def test_a_bnc_label_off_its_frame_fails():
     ty = list(b.t_y)
     ty[1] += 0.1
     b2 = boardio.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 't_y': ty})
-    assert has(silkread.findings(b2, BNC), 'J2:', '"CH2 IN"')
+    assert has(silkread.findings(b2, BNC), 'J2:', '"CH2 IN" at')
 
 
 def test_a_bnc_designator_off_its_frame_fails():
@@ -140,6 +140,11 @@ def test_a_bnc_designator_off_its_frame_fails():
 
 def test_a_missing_bnc_label_fails():
     assert has(silkread.findings(board(), {'J1': 'CH1 IN', 'J2': 'AWG OUT'}), 'J2:', '0 "AWG OUT" labels')
+
+
+def test_bnc_designators_may_be_left_off_all_but_not_some():
+    assert silkread.findings(board({'J1': None, 'J2': None}), BNC) == []
+    assert any('all or none' in x for x in silkread.findings(board({'J2': None}), BNC))
 
 
 def test_the_frame_follows_the_connector_rotation():

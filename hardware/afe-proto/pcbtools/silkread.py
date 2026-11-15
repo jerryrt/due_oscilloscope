@@ -17,8 +17,10 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    within RUN_ADJ of the previous member's courtyard, with its own designator hidden.
    Rule 1's margin is not asked of a starter: its label is read by the line, not by distance.
 3. Every top part is labelled: its own designator is visible (rules 1 or 2), or it is a member of a labelled run.
-4. One BNC frame. Each connector named in `bnc_labels` ({ref: function label}) carries its designator and its function
-   label at the same offset in its own frame as the first one does, to BNC_TOL.
+4. One BNC frame. Each connector named in `bnc_labels` ({ref: function label}) is labelled by its function label, at the
+   same offset in its own frame as the first one's, to BNC_TOL; that label is what a technician reads at a connector. Its
+   designator may be left to F.Fab (spec lead, 2026-11-15: a BNC's body covers the board beside it); if shown, every BNC
+   shows it, at one frame offset.
 
 A part may be exempted by name with its reason (`exempt`); the reason is the board's gate-3 notes' to give.
 
@@ -179,10 +181,10 @@ def findings(b, bnc_labels=None, exempt=None):
 
     for i in B.others:
         r = B.refs[i]
-        if r not in B.label and r not in member and r not in exempt:
+        if r not in B.label and r not in member and r not in exempt and r not in (bnc_labels or {}):
             bad.append(f'{r}: no designator and in no labelled run')
 
-    first = None
+    frames = {}
     for r, label in (bnc_labels or {}).items():
         if r not in B.by_ref:
             bad.append(f'{r}: no such connector')
@@ -190,17 +192,22 @@ def findings(b, bnc_labels=None, exempt=None):
         i = B.by_ref[r]
         js = [j for j in range(len(b.r_fp)) if B.row[int(b.r_fp[j])] == i and b.r_on_silk[j]]
         ls = [n for n, t in enumerate(b.t_text) if t == label]
-        if len(js) != 1 or len(ls) != 1:
-            bad.append(f'{r}: {len(js)} designators and {len(ls)} "{label}" labels, wanted one each')
+        if len(ls) != 1 or len(js) > 1:
+            bad.append(f'{r}: {len(ls)} "{label}" labels and {len(js)} designators, wanted one label and at most one designator')
             continue
         a = np.radians(b.fp_rot[i])
         R = np.array([[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]])     # board -> the part's own frame (y up, ccw angles)
         o = np.array([b.fp_x[i], b.fp_y[i]])
-        here = (R @ (np.array([b.r_x[js[0]], b.r_y[js[0]]]) - o), R @ (np.array([b.t_x[ls[0]], b.t_y[ls[0]]]) - o))
-        if first is None:
-            first = (r, here)
-            continue
-        for what, p, q in (('designator', here[0], first[1][0]), (f'"{label}"', here[1], first[1][1])):
-            if np.abs(p - q).max() > BNC_TOL:
-                bad.append(f'{r}: {what} at ({p[0]:.2f}, {p[1]:.2f}) in its frame, {first[0]} has it at ({q[0]:.2f}, {q[1]:.2f})')
+        frames[r] = (label, R @ (np.array([b.t_x[ls[0]], b.t_y[ls[0]]]) - o),
+                     R @ (np.array([b.r_x[js[0]], b.r_y[js[0]]]) - o) if js else None)
+    if frames:
+        r0, (_, lab0, des0) = next(iter(frames.items()))
+        shown = [r for r, f in frames.items() if f[2] is not None]
+        if shown and len(shown) != len(frames):
+            bad.append(f'BNC designators shown on {", ".join(shown)} only: all or none')
+        for r, (label, lab, des) in list(frames.items())[1:]:
+            if np.abs(lab - lab0).max() > BNC_TOL:
+                bad.append(f'{r}: "{label}" at ({lab[0]:.2f}, {lab[1]:.2f}) in its frame, {r0} has its label at ({lab0[0]:.2f}, {lab0[1]:.2f})')
+            if des is not None and des0 is not None and np.abs(des - des0).max() > BNC_TOL:
+                bad.append(f'{r}: designator at ({des[0]:.2f}, {des[1]:.2f}) in its frame, {r0} has it at ({des0[0]:.2f}, {des0[1]:.2f})')
     return bad
