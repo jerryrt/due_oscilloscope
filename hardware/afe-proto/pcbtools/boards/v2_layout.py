@@ -153,3 +153,54 @@ BNC_LABEL_OFFSET = (2.2312, 3.99)     # board mm from each BNC's origin, all thr
 SAME_ORIENTATION = True      # a designator beside its part is turned as the part is: 0 for a horizontal part, 90 for a vertical one (LR-11, silkplace)
 IDENTITY_CHECK = True
 SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)
+
+
+# D30, option C (owner, 2026-11-15): REF / CAL, POWER and AWG keep their copper. A leftover passive keeps a label only inside its own block and nearer its own
+# courtyard than any other; every other leftover is left off the silk and found through the BOM (SILK_TO_BOM, in silk_to_bom.py's table below).
+import re as _re
+
+SILK_BLOCKS = {{'CH1': 1, 'CH2': 2, 'AWG': 3, 'POWER': 4, 'REFCAL': 5}[k]: [tuple(r) for r in v] for k, v in OUTLINE.items()}       # {hundreds digit: [rects, Due mm]}
+SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)}          # the dense blocks' passives: nearer its own courtyard than any other
+SILK_TO_BOM = {
+    'BR401': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'BR501': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of TP201',
+    'BR506': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501, U502',
+    'BR507': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501',
+    'BR508': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than J601 (dense block)',
+    'BR510': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'BR511': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of BR509',
+    'C301': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R204 (dense block)',
+    'C303': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than J603 (dense block)',
+    'C304': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R308',
+    'C305': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'C306': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R301',
+    'C402': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R402 (dense block)',
+    'C403': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R402 (dense block)',
+    'C409': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than C406 (dense block)',
+    'C501': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'C502': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R506',
+    'C503': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R511 (dense block)',
+    'J501': 'not a leftover passive; no place inside its block nearer it than BR507 (dense block)',
+    'R108': 'not a leftover passive; no place inside its block nearer it than C105 (dense block)',
+    'R208': 'not a leftover passive; no place inside its block nearer it than D201 (dense block)',
+    'R302': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'R303': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R206 (dense block)',
+    'R306': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R304 (dense block)',
+    'R307': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of U301',
+    'R404': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R403',
+    'R405': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of C407, R403, R404',
+    'R502': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R501 (dense block)',
+    'R503': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'R504': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501, R505',
+    'R505': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'R508': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R507, R510',
+    'R509': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of R507',
+    'R510': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
+    'R511': 'passive with no place for a label inside its block nearer it than any other; no place inside its block where it reads along the part',
+    'TP201': 'not a leftover passive; its label would lie on its own body',
+    'TP501': 'not a leftover passive; no place inside its block nearer it than BR508 (dense block)',
+    'U301': 'not a leftover passive; no place inside its block nearer it than R308 (dense block)',
+    'U401': 'not a leftover passive; no place inside its block nearer it than R404 (dense block)',
+    'U501': 'not a leftover passive; its label would lie on its own body',
+    'U502': 'not a leftover passive; its label would lie on its own body',
+}
