@@ -14828,7 +14828,7 @@
 		(tags "resistor")
 		(property "Reference" "R208"
 			(at 0.03 4.275 90)
-			(layer "F.SilkS")
+			(layer "F.Fab")
 			(uuid "f452df06-538a-5a51-8fad-c339cf6e139e")
 			(effects
 				(font
