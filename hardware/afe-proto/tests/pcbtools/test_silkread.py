@@ -1,6 +1,6 @@
 """pcbtools.silkread (docs/afe.md D30) on hand-built boards with known answers, each property broken once on purpose, and on
-the two real boards, where D30 is not met yet: those two runs are strict xfails that name the count, so the run that meets it
-fails until the mark comes off."""
+the two real boards, where D30 is not met yet: their finding counts are held exactly, so a change that adds one fails and a
+change that removes some must record the new count."""
 import pathlib
 
 import pytest
@@ -154,14 +154,16 @@ def test_read_keys_takes_unfilled_top_rectangles_with_their_texts():
 
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
+# Findings on 2026-11-14, before any D30 work. A ratchet, not a tolerance: a change may lower a count and must lower the
+# number here with it; a board at 0 changes its row to 0 and stays there. (A strict xfail would say the same, but the pcbnew
+# guard counts only passes.)
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 124, 'kicad/afe-proto.kicad_pcb': 79}
 
 
 @pytest.mark.pcbnew
-@pytest.mark.parametrize('rel', ['v2/layout/integrated/afe-v2-integrated.kicad_pcb', 'kicad/afe-proto.kicad_pcb'])
-@pytest.mark.xfail(strict=True, reason='D30 not met yet on 2026-11-14 (AFE-2: 75 of 112 designators under the margin, the BNC '
-                                       'labels at three offsets; AFE-1: 55 of 122, no BNC function labels); remove this mark '
-                                       'when the board passes')
-def test_the_board_meets_d30(rel):
+@pytest.mark.parametrize('rel', sorted(OPEN))
+def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
     f = silkread.findings(boardio.read_board(str(p)), silkread.read_keys(p.read_text()), LABELS)
-    assert f == [], f'{len(f)} findings, first: {f[:5]}'
+    assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
+    assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'
