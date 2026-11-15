@@ -67,12 +67,12 @@ def test_free_positions_find_exactly_the_free_rectangle():
     assert len(x) == 61 and x.min() == pytest.approx(3.0) and x.max() == pytest.approx(9.0)
 
 
-POWER_REFS = ['R402', 'R403', 'R404', 'C402', 'C403']          # parts of a block whose designators are still on the board's silk (CH1 and CH2's are in keys)
+POWER_REFS = ['R402', 'R403', 'R404', 'R405', 'C407']          # parts of a block whose designators are still on the board's silk (CH1 and CH2's are in keys)
 
 
 def _plan():
-    refs = ['R402', 'R403', 'R404', 'C402', 'C403', 'C407']
-    rows = [['R402', 'R403'], ['R404', 'C402'], ['C403', 'C407']]
+    refs = ['R402', 'R403', 'R404', 'R405', 'C407', 'C409']
+    rows = [['R402', 'R403'], ['R404', 'R405'], ['C407', 'C409']]
     texts = {r: (40.0 + 4.5 * i + 2, 40.0 + 1.6 * j) for j, row in enumerate(rows) for i, r in enumerate(row)}
     return K.Plan('CH2', (40.0, 39.0, 58.3, 46.0), texts, rows, 0.0), refs
 
@@ -121,7 +121,7 @@ def test_ch2_has_no_free_area_adjoining_it_and_the_generator_says_so(pcbnew_requ
     assert isinstance(r, K.NoFit)
     assert r.need == pytest.approx(K.size(list(CFG.KEYS['CH2']['parts']), 4, 4, CFG))
     assert r.biggest_adjoining[0] < r.need[0] and r.biggest_adjoining[1] < r.need[1] or r.biggest_adjoining[0] * r.biggest_adjoining[1] < r.need[0] * r.need[1]
-    assert r.nearest_gap > 10                                            # the nearest place it would fit is a different area of the board
+    assert r.nearest_gap is None or r.nearest_gap > 10                   # the nearest place it would fit is a different area of the board (or none: the legend has taken it)
 
 
 # ------------------------------------------------------------------------------------------------ headings, the legend, compact layout

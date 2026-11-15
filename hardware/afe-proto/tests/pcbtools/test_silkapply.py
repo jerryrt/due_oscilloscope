@@ -26,7 +26,7 @@ def board_pos(text, ref):
 
 def test_a_placed_designator_reads_back_where_it_was_put_and_a_second_pass_moves_nothing():
     text = BOARD.read_text()
-    placed = {'R203': (86.0, 20.0, 90), 'C201': (88.0, 30.0, 0), 'R208': (80.0, 31.0, 90)}     # one on a turned footprint (R208 is at -90)
+    placed = {'R513': (86.0, 20.0, 90), 'C104': (88.0, 30.0, 0), 'R501': (80.0, 31.0, 90)}     # R513 and R501 are on footprints turned by 90 degrees
     new, changed = A.apply_moves(text, None, placed)
     assert sorted(changed) == sorted(placed)
     for r, (x, y, a) in placed.items():
@@ -38,23 +38,20 @@ def test_a_placed_designator_reads_back_where_it_was_put_and_a_second_pass_moves
 
 def test_a_part_whose_designator_is_off_the_silk_is_not_moved():
     text = BOARD.read_text()
-    s, e = A._span(text, 'R203')
-    off = text[:s] + text[s:e].replace('(property "Reference" "R203"\n\t\t\t(at ', '(property "Reference" "R203"\n\t\t\t(at ').replace(
-        re.search(r'\(property "Reference" "R203"\n\t\t\t\(at [^)]*\)\n\t\t\t\(layer "F\.SilkS"', text[s:e]).group(0),
-        re.search(r'\(property "Reference" "R203"\n\t\t\t\(at [^)]*\)\n\t\t\t\(layer "F\.SilkS"', text[s:e]).group(0).replace('F.SilkS', 'F.Fab')) + text[e:]
-    new, changed = A.apply_moves(off, None, {'R203': (86.0, 20.0, 90)})
-    assert changed == [] and new == off
+    assert field(text, 'R203')[2] == 'F.Fab'                                  # CH2's residue is keyed: its designators are off the silk
+    new, changed = A.apply_moves(text, None, {'R203': (86.0, 20.0, 90)})
+    assert changed == [] and new == text
 
 
 def test_broken_once_a_wrong_frame_is_caught_by_the_read_back():
-    """a splice that forgot the footprint's turn would put R208 (a turned part) elsewhere: the read-back test above must fail for it"""
+    """a splice that forgot the footprint's turn would put R501 (a turned part) elsewhere: the read-back test above must fail for it"""
     text = BOARD.read_text()
     real = A._rot
     try:
         A._rot = lambda a, x, y: real(0.0, x, y)
-        new, _ = A.apply_moves(text, None, {'R208': (80.0, 31.0, 90)})
+        new, _ = A.apply_moves(text, None, {'R501': (80.0, 31.0, 90)})
         with pytest.raises(AssertionError):
             A._rot = real
-            assert board_pos(new, 'R208') == (80.0, 31.0, 90.0)
+            assert board_pos(new, 'R501') == (80.0, 31.0, 90.0)
     finally:
         A._rot = real
