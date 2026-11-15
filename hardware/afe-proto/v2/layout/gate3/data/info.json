@@ -1,6 +1,6 @@
 {
  "board": "hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb",
- "sha256": "d5ab4e7964382965d81c41efac87a1a41a5386bfcab57cd01ee46bae7d8239e8",
+ "sha256": "461a8a722bb1af66cc4b77e24974d647900e3ada152408c9b3d2fb1dedd9dbc3",
  "git_head": "unavailable (FileNotFoundError)",
  "git_branch": "unavailable (FileNotFoundError)",
  "git_dirty_files": 1,
