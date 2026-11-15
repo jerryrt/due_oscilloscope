@@ -35,12 +35,13 @@ def board(labels=None, run_x=(30.0, 33.2, 36.4), run_refs=('R1', 'R2', 'R3')):
         two(s, r, x, 20.0)
     for r, y in (('J1', 40.0), ('J2', 60.0)):
         s.part(r, 60.0, y, box=(58.0, y - 1.0, 66.0, y + 1.0), silk=None)
-    lab = {'A': (10.0, 12.0, 0.0), 'B': (20.0, 12.0, 0.0), 'R1': (26.6, 20.0, 0.0), 'J1': (60.0, 38.0, 0.0), 'J2': (60.0, 58.0, 0.0)}
+    lab = {'A': (10.0, 12.0, 0.0), 'B': (20.0, 12.0, 0.0), 'R1': (26.6, 20.0, 0.0), 'J1': (60.0, 38.0, 0.0, 'B'), 'J2': (60.0, 58.0, 0.0, 'B')}
     lab.update(labels or {})
     refs = [f[0] for f in s.fp]
     for r, v in lab.items():
         if v is not None:
-            s.rt.append((v[0], v[1], 1.0, 1.0, 0.15, v[2], 0, True, refs.index(r)))
+            bottom = len(v) > 3 and v[3] == 'B'
+            s.rt.append((v[0], v[1], 1.0, 1.0, 0.15, v[2], 1 if bottom else 0, not bottom, refs.index(r)))
     s.text('CH1 IN', 63.0, 42.0).text('CH2 IN', 63.0, 62.0)
     return s.build()
 
@@ -135,27 +136,26 @@ def test_a_bnc_label_off_its_frame_fails():
 
 
 def test_a_bnc_designator_off_its_frame_fails():
-    assert has(silkread.findings(board({'J2': (61.0, 58.0, 0.0)}), BNC), 'J2:', 'designator at')
+    assert has(silkread.findings(board({'J2': (61.0, 58.0, 0.0, 'B')}), BNC), 'J2:', 'bottom designator at')
 
 
 def test_a_missing_bnc_label_fails():
     assert has(silkread.findings(board(), {'J1': 'CH1 IN', 'J2': 'AWG OUT'}), 'J2:', '0 "AWG OUT" labels')
 
 
-def test_bnc_designators_may_be_left_off_all_but_not_some():
-    assert silkread.findings(board({'J1': None, 'J2': None}), BNC) == []
-    assert any('all or none' in x for x in silkread.findings(board({'J2': None}), BNC))
+def test_a_bnc_designator_belongs_on_the_bottom():
+    assert has(silkread.findings(board({'J2': None}), BNC), 'J2:', '0 designators on the bottom')
+    assert has(silkread.findings(board({'J2': (60.0, 58.0, 0.0)}), BNC), 'J2:', '1 on top')
 
 
 def test_the_frame_follows_the_connector_rotation():
     s = Synth()
     s.part('J1', 40.0, 20.0, box=(39.0, 12.0, 41.0, 20.0), rot=-90.0, silk=None)
     s.part('J2', 50.0, 20.0, box=(49.0, 12.0, 51.0, 20.0), rot=-90.0, silk=None)
-    s.rt.append((42.0, 18.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0))
-    s.rt.append((52.0, 18.0, 1.0, 1.0, 0.15, 0.0, 0, True, 1))
+    s.rt.append((42.0, 18.0, 1.0, 1.0, 0.15, 0.0, 1, False, 0))
+    s.rt.append((52.0, 18.0, 1.0, 1.0, 0.15, 0.0, 1, False, 1))
     s.text('CH1 IN', 38.0, 15.0).text('CH2 IN', 48.0, 15.0)
     assert not [x for x in silkread.findings(s.build(), BNC) if 'frame' in x]
-
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 # Findings on 2026-11-15 under the run convention, before any board work for it: held exactly (a ratchet, not a tolerance).
