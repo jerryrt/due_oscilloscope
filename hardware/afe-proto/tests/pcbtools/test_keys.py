@@ -82,11 +82,23 @@ def test_apply_edits_only_the_designators_and_adds_the_key_and_is_idempotent():
     removed = [l for l in difflib.unified_diff(a, b, lineterm='', n=0) if l.startswith('-') and not l.startswith('---')]
     added = [l for l in difflib.unified_diff(a, b, lineterm='', n=0) if l.startswith('+') and not l.startswith('+++')]
     assert len(removed) == len(refs) and all('"F.SilkS"' in l for l in removed)       # one layer line per keyed designator
-    assert sum('(gr_line' in l for l in added) == 4 and sum('(gr_text' in l for l in added) == len(refs)
+    assert sum('(gr_rect' in l for l in added) == 1 and not any('(gr_line' in l for l in added) and sum('(gr_text' in l for l in added) == len(refs)
     assert sum('"F.Fab"' in l for l in added) == len(refs)
     for r in refs:
         s, e = K._fp_span(new, r)
         assert re.search(r'\(property "Reference" "%s"\n\t\t\t\(at [^)]*\)\n\t\t\t\(layer "F\.Fab"\)' % r, new[s:e])
+
+
+def test_any_residue_list_gets_its_own_rows_and_columns_and_the_adjoin_limit_is_two_mm():
+    assert CFG.KEY_ADJOIN_MAX == 2.0
+    text = BOARD.read_text()
+    res = ['R202', 'R203', 'C201', 'C203', 'R207', 'R205']                    # a residue of 6: two columns (x 84.4 and 87.5), four rows
+    xy = positions(text, res)
+    rows, ncols, _ = K.layout(res, xy, CFG)
+    assert rows == [['C203'], ['R207', 'R202'], ['C201'], ['R205', 'R203']] and ncols == 2        # y 27.24 / 25.43 / 23.87 / 22.31; x 84.4 and 87.5
+    assert sorted(r for row in rows for r in row) == sorted(res)              # exactly the listed parts, once each
+    w, h = K.size(res, ncols, len(rows), CFG)
+    assert w < K.size(list(CFG.KEYS['CH2']['parts']), 4, 4, CFG)[0]           # a smaller residue is a smaller key
 
 
 def test_broken_once_a_key_for_a_part_the_board_lacks_is_refused():

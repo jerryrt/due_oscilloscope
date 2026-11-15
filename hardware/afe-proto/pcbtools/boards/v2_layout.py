@@ -115,7 +115,8 @@ BOARD_SETUP = {
 }
 
 # Cluster keys (D30 1b, pcbtools/keys.py): where parts are held tight on purpose their designators come off and one outlined key in free area
-# carries them in the parts' rows and columns. CH2's input network is the first (the owner signs it off before CH1's and the AWG's).
+# carries them in the parts' rows and columns. `parts` is the residue the silk-only placer could not place beside the part; until the placer has
+# run, CH2's whole input network stands in (no key is applied to the board before the placer has run).
 KEYS = {'CH2': dict(parts=('R201', 'R202', 'R203', 'R204', 'R205', 'R206', 'R207', 'R208', 'C201', 'C202', 'C203'))}
 KEY_TEXT_H = 1.0                  # mm, the board house's minimum silk text height
 KEY_ADVANCE = DESIGNATOR_ADVANCE  # as the designators (stroke font advance per character, fraction of the height)
@@ -125,7 +126,7 @@ KEY_ROW_PITCH = 1.6               # mm centre to centre of two rows (ink 1.2 hig
 KEY_MARGIN = 0.5                  # mm inside the box all round
 KEY_ROW_TOL = 0.8                 # mm: parts this close in y are one row, in x one column (CH2's rows are 1.56 apart; R208 and C203 differ by 0.41 in y)
 KEY_CLEAR = 0.15                  # mm: pads, vias, silk and courtyards are grown by this when free area is measured
-KEY_ADJOIN_MAX = 1.5              # mm: the key box lies this close to its cluster's extent at most *(check: D30 says "adjoins")*
+KEY_ADJOIN_MAX = 2.0              # mm: the key box lies this close to its cluster's extent at most (spec lead's ruling: "adjoins" = 2 mm)
 KEY_STROKE = 0.15
 
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool

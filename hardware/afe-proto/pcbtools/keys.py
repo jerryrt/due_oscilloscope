@@ -7,11 +7,13 @@ nearest free area carries them in the same rows and columns as the parts. Board-
     python3 -m pcbtools.keys BOARD.kicad_pcb --config v2_layout NAME [--write OUT]       (in the PCB image)
 
 The edit is a text splice: each keyed part's Reference field moves from F.SilkS to F.Fab (it stays in the file, for the assembly drawing, and is
-no longer on the silkscreen), and the key is one rectangle of four F.SilkS lines plus one F.SilkS text per designator, at 0 degrees. Nothing
+no longer on the silkscreen), and the key is one unfilled gr_rect on F.SilkS plus one F.SilkS text per designator, at 0 degrees. Nothing
 else changes, the project file is not touched, and applying twice changes nothing. A key that finds no free area adjoining its cluster is
 NoFit and edits nothing: the nearest free place for it is reported instead of used.
 
-Config (`KEYS = {name: dict(parts=(refs...))}` and the thresholds):
+Config (`KEYS = {name: dict(parts=(refs...))}` and the thresholds). `parts` is the cluster's RESIDUE: the parts the silk-only placer could not
+give a designator that meets D30 beside the part; it may be any list (`plan(..., parts=[...])` takes one too, e.g. the placer's output), and the
+rows and columns are those of the listed parts only. The cluster's extent, which the key must adjoin, is the union of their courtyards:
   KEY_TEXT_H            text height, mm (>= the board house's silk minimum)
   KEY_ADVANCE, KEY_INK_H  the stroke font's advance per character and the ink height, as fractions of KEY_TEXT_H (as DESIGNATOR_ADVANCE / DESIGNATOR_INK_H)
   KEY_COL_GAP           clear space between two designators in a row, mm
@@ -148,9 +150,9 @@ def board_grid(b, text, cfg, keyed=()):
     return g
 
 
-def plan(b, text, cfg, name):
-    spec = cfg.KEYS[name]
-    refs = list(spec['parts'])
+def plan(b, text, cfg, name, parts=None):
+    """`parts` (an arbitrary residue list) overrides the config's KEYS[name]['parts']"""
+    refs = list(cfg.KEYS[name]['parts'] if parts is None else parts)
     idx = {r: b.ref_index(r) for r in refs}
     xy = {r: (float(b.fp_x[i]), float(b.fp_y[i])) for r, i in idx.items()}
     ext = (min(b.fp_cx0[i] for i in idx.values()), min(b.fp_cy0[i] for i in idx.values()),
@@ -225,10 +227,9 @@ def apply(text, p, cfg):
     x0, y0, x1, y1 = p.box
     items = []
     stroke = cfg.KEY_STROKE
-    for (a, b_, c, d) in ((x0, y0, x1, y0), (x1, y0, x1, y1), (x1, y1, x0, y1), (x0, y1, x0, y0)):
-        sa, sb, sc, sd = a + 50.0, 150.0 - b_, c + 50.0, 150.0 - d
-        items.append((('gr_line', sa, sb, sc, sd), f'\t(gr_line\n\t\t(start {_fmt(sa)} {_fmt(sb)})\n\t\t(end {_fmt(sc)} {_fmt(sd)})\n\t\t(stroke\n\t\t\t(width {stroke:g})\n'
-                      f'\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "{{u}}")\n\t)\n'))
+    sa, sb, sc, sd = x0 + 50.0, 150.0 - y1, x1 + 50.0, 150.0 - y0                   # sheet mm: top-left and bottom-right corners
+    items.append((('gr_rect', sa, sb, sc, sd), f'\t(gr_rect\n\t\t(start {_fmt(sa)} {_fmt(sb)})\n\t\t(end {_fmt(sc)} {_fmt(sd)})\n\t\t(stroke\n\t\t\t(width {stroke:g})\n'
+                  f'\t\t\t(type default)\n\t\t)\n\t\t(fill no)\n\t\t(layer "F.SilkS")\n\t\t(uuid "{{u}}")\n\t)\n'))
     for ref, (x, y) in sorted(p.texts.items()):
         sx, sy = x + 50.0, 150.0 - y
         items.append((('gr_text', ref, sx, sy), f'\t(gr_text "{ref}"\n\t\t(at {_fmt(sx)} {_fmt(sy)} 0)\n\t\t(layer "F.SilkS")\n\t\t(uuid "{{u}}")\n\t\t(effects\n\t\t\t(font\n'
@@ -240,7 +241,7 @@ def apply(text, p, cfg):
             have = re.search(r'\n\t\(gr_text "%s"\n\t\t\(at %s %s 0\)' % (re.escape(key[1]), re.escape(_fmt(key[2])), re.escape(_fmt(key[3]))), text)
         else:
             a, b_, c, d = key[1:]
-            have = f'\n\t(gr_line\n\t\t(start {_fmt(a)} {_fmt(b_)})\n\t\t(end {_fmt(c)} {_fmt(d)})' in text
+            have = f'\n\t(gr_rect\n\t\t(start {_fmt(a)} {_fmt(b_)})\n\t\t(end {_fmt(c)} {_fmt(d)})' in text
         if not have:
             new += body.replace('{u}', str(uuid.uuid5(uuid.NAMESPACE_URL, f'keys {p.name} {key}')))
     if new:
@@ -255,6 +256,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog='python3 -m pcbtools.keys', description=__doc__.split('\n\n')[0])
     ap.add_argument('board')
     ap.add_argument('name', help='the key, a name in the config\'s KEYS')
+    ap.add_argument('--parts', help='comma separated residue list (e.g. the placer\'s output), instead of the config\'s KEYS[name][\'parts\']')
     ap.add_argument('--config', default='v2_layout')
     ap.add_argument('--write', help='write the edited board here (default: report only)')
     a = ap.parse_args(argv)
@@ -262,7 +264,7 @@ def main(argv=None):
     cfg = importlib.import_module(f'pcbtools.boards.{a.config}')
     with open(a.board) as fh:
         text = fh.read()
-    p = plan(boardio.read_board(a.board), text, cfg, a.name)
+    p = plan(boardio.read_board(a.board), text, cfg, a.name, a.parts.split(',') if a.parts else None)
     if isinstance(p, NoFit):
         print(p)
         return 1
