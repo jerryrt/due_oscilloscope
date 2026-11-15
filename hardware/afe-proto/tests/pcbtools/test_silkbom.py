@@ -21,7 +21,7 @@ def test_the_board_of_record_has_nothing_more_to_do_and_a_second_run_is_idempote
     text = BOARD.read_text()
     new, replaced, hid, left = silkbom.run(text, cfg())
     assert new == text and replaced == [] and hid == {}
-    assert sorted(x.split(':')[0] for x in left) == ['BR101', 'C104', 'R108', 'R208', 'TP404', 'U301', 'U502']   # CH1's two run starters (SILK_KEEP) and the must-label parts with no place that meets the rule
+    assert sorted(x.split(':')[0] for x in left) == ['R208', 'U502']   # the two must-label parts with no place that meets the rule (named in the config); C104 and BR101 are SILK_EXEMPT
 
 
 def test_the_check_has_teeth_a_part_taken_off_the_list_is_found_again():

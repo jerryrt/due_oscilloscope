@@ -30,7 +30,9 @@ def _find(path, cfg, exempt):
 
 def run(text, cfg):
     """(new text, [refs re-placed], {ref: [findings] it was hidden for})"""
-    exempt = dict(getattr(cfg, 'SILK_TO_BOM', {}))
+    bom = dict(getattr(cfg, 'SILK_TO_BOM', {}))
+    exempt = {**bom, **getattr(cfg, 'SILK_EXEMPT', {})}               # silkread takes both: the BOM-listed parts and the named exceptions (both kept)
+    at = {r: v for r, v in getattr(cfg, 'SILK_AT', {}).items()}      # labels held at a chosen place: {ref: (x, y, angle)}, Due mm
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, 'b.kicad_pcb')
 
@@ -44,7 +46,10 @@ def run(text, cfg):
         if must & set(r for r in must):
             text = silkruns.show(text, sorted(must))                  # these keep a visible label: back on the silk before the placer looks
             b, f, refs = read(text)
-        cand = {r for r in refs if r in cfg.SILK_NEAR_OK}
+        if at:
+            text, _ = silkapply.apply_moves(text, b, at)
+            b, f, refs = read(text)
+        cand = {r for r in refs if r in cfg.SILK_NEAR_OK and r not in at}
         if cand:
             vis = {b.fp_ref[int(b.r_fp[k])] for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0}
             keep = tuple(sorted(vis - cand))
@@ -52,8 +57,7 @@ def run(text, cfg):
             placed = {r: v for r, v in placed.items() if r in cand}
             text, replaced = silkapply.apply_moves(text, b, placed)
             b, f, refs = read(text)
-        keep_as_is = set(getattr(cfg, 'SILK_KEEP', ()))
-        left = sorted(r for r in refs if r in must)
+        left = sorted(r for r in refs if r in must and r not in at)
         if left:                                                      # a must-label part with no place that meets the rule: the nearest free place at all inside its block, named
             vis = {b.fp_ref[int(b.r_fp[k])] for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0}
             placed, _ = silkplace.place(b, cfg, -9.0, tuple(sorted(vis - set(left))), silkruns.silk_boxes(text, cfg), silkapply.FALLBACK_GAP_MAX + 4.0)
@@ -61,8 +65,8 @@ def run(text, cfg):
             text, ch = silkapply.apply_moves(text, b, placed)
             replaced = sorted(set(replaced) | set(ch))
             b, f, refs = read(text)
-        hid = {r: v for r, v in refs.items() if r not in exempt and r not in keep_as_is and r not in must}
-        text = silkruns.hide(text, sorted(set(hid) | set(exempt)))          # the listed parts and the ones just found are off the top silk (idempotent)
+        hid = {r: v for r, v in refs.items() if r not in exempt and r not in must and r not in at}
+        text = silkruns.hide(text, sorted(set(hid) | set(bom)))          # the listed parts and the ones just found are off the top silk (idempotent)
         b, f, refs = read(text)
         return text, sorted(replaced), hid, f
 

@@ -137,11 +137,19 @@ SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; 
 import re as _re
 
 SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}[k]: [tuple(r) for r in v] for k, v in OUTLINE.items()}       # {hundreds digit as a string: [rects, Due mm]}
-SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108', 'R208'}          # the dense blocks' passives: nearer its own courtyard than any other
-# Left as they are (owner, option C: the CH1 and CH2 runs are not touched): the CH1 run starters whose label lies outside CH1's outline; silkread names them.
-SILK_KEEP = {'BR101', 'C104'}
+SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP401', 'TP402', 'TP403', 'TP404', 'R108', 'R208'}          # the dense blocks' passives: nearer its own courtyard than any other
+# Named exceptions (spec lead, 2026-11-15): two CH1 run labels lie just outside CH1's outline but read; both stay visible, with no renumbering.
+SILK_EXEMPT = {
+    'C104': 'run label of C104/C105, one character height outside CH1\'s outline below it; the dual\'s capacitors sit on the block edge; readable, kept',
+    'BR101': 'run label of BR101/BR102, just outside the outline\'s west ear; readable, kept',
+}
 # Option C covers the leftover passives only (owner): every IC, connector, jumper header and test point, and the channels' R108 and R208, keeps a visible
 # label, beside the part inside its block (the nearest-only rule of SILK_NEAR_OK); one with no such place is named, never dropped.
+# Labels placed by hand where the placer's search could not (Due mm, centre and angle): each is against its own part and checked by the board test and the 3D render.
+SILK_AT = {
+    'U502': (50.98, 17.75, 0), 'U301': (86.43, 10.75, 90), 'R108': (80.66, 39.2, 90), 'R208': (77.69, 27.62, 90),
+    'TP401': (20.995, 18.95, 90), 'TP403': (26.995, 18.95, 90), 'TP404': (30.8, 25.0, 0), 'TP402': (38.8, 13.45, 90),
+}
 SILK_MUST_LABEL = {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108', 'R208'}
 SILK_TO_BOM = {
     'BR401': 'passive with no place for a label inside its block nearer it than any other; its label would lie on its own body',
