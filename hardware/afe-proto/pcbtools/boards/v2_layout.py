@@ -128,6 +128,7 @@ KEY_ROW_TOL = 0.5                 # mm: parts within this span in y are one row,
 KEY_CLEAR = 0.15                  # mm: pads, vias, silk and courtyards are grown by this when free area is measured
 KEY_ADJOIN_MAX = 2.0              # mm: the key box lies this close to its cluster's extent at most (spec lead's ruling: "adjoins" = 2 mm)
 KEY_STROKE = 0.15
+KEY_WITHIN = DUE_RECT              # a legend's free rectangles lie over the Due, not in the two bands of the Due's pin names
 KEY_GAP = 1.0                     # mm between two keys of a legend
 KEY_BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'}     # heading -> the hundreds digit of its designators (LR-11)
 
