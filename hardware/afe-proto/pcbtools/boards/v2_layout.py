@@ -140,6 +140,7 @@ SILK_BLOCKS = {{'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REFCAL': '5'}
 SILK_NEAR_OK = {r for r in BLOCK if _re.fullmatch(r'(?:R|C|BR)[345]\d\d', r)} | {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP401', 'TP402', 'TP403', 'TP404', 'R108', 'R208'}          # the dense blocks' passives: nearer its own courtyard than any other
 # Named exceptions (spec lead, 2026-11-15): two CH1 run labels lie just outside CH1's outline but read; both stay visible, with no renumbering.
 SILK_EXEMPT = {
+    'U301': 'clear of the outline so the U is not read as J; the U prefix names the only IC beside it; 2026-11-15 review',
     'U502': 'against its own body; reads as U502 by eye (2026-11-15 review); 0.12 mm nearer R514\'s courtyard, no nearer free place',
     'C104': 'run label of C104/C105, one character height outside CH1\'s outline below it; the dual\'s capacitors sit on the block edge; readable, kept',
     'BR101': 'run label of BR101/BR102, just outside the outline\'s west ear; readable, kept',
@@ -148,7 +149,7 @@ SILK_EXEMPT = {
 # label, beside the part inside its block (the nearest-only rule of SILK_NEAR_OK); one with no such place is named, never dropped.
 # Labels placed by hand where the placer's search could not (Due mm, centre and angle): each is against its own part and checked by the board test and the 3D render.
 SILK_AT = {
-    'U502': (50.98, 17.75, 0), 'U301': (86.73, 10.75, 90), 'R108': (80.66, 39.1, 90),
+    'U502': (50.98, 17.75, 0), 'U301': (87.03, 10.75, 90), 'R108': (80.66, 39.1, 90),
     'TP401': (22.85, 20.0, 90), 'TP403': (26.995, 18.95, 90), 'TP404': (30.8, 25.25, 0), 'TP402': (38.8, 13.45, 90),
 }
 SILK_MUST_LABEL = {'U301', 'U401', 'U501', 'U502', 'J501', 'TP201', 'TP501', 'TP404', 'R108'}
