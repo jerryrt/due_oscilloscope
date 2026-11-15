@@ -20,7 +20,7 @@ FILE_STEM = f'{NAME}-{MODEL}-REV{REV}'
 SN_LABEL = 'S/N'
 JLC_ORDER_TEXT = 'JLCJLCJLCJLC'                 # the board house replaces it with the order number (bottom silk)
 # top silk, Due mm, text centres (h in mm): in the free area west of the first fence, outside the bands
-IDENT = dict(name=(35.2, 43.9, 2.0), line=(36.2, 41.3, 1.2), sn_label=(31.2, 38.5, 1.0), sn_box=(33.7, 37.0, 43.7, 40.0),
+IDENT = dict(name=(30.75, 44.0, 2.0), line=(31.75, 41.4, 1.2), sn_label=(26.75, 38.6, 1.0), sn_box=(29.25, 37.1, 39.25, 40.1),
              jlc=(35.0, 27.0, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
@@ -434,6 +434,6 @@ SILK_TO_BOM = {
     'R518': 'passive with no place for a label inside its block nearer it than any other; no place inside its block nearer it than R519 (dense block)',
     'R520': 'passive with no place for a label inside its block nearer it than any other; no clear place for it: it would lie on the courtyard of J501',
 }   # {ref: reason}: a passive left off the silk, found through the BOM
-SILK_AT = {'J601': (23.9, 2.5, 0), 'J602': (59.49, 0.12, 0), 'J603': (79.94, 0.12, 0), 'J604': (62.21, 48.38, 0), 'J606': (25.98, 48.38, 0), 'J607': (100.24, 53.0, 0), 'MH601': (96.58, -1.06, 0), 'MH602': (90.2, 55.4, 0), 'J605': (66.17, 51.19, 90), 'TP404': (42.64, 22.4, 90), 'D201': (73.35, 26.15, 90)}                     # {ref: (x, y, angle)}: a label placed by hand and checked in the 3D render
+SILK_AT = {'J601': (23.9, 2.5, 0), 'J602': (59.49, 0.12, 0), 'J603': (79.94, 0.12, 0), 'J604': (62.21, 48.38, 0), 'J606': (25.98, 48.38, 0), 'J607': (100.24, 53.0, 0), 'MH601': (96.58, -1.06, 0), 'MH602': (90.2, 55.4, 0), 'J605': (66.17, 51.19, 90), 'TP404': (42.64, 22.4, 90), 'D201': (73.35, 26.15, 90), 'R102': (90.2, 41.67, 0)}                     # {ref: (x, y, angle)}: a label placed by hand and checked in the 3D render
 RENUMBER_LABELLED_ONLY = True    # silkruns: renumber only a run that carries a starter label
 SILK_LINE_CLEAR = 0.3            # a label keeps 0.3 mm off any silk line (spec lead, AFE-1 brief item 6)

@@ -1,5 +1,5 @@
 {
- "zip_sha256": "e70d7481e4fc3d27d0a35fc9d67a9465c040ad5086036bbacfe845b6d17b4319",
+ "zip_sha256": "d4a80ec05149ffdd0b7251dae3733e3b0152ca977831f9a906706517a39b072e",
  "members": [
   {
    "name": "COPPIA-AFE-1-REVA-B_Cu.gbl",
@@ -39,7 +39,7 @@
   {
    "name": "COPPIA-AFE-1-REVA-F_Silkscreen.gto",
    "size": 295288,
-   "sha256": "465bb48778c2965bd73125fc69cff514821f7fd8451536b851d169f9866c090d"
+   "sha256": "591d610e758691ea701b4a8d132591fb469c6e2c73be37357c0e43610cad3116"
   },
   {
    "name": "COPPIA-AFE-1-REVA-NPTH.drl",

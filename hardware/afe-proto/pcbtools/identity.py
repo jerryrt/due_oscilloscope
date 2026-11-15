@@ -44,3 +44,26 @@ def findings(txt, cfg):
     if not any(abs(w - (x1 - x0)) < 1e-6 and abs(h - (y1 - y0)) < 1e-6 for w, h in _boxes(txt)):
         bad.append(f'no filled S/N box of {x1 - x0:g} x {y1 - y0:g} mm on F.SilkS')
     return bad
+
+
+TEXT_ADVANCE = 1.0      # mm per character per mm of height: a generous extent for the name and the model line (the board house's stroke font is narrower)
+
+
+def via_findings(vias, cfg, clear=0.3):
+    """the vias that lie within `clear` mm (edge to edge) of the S/N box or of the name, model-and-revision or S/N-label text boxes of the top silk: the board house clips
+    silk over a drill, so the filled box would print with holes and a letter with a gap. `vias`: [(x, y, diameter)] in Due mm; `cfg.IDENT` as above"""
+    I = cfg.IDENT
+    boxes = {'S/N box': tuple(I['sn_box'])}
+    for what, word, key in (('name', cfg.NAME, 'name'), ('model and revision', cfg.ID_LINE, 'line'), ('S/N label', cfg.SN_LABEL, 'sn_label')):
+        x, y, h = I[key]
+        w = len(word) * TEXT_ADVANCE * h
+        boxes[what] = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+    bad = []
+    for what, (x0, y0, x1, y1) in boxes.items():
+        for vx, vy, d in vias:
+            dx = max(x0 - vx, 0.0, vx - x1)
+            dy = max(y0 - vy, 0.0, vy - y1)
+            gap = (dx * dx + dy * dy) ** 0.5 - d / 2
+            if gap < clear:
+                bad.append(f'via at ({vx:.2f}, {vy:.2f}) is {max(gap, 0.0):.2f} mm from the {what}, under {clear}')
+    return bad
