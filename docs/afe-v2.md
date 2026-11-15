@@ -142,8 +142,11 @@ hold unchanged. The shared negative rail (V2-1) gives LR-6 scope branches
 on that rail as well as the AWG's, and VT-20 measures the coupling left
 through it.
 
-**LR-11, silk (owner, 2026-11-13).** Board silk carries designators, pin-1 and polarity marks, connector and test-point labels, block names, and
-the name, revision and serial-number block, and nothing else. The four signal-flow arrows the first layout had are removed: on a board an arrow
+**LR-11, silk (owner, 2026-11-13, amended 2026-11-14 by afe.md's D30).** Board silk carries designators, pin-1 and polarity marks, connector and
+test-point labels, block names, the name, revision and serial-number block, and nothing else (no QR code). D30 also makes
+"beside its part" a check (the nearest courtyard to a designator is its own, by 0.25 mm, or the part is in its cluster's key, CH1, CH2
+and the AWG; REF / CAL and POWER spread into the free area instead), puts the three BNCs' labels at one offset, and adds
+a documentation package (interactive HTML BOM, assembly PDF, BOM) per revision. The four signal-flow arrows the first layout had are removed: on a board an arrow
 conventionally means polarity, pin 1 or the direction of insertion, so a flow arrow reads as one of those, and the direction of a signal is
 already given by "CH1 IN", "CH2 IN" and "AWG OUT". The checker finds an arrowhead among the board's silk lines whatever the configuration says.
 The identity block is the board configuration's `NAME` (COPPIA), `MODEL` (AFE-2) and `REV` (A): "COPPIA" at 2.0 mm, "AFE-2  REV A" at
