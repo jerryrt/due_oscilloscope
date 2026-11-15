@@ -22,7 +22,10 @@ needed rectangles against the available ones) and edits nothing.
 Layout of a key. Rows are the parts' y groups (top = largest y), columns their x groups; a group's span is at most KEY_ROW_TOL, which is
 silkread's ORDER_MIN: two parts further apart than that must have their texts in the same order, never tied. The default is a GRID (every
 column one pitch). If a grid does not fit, the key is COMPACT: each x group's texts take the room their row needs and no more, the groups'
-centres still strictly increasing left to right, so rows and order are the parts' and columns are staggered.
+centres still strictly increasing left to right, so rows and order are the parts' and columns are staggered. Last, DENSE (legend only): the
+parts are placed left to right by x, each text at the least x and then the least row at which it is in silkread's order (right of every text
+whose part is more than ORDER_MIN left of it, below every text whose part is higher, ...) and clear of the texts already placed; the order is
+kept, the rows and columns are not.
 
 Config (`KEYS = {name: dict(parts=(refs...))}`, `KEY_BLOCKS = {heading: hundreds digit}`, and):
   KEY_TEXT_H            text height, mm (>= the board house's silk minimum)
@@ -39,6 +42,7 @@ Config (`KEYS = {name: dict(parts=(refs...))}`, `KEY_BLOCKS = {heading: hundreds
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import re
 import sys
 import uuid
@@ -46,7 +50,7 @@ import uuid
 import numpy as np
 
 RES = 0.1                    # occupancy grid, mm
-STEP = 0.5                   # a legend is scanned for a free place at this step, mm
+STEP = 0.1                   # a legend is scanned for a free place at this step, mm
 DELTA = 0.1                  # compact layout: the least step between two groups' text centres, mm
 
 
@@ -118,8 +122,10 @@ class Layout:
         return by + self.H - cfg.KEY_MARGIN - cfg.KEY_INK_H * cfg.KEY_TEXT_H / 2 - r * cfg.KEY_ROW_PITCH
 
 
-def build(refs, xy, cfg, heading=None, compact=False):
-    """the rows, the text offsets and the size of a key for `refs` at positions `xy` {ref: (x, y)} (Due mm)"""
+def build(refs, xy, cfg, heading=None, compact=False, bands=None):
+    """the rows, the text offsets and the size of a key for `refs` at positions `xy` {ref: (x, y)} (Due mm). compact: staggered columns; bands=k: dense"""
+    if bands:
+        return _dense(refs, xy, cfg, heading)
     h = cfg.KEY_TEXT_H
     wid = {r: len(r) * cfg.KEY_ADVANCE * h for r in refs}
     ys = [xy[r][1] for r in refs]
@@ -153,6 +159,72 @@ def build(refs, xy, cfg, heading=None, compact=False):
     W = max(width, hw)
     H = (len(rows) + r0 - 1) * cfg.KEY_ROW_PITCH + cfg.KEY_INK_H * h + 2 * m
     return Layout(list(refs), rows, cells, heading, (m + len(heading) * cfg.KEY_ADVANCE * h / 2) if heading else 0.0, W, H, 'compact' if compact else 'grid')
+
+
+def _dense(refs, xy, cfg, heading, target=None):
+    """the order-keeping sweep: parts are placed left to right by x; each text takes the least x, then the least row, at which it is in the order
+    silkread asks for (strictly right of every text whose part is more than ORDER_MIN left of it, strictly below every text whose part is more
+    than ORDER_MIN higher, and the other way) and clear of every placed text. Rows are fractional (the step between two orders is DELTA).
+    `target` (width, height) is the room the key is for: of the places in order, the one that grows the box least relative to it is taken."""
+    tw, th = target or (28.0, 17.0)
+    h = cfg.KEY_TEXT_H
+    wid = {r: len(r) * cfg.KEY_ADVANCE * h for r in refs}
+    m = cfg.KEY_MARGIN
+    o = cfg.KEY_ROW_TOL                                  # silkread's ORDER_MIN
+    d = DELTA / cfg.KEY_ROW_PITCH                        # the least row step between two ordered texts
+    r0 = 1 if heading else 0
+    placed = {}                                          # ref -> (X centre from the box's left, row)
+    for r in sorted(refs, key=lambda q: (xy[q][0], -xy[q][1], q)):
+        xmin = m + wid[r] / 2
+        lo, hi = r0, float('inf')
+        for q, (X, ry) in placed.items():
+            if xy[r][0] - xy[q][0] > o:
+                xmin = max(xmin, X + DELTA)
+            if xy[q][1] - xy[r][1] > o:
+                lo = max(lo, ry + d)
+            elif xy[r][1] - xy[q][1] > o:
+                hi = min(hi, ry - d)
+        xs = sorted({xmin} | {max(xmin, X + (wid[q] + wid[r]) / 2 + cfg.KEY_COL_GAP) for q, (X, _) in placed.items()})
+        rys = sorted({lo} | {ry + 1.0 for _, ry in placed.values()} | {ry - 1.0 for _, ry in placed.values()})
+        done, best = None, None
+        for X in xs:
+            for ry in rys:
+                if ry < lo - 1e-9 or ry > hi + 1e-9:
+                    continue
+                if all(abs(X - Xq) >= (wid[r] + wid[q]) / 2 + cfg.KEY_COL_GAP - 1e-9 or abs(ry - yq) >= 1.0 - 1e-9 for q, (Xq, yq) in placed.items()):
+                    gw = max([X + wid[r] / 2] + [Xq + wid[q] / 2 for q, (Xq, _) in placed.items()]) + m
+                    gh = max([ry] + [yq for _, yq in placed.values()]) * cfg.KEY_ROW_PITCH + cfg.KEY_INK_H * h + 2 * m
+                    cost = (max(gw / tw, gh / th), X, ry)
+                    if best is None or cost < best:
+                        best, done = cost, (X, ry)
+        if done is None:                                     # no place within the order: stack it under everything
+            done = (xmin, max([ry for _, ry in placed.values()] + [lo]) + 1.0)
+        placed[r] = done
+    ncell = placed
+    W = max(max(X + wid[r] / 2 for r, (X, _) in ncell.items()) + m, (len(heading) * cfg.KEY_ADVANCE * h + 2 * m) if heading else 0.0)
+    H = max(ry for _, ry in ncell.values()) * cfg.KEY_ROW_PITCH + cfg.KEY_INK_H * h + 2 * m
+    rows = [sorted(refs, key=lambda q: (ncell[q][1], ncell[q][0]))]
+    return Layout(list(refs), rows, dict(ncell), heading, (m + len(heading) * cfg.KEY_ADVANCE * h / 2) if heading else 0.0, W, H, 'dense')
+
+
+def order_ok(ly, xy, cfg):
+    """silkread's order test on a layout: two parts further apart than KEY_ROW_TOL along x or y have their texts in the same order along it (a tie is
+    an error); text y is down the key, so the part's y runs the other way"""
+    pos = {r: (dx, -row) for r, (dx, row) in ly.cells.items()}
+    for a in ly.refs:
+        for c in ly.refs:
+            for ax in (0, 1):
+                dp = xy[c][ax] - xy[a][ax]
+                dt = pos[c][ax] - pos[a][ax]
+                if abs(dp) > cfg.KEY_ROW_TOL and np.sign(dp) != np.sign(dt):
+                    return False
+    return True
+
+
+def dense_options(refs, xy, cfg, heading=None, target=None):
+    """[Layout]: the order-keeping sweep, if it found every text a place in the order (it can paint itself into a corner; then there is none)"""
+    ly = _dense(refs, xy, cfg, heading, target)
+    return [ly] if order_ok(ly, xy, cfg) else []
 
 
 def layout(refs, xy, cfg):
@@ -297,10 +369,24 @@ def plan(b, text, cfg, name, parts=None):
     return NoFit(name, (ly.W, ly.H), None if j is None else float(gaps[j]), None if j is None else (round(float(x[j]), 1), round(float(y[j]), 1)), big)
 
 
+def existing_keys(text):
+    """{heading-or-None: [set of the words inside]} for each unfilled F.SilkS gr_rect of the board text, from the texts whose centre is inside it"""
+    words = [(m.group(1), float(m.group(2)) - 50, 150 - float(m.group(3))) for m in re.finditer(
+        r'\(gr_text "([^"]*)"\n\t\t\(at ([-\d.]+) ([-\d.]+)[^)]*\)\n\t\t\(layer "F\.SilkS"\)', text)]
+    out = []
+    for m in re.finditer(r'\(gr_rect\n\t\t\(start ([-\d.]+) ([-\d.]+)\)\n\t\t\(end ([-\d.]+) ([-\d.]+)\)(.*?)\n\t\)', text, re.S):
+        if '(fill yes)' in m.group(5) or '(layer "F.SilkS")' not in m.group(5):
+            continue
+        x0, x1 = sorted((float(m.group(1)) - 50, float(m.group(3)) - 50))
+        y0, y1 = sorted((150 - float(m.group(2)), 150 - float(m.group(4))))
+        out.append({w for w, x, y in words if x0 < x < x1 and y0 < y < y1})
+    return out
+
+
 def legend(b, text, cfg, items, regions, grid=None):
     """the keys of `items` [(heading, [refs])] packed into `regions` [(x0, y0, x1, y1)] (an L of several rectangles is fine; a key lies in one), each
     wholly on free area, first-fit from the top left of the first region that takes it, tallest first, so the boxes line up in rows. Grid layouts
-    first; if they do not all fit, compact ones. -> [Plan] in the order of `items`, or LegendNoFit (the last attempt, compact)"""
+    first; if they do not all fit, compact ones. -> [Plan] in the order of `items`, or LegendNoFit (the last attempt, each key in its smallest layout)"""
     blocks = getattr(cfg, 'KEY_BLOCKS', {})
     for head, refs in items:
         if head not in blocks:
@@ -308,43 +394,67 @@ def legend(b, text, cfg, items, regions, grid=None):
         bad = [r for r in refs if next((c for c in r if c.isdigit()), None) != blocks[head]]
         if bad:
             raise ValueError(f'{bad} are not in block {head} by their designators')
+    have = existing_keys(text)
+    items = [(h, refs) for h, refs in items if not any(h in w and set(refs) <= w for w in have)]       # a key already on the board is left as it is
+    if not items:
+        return []
     allrefs = [r for _, refs in items for r in refs]
     g = grid if grid is not None else board_grid(b, text, cfg, keyed=set(allrefs))
     xy = _positions(b, allrefs)
     last = None
-    for compact in (False, True):
-        lays = [(h, build(refs, xy, cfg, heading=h, compact=compact)) for h, refs in items]
-        order = sorted(range(len(lays)), key=lambda i: (-lays[i][1].H, -lays[i][1].W))
-        placed = {}
-        boxes = []
-        failed = None
-        for i in order:
-            h, ly = lays[i]
-            spot = None
-            for (rx0, ry0, rx1, ry1) in regions:
-                y = ry1 - ly.H
-                while y >= ry0 - 1e-9 and spot is None:
-                    x = rx0
-                    while x + ly.W <= rx1 + 1e-9:
-                        bx = (x, y, x + ly.W, y + ly.H)
-                        if g.box_free(*bx) and not any(not (bx[2] + cfg.KEY_GAP <= q[0] or q[2] + cfg.KEY_GAP <= bx[0] or bx[3] + cfg.KEY_GAP <= q[1]
-                                                            or q[3] + cfg.KEY_GAP <= bx[1]) for q in boxes):
-                            spot = (round(x, 1), round(y, 1))
-                            break
-                        x += STEP
-                    y -= STEP
-                if spot:
+    maxw, maxh = max(r[2] - r[0] for r in regions), max(r[3] - r[1] for r in regions)
+    for mode in ('grid', 'compact', 'dense', 'best'):
+        if mode in ('dense', 'best'):
+            lays = []
+            for h, refs in items:
+                opts = dense_options(refs, xy, cfg, h, (maxw, maxh))
+                if mode == 'best':
+                    opts += [build(refs, xy, cfg, heading=h), build(refs, xy, cfg, heading=h, compact=True)]
+                if not opts:
+                    lays = None
                     break
-            if spot is None:
-                failed = h
-                break
-            boxes.append((spot[0], spot[1], spot[0] + ly.W, spot[1] + ly.H))
-            placed[i] = _plan_at(h, ly, spot[0], spot[1], None, cfg, heading=h)
+                fit = [o for o in opts if o.W <= maxw and o.H <= maxh] or opts
+                lays.append((h, min(fit, key=lambda o: (o.W * o.H, max(o.W, o.H)))))
+        else:
+            lays = [(h, build(refs, xy, cfg, heading=h, compact=(mode == 'compact'))) for h, refs in items]
+        if lays is None:
+            continue
+        base = sorted(range(len(lays)), key=lambda i: (-lays[i][1].H, -lays[i][1].W))
+        for order in itertools.chain([tuple(base)], (o for o in itertools.permutations(range(len(lays))) if list(o) != base)):
+            placed, failed = _pack(lays, order, regions, g, cfg)
+            if failed is None:
+                return [placed[i] for i in range(len(lays))]
         last = LegendNoFit([(h, ly.W, ly.H, ly.mode) for h, ly in lays], [(r[2] - r[0], r[3] - r[1]) for r in regions],
-                           [lays[i][0] for i in order if i in placed], failed)
-        if failed is None:
-            return [placed[i] for i in range(len(lays))]
+                           [lays[i][0] for i in base if i in _pack(lays, tuple(base), regions, g, cfg)[0]], _pack(lays, tuple(base), regions, g, cfg)[1])
     return last
+
+
+def _pack(lays, order, regions, g, cfg):
+    """first-fit of the layouts in `order`: ({index: Plan}, the heading that found no place or None)"""
+    placed = {}
+    boxes = []
+    for i in order:
+        h, ly = lays[i]
+        spot = None
+        for (rx0, ry0, rx1, ry1) in regions:
+            y = ry1 - ly.H
+            while y >= ry0 - 1e-9 and spot is None:
+                x = rx0
+                while x + ly.W <= rx1 + 1e-9:
+                    bx = (x, y, x + ly.W, y + ly.H)
+                    if g.box_free(*bx) and not any(not (bx[2] + cfg.KEY_GAP <= q[0] or q[2] + cfg.KEY_GAP <= bx[0] or bx[3] + cfg.KEY_GAP <= q[1]
+                                                        or q[3] + cfg.KEY_GAP <= bx[1]) for q in boxes):
+                        spot = (round(x, 1), round(y, 1))
+                        break
+                    x += STEP
+                y -= STEP
+            if spot:
+                break
+        if spot is None:
+            return placed, h
+        boxes.append((spot[0], spot[1], spot[0] + ly.W, spot[1] + ly.H))
+        placed[i] = _plan_at(h, ly, spot[0], spot[1], None, cfg, heading=h)
+    return placed, None
 
 
 # ---------------------------------------------------------------------------------------------------- the text splice

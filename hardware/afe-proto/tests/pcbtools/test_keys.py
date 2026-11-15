@@ -65,9 +65,12 @@ def test_free_positions_find_exactly_the_free_rectangle():
     assert len(x) == 61 and x.min() == pytest.approx(3.0) and x.max() == pytest.approx(9.0)
 
 
+POWER_REFS = ['R402', 'R403', 'R404', 'C402', 'C403']          # parts of a block whose designators are still on the board's silk (CH1 and CH2's are in keys)
+
+
 def _plan():
-    refs = list(CFG.KEYS['CH2']['parts'])
-    rows = [['R208', 'C203'], ['R207', 'R202', 'R201'], ['C202', 'C201'], ['R206', 'R205', 'R203', 'R204']]
+    refs = ['R402', 'R403', 'R404', 'C402', 'C403', 'C407']
+    rows = [['R402', 'R403'], ['R404', 'C402'], ['C403', 'C407']]
     texts = {r: (40.0 + 4.5 * i + 2, 40.0 + 1.6 * j) for j, row in enumerate(rows) for i, r in enumerate(row)}
     return K.Plan('CH2', (40.0, 39.0, 58.3, 46.0), texts, rows, 0.0), refs
 
@@ -133,16 +136,7 @@ FREE = K.Grid((0.0, 0.0, 80.0, 60.0))
 
 
 def order_ok(ly, xy, tol=0.5):
-    """silkread's order test on a layout: pairs of parts further apart than tol keep their order in the text positions (never a tie)"""
-    pos = {r: (dx, -row) for r, (dx, row) in ly.cells.items()}
-    for a in ly.refs:
-        for c in ly.refs:
-            for ax in (0, 1):
-                dp = xy[c][ax] - xy[a][ax]
-                dt = pos[c][ax] - pos[a][ax]
-                if abs(dp) > tol and np.sign(dp) != np.sign(dt):
-                    return False
-    return True
+    return K.order_ok(ly, xy, CFG)
 
 
 @pytest.mark.parametrize('compact', [False, True])
@@ -223,14 +217,43 @@ def test_broken_once_a_part_from_another_block_or_an_unknown_heading_is_refused(
 
 
 def test_apply_a_legend_adds_one_rect_and_its_texts_per_key_with_the_heading_and_is_idempotent():
-    real = ['R202', 'R203', 'R204', 'C201', 'C202']
+    real = POWER_REFS
     xy = positions(BOARD.read_text(), real)
-    res = K.legend(fake_board(xy), '', CFG, [('CH2', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0)))
+    res = K.legend(fake_board(xy), '', CFG, [('POWER', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0)))
     text = BOARD.read_text()
     new = K.apply(text, res, CFG)
     assert K.apply(new, res, CFG) == new
-    assert new.count('(gr_rect') == text.count('(gr_rect') + 1 and new.count('(gr_text "CH2"') == text.count('(gr_text "CH2"') + 1
+    assert new.count('(gr_rect') == text.count('(gr_rect') + 1 and new.count('(gr_text "POWER"') == text.count('(gr_text "POWER"') + 1
     for r in real:
         assert new.count(f'(gr_text "{r}"') == 1
         s, e = K._fp_span(new, r)
         assert re.search(r'\(property "Reference" "%s"\n\t\t\t\(at [^)]*\)\n\t\t\t\(layer "F\.Fab"\)' % r, new[s:e])
+
+
+def test_a_key_already_on_the_board_is_left_alone_so_planning_again_adds_nothing():
+    real = POWER_REFS
+    xy = positions(BOARD.read_text(), real)
+    text = BOARD.read_text()
+    res = K.legend(fake_board(xy), text, CFG, [('POWER', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0)))
+    new = K.apply(text, res, CFG)
+    assert K.existing_keys(new)[-1] >= set(real) | {'POWER'}
+    assert K.legend(fake_board(xy), new, CFG, [('POWER', real)], [(30.0, 30.0, 60.0, 47.0)], grid=K.Grid((0.0, 0.0, 117.0, 60.0))) == []
+
+
+def test_the_dense_layout_is_only_offered_when_it_kept_the_order_and_a_wrong_one_is_caught():
+    xy = {f'R{i}0{i}': (10.0 + 1.7 * i, 20.0 - 1.1 * (i % 3) + 0.2 * i) for i in range(1, 8)}
+    refs = list(xy)
+    for ly in K.dense_options(refs, {r: v for r, v in xy.items()}, CFG, 'CH1'):
+        assert K.order_ok(ly, xy, CFG)
+    good = K.build(refs, xy, CFG)
+    bad = K.Layout(good.refs, good.rows, {r: (dx, -row) for r, (dx, row) in good.cells.items()}, None, 0.0, good.W, good.H, 'grid')      # rows flipped
+    assert K.order_ok(good, xy, CFG) and not K.order_ok(bad, xy, CFG)
+
+
+def test_the_packer_tries_other_orders_so_two_keys_that_only_fit_one_way_are_placed():
+    a = K.build(list(CH1), PARTS, CFG, heading='CH1')
+    c = K.build(list(CH2), PARTS, CFG, heading='CH2')
+    big = (0.0, 0.0, c.W + 0.3, c.H + 0.3)                                     # holds CH2 but not CH1 beside or below it
+    small = (0.0, 30.0, max(a.W, 1) + 0.3, 30.0 + a.H + 0.3)                  # holds CH1 only if CH2 did not take its place first
+    res = K.legend(fake_board(PARTS), '', CFG, [('CH1', list(CH1)), ('CH2', list(CH2))], [small, big], grid=FREE)
+    assert isinstance(res, list) and {p.heading for p in res} == {'CH1', 'CH2'}
