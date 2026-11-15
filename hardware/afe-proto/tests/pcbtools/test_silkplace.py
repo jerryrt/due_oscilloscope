@@ -103,3 +103,33 @@ def test_two_designators_keep_apart():
     placed, un = silkplace.place(board(s), CFG, keep=['B0', 'B1'])
     assert un == [] and set(placed) == {'C1', 'C2'}
     assert gap(box_of('C1', placed['C1']), box_of('C2', placed['C2'])) >= silkplace.HARD_GAP - 1e-9
+
+
+def _shared_gap_board():
+    """A (x 1..3) and B (x 5.6..7.6) face one 2.6 mm gap. The board's west edge shuts A's other side; pad bars shut every side of B
+    but the gap and the east side beyond 0.95 mm. A label 1.2 mm wide fits the gap beside each part (0 mm from it, 1.4 mm from the
+    other part: margin met), and two of them leave 0.2 mm between them"""
+    s = part(Synth('/GND'), 'C1', 2, 20, text_at=(2, 20))
+    part(s, 'C2', 6.6, 20, text_at=(6.6, 20))
+    for k, (x, y, w, h) in enumerate([(4.5, 21.3, 9.0, 0.5), (4.5, 18.7, 9.0, 0.5), (8.2, 20.0, 0.5, 3.0)]):
+        s.part(f'B{k}', x, y, box=(x - 0.05, y - 0.05, x + 0.05, y + 0.05), silk=None).p(f'B{k}', '1', x, y, size=w, sy=h)
+    return board(s), ['B0', 'B1', 'B2']
+
+
+def _close(placed):
+    return [(a, c) for a in placed for c in placed
+            if a < c and gap(box_of(a, placed[a]), box_of(c, placed[c])) < 0.3 - 1e-9]                  # 0.3: the constant itself is what the test holds, not whatever it is set to
+
+
+def test_two_labels_do_not_share_one_gap(monkeypatch):
+    """the margin alone does not keep them apart: only HARD_GAP does. With HARD_GAP at 0 both labels take the gap, under 0.3 mm apart
+    (the case is the right one); with it, no two placed labels are closer than HARD_GAP"""
+    b, keep = _shared_gap_board()
+    with monkeypatch.context() as m:
+        m.setattr(silkplace, 'HARD_GAP', 0.0)
+        loose, un = silkplace.place(b, CFG, keep=keep)
+        assert set(loose) == {'C1', 'C2'} and un == []
+        assert gap(box_of('C1', loose['C1']), box_of('C2', loose['C2'])) < 0.3 - 1e-9
+    placed, un = silkplace.place(b, CFG, keep=keep)
+    assert placed and _close(placed) == []        # one of the two may be left for a key or a spread, and is listed
+    assert set(placed) | set(un) == {'C1', 'C2'}
