@@ -29,12 +29,13 @@ def _box(block):
 
 
 RECTS = {
-    'POWER': [(17.9, 4.6, 43.6, 26.0)],
-    'REFCAL': [(44.2, 4.6, 64.4, 27.8), (64.6, 18.6, 70.2, 26.0)],
-    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), _box('CH1')],
+    'POWER': [(17.9, 4.6, 43.6, 26.0), (17.9, 26.0, 34.0, 37.0)],
+    'REFCAL': [(44.2, 4.6, 58.4, 27.8), (44.2, 27.8, 62.0, 38.0), (44.2, 38.0, 57.4, 47.5), (34.6, 26.6, 44.2, 48.9)],
+    'CH1': [(62.4, 33.0, 93.0, 50.0), (58.0, 38.6, 62.4, 50.0), _box('CH1')],
     'CH2': [(69.0, 19.75, 93.0, 32.9), _box('CH2')],
-    'AWG': [(70.4, 4.55, 92.3, 19.25), (98.55, 0.75, 116.4, 16.5)],
+    'AWG': [(59.0, 4.55, 92.3, 18.4), (70.4, 18.4, 92.3, 19.25), (98.55, 0.75, 116.4, 16.5)],
 }
+# Phase 1 of the relayout: the same rectangles as relayout_place.py REGIONS (one table there, for the placer; here for the silk and LR-11).
 
 # The AWG's BNC outline (the last AWG rectangle) was a bracket on the board, a left side with two stubs; its right side and bottom
 # are drawn from this table (draw_outlines.py). Its top is the CH2 BNC outline's bottom edge (sheet y 133.5), shared, 0.15 mm
