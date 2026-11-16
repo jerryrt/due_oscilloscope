@@ -26,12 +26,15 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
 3. Legible. No designator lies on any courtyard (its own included), pad, via drill or board-level silk line or rectangle
    (`silk`, from read_silk: the block outlines and the S/N box), and two designators are at least LABEL_GAP apart, box to
    box, so that two never read as one.
-3b. One reading for a part labelled beside (2a, 2b). Everywhere else a technician reads down from a designator to the
-   part under it, so a designator that also lies just under another part costs nothing. A part labelled beside breaks that
+3b. One reading for a part labelled beside (2b). Everywhere else a technician reads down from a designator to the part
+   under it, so a designator that also lies just under another part costs nothing. A part labelled beside breaks that
    habit, and the technician looking for its label checks above it, east and west: so no other designator may lie in any
-   of those three places (rule 1's or 2b's position against this part, by their tolerances), or the part has two
-   labels. And its own designator may not lie in the place above another part, where the habit would give it to that
-   part.
+   of those three places, or the part has two labels. And a beside or east-end designator (2a, 2b) may not lie in the
+   place above another part, where the habit would give it to that part. Above is rule 1's place, by its tolerances.
+   East and west are read wider than 2b places a label: a designator lies there when its box shares any of the
+   courtyard's y span, centred or not, within ABOVE_GAP_MAX of the side (review of afe1-relayout 32159f04, where labels
+   0.45 mm off centre, outside ABOVE_X, still read as the neighbour's). An IC's sides are left out: its body and its U
+   name are not mistaken for a passive's, and the owner-approved AFE-2 relayout has passive labels beside all three.
 4. BNCs (`bnc_labels`, {ref: function label}). Each carries its function label on the top silk, clear of every courtyard,
    and on no `silk` line, and its designator on the bottom silk beside its pins (mirrored there by the layout; this module does not read
    mirroring), none on top, each at one offset in its own frame across all of them, to BNC_TOL. A bottom designator
@@ -125,15 +128,15 @@ def _on_shape(box, shape):
 
 
 def _places(box, c):
-    """the reading places (rule 1 above, rule 2b east or west) that a text box occupies against a courtyard"""
-    bx, by = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-    cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2
+    """the reading places (rule 3b) that a text box lies in against a courtyard: above by rule 1's tolerances, east or
+    west when it shares any of the courtyard's y span"""
     out = []
-    if abs(bx - cx) <= ABOVE_X and ABOVE_GAP_MIN <= box[1] - c[3] <= ABOVE_GAP_MAX:
+    if abs((box[0] + box[2]) / 2 - (c[0] + c[2]) / 2) <= ABOVE_X and ABOVE_GAP_MIN <= box[1] - c[3] <= ABOVE_GAP_MAX:
         out.append('above')
-    if abs(by - cy) <= ABOVE_X and ABOVE_GAP_MIN <= box[0] - c[2] <= ABOVE_GAP_MAX:
+    ys = box[1] < c[3] and c[1] < box[3]
+    if ys and ABOVE_GAP_MIN <= box[0] - c[2] <= ABOVE_GAP_MAX:
         out.append('east')
-    if abs(by - cy) <= ABOVE_X and ABOVE_GAP_MIN <= c[0] - box[2] <= ABOVE_GAP_MAX:
+    if ys and ABOVE_GAP_MIN <= c[0] - box[2] <= ABOVE_GAP_MAX:
         out.append('west')
     return out
 
@@ -212,7 +215,7 @@ def findings(b, bnc_labels=None, edge_headers=(), silk=(), east_end=(), beside=(
             o = refs[k]
             if o == r:
                 continue
-            if o in shown and (w := _places(shown[o][0], cour[i])):
+            if r in beside and o in shown and (w := _places(shown[o][0], cour[i])):
                 bad.append(f"{r}: {o}'s designator lies {' and '.join(w)} of it, where its own would be read")
             if 'above' in _places(shown[r][0], cour[k]):
                 bad.append(f'{r}: its designator lies above {o}, where it reads as {o}\'s')

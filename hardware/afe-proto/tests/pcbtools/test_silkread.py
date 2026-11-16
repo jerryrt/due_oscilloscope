@@ -119,8 +119,18 @@ def test_the_same_neighbour_is_harmless_to_a_part_labelled_above():
     assert silkread.findings(board(None, neighbour(12.3)), BNC, edge_headers={'H'}) == []
 
 
-def test_the_neighbour_one_label_gap_further_east_passes():
-    assert silkread.findings(board(A_WEST, neighbour(12.3 + 0.3)), BNC, edge_headers={'H'}, beside={'A'}) == []
+def test_a_neighbour_label_well_off_centre_still_reads_as_the_parts():
+    # B's label 0.45 mm above A's centre line (outside ABOVE_X) still shares A's y span: the eye still gives it to A
+    f = silkread.findings(board(A_WEST, neighbour(12.3, 10.45)), BNC, edge_headers={'H'}, beside={'A'})
+    assert has(f, 'A:', "B's designator lies east of it"), f
+
+
+def test_the_neighbour_beyond_read_gap_or_out_of_the_band_passes():
+    # label west edge 0.65 mm east of A's courtyard
+    assert silkread.findings(board(A_WEST, neighbour(12.6)), BNC, edge_headers={'H'}, beside={'A'}) == []
+    # label box bottom 10.8, above A's courtyard top 10.75
+    f = silkread.findings(board(A_WEST, neighbour(12.3, 11.3)), BNC, edge_headers={'H'}, beside={'A'})
+    assert not has(f, 'A:', 'where its own'), f
 
 
 def test_a_beside_label_lying_above_another_part_fails():
@@ -292,7 +302,7 @@ EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 # Findings on 2026-11-15 under the "horizontal, above" convention (silk lines read, mounting holes skipped, header labels
 # inboard), before the
 # relayout: held exactly (a ratchet).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 208, 'kicad/afe-proto.kicad_pcb': 206}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 211, 'kicad/afe-proto.kicad_pcb': 207}
 # D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
 EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101', 'U301', 'U401'}, 'kicad/afe-proto.kicad_pcb': {'U301'}}
 # and the parts whose designator sits beside them (rule 2b).
