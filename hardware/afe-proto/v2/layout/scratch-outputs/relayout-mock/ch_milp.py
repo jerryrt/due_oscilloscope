@@ -72,7 +72,7 @@ def PLSIDE(LB, CY):
     return e | w
 def PLANY(LB, CY): return PLABOVE(LB, CY) | PLSIDE(LB, CY)
 rows, cols = [], []; nrow = 0
-for i, p in enumerate(parts):
+for i, p in enumerate([] if os.environ.get('NOCONF') == '1' else parts):
     CY1, Z1, L1, E1 = arr(p, 5), arr(p, 6), arr(p, 7), arr(p, 8)
     for q in parts[i + 1:]:
         CY2, Z2, L2, E2 = arr(q, 5), arr(q, 6), arr(q, 7), arr(q, 8)
@@ -126,18 +126,24 @@ for net_, (ixa, ixb, iya, iyb) in hv.items():          # xmax, xmin, ymax, ymin
         else:
             q_ = [q for q in P0[r_]['pads'] if q['n'] == n_][0]; x_, y_ = PN[r_]['x'] + q_['c'][0] - P0[r_]['x'], PN[r_]['y'] + q_['c'][1] - P0[r_]['y']
             add([(ixa, -1)], -np.inf, -x_); add([(ixb, 1)], -np.inf, x_); add([(iya, -1)], -np.inf, -y_); add([(iyb, 1)], -np.inf, y_)
-    if STAGE != 0: add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN if net_.endswith('_N') else HO)
+    if STAGE == 4:
+        if net_.endswith('_N'): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN)
+        elif not net_.endswith('_NP'): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HO)
+    elif STAGE == 3:
+        if net_.endswith('_N'): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN)
+    elif STAGE != 0 and net_[1:] not in os.environ.get('SKIPNETS', '').split(','): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN if net_.endswith('_N') else HO)
 if STAGE == 0:
     for net_ in HIZ:
         if not net_.endswith('_N'): ixa, ixb, iya, iyb = hv[net_]; add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HO)
 # LR-2 flow: x falls R101 > R107 > U101 (fixed) > R108/R208
 FLOW = [('R101', 'R107'), ('R201', 'R207')]
+if os.environ.get('NOFLOW') == '1': FLOW = []
 def cx_(p): return [c[3] for c in sel[p]]
 for a_, b_ in FLOW:
     if a_ in sel and b_ in sel: add([(off[a_] + j, v) for j, v in enumerate(cx_(a_))] + [(off[b_] + j, -v) for j, v in enumerate(cx_(b_))], 0.01, np.inf)
-for a_ in ('R107', 'R207'):
+for a_ in (() if os.environ.get('NOFLOW') == '1' else ('R107', 'R207')):
     if a_ in sel: add([(off[a_] + j, 1) for j, c in enumerate(sel[a_]) if c[3] > PN['U101']['x'] + 0.01], 1, 1)
-for a_ in ('R108', 'R208'):
+for a_ in (() if os.environ.get('NOFLOW') == '1' else ('R108', 'R208')):
     if a_ in sel: add([(off[a_] + j, 1) for j, c in enumerate(sel[a_]) if c[3] < PN['U101']['x'] - 0.01], 1, 1)
 if STAGE == 2:
     byrow = {}
@@ -147,11 +153,20 @@ if STAGE == 2:
     for (p, rk), w in wi.items():
         add([(w, 1)] + [(off[p] + j, -1) for j, c in enumerate(sel[p]) if rowkey(c) == rk], -np.inf, 0); add([(w, 1), (zi[rk], -1)], -np.inf, 0)
     for p in passives: add([(ai[p], 1)] + [(off[p] + j, -1) for j, c in enumerate(sel[p]) if pinline(c)] + [(w, -1) for (q, rk), w in wi.items() if q == p], -np.inf, 0)
+if not rows: rows, cols, nrow = [0], [0], 1
 A_conf = sp.csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(nrow, n2)); A_rest = sp.csr_matrix((V_, (R_, C_)), shape=(nr, n2))
 cost = np.zeros(n2)
 for p in parts:
     for j, c in enumerate(sel[p]): cost[off[p] + j] = disp(c) + (100.0 if (STAGE == 1 and c[2] >= 10) else 0.0)
 for p in ai: cost[ai[p]] = -1000.0
+if STAGE == 4:
+    for net_ in HIZ:
+        if net_.endswith('_NP'):
+            ixa, ixb, iya, iyb = hv[net_]; cost[ixa] += 100; cost[ixb] -= 100; cost[iya] += 100; cost[iyb] -= 100
+if STAGE == 3:
+    for net_ in HIZ:
+        if not net_.endswith('_N'):
+            ixa, ixb, iya, iyb = hv[net_]; cost[ixa] += 100; cost[ixb] -= 100; cost[iya] += 100; cost[iyb] -= 100
 if STAGE == 0:
     for net_ in HIZ:
         if net_.endswith('_N'):
