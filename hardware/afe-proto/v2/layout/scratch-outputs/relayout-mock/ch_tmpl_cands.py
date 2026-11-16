@@ -13,6 +13,7 @@ STEP, RAD = 0.1, float(os.environ.get('RAD', 3.0))
 def vbad(mask, B):          # vectorised Mask.bad for boxes B (n,4)
     i0 = np.maximum(np.floor((B[:, 0] - mask.x0) / RP.RES + 1e-6).astype(int), 0); i1 = np.minimum(np.ceil((B[:, 2] - mask.x0) / RP.RES - 1e-6).astype(int), mask.nx)
     j0 = np.maximum(np.floor((B[:, 1] - mask.y0) / RP.RES + 1e-6).astype(int), 0); j1 = np.minimum(np.ceil((B[:, 3] - mask.y0) / RP.RES - 1e-6).astype(int), mask.ny)
+    i0 = np.minimum(i0, mask.nx); j0 = np.minimum(j0, mask.ny)
     ok = (i1 > i0) & (j1 > j0)
     i1 = np.where(ok, i1, i0); j1 = np.where(ok, j1, j0)
     S = mask.S
