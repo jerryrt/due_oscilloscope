@@ -62,11 +62,45 @@ def gr_line(seg):
             f'\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "{uuid.uuid4()}")\n\t)\n')
 
 
+def _drawn_fraction(edges, segs, tol=0.02):
+    """fraction of the length of `edges` (Due mm) that `segs` (Due mm) draw"""
+    tot = cov = 0.0
+    for ex0, ey0, ex1, ey1 in edges:
+        horiz = abs(ey0 - ey1) < tol
+        lo, hi = (min(ex0, ex1), max(ex0, ex1)) if horiz else (min(ey0, ey1), max(ey0, ey1))
+        tot += hi - lo
+        iv = sorted((max(lo, min(a, c)), min(hi, max(a, c))) if horiz else (max(lo, min(b, d)), min(hi, max(b, d)))
+                    for a, b, c, d in segs if (horiz and abs(b - d) < tol and abs(b - ey0) < tol) or ((not horiz) and abs(a - c) < tol and abs(a - ex0) < tol))
+        end = lo
+        for a, b in iv:
+            if b > end and b > a:
+                cov += b - max(a, end)
+                end = b
+    return cov / tot if tot else 1.0
+
+
+def missing_polygons(text, tol=0.02):
+    """table rectangles (Due mm) whose own sides, where they lie on the boundary of their block's union, are drawn less than a third: the outlines are solid
+    polygons (a side two rectangles of a block share is not drawn, and a side stops short of other silk), so 'present' is a fraction, not an exact match"""
+    segs = [(a - 50, 150 - b, c - 50, 150 - d) for a, b, c, d in ofs.silk_segments(text)]
+    out = []
+    for blk, rects in outlines.RECTS.items():
+        bnd = outlines.boundary([tuple(r) for r in rects])
+        for r in rects:
+            mine = [e for e in bnd if r[0] - tol <= min(e[0], e[2]) and max(e[0], e[2]) <= r[2] + tol and r[1] - tol <= min(e[1], e[3]) and max(e[1], e[3]) <= r[3] + tol]
+            mine = outlines.clip_boxes(mine, outlines.GAP_BOXES)                              # where no outline is drawn by design (round U101) is not missing
+            if mine and _drawn_fraction(mine, segs) < 0.33:
+                out.append(tuple(r))
+    return out
+
+
 def draw(text, table=None):
-    """(new text, [rectangles added]) """
-    table = outlines.all_rects() if table is None else table
-    found = sorted(ofs.to_due_rect(r) for r in ofs.rects_from_segments(ofs.silk_segments(text)))
-    add = missing(table, found)
+    """(new text, [rectangles added]). With no table: the polygons of outlines.RECTS, a rectangle being added when its own sides are drawn less than a third"""
+    if table is None:
+        add = missing_polygons(text)
+    else:
+        found = sorted(ofs.to_due_rect(r) for r in ofs.rects_from_segments(ofs.silk_segments(text)))
+        add = missing(table, found)
     existing = ofs.silk_segments(text)
     new = ''.join(gr_line(s) for r in add for s in rect_segments(r, existing))
     if not new:

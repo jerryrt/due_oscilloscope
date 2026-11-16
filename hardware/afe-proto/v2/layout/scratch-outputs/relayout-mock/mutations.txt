@@ -1,0 +1,45 @@
+MUTATION: a horizontal outline line moved 1 mm across (board text changed: True)
+E       AssertionError: [(62.400000000000006, 32.0, 73.9, 32.0)]
+E       assert [(62.40000000..., 73.9, 32.0)] == []
+E         
+E         Left contains one more item: (62.400000000000006, 32.0, 73.9, 32.0)
+E         Use -v to get more diff
+FAILED hardware/afe-proto/tests/pcbtools/test_outlines_legibility.py::test_board_silk_outlines_are_the_boundary_of_the_table_polygons
+
+MUTATION: J101 designator on the top silk (board text changed: True)
+E       AssertionError: J101: designator not on the bottom silk alone
+E       assert False
+E        +  where False = Result(ok=False, detail='J101: designator not on the bottom silk alone', figures={'outlines': 5.0, 'designators': 112.0, 'violations': 1.0, 'waived_pairs': 0.0}).ok
+FAILED hardware/afe-proto/tests/pcbtools/test_outlines_legibility.py::test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding_says
+1 failed, 22 deselected, 1 warning in 2.28s
+
+MUTATION: R105 label 0.12 mm toward its neighbour (board text changed: True)
+E       AssertionError: 1 designator pairs read as one label (same baseline, under 0.5 mm, no waiver): C101/R105 0.44; 1 designator pairs closer than 0.5 mm: C101/R105 0.44
+E       assert False
+E        +  where False = Result(ok=False, detail='1 designator pairs read as one label (same baseline, under 0.5 mm, no waiver): C101/R105 0.44... than 0.5 mm: C101/R105 0.44', figures={'outlines': 5.0, 'designators': 112.0, 'vio
+FAILED hardware/afe-proto/tests/pcbtools/test_outlines_legibility.py::test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding_says
+1 failed, 22 deselected, 1 warning in 2.36s
+
+MUTATION: J605 label 0.3 mm off the config (board text changed: True)
+E       AssertionError: assert (['J605: desig....25, 53.415)'] == []
+E         
+E         Left contains one more item: 'J605: designator to (95.25, 53.415)'
+E         Use -v to get more diff)
+FAILED hardware/afe-proto/tests/pcbtools/test_v2_bnc_pitch.py::test_placing_again_changes_nothing_and_the_j605_label_is_where_the_config_says
+1 failed, 6 deselected in 0.20s
+
+MUTATION: the CH2 BNC input stub removed (board text changed: True)
+E       assert False
+E        +  where False = any(<generator object test_each_scope_run_leaves_its_bnc_at_the_bncs_own_y.<locals>.<genexpr> at 0x76e05e0b8e40>)
+FAILED hardware/afe-proto/tests/pcbtools/test_v2_bnc_pitch.py::test_each_scope_run_leaves_its_bnc_at_the_bncs_own_y[J201]
+1 failed, 1 passed, 5 deselected in 0.08s
+
+MUTATION: an outline line across the J607 silk (board text changed: True)
+E       AssertionError: [('silk_overlap', ['Segment on F.Silkscreen', 'Segment of J604 on F.Silkscreen']), ('silk_overlap', ['Segment on F.Sil...ment of J606 on F.Silkscreen']), ('silk_overlap', ['Segment on F.Silkscreen', 'Segmen
+E       assert [{'descriptio...verlap'}, ...] == []
+E         
+E         Left contains 11 more items, first extra item: {'description': 'Silkscreen clearance', 'items': [{'description': 'Segment on F.Silkscreen', 'pos': {'x': 70.0, 'y': 1...x': 90.386, 'y': 97.87}, 'uuid': 'fe163eb8-c02d-5b2a
+E         Use -v to get more diff
+FAILED hardware/afe-proto/tests/pcbtools/test_pinlabels.py::test_kicad_drc_has_no_silk_finding_on_the_labels
+
+restored: True

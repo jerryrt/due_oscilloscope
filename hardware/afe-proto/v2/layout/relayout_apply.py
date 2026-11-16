@@ -12,6 +12,7 @@ import json, math, os, re, sys, uuid
 import numpy as np
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 import relayout_place as RP
+import outlines as OUT
 from place_ch2_mock import fmt, fp_span, fp_at, BNCS, BNC_LABEL_OFFSET, BNC_DES_OFFSET, SX, SY
 NAMES = {'POWER': 'POWER', 'REFCAL': 'REF / CAL', 'CH1': 'CH1', 'CH2': 'CH2', 'AWG': 'AWG'}
 
@@ -58,21 +59,6 @@ def outline_lines(rects):
                         iv = [p for a, b in iv for p in ([(a, b)] if hi <= a or lo >= b else [(a, lo)] * (lo > a) + [(hi, b)] * (hi < b))]
                 segs += [(x, a, x, b) for a, b in iv if b - a > 1e-9]
     return segs
-
-
-def clip_gap(segs, gx=(73.9, 90.3), gy=(32.0, 34.0)):
-    """the outline lines leave a gap round U101 and its east-end designator (a label may not touch a silk line)"""
-    out = []
-    for (a, b, c, d) in segs:
-        if abs(b - d) < 1e-9 and gy[0] <= b <= gy[1]:
-            lo, hi = sorted((a, c))
-            for x0, x1 in ((lo, min(hi, gx[0])), (max(lo, gx[1]), hi)):
-                if x1 - x0 > 1e-9: out.append((x0, b, x1, b))
-        elif abs(a - c) < 1e-9 and gx[0] <= a <= gx[1] and not (max(b, d) < gy[0] or min(b, d) > gy[1]):
-            out.append((a, b, c, d))
-        else:
-            out.append((a, b, c, d))
-    return out
 
 
 def main(board, dump, out, places):
@@ -152,15 +138,31 @@ def main(board, dump, out, places):
         cnt['kept'] = cnt.get('kept', 0) + 1; return m.group(0)
     t = re.sub(r'\n\t\(via\n\t\t\(at ([-\d.]+) ([-\d.]+)\)\n\t\t\(size ([\d.]+)\)\n\t\t\(drill [\d.]+\)\n\t\t\(layers "F\.Cu" "B\.Cu"\)\n\t\t\(net "([^"]*)"\)\n\t\t\(uuid "[^"]*"\)\n\t\)', viasub, t)
     print('copper removed:', cnt)
+    # BNC input stubs: the bare minimum of copper the BNC pitch rule holds (a track starting at pin 1's centre), the rest of the run is to be routed
+    for ref, word in BNCS.items():
+        if ref == 'J301': continue
+        s_, e_ = fp_span(t, ref); blk_ = t[s_:e_]
+        fx_, fy_, _, _ = fp_at(blk_)
+        net = re.search(r'\(pad "1" .*?\(net "([^"]*)"\)', blk_, re.S).group(1)
+        if not re.search(r'\n\t\(segment\n\t\t\(start %s %s\)' % (re.escape(fmt(fx_)), re.escape(fmt(fy_))), t):
+            seg = ('\n\t(segment\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(width 0.25)\n\t\t(layer "F.Cu")\n\t\t(net "%s")\n\t\t(uuid "%s")\n\t)'
+                   % (fmt(fx_), fmt(fy_), fmt(fx_ - 1.0), fmt(fy_), net, uuid.uuid5(uuid.NAMESPACE_URL, 'bncstub' + ref)))
+            k_ = t.index('\n\t(segment') if '\n\t(segment' in t else t.index('\n\t(gr_line'); t = t[:k_] + seg + t[k_:]
     # 7. outlines
     def old(m):
         a = [float(m.group(i)) for i in (1, 2, 3, 4)]
-        ok = all(17.0 <= a[k] - SX <= 93.5 for k in (0, 2)) and all(4.0 <= SY - a[k] <= 50.5 for k in (1, 3))
+        ok = (all(17.0 <= a[k] - SX <= 93.5 for k in (0, 2)) and all(4.0 <= SY - a[k] <= 50.5 for k in (1, 3))) or \
+            (all(98.0 <= a[k] - SX <= 117.0 for k in (0, 2)) and all(0.5 <= SY - a[k] <= 54.0 for k in (1, 3)))      # the blocks' lines and the BNC boxes' (redrawn from the table)
         return '' if ok else m.group(0)
     t, n = re.subn(r'\n\t\(gr_line\n\t\t\(start ([-\d.]+) ([-\d.]+)\)\n\t\t\(end ([-\d.]+) ([-\d.]+)\)\n\t\t\(stroke(?:(?!\n\t\)).)*?\(layer "F\.SilkS"\)\n\t\t\(uuid "[^"]*"\)\n\t\)', lambda m: old(m), t, flags=re.S)
+    keepouts = list(OUT.GAP_BOXES)
+    for r_ in RP.FIXED:                                            # solid outlines stop 0.3 mm short of other silk: the headers' and the mounting holes' own
+        sb = P[r_]['silk']
+        if sb and r_ not in ('J101', 'J201', 'J301', 'U101'): keepouts.append((sb[0] - 0.3, sb[1] - 0.3, sb[2] + 0.3, sb[3] + 0.3))
+    keepouts.append((21.55, 37.36, 32.15, 40.96))                    # the serial-number box
     lines = []
-    for blk, rs in RP.REGIONS.items():
-        for (a, b, c, d) in clip_gap(outline_lines(rs)):
+    for blk, rs in OUT.RECTS.items():
+        for (a, b, c, d) in OUT.clip_boxes([g for g in OUT.boundary(rs) if min(g[0], g[2]) < 98.0], keepouts) + [g for g in OUT.boundary(rs) if min(g[0], g[2]) >= 98.0]:
             lines.append('\n\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)'
                          % (fmt(a + SX), fmt(SY - b), fmt(c + SX), fmt(SY - d), uuid.uuid5(uuid.NAMESPACE_URL, 'relayout%s%s%s%s%s' % (blk, a, b, c, d))))
     k = t.index('\n\t(gr_line'); t = t[:k] + ''.join(lines) + t[k:]

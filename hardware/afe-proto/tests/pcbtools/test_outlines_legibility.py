@@ -224,19 +224,95 @@ def _board_text():
     return BOARD.read_text()
 
 
-def test_board_silk_outlines_equal_the_table():
-    found = extract(_board_text())
-    want = TABLE.all_rects()
-    assert X.same(found, want), (found, sorted(want))
+# ----------------------------------------------------------------------------- the outlines as rectilinear polygons (unions of rectangles), drawn solid
+def drawn_due(text):
+    """the solid outline segments of the board, Due mm: [(x0, y0, x1, y1)] (x - 50, 150 - y of the sheet)"""
+    return [(a - 50, 150 - b, c - 50, 150 - d) for a, b, c, d in X.silk_segments(text)]
 
 
-def test_board_silk_shifted_one_millimetre_no_longer_equals_the_table():
-    segs = X.silk_segments(_board_text())
-    in_ch1 = lambda g: 113.8 <= min(g[0], g[2]) and max(g[0], g[2]) <= 143.05 and 99.9 <= min(g[1], g[3]) and max(g[1], g[3]) <= 117.05
-    assert sum(in_ch1(g) for g in segs) > 10                                           # CH1's main rectangle: many dashes
+def expected_edges():
+    """{block: boundary of the union of its table rectangles}: the sides the silk may carry"""
+    return {k: TABLE.boundary([tuple(r) for r in v]) for k, v in TABLE.RECTS.items()}
+
+
+def on_edge(seg, edges, tol=0.02):
+    """the segment lies along one boundary edge, inside it (a stretch of it)"""
+    x0, y0, x1, y1 = seg
+    for ex0, ey0, ex1, ey1 in edges:
+        if abs(y0 - y1) < tol and abs(ey0 - ey1) < tol and abs(y0 - ey0) < tol and min(ex0, ex1) - tol <= min(x0, x1) and max(x0, x1) <= max(ex0, ex1) + tol:
+            return True
+        if abs(x0 - x1) < tol and abs(ex0 - ex1) < tol and abs(x0 - ex0) < tol and min(ey0, ey1) - tol <= min(y0, y1) and max(y0, y1) <= max(ey0, ey1) + tol:
+            return True
+    return False
+
+
+def drawn_fraction(edges, segs, tol=0.02):
+    """the fraction of the boundary's length that the drawn segments cover (collinear overlap)"""
+    tot = cov = 0.0
+    for ex0, ey0, ex1, ey1 in edges:
+        horiz = abs(ey0 - ey1) < tol
+        lo, hi = (min(ex0, ex1), max(ex0, ex1)) if horiz else (min(ey0, ey1), max(ey0, ey1))
+        tot += hi - lo
+        ivs = []
+        for x0, y0, x1, y1 in segs:
+            if horiz and abs(y0 - y1) < tol and abs(y0 - ey0) < tol:
+                ivs.append((max(lo, min(x0, x1)), min(hi, max(x0, x1))))
+            elif (not horiz) and abs(x0 - x1) < tol and abs(x0 - ex0) < tol:
+                ivs.append((max(lo, min(y0, y1)), min(hi, max(y0, y1))))
+        ivs = sorted(i for i in ivs if i[1] > i[0])
+        end = lo
+        for a, b in ivs:
+            if b > end:
+                cov += b - max(a, end)
+                end = b
+    return cov / tot
+
+
+def test_board_silk_outlines_are_the_boundary_of_the_table_polygons():
+    segs = drawn_due(_board_text())
+    exp = expected_edges()
+    alle = [e for v in exp.values() for e in v]
+    stray = [g for g in segs if not on_edge(g, alle)]
+    assert stray == [], stray                                                            # nothing drawn off the table's polygons
+    for k, edges in exp.items():
+        edges = TABLE.clip_boxes(edges, TABLE.GAP_BOXES)                                     # less the gap round U101 and its designator
+        assert drawn_fraction(edges, segs) >= 0.9, (k, drawn_fraction(edges, segs))                                       # the outline is there (it stops short of other silk and round U101)
+    assert TABLE.boundary([(0, 0, 2, 1), (2, 0, 4, 1)]) == [(0, 0, 2, 0), (0, 1, 2, 1), (0, 0, 0, 1), (2, 0, 4, 0), (2, 1, 4, 1), (4, 0, 4, 1)]   # a shared side is not drawn
+
+
+def test_board_silk_shifted_one_millimetre_no_longer_equals_the_polygons():
+    segs = drawn_due(_board_text())
+    exp = expected_edges()
+    alle = [e for v in exp.values() for e in v]
+    in_ch1 = lambda g: 62.4 <= min(g[0], g[2]) and max(g[0], g[2]) <= 93.0 and 33.0 <= min(g[1], g[3]) and max(g[1], g[3]) <= 50.0
+    assert sum(in_ch1(g) for g in segs) >= 3                                               # CH1's main rectangle is drawn
     shifted = [(g[0] + 1.0, g[1], g[2] + 1.0, g[3]) if in_ch1(g) else g for g in segs]
-    got = sorted(X.to_due_rect(r) for r in X.rects_from_segments(shifted))
-    assert not X.same(got, TABLE.all_rects())
+    assert any(not on_edge(g, alle) for g in shifted)                                      # the mutation: a block drawn 1 mm off its polygon is caught
+    gapless = lambda e: TABLE.clip_boxes(e, TABLE.GAP_BOXES)
+    assert drawn_fraction(gapless(exp['CH1']), shifted) < drawn_fraction(gapless(exp['CH1']), segs)
+
+
+def test_no_outline_segment_crosses_a_designator_or_its_label_zone():
+    """the legibility property, on the board: every designator's box (text 1.3 mm high, 0.95 mm a character, grown by 0.3 mm) is clear of every outline segment"""
+    from pcbtools import silkread
+    text = _board_text()
+    segs = drawn_due(text)
+    b = boardio.read_board(str(BOARD))
+    refs = list(b.fp_ref)
+    row = {int(k): i for i, k in enumerate(b.fp_idx)}
+    bad = []
+    for j in range(len(b.r_fp)):
+        if not (b.r_on_silk[j] and int(b.r_layer[j]) == boardio.R_LAYERS['F.SilkS']):
+            continue
+        r = refs[row[int(b.r_fp[j])]]
+        hw, hh = 0.95 * len(r) / 2 + 0.3, 0.65 + 0.3
+        x, y = float(b.r_x[j]), float(b.r_y[j])
+        for x0, y0, x1, y1 in segs:
+            if min(max(x0, x1), x + hw) > max(min(x0, x1), x - hw) and min(max(y0, y1), y + hh) > max(min(y0, y1), y - hh):
+                bad.append(r)
+    assert bad == [], sorted(set(bad))
+    assert [f for f in silkread.findings(b, {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}, edge_headers={'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'},
+                                         east_end={'U101'}, silk=silkread.read_silk(text)) if 'silk line' in f] == []
 
 
 def test_v2_layout_config_carries_the_table_and_the_frozen_config_is_unchanged():
@@ -261,16 +337,10 @@ def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding
     assert R._in_rects(P[i:i + 1], grown)[0] and 'U101' not in inside['CH2']           # the shared dual: held to CH1, no extra in CH2
     assert 'TP101' in inside['CH1'] and 'D201' in inside['CH2'] and 'D201' not in inside['CH1']
     close, over, far, n = R.designator_findings(b, c)
-    assert over == [] and far == [] and n == 112
-    assert 0 < len(close) <= len(c.DESIGNATOR_GAP_WAIVED) == 8                           # 74 pairs were under 1.0 mm before the placement
-    assert all(g >= c.DESIGNATOR_GAP_WAIVED[(a, b_)] and g >= 0.3 for a, b_, g in close)   # each on its recorded floor, none touching
-    assert c.DESIGNATOR_FOREIGN_WAIVED == {'BR501': 'CH2', 'BR504': 'CH2'}               # R203 and R204 left the waived set when the CH2 array moved north
-    refs_ = list(b.fp_ref)
-    for ref_ in ('R203', 'R204'):                                                    # their labels sit inside the CH2 outline, with no waiver
-        k = [k for k in range(len(b.r_fp)) if refs_[int(b.r_fp[k])] == ref_][0]
-        assert any(x0 <= b.r_x[k] <= x1 and y0 <= b.r_y[k] <= y1 for x0, y0, x1, y1 in c.OUTLINE['CH2']), ref_
+    assert over == [] and far == [] and n == 109                                         # 112 designators less the three BNCs', which are on the bottom silk (D30)
+    assert close == [] and c.DESIGNATOR_GAP_WAIVED == {} and c.DESIGNATOR_GAP_MIN == 0.5 == c.DESIGNATOR_GAP_ONE_LABEL       # D30: 0.5 mm between labels, none waived
+    assert c.DESIGNATOR_FOREIGN_WAIVED == {}
     assert R.one_label_pairs(b, c) == [] and R.foreign_labels(b, c) == []                  # nothing reads as one label; no label in a foreign outline
-    assert not [k for k in c.DESIGNATOR_GAP_WAIVED if k not in {(a, b_) for a, b_, g in close}]   # every waiver names a live pair
 
 
 # ----------------------------------------------------------------------------- reads as one label, and a label in a foreign outline
@@ -299,3 +369,35 @@ def test_a_label_centred_in_another_blocks_outline_fails_unless_waived_exactly()
     assert not r.ok and "inside another block's outline: R102 in CH2" in r.detail
     assert not R.foreign_labels(s, cfg(DESIGNATOR_FOREIGN_WAIVED={'R102': 'CH2'}, **base))
     assert R.foreign_labels(s, cfg(DESIGNATOR_FOREIGN_WAIVED={'R102': 'AWG'}, **base))
+
+
+# ----------------------------------------------------------------------------- the D30 thresholds in LR-11: BNC designators on the bottom silk, 0.5 mm between labels
+def bnc_board(layer, both=False):
+    s = Synth('/GND')
+    s.part('J1', 30, 10, silk=False)
+    s.rt.append((31.0, 10.0, 1.0, 1.0, 0.15, 0.0, layer, layer == 0, 0))
+    if both:
+        s.rt.append((29.0, 12.0, 1.0, 1.0, 0.15, 0.0, 0, True, 0))
+    return s.build()
+
+
+def bnc_cfg(**over):
+    return cfg(BLOCK={'J1': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]}, TEST_BLOCKS=(), TP_NETS={}, SILK_WORDS=(),
+               LR_HUNDREDS={}, EDGE_BLOCK='EDGE', BNC_BOTTOM_DESIGNATORS=('J1',), **over)
+
+
+def test_lr11_wants_a_bnc_designator_on_the_bottom_silk_alone():
+    msg = 'J1: designator not on the bottom silk alone'
+    assert msg not in R.lr11(bnc_board(1), bnc_cfg()).detail                         # on the bottom: fine
+    assert msg in R.lr11(bnc_board(0), bnc_cfg()).detail                             # broken once: on top, as it was before D30
+    assert msg in R.lr11(bnc_board(1, both=True), bnc_cfg()).detail                  # broken once: on both sides
+
+
+def test_designators_are_held_0_5_mm_apart_the_d30_gap():
+    cf = cfg(DESIGNATOR_ADVANCE=0.95, DESIGNATOR_INK_H=1.2, DESIGNATOR_GAP_MIN=0.5, DESIGNATOR_DIST_MAX=3.0)
+    close, over, far, n = R.designator_findings(leg_board(dx=4.35), cf)               # 3.8 mm boxes, 4.35 pitch: 0.55 mm apart
+    assert close == []
+    close, over, far, n = R.designator_findings(leg_board(dx=4.25), cf)               # broken once: 0.45 mm apart
+    assert [(a, b_) for a, b_, g in close] == [('R101', 'R102')]
+    from pcbtools.boards import v2_layout
+    assert v2_layout.DESIGNATOR_GAP_MIN == 0.5 and v2_layout.DESIGNATOR_GAP_ONE_LABEL == 0.5 and v2_layout.BNC_BOTTOM_DESIGNATORS == ('J101', 'J201', 'J301')

@@ -21,9 +21,9 @@ FIXED = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607', 'J101', 'J201',
 REGIONS = {
     'POWER': [(17.9, 4.6, 34.5, 26.0), (34.5, 6.2, 39.2, 26.0), (39.2, 4.6, 43.6, 26.0), (17.9, 26.0, 34.0, 37.0)],
     'REFCAL': [(44.2, 4.6, 57.4, 27.8), (44.2, 27.8, 62.0, 38.0), (44.2, 38.0, 57.4, 47.1), (34.6, 26.6, 44.2, 48.9)],
-    'CH1': [(62.4, 33.0, 74.9, 50.0), (74.9, 33.0, 80.1, 47.1), (80.1, 33.0, 93.0, 50.0), (58.0, 38.6, 62.4, 50.0)],
-    'CH2': [(69.0, 19.75, 93.0, 32.9)],
-    'AWG': [(59.0, 6.2, 62.2, 18.4), (62.2, 4.55, 80.0, 18.4), (80.0, 6.2, 84.9, 18.4), (84.9, 4.55, 92.3, 18.4), (70.4, 18.4, 92.3, 19.25)],
+    'CH1': [(62.4, 33.0, 74.9, 49.0), (74.9, 33.0, 80.1, 47.1), (80.1, 33.0, 92.25, 49.0), (58.0, 38.6, 62.4, 49.0)],
+    'CH2': [(69.0, 19.75, 92.25, 32.9)],
+    'AWG': [(59.0, 6.2, 62.2, 18.4), (62.2, 4.55, 80.0, 18.4), (80.0, 6.2, 84.9, 18.4), (84.9, 4.55, 92.25, 18.4), (70.4, 18.4, 92.25, 19.25)],
 }
 # the Due's edge-row headers carry their designator on the inboard side, centred along the header (owner, bcbc1e3d): the blocks give up a strip there,
 # as a notch only where the label stands. {ref: (centre x, centre y of the label)}; the header's courtyard is (x0, y0, x1, y1) in the dump
@@ -218,6 +218,19 @@ def hard_constraints(P):
         out.append(dict(refs=tuple(r for r, _ in pins if r not in FIXED), fn=fn, name=name % cap if '%' in name else name))
     for net in SPAN_NETS:
         span_fn(net, 0, '%s span <= main %%.1f' % net, True)
+    def mst_fn(net, name):
+        pins = [(r, rel(r, q['c'])) for r, p in P.items() for q in p['pads'] if q['net'] == net]
+        def tree(pts):
+            n = len(pts); inT = {0}; tot = 0.0
+            while len(inT) < n:
+                d, j = min((abs(pts[i][0] - pts[j][0]) + abs(pts[i][1] - pts[j][1]), j) for i in inT for j in range(n) if j not in inT)
+                tot += d; inT.add(j)
+            return tot
+        cap = tree([(P[r]['x'] + d[0], P[r]['y'] + d[1]) for r, d in pins])               # main's own tree, which the checker measured as 4.9 mm of track
+        def fn(pos_of, off, pins=pins, cap=cap):
+            return max(0.0, tree([(pos_of(r)[0] + off(r, d)[0], pos_of(r)[1] + off(r, d)[1]) for r, d in pins]) - (cap - 0.01))
+        out.append(dict(refs=tuple(r for r, _ in pins if r not in FIXED), fn=fn, name=name % cap))
+    mst_fn('/AWG_FB', 'LR-4 /AWG_FB pad tree <= main %.2f')
     for net in ('/CH1_OUT', '/CH2_OUT'):
         span_fn(net, 5.0, f'LR-4 {net} pad span <= 5.0 (INV_MAX {INV_MAX} of track; three pins: Steiner length = half-perimeter)')
     for prot, rnp, riso, bnc_x, adc_x in (('R101', 'R107', 'R108', 102.0, 66.04), ('R201', 'R207', 'R208', 102.0, 68.58)):
