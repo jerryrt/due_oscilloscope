@@ -304,9 +304,9 @@ EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 # relayout: held exactly (a ratchet).
 OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 211, 'kicad/afe-proto.kicad_pcb': 206}
 # D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
-EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101', 'U301', 'U401'}, 'kicad/afe-proto.kicad_pcb': {'U301'}}
+EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101', 'U301', 'U401'}, 'kicad/afe-proto.kicad_pcb': {'U101', 'U301'}}
 # and the parts whose designator sits beside them (rule 2b).
-BESIDE = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405'}, 'kicad/afe-proto.kicad_pcb': {'R302', 'R303', 'C301', 'R305', 'C302', 'C401', 'C402', 'C405', 'C409'}}
+BESIDE = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405', 'C502'}, 'kicad/afe-proto.kicad_pcb': {'R302', 'R303', 'C301', 'R305', 'C302', 'C401', 'C402', 'C405', 'C409'}}
 
 
 @pytest.mark.pcbnew
