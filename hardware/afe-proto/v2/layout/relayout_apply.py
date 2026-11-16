@@ -98,8 +98,9 @@ def main(board, dump, out, places):
         if r in BNCS or r.startswith('MH'): continue
         t = set_ref(t, r, cx, ly)
         lab[r] = (cx - RP.LAB_W * len(r) / 2, ly - RP.LAB_H / 2, cx + RP.LAB_W * len(r) / 2, ly + RP.LAB_H / 2)
-    ul, uz, (ucx, ucy) = RP.u101_label_east(P)
-    t = set_ref(t, 'U101', ucx, ucy); lab['U101'] = ul                        # U101 alone: beside its pin-free east end
+    for ur in ('U101', 'U301'):                                       # beside their pin-free east ends (D30 named exceptions)
+        ul, uz, (ucx, ucy) = RP.u101_label_east(P, dict(new), ur)
+        t = set_ref(t, ur, ucx, ucy); lab[ur] = ul
     for h in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'):          # edge headers: the owner's rule (bcbc1e3d), RP.header_label
         hx, hy = RP.header_label(P[h]); t = set_ref(t, h, hx, hy)
         lab[h] = (hx - RP.LAB_W * 2, hy - RP.LAB_H / 2, hx + RP.LAB_W * 2, hy + RP.LAB_H / 2)

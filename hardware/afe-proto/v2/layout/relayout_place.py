@@ -134,16 +134,20 @@ def part_geom(p, k=0, ls=0):
     cx = (cyr[0] + cyr[2]) / 2
     ly = max(cyr[3] + LAB_UP, (extr[3] + 0.3 + LAB_H / 2) if p['silk'] else 0)
     if PAS.fullmatch(p['ref']) and orient(p, k) == 0:
-        ly = min(max(ROW_LY, cyr[3] + 0.5), cyr[3] + 1.1); ls = ls - (ls % 2)                    # no extra height for a row part
-    cx += LSHIFT[ls][0]; ly += LSHIFT[ls][1]
+        ly = min(max(ROW_LY, cyr[3] + 0.5), cyr[3] + 1.1); ls = ls - (ls % 2) if ls < 10 else ls                    # no extra height for a row part
+    if ls >= 10:                                                  # beside (silkread 2b): ls 10 east, 11 west of the courtyard, centred in y, 0.3 mm off it
+        ly = (cyr[1] + cyr[3]) / 2
+        cx = cyr[2] + 0.3 + w / 2 if ls == 10 else cyr[0] - 0.3 - w / 2
+    else:
+        cx += LSHIFT[ls][0]; ly += LSHIFT[ls][1]
     lab = (cx - w / 2, ly - LAB_H / 2, cx + w / 2, ly + LAB_H / 2)
     return dict(ext=extr, cy=cyr, lab=lab, zone=(lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), ly=ly, gap=lab[1] + 0.1 - cyr[3])
 
 
-def u101_label_east(P, cur=None):
+def u101_label_east(P, cur=None, ref='U101'):
     """U101's designator horizontal beside its pin-free east end: text west edge 0.3 mm from the courtyard, centred in y on it. Returns (label box, zone box, centre)"""
-    x, y = (cur or {}).get('U101', (P['U101']['x'], P['U101']['y']))
-    c = P['U101']['cy']; w = LAB_W * 4
+    x, y = (cur or {}).get(ref, (P[ref]['x'], P[ref]['y']))
+    c0 = P[ref]['cy']; c = (c0[0] + x - P[ref]['x'], c0[1] + y - P[ref]['y'], c0[2] + x - P[ref]['x'], c0[3] + y - P[ref]['y']); w = LAB_W * 4
     cx = c[2] + 0.3 + w / 2; cy = (c[1] + c[3]) / 2
     lab = (cx - w / 2, cy - LAB_H / 2, cx + w / 2, cy + LAB_H / 2)
     return lab, (lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), (cx, cy)
