@@ -84,6 +84,17 @@ def test_a_named_ic_beside_its_end_but_off_centre_or_far_fails():
         assert has(silkread.findings(ic_board((x, y, 0.0)), east_end={'U1'}), 'U1:', 'beside its east end'), (x, y)
 
 
+def test_a_named_part_may_carry_its_designator_below():
+    under = (10.0, 10.0 - 0.75 - 0.2 - 0.5, 0.0)                      # A's courtyard bottom 9.25: text top 0.2 below it
+    assert silkread.findings(board({'A': under}), BNC, edge_headers={'H'}, below={'A'}) == []
+    assert has(find({'A': under}), 'A:', 'not centred above it')      # unnamed: the ordinary rule
+
+
+def test_a_named_part_below_but_off_centre_far_or_above_fails():
+    for x, y in ((10.6, 8.55), (10.0, 7.75), (10.0, 11.4), (10.0, 8.95)):   # off centre, 1.0 below, above, 0.2 into it
+        assert has(silkread.findings(board({'A': (x, y, 0.0)}), BNC, edge_headers={'H'}, below={'A'}), 'A:', 'below it'), (x, y)
+
+
 def test_a_missing_designator_fails():
     assert has(find({'A': None}), 'A:', 'no designator')
 
@@ -247,6 +258,8 @@ EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 207, 'kicad/afe-proto.kicad_pcb': 207}
 # D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
 EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101'}, 'kicad/afe-proto.kicad_pcb': set()}
+# and the parts whose designator sits below them (rule 2b).
+BELOW = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'R303', 'R304', 'C301'}, 'kicad/afe-proto.kicad_pcb': set()}
 
 
 @pytest.mark.pcbnew
@@ -254,6 +267,6 @@ EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101'}, 'kicad
 def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
     f = silkread.findings(boardio.read_board(str(p)), LABELS, edge_headers=EDGE, silk=silkread.read_silk(p.read_text()),
-                          east_end=EAST_END[rel])
+                          east_end=EAST_END[rel], below=BELOW[rel])
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
     assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'
