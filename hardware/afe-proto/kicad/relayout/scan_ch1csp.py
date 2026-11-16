@@ -216,7 +216,7 @@ def _near_set():
     return out
 CSP = set(os.environ.get('CSPSET', '').split(',')) if os.environ.get('CSPSET') else set(_near_set())
 print('CH1 FREE', sorted(CSP))
-FENCE = (64.4, 31.8, 92.0, 48.7)
+FENCE = tuple(float(v) for v in os.environ.get('FENCEBOX', '64.4,31.8,92.0,48.7').split(','))
 pin6 = (pos['U301'][0] + padrel['U301']['6'][0], pos['U301'][1] + padrel['U301']['6'][1])
 pin5 = (pos['U301'][0] + padrel['U301']['5'][0], pos['U301'][1] + padrel['U301']['5'][1])
 j603_5 = (b.fp_x[b.ref_index('J603')] + padrel['J603']['5'][0], b.fp_y[b.ref_index('J603')] + padrel['J603']['5'][1])
@@ -256,7 +256,7 @@ def single(ref, d, mode, xs, ys, keep=None):
     ok = (C[0] >= FENCE[0] - 0.01) & (C[1] >= FENCE[1] - 0.01) & (C[2] <= FENCE[2] + 0.01) & (C[3] <= FENCE[3] + 0.01)
     ok &= (L[2] <= FENCE[2] + 0.01) & (L[3] <= FENCE[3] + 0.01) & (L[0] >= FENCE[0] - 0.01)
     for r_, (sx, sy) in static:
-        if abs(sx - 80) > 25 or abs(sy - 40) > 22: continue
+        if abs(sx - FENCE_CX) > 30 or abs(sy - FENCE_CY) > 30: continue
         Cs, Ls = shp(sp[r_], sx, sy)
         ok &= ~conf_np(C, L, Cs, Ls)
     for q in obst:
@@ -280,6 +280,7 @@ KINDS = ('above', 'east', 'west')
 RULE3B = not os.environ.get('NO3B')
 for _r in CSP: LPm.LABMODES.pop(_r, None)
 BESIDE_STATIC = {r: m for r, m in LABMODE.items() if m in ('E', 'W') and r not in CSP}
+FENCE_CX = (FENCE[0] + FENCE[2]) / 2; FENCE_CY = (FENCE[1] + FENCE[3]) / 2
 G = float(os.environ.get('GRID', '0.2')); BF = set(os.environ.get('BF', '').split(','))
 u = {p: (pos['U401'][0] + padrel['U401'][p][0], pos['U401'][1] + padrel['U401'][p][1]) for p in padrel['U401'] if p in '123456789' or p in ('10', '11', '12')}
 # (ref, own pad, U401 pin, limit)
@@ -308,7 +309,16 @@ for ref in sorted(CSP):
         if os.environ.get('PIN') and ref in FREED:
             p, X, Y = single(ref, d, mode, np.array([pos[ref][0]]), np.array([pos[ref][1]]))
         else:
-            p, X, Y = single(ref, d, mode, np.arange(FENCE[0], FENCE[2], G), np.arange(FENCE[1], FENCE[3], G))
+            _w = float(os.environ.get('UNTIEDW', '0')) if not TIES.get(ref) else 0
+            if _w:
+                p, X, Y = single(ref, d, mode, np.arange(max(FENCE[0], pos[ref][0] - _w), min(FENCE[2], pos[ref][0] + _w) + 1e-9, G), np.arange(max(FENCE[1], pos[ref][1] - _w), min(FENCE[3], pos[ref][1] + _w) + 1e-9, G))
+            elif TIES.get(ref) and os.environ.get('GTIED') and min(t[3] for t in TIES[ref]) <= float(os.environ.get('TIGHT', '4.5')):
+                _g = float(os.environ['GTIED'])
+                x0_ = max(FENCE[0], max(u_all[(ic_, pin)][0] - lim - 2.5 for pad, ic_, pin, lim in TIES[ref])); x1_ = min(FENCE[2], min(u_all[(ic_, pin)][0] + lim + 2.5 for pad, ic_, pin, lim in TIES[ref]))
+                y0_ = max(FENCE[1], max(u_all[(ic_, pin)][1] - lim - 2.5 for pad, ic_, pin, lim in TIES[ref])); y1_ = min(FENCE[3], min(u_all[(ic_, pin)][1] + lim + 2.5 for pad, ic_, pin, lim in TIES[ref]))
+                p, X, Y = single(ref, d, mode, np.arange(x0_, x1_ + 1e-9, _g), np.arange(y0_, y1_ + 1e-9, _g))
+            else:
+                p, X, Y = single(ref, d, mode, np.arange(FENCE[0], FENCE[2], G), np.arange(FENCE[1], FENCE[3], G))
         ok = np.ones(len(X), bool)
         for pad, ic_, pin, lim in TIES[ref]:
             ox, oy = padoff(ref, pad, d)
