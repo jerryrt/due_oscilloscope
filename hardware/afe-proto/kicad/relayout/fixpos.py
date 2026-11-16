@@ -18,7 +18,7 @@ LADDER = {'R503', 'R504', 'R505', 'R506', 'R507', 'R508'}
 HAND = {'R508': (52.07, 6.5), 'R506': (57.15, 6.5), 'R504': (62.23, 6.5), 'R507': (54.61, 9.35), 'R505': (59.69, 9.35),
         'R503': (63.05, 10.15), 'J501': (56.54, 14.9), 'C502': (58.6, 26.4), 'D501': (62.4, 28.45), 'R509': (51.0, 38.4),
         'R405': (36.4, 11.2), 'C408': (40.2, 11.4), 'C407': (40.2, 16.25), 'R407': (42.2, 21.1), 'R401': (29.4, 17.3), 'R409': (29.6, 21.1), 'R406': (37.8, 21.1), 'R403': (32.4, 8.3), 'R404': (36.9, 7.55), 
-        'TP402': (22.0, 25.5), 'TP403': (27.0, 25.5), 'TP404': (32.0, 25.5), 'TP401': (37.0, 25.5), 'TP405': (42.0, 25.5), 'R408': (23.0, 29.5), 'R410': (29.0, 29.5),  'C402': (36.9, 14.9), 'C403': (33.9, 17.9), 'C401': (29.5, 11.5), 'R302': (78.55, 9.25),  'R303': (82.0, 7.5), 'C301': (78.65, 7.5)}
+        'TP402': (22.0, 25.5), 'TP403': (27.0, 25.5), 'TP404': (32.0, 25.5), 'TP401': (37.0, 25.5), 'TP405': (42.0, 25.5), 'R408': (23.0, 29.5), 'R410': (29.0, 29.5),  'C402': (36.9, 14.9), 'C403': (33.9, 17.9), 'C401': (29.5, 11.5), 'R302': (78.55, 9.1), 'R303': (82.0, 7.35), 'C301': (78.6, 7.35), 'R305': (85.3, 6.95), 'C304': (85.45, 8.9)}
 ANCH = set(C.ANCHORS) | {'R411', 'U101', 'U301', 'U401', 'C402'} | set(HAND)
 LOCKX = WALLREFS | {'R110', 'J501'}
 NOLAB = ['J601','J602','J603','J604','J605','J606','J607','J101','J201','J301']
@@ -53,6 +53,7 @@ for r in ('J601','J602','J603','J604','J605','J606','J607'):
         else: obst.append((cxm - w / 2, c[1] - 1.2, cxm + w / 2, c[1] - 0.2))                              # upper half: below
     else: obst.append((cxm - w / 2, c[3] + 0.2, cxm + w / 2, c[3] + 1.2))
 
+obst[3] = (obst[3][0] - 0.35, obst[3][1] - 0.35, obst[3][2] + 0.35, obst[3][3] + 0.35)    # J603's label: 1.0 mm clear of every part body (spec lead)
 BRIDGES_ = frozenset({'R309','R310','R515','R516','R110','D101','D201','R107','R207','TP101','TP201'})
 obst.append((65.7, 4.4, 66.4, 40.0, BRIDGES_))      # the A1 and A0 lines run up the wall: only the parts on them may stand in their columns
 obst.append((68.2, 4.4, 68.9, 40.0, BRIDGES_))
@@ -173,7 +174,8 @@ for r_, v_ in HAND.items(): pos[r_] = v_
 pos['R411'] = (48.275, 3.1)
 from pcbtools.labelplace import P as _P
 
-LABMODE = json.load(open('whatif/_scratch/labmode.json')) if os.path.exists('whatif/_scratch/labmode.json') else {}
+_lmf = os.environ.get('LABMODEFILE', 'whatif/_scratch/labmode.json')
+LABMODE = json.load(open(_lmf)) if os.path.exists(_lmf) else {}
 LPm.LABMODES.update(LABMODE)
 def _setmode(p):
     m = LABMODE.get(p.ref, 'A')
