@@ -66,6 +66,8 @@ def _bb(p, x, y):
 
 
 def _obst_bad(p, x, y, q, tol=0.0):
+    if len(q) > 4 and p.ref in q[4]:
+        return False                                   # an obstacle may name the parts it does not apply to (its fifth element)
     C, L = _shapes(p, x, y)
     for a in (C, L):
         px, py = _pen(a, q, LC - tol)
@@ -464,7 +466,7 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
     return pos, violations(parts, pos, rect, anchors, obstacles, caps, spans)
 
 
-def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6, caps=(), spans=()):
+def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6, caps=(), spans=(), weights=None, xmin=None, nets=(), w_net=0.0):
     """simulated annealing on (violations + w_disp * displacement from the target), one free part moved at a time; the parts in a violation are moved
     most. -> (best pos, its violations)"""
     LOCK.clear()
@@ -498,6 +500,24 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         pos[r] = old
         return 3 * n
 
+
+    netsof = {}
+    for ni, (members, w) in enumerate(nets):
+        for m in members:
+            netsof.setdefault(m[0], []).append(ni)
+
+    def hpwl(ni, r=None, p=None):
+        members, w = nets[ni]
+        xs, ys = [], []
+        for ref, pad in members:
+            q = p if ref == r else pos[ref]
+            xs.append(q[0] + pad[0])
+            ys.append(q[1] + pad[1])
+        return w * ((max(xs) - min(xs)) + (max(ys) - min(ys)))
+
+    def netcost(r, p):
+        return w_net * sum(hpwl(ni, r, p) for ni in netsof.get(r, ()))
+
     def cost(r, p):
         i = idx[r]
         n = 0.0
@@ -515,24 +535,27 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
             if not (q[0] + LM - 0.01 <= L[0] and L[2] <= q[2] - LM + 0.01 and L[3] <= q[3] - LM + 0.01):
                 n += 1
         n += capcost(r, p)
+        n += netcost(r, p)
+        if xmin and r in xmin and p[0] < xmin[r]:
+            n += 2
         t = target[r]
-        return n + w_disp * (abs(p[0] - t[0]) + abs(p[1] - t[1]))
+        wt = (weights or {}).get(r, 1.0)
+        return n + w_disp * wt * (abs(p[0] - t[0]) + abs(p[1] - t[1]))
 
     free = [r for r in refs if parts[idx[r]].free]
     bestv = None
     for it in range(iters):
         if it % 200 == 0:
             bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
-            if bestv is None or len(bad) < len(bestv[1]):
-                bestv = (dict(pos), bad)
-            if not bad:
-                break
+            sc = (len(bad), sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
+            if bestv is None or sc < bestv[2]:
+                bestv = (dict(pos), bad, sc)
             hot = sorted({r.strip().split(' ')[0] for v in bad for r in v.replace(':', '/').split('/')[:2] if r.strip().split(' ')[0] in idx})
         temp = t0 * (1 - it / iters)
         r = hot[rng.integers(len(hot))] if rng.random() < 0.7 else free[rng.integers(len(free))]
         if not parts[idx[r]].free:
             continue
-        s = rng.choice([0.25, 0.5, 1.0, 2.0, 3.0])
+        s = rng.choice([0.1, 0.25, 0.5, 1.0, 2.0])
         dx, dy = (rng.normal(0, s), rng.normal(0, s))
         if r in lock_x:
             dx = 0.0
@@ -541,6 +564,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         if d <= 0 or rng.random() < np.exp(-d / max(temp, 1e-3)):
             pos[r] = p
     bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
-    if bestv is None or len(bad) <= len(bestv[1]):
-        bestv = (dict(pos), bad)
-    return bestv
+    sc = (len(bad), sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
+    if bestv is None or sc < bestv[2]:
+        bestv = (dict(pos), bad, sc)
+    return bestv[0], bestv[1]
