@@ -33,6 +33,7 @@ class P:
     def __init__(self, ref, r, free, nolabel=False):
         self.ref = ref
         self.free = free
+        self.nolabel_pair = False
         self.rx0, self.ry0, self.rx1, self.ry1 = r
         self.w = 0.0 if nolabel else len(ref) * silkread.CHAR_ADV * LABEL_H
         self.cx = (self.rx0 + self.rx1) / 2
@@ -83,7 +84,7 @@ def _choose(pi, xi, yi, pj, xj, yj):
     return 'y', (a[1] + a[3]) <= (b[1] + b[3])
 
 
-def solve(refs, rel, target, fence, anchors, lock_x, obstacles, rounds=40, flips=25, verbose=False, nolabel=()):
+def solve(refs, rel, target, fence, anchors, lock_x, obstacles, rounds=40, flips=25, verbose=False, nolabel=(), caps=(), spans=(), weights=None, xmin=None):
     LOCK.clear()
     LOCK.update(lock_x)
     n = len(refs)
@@ -125,11 +126,11 @@ def solve(refs, rel, target, fence, anchors, lock_x, obstacles, rounds=40, flips
             print('round', rnd, 'new rules', new)
         if rnd and not new:
             break
-        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles)
+        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles, caps, spans, idx, weights, xmin)
     def snapped(c):
         return {r: (round(float(np.round(c[i, 0] / SNAP) * SNAP), 3), round(float(np.round(c[i, 1] / SNAP) * SNAP), 3)) for i, r in enumerate(refs)}
     out = snapped(cur)
-    bad = violations(parts, out, rect, anchors, obstacles)
+    bad = violations(parts, out, rect, anchors, obstacles, caps, spans)
     best = (len(bad), out, bad)
     rng = np.random.default_rng(1)
     for flip in range(flips):
@@ -155,14 +156,14 @@ def solve(refs, rel, target, fence, anchors, lock_x, obstacles, rounds=40, flips
             changed += 1
         if not changed:
             break
-        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles)
+        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles, caps, spans, idx, weights, xmin)
         for i in range(n):
             for j in range(i + 1, n):
                 if (parts[i].free or parts[j].free) and (i, j) not in pair_rules and _pair_bad(parts[i], *cur[i], parts[j], *cur[j]):
                     pair_rules[(i, j)] = _choose(parts[i], *cur[i], parts[j], *cur[j])
-        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles)
+        cur = _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles, caps, spans, idx, weights, xmin)
         out = snapped(cur)
-        bad = violations(parts, out, rect, anchors, obstacles)
+        bad = violations(parts, out, rect, anchors, obstacles, caps, spans)
         if verbose:
             print('flip round', flip, 'violations', len(bad))
         if len(bad) < best[0]:
@@ -170,7 +171,7 @@ def solve(refs, rel, target, fence, anchors, lock_x, obstacles, rounds=40, flips
     return best[1], best[2]
 
 
-def _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles):
+def _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles, caps, spans, idx, weights, xmin):
     n = len(parts)
     fi = [i for i, p in enumerate(parts) if p.free]
     pos = {i: k for k, i in enumerate(fi)}
@@ -226,14 +227,69 @@ def _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles):
             add({Y(i): 1.0}, q[1] - LC - p.ly1)
         else:
             add({Y(i): -1.0}, -(q[3] + LC - p.ry0))
+
+    # hard-ish distance caps: pad a of part ia within D of pad b of part ib (an octagon round the circle), and net spans
+    CAPW = 5000.0
+    extra = 0
+    xtra_rows = []     # (coeffs, rhs, weight) with variable ids that may refer to extra columns, filled after nf, nv known
+
+    def comb(ref, pad, axis):
+        """(coefficients, constant) of the pad's coordinate: position variable plus the pad offset, or a constant for a fixed part"""
+        i = idx[ref]
+        off = pad[0 if axis == 'x' else 1]
+        if parts[i].free:
+            return {(X if axis == 'x' else Y)(i): 1.0}, off
+        return {}, t[i, 0 if axis == 'x' else 1] + off
+
+    for (ra, pa, rb, pb, D) in caps:
+        if not (parts[idx[ra]].free or parts[idx[rb]].free):
+            continue
+        cxa, ka = comb(ra, pa, 'x')
+        cxb, kb = comb(rb, pb, 'x')
+        cya, la = comb(ra, pa, 'y')
+        cyb, lb = comb(rb, pb, 'y')
+        dxc = dict(cxa)
+        for v, c in cxb.items():
+            dxc[v] = dxc.get(v, 0.0) - c
+        dyc = dict(cya)
+        for v, c in cyb.items():
+            dyc[v] = dyc.get(v, 0.0) - c
+        kx, ky = ka - kb, la - lb
+        for sx in (1, -1):
+            xtra_rows.append(({v: sx * c for v, c in dxc.items()}, D - sx * kx, CAPW))
+        for sy in (1, -1):
+            xtra_rows.append(({v: sy * c for v, c in dyc.items()}, D - sy * ky, CAPW))
+        for sx in (1, -1):
+            for sy in (1, -1):
+                co = {}
+                for v, c in dxc.items():
+                    co[v] = co.get(v, 0.0) + sx * c
+                for v, c in dyc.items():
+                    co[v] = co.get(v, 0.0) + sy * c
+                xtra_rows.append((co, 1.38 * D - sx * kx - sy * ky, CAPW))
+    for (members, Wx, Wy) in spans:
+        for axis, W in (('x', Wx), ('y', Wy)):
+            vmax, vmin = 4 * nf + extra, 4 * nf + extra + 1
+            extra += 2
+            for ref, pad in members:
+                co, k = comb(ref, pad, axis)
+                c1 = dict(co)
+                c1[vmax] = c1.get(vmax, 0.0) - 1.0          # coordinate <= max
+                xtra_rows.append((c1, -k, CAPW))
+                c2 = {v: -c for v, c in co.items()}
+                c2[vmin] = c2.get(vmin, 0.0) + 1.0           # min <= coordinate
+                xtra_rows.append((c2, k, CAPW))
+            xtra_rows.append(({vmax: 1.0, vmin: -1.0}, W, CAPW))
+    for co, rhs, w in xtra_rows:
+        rows.append((co, rhs, w))
     ns = len(rows)
-    nv = 4 * nf + ns
+    nv = 4 * nf + extra + ns
     A = lil_matrix((ns + 4 * nf, nv))
     ub = np.zeros(ns + 4 * nf)
     for r, (co, rhs, _) in enumerate(rows):
         for v, c in co.items():
             A[r, v] = c
-        A[r, 4 * nf + r] = -1.0
+        A[r, 4 * nf + extra + r] = -1.0
         ub[r] = rhs
     r0 = ns
     for k, i in enumerate(fi):
@@ -248,7 +304,15 @@ def _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles):
             r0 += 1
     c = np.zeros(nv)
     c[2 * nf:4 * nf] = 1.0
-    c[4 * nf:] = SLACK
+    if weights:
+        for k, i in enumerate(fi):
+            w = weights.get(parts[i].ref, 1.0)
+            c[2 * nf + k] = w
+            c[3 * nf + k] = w
+    c[4 * nf + extra:] = SLACK
+    for r, (co, rhs, w) in enumerate(rows):
+        if w is not True and w is not False:
+            c[4 * nf + extra + r] = w
     bounds = []
     for k, i in enumerate(fi):
         p = parts[i]
@@ -258,10 +322,12 @@ def _lp(parts, t, rect, lock_x, pair_rules, obst_rules, obstacles):
         p = parts[i]
         q = rect[i]
         bounds.append((q[1] - p.ry0, min(q[3] - p.ry1, q[3] - LM - p.ly1, INTERIOR[3] - p.ly1)))
-    bounds += [(0, None)] * (2 * nf + ns)
+    bounds += [(0, None)] * (2 * nf) + [(None, None)] * extra + [(0, None)] * ns
     for k, i in enumerate(fi):
         if parts[i].ref in LOCK:
             bounds[k] = (t[i, 0], t[i, 0])
+        if xmin and parts[i].ref in xmin:
+            bounds[k] = (max(bounds[k][0], xmin[parts[i].ref]), bounds[k][1])
     res = linprog(c, A_ub=A.tocsr(), b_ub=ub, bounds=bounds, method='highs')
     if res.status != 0:
         raise RuntimeError('linprog: ' + res.message)
@@ -276,13 +342,28 @@ LM = 0.0                 # a label keeps this far inside its block's outline (si
 INTERIOR = (17.5, 4.6, 92.0, 48.7)      # a label may leave its block's rectangle (traces run under it), not this one
 
 
-def violations(parts, pos, rect, anchors, obstacles):
+def cap_bad(caps, spans, pos, tol=0.05):
+    out = []
+    for (ra, pa, rb, pb, D) in caps:
+        dx = pos[ra][0] + pa[0] - pos[rb][0] - pb[0]
+        dy = pos[ra][1] + pa[1] - pos[rb][1] - pb[1]
+        if (dx * dx + dy * dy) ** 0.5 > D + tol:
+            out.append(f'cap {ra}-{rb}: {(dx * dx + dy * dy) ** 0.5:.2f} > {D:.2f}')
+    for k, (members, Wx, Wy) in enumerate(spans):
+        xs = [pos[r][0] + pad[0] for r, pad in members]
+        ys = [pos[r][1] + pad[1] for r, pad in members]
+        if max(xs) - min(xs) > Wx + tol or max(ys) - min(ys) > Wy + tol:
+            out.append(f'span {k}: {max(xs) - min(xs):.2f} x {max(ys) - min(ys):.2f} > {Wx:.2f} x {Wy:.2f}')
+    return out
+
+
+def violations(parts, pos, rect, anchors, obstacles, caps=(), spans=()):
     bad = []
     n = len(parts)
     for i in range(n):
         for j in range(i + 1, n):
-            if not (parts[i].free or parts[j].free):
-                continue
+            if not (parts[i].free or parts[j].free) and not parts[i].nolabel_pair:
+                pass
             if _pair_bad(parts[i], *pos[parts[i].ref], parts[j], *pos[parts[j].ref], tol=0.05):
                 bad.append(f'{parts[i].ref}/{parts[j].ref}')
         for k, q in enumerate(obstacles):
@@ -296,10 +377,10 @@ def violations(parts, pos, rect, anchors, obstacles):
                 bad.append(f'{p.ref}: outside its fence')
             if not (q[0] + LM - 0.01 <= L[0] and L[2] <= q[2] - LM + 0.01 and L[3] <= q[3] - LM + 0.01 and INTERIOR[0] - 0.01 <= L[0] and L[2] <= INTERIOR[2] + 0.01):
                 bad.append(f'{p.ref}: label outside its outline')
-    return bad
+    return bad + cap_bad(caps, spans, pos)
 
 
-def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds=6, seed=0):
+def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds=6, seed=0, caps=(), spans=()):
     """hill-climb on the number of violations: shift one free part by a few steps along an axis and keep the move when the count falls (ties are
     kept when the part gets nearer the origin it had). pos {ref: (x, y)} -> (pos, violations)"""
     LOCK.clear()
@@ -319,6 +400,19 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
             rect[i] = best[1]
     pos = dict(pos)
 
+    def capcost(r, p):
+        old = pos[r]
+        pos[r] = p
+        n = 0
+        for c in caps:
+            if r in (c[0], c[2]):
+                n += 1 if cap_bad([c], [], pos) else 0
+        for sp in spans:
+            if any(m[0] == r for m in sp[0]):
+                n += 1 if cap_bad([], [sp], pos) else 0
+        pos[r] = old
+        return 3 * n
+
     def cost(r, p):
         """violations that involve part r with the others, at position p"""
         i = idx[r]
@@ -336,13 +430,14 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
                 n += 1
             if not (q[0] + LM - 0.01 <= L[0] and L[2] <= q[2] - LM + 0.01 and L[3] <= q[3] - LM + 0.01):
                 n += 1
+        n += capcost(r, p)
         return n
 
     steps = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
     rng = np.random.default_rng(seed)
     for _ in range(rounds):
         improved = False
-        bad = violations(parts, pos, rect, anchors, obstacles)
+        bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
         names = set()
         for v in bad:
             for r in v.replace(':', '/').split('/')[:2]:
@@ -366,10 +461,10 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
                 improved = True
         if not improved:
             break
-    return pos, violations(parts, pos, rect, anchors, obstacles)
+    return pos, violations(parts, pos, rect, anchors, obstacles, caps, spans)
 
 
-def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6):
+def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6, caps=(), spans=()):
     """simulated annealing on (violations + w_disp * displacement from the target), one free part moved at a time; the parts in a violation are moved
     most. -> (best pos, its violations)"""
     LOCK.clear()
@@ -390,6 +485,19 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
     pos = dict(pos)
     rng = np.random.default_rng(seed)
 
+    def capcost(r, p):
+        old = pos[r]
+        pos[r] = p
+        n = 0
+        for c in caps:
+            if r in (c[0], c[2]):
+                n += 1 if cap_bad([c], [], pos) else 0
+        for sp in spans:
+            if any(m[0] == r for m in sp[0]):
+                n += 1 if cap_bad([], [sp], pos) else 0
+        pos[r] = old
+        return 3 * n
+
     def cost(r, p):
         i = idx[r]
         n = 0.0
@@ -406,6 +514,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
                 n += 1
             if not (q[0] + LM - 0.01 <= L[0] and L[2] <= q[2] - LM + 0.01 and L[3] <= q[3] - LM + 0.01):
                 n += 1
+        n += capcost(r, p)
         t = target[r]
         return n + w_disp * (abs(p[0] - t[0]) + abs(p[1] - t[1]))
 
@@ -413,7 +522,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
     bestv = None
     for it in range(iters):
         if it % 200 == 0:
-            bad = violations(parts, pos, rect, anchors, obstacles)
+            bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
             if bestv is None or len(bad) < len(bestv[1]):
                 bestv = (dict(pos), bad)
             if not bad:
@@ -431,7 +540,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         d = cost(r, p) - cost(r, pos[r])
         if d <= 0 or rng.random() < np.exp(-d / max(temp, 1e-3)):
             pos[r] = p
-    bad = violations(parts, pos, rect, anchors, obstacles)
+    bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
     if bestv is None or len(bad) <= len(bestv[1]):
         bestv = (dict(pos), bad)
     return bestv
