@@ -55,7 +55,7 @@ def cands_for(r, center, ks, lss, rad, step):
             if not len(idx): continue
             for c0 in range(0, len(idx), 2000):
                 ii = idx[c0:c0 + 2000]
-                bad = OVm(CYB[ii], f_cy, 0.02).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1)
+                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1)
                 infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
                 bad |= OVm(infl, f_ext, 0).any(1)
                 for j in np.nonzero(~bad)[0]:
@@ -64,6 +64,7 @@ def cands_for(r, center, ks, lss, rad, step):
 
 KSEL = 100
 TAG = sys.argv[1] if len(sys.argv) > 1 else 'a'
+TIEDSET = set(os.environ.get('TIEDSET', 'C501,C502,C503').split(','))
 OFFS = {'U501': (float(sys.argv[2]), float(sys.argv[3])), 'U502': (float(sys.argv[4]), float(sys.argv[5]))} if len(sys.argv) > 5 else {'U501': (0, 0), 'U502': (0, 0)}
 ics0 = {r: P0[r] for r in ICS}
 LIM = {}
@@ -77,6 +78,7 @@ for r in PART:
 for r, v in list(LIM.items()):
     if r == 'C503': LIM[r] = [(n, net, 2.8, ic, pn) for n, net, l, ic, pn in v]
     if r in ('C501', 'C502'): LIM[r] = [(n, net, min(l, 2.99), ic, pn) for n, net, l, ic, pn in v]
+LIM = {r: v for r, v in LIM.items() if r in TIEDSET}
 icp = {}
 def padpos(c, n):
     p = P0[c[0]]; cs, sn = RP.COS[c[1]], RP.SIN[c[1]]
@@ -92,10 +94,12 @@ def gen(r):
     L = cands_for(r, (p['x'], p['y']), ks, (0, 2, 4, 10, 11), RAD, STEP)
     pm = P0[r]
     L += cands_for(r, (pm['x'], pm['y']), ks, (0, 2, 4, 10, 11), 9.0 if r == 'J501' else 4.0, STEP)
+    L += cands_for(r, (53.1, 26.75), ks, (0, 2, 4, 10, 11), 22.5, 0.25)
     L = list({(c[0], c[1], c[2], c[3], c[4]): c for c in L}.values())
     for (n, net, lim, ic, pn) in LIM.get(r, []):
         xy = icp[(ic, pn)]
         L += cands_for(r, xy, ks, (0, 2, 4, 10, 11), min(lim + 0.5, 6.0), STEP)
+    if r in ('R501', 'R502', 'R503', 'R504', 'R505'): L = [c for c in L if c[4] <= 27.7]
     return [c for c in L if tie_ok(c)]
 def disp(c):
     p = PN[c[0]]; return math.hypot(c[3] - p['x'], c[4] - p['y'])

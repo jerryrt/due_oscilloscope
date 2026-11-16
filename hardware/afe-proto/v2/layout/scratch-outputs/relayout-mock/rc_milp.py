@@ -66,7 +66,7 @@ for i, p in enumerate(parts):
         # quick reject: bounding windows far apart
         if len(CY1) == 0 or len(CY2) == 0: continue
         if CY1[:, 2].min() + 9 < CY2[:, 0].min() or CY2[:, 2].min() + 9 < CY1[:, 0].min() or CY1[:, 3].min() + 9 < CY2[:, 1].min() or CY2[:, 3].min() + 9 < CY1[:, 1].min(): continue
-        bad = OV2(a1, a2, 0.02) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.5)
+        bad = OV2(a1, a2, 0.0) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.5)
         ii, jj = np.nonzero(bad)
         rows += list(np.repeat(np.arange(nrow, nrow + len(ii)), 2)); cols += [v for a_, b_ in zip(ii, jj) for v in (off[p] + a_, off[q] + b_)]; nrow += len(ii)
 print('conflict rows', nrow, flush=True)
