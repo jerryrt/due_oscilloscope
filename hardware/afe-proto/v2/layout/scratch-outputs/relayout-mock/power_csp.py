@@ -27,11 +27,12 @@ for r, p in PN.items():
         if abs((p['tang'] % 180) - 90) < 1: w, h = h, w
         fixed_lab.append((p['tx'] - w / 2, p['ty'] - h / 2, p['tx'] + w / 2, p['ty'] + h / 2))
 # U401 anchored
-u = P0['U401']; gU = RP.part_geom(u)
+UK = int(sys.argv[10]) if len(sys.argv) > 10 else 0
+u = P0['U401']; gU = RP.part_geom(u, UK)
 U_ext = (gU['ext'][0] + UX, gU['ext'][1] + UY, gU['ext'][2] + UX, gU['ext'][3] + UY)
 U_lab = (gU['lab'][0] + UX, gU['lab'][1] + UY, gU['lab'][2] + UX, gU['lab'][3] + UY)
 U_zone = (gU['zone'][0] + UX, gU['zone'][1] + UY, gU['zone'][2] + UX, gU['zone'][3] + UY)
-_ul, _uz, _ = RP.u101_label_east(P0, {'U401': (UX, UY)}, 'U401'); U_lab, U_zone = _ul, _uz
+_ul, _uz, _ = RP.u101_label_east(P0, {'U401': (UX, UY)}, 'U401', UK); U_lab, U_zone = _ul, _uz
 fixed_ext.append(U_ext); fixed_lab.append(U_lab)
 fixed_ext.append((17.9, 33.8, 26.0, 37.0))        # the block name stays top-left
 assert math.hypot(UX - 38.1, UY - 2.54) <= 14.99, 'U401 more than 15 mm from the 5 V pad'
@@ -43,8 +44,8 @@ def pad_abs(ref, k, x, y, n):
     q = [q for q in P0[ref]['pads'] if q['n'] == n][0]
     o = (q['c'][0] - P0[ref]['x'], q['c'][1] - P0[ref]['y']); o = (o[0] * c - o[1] * s_, o[0] * s_ + o[1] * c)
     return (x + o[0], y + o[1])
-NEAR = {'C401': [('1', '3 8 12', 3.0)], 'C402': [('1', '3 8 12', 2.68)], 'C403': [('1', '5', 2.8)], 'C404': [('1', '5', 6.5)], 'C405': [('1', '11', 2.8)], 'C406': [('1', '11', 4.47)],
-        'C407': [('1', '6', 2.8)], 'C408': [('1', '6', 7.11)], 'C409': [('1', '10', 2.77), ('2', '9', 4.36)],
+NEAR = {'C401': [('1', '3 8 12', 6.41)], 'C402': [('1', '3 8 12', 2.68)], 'C403': [('1', '5', 2.93)], 'C404': [('1', '5', 6.5)], 'C405': [('1', '11', 3.33)], 'C406': [('1', '11', 4.47)],
+        'C407': [('1', '6', 4.2)], 'C408': [('1', '6', 7.11)], 'C409': [('1', '10', 2.77), ('2', '9', 4.36)],
         'R402': [('1', '2', 3.69)], 'R401': [('2', '2', 4.53)], 'R405': [('1', '7', 3.51)], 'R404': [('2', '7', 4.76)], 'R403': [('1', '6', 6.47)]}
 BES = ('C403', 'C404', 'C405', 'C406', 'C407')
 def near_ok(ref, k, x, y):
@@ -78,7 +79,7 @@ def cand(ref):
                     if any(ov(e, f, 0.02) for f in fixed_ext) or any(ov(z, f, 0) for f in fixed_ext) or any(ov(lb, f, 0.5) for f in fixed_lab) or ov(e, U_zone, 0) or ov((lb[0] - 0.3, lb[1] - 0.3, lb[2] + 0.3, lb[3] + 0.3), U_ext, 0): continue
                     out.append((ref, k, ls, x, y, e, z, lb))
     return out
-cf = R + 'power_cands_' + '_'.join(str(v) for v in (UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:10])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
+cf = R + 'power_cands_' + '_'.join(str(v) for v in (UK, UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:10])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
 if os.path.exists(cf): C = pickle.load(open(cf, 'rb'))
 else:
     C = {r: cand(r) for r in POW if r != 'U401'}; pickle.dump(C, open(cf, 'wb'))
@@ -105,7 +106,12 @@ def lonely(chs):
                 if math.hypot(a[3] - pp[0], a[4] - pp[1]) <= 4 and ((o == 0 and abs(a[4] - pp[1]) <= 0.05) or (o == 90 and abs(a[3] - pp[0]) <= 0.05)): ok = True; break
         if not ok: bad += 1
     return bad
-ORDER = ['C409', 'C402', 'C401', 'R405', 'C405', 'C406', 'R402', 'R404', 'C407', 'R401', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']
+ORDERS = [['C409', 'C402', 'C401', 'R405', 'C405', 'C406', 'R402', 'R404', 'C407', 'R401', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['R402', 'R401', 'C401', 'C402', 'C409', 'R405', 'R404', 'C405', 'C406', 'C407', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['C401', 'C402', 'R402', 'R401', 'C409', 'R405', 'R404', 'C405', 'C406', 'C407', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['R405', 'R404', 'C409', 'C405', 'C406', 'C402', 'C401', 'R402', 'R401', 'C407', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['C407', 'C403', 'R402', 'R401', 'C401', 'C402', 'R405', 'R404', 'C409', 'C405', 'C406', 'R403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']]
+ORDER = ORDERS[int(sys.argv[9]) if len(sys.argv) > 9 else 0]
 t0 = time.time(); best = [None, 99]; stat = {'deep': 0, 'empt': {}}; nodes = [0]; rnd = random.Random(int(sys.argv[8]) if len(sys.argv) > 8 else 1); BR = int(sys.argv[7]) if len(sys.argv) > 7 else 6
 def dfs(idx, ch):
     nodes[0] += 1
@@ -140,5 +146,5 @@ dfs({r: np.arange(len(C[r])) for r in REST}, [])
 print('nodes', nodes[0], 'deepest', stat['deep'], 'empt', stat['empt'], 'best lonely', best[1], flush=True)
 if best[0]:
     st = {c[0]: [c[3], c[4], ((round(P0[c[0]]['rot']) + 90 * c[1] + 180) % 360) - 180, c[2]] for c in best[0]}
-    st['U401'] = [UX, UY, P0['U401']['rot'], 0]
+    st['U401'] = [UX, UY, ((round(P0['U401']['rot']) + 90 * UK + 180) % 360) - 180, 0]
     json.dump(dict(st=st), open(R + 'power_result_%s_%s_%s.json' % (UX, UY, sys.argv[8] if len(sys.argv) > 8 else 1), 'w')); print(st)

@@ -144,10 +144,13 @@ def part_geom(p, k=0, ls=0):
     return dict(ext=extr, cy=cyr, lab=lab, zone=(lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), ly=ly, gap=lab[1] + 0.1 - cyr[3])
 
 
-def u101_label_east(P, cur=None, ref='U101'):
+def u101_label_east(P, cur=None, ref='U101', k=0):
     """U101's designator horizontal beside its pin-free east end: text west edge 0.3 mm from the courtyard, centred in y on it. Returns (label box, zone box, centre)"""
     x, y = (cur or {}).get(ref, (P[ref]['x'], P[ref]['y']))
-    c0 = P[ref]['cy']; c = (c0[0] + x - P[ref]['x'], c0[1] + y - P[ref]['y'], c0[2] + x - P[ref]['x'], c0[3] + y - P[ref]['y']); w = LAB_W * 4
+    c0 = P[ref]['cy']
+    if k:
+        r_ = rot_box((c0[0] - P[ref]['x'], c0[1] - P[ref]['y'], c0[2] - P[ref]['x'], c0[3] - P[ref]['y']), k); c0 = (r_[0] + P[ref]['x'], r_[1] + P[ref]['y'], r_[2] + P[ref]['x'], r_[3] + P[ref]['y'])
+    c = (c0[0] + x - P[ref]['x'], c0[1] + y - P[ref]['y'], c0[2] + x - P[ref]['x'], c0[3] + y - P[ref]['y']); w = LAB_W * 4
     cx = c[2] + 0.3 + w / 2; cy = (c[1] + c[3]) / 2
     lab = (cx - w / 2, cy - LAB_H / 2, cx + w / 2, cy + LAB_H / 2)
     return lab, (lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), (cx, cy)
