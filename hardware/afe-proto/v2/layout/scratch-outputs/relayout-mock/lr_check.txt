@@ -1,0 +1,14 @@
+[FAIL] LR-1: 37 SMD ground pads without a via of their own: ['C102.2', 'C103.2', 'C104.2', 'C105.2', 'C202.2', 'C203.2']
+[FAIL] LR-2: CH1: x does not fall BNC > R1 > Rnp > U101 > Riso > ADC pad: [102.0, 73.4, 85.3, 82.6, 82.6, 66.0]; CH1: output run 0.0 mm is not longer than the divider side 0.0 mm; CH2: output run 0.0 mm is not longer than the divider side 0.0 mm; channels' divider pads only 5.0 mm apart
+[PASS] LR-3: 10 divider nets: no via, short, no track beside
+[FAIL] LR-4: top ground copper within 0.5 mm of the inverting node (['top pour'])
+[PASS] LR-4 INV_MAX: AWG_FB 0.0 mm, CH1_OUT 0.0 mm, CH2_OUT 0.0 mm (<= 5.0)
+[FAIL] LR-12 DECOUP_MAX: C105 is 3.3 mm from U101 pin 8 (limit 3.0); C306 is 3.0 mm from U301 pin 4 (limit 3.0); C503 is 3.0 mm from U502 pin 8 (limit 3.0)
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409
+[FAIL] LR-6: /+3V3A: consumer group scope is not connected to the star: BR101.1, BR101.2, BR102.1, BR102.2 (+5) unreachable by copper; /+3V3A: consumer group awg is not connected to the star: C305.1, U301.8 unreachable by copper; /+3V3A: consumer group adc is not connected to the star: BR507.1, BR507.2, C502.1, C503.1 (+4) unreachable by copper; /VNEG_G: consumer group awg is not connected to the star: BR401.1, BR401.2, C306.1, U301.4 unreachable by copper
+[PASS] LR-7: DAC0 0.0 mm; back-termination at the BNC; shell pads on ground
+[FAIL] LR-8: VREF: branch 0 (J602.1) is not connected to the source C501.1, U501.2 by copper; VREF: branch 1 (U502.4) is not connected to the source C501.1, U501.2 by copper; VREF: branch 2 (R514.1) is not connected to the source C501.1, U501.2 by copper; VREF: branch 3 (TP501.1) is not connected to the source C501.1, U501.2 by copper
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-11: J101: designator not on silk at 0.8 mm or more; J201: designator not on silk at 0.8 mm or more; J301: designator not on silk at 0.8 mm or more; 13 designator pairs read as one label (same baseline, under 0.6 mm, no waiver): BR504/BR506 0.54, BR507/R501 0.51, BR507/R508 0.54, C103/R108 0.53, C104/R101 0.5, C301/C305 0.57, C401/C405 0.51, C404/C406 0.5, C409/R405 0.5, R403/R404 0.5, R405/R406 0.51, R505/R511 0.51 ...; 53 designator pairs closer than 1.0 mm: BR101/R106 0.77, BR501/BR509 0.68, BR501/R502 0.56, BR502/BR509 0.74, BR504/BR506 0.54, BR507/R501 0.51, BR507/R508 0.54, BR50
+[SKIP] LR-10: skipped by request (--no-drc)
+FAIL: LR-1, LR-2, LR-4, LR-12 DECOUP_MAX, LR-6, LR-8, LR-11

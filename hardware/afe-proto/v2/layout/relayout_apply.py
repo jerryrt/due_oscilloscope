@@ -76,16 +76,16 @@ def main(board, dump, out, places):
         t = t[:s] + blk + t[e:]
     lab = {}                                                         # 2. designators (conservative boxes, for the name search)
     for r, p in P.items():
-        if r in ('J601', 'J605'): continue
+        if r in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'): continue
         if r in RP.FIXED and r != 'U101': continue
         g = G[r]; x, y = pos[r]
         cx = (g['cy'][0] + g['cy'][2]) / 2 + x; ly = g['ly'] + y
         if r in BNCS or r.startswith('MH'): continue
         t = set_ref(t, r, cx, ly)
         lab[r] = (cx - RP.LAB_W * len(r) / 2, ly - RP.LAB_H / 2, cx + RP.LAB_W * len(r) / 2, ly + RP.LAB_H / 2)
-    c = P['J601']['cy']; t = set_ref(t, 'J601', c[0] - 0.3 - 0.95 * 4 / 2, (c[1] + c[3]) / 2)       # a header along x: beyond its left end
-    c = P['J602']['cy']; c3 = P['J603']['cy']; t = set_ref(t, 'J602', (c[2] + c3[0]) / 2, (c[1] + c[3]) / 2, 90)     # between J602 and J603, vertical (no horizontal place exists)
-    c = P['J605']['cy']; t = set_ref(t, 'J605', (c[0] + c[2]) / 2, c[3] + 0.3 + 0.5)                  # a header along y: above its top end
+    for h in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'):          # edge headers: the owner's rule (bcbc1e3d), RP.header_label
+        hx, hy = RP.header_label(P[h]); t = set_ref(t, h, hx, hy)
+        lab[h] = (hx - RP.LAB_W * 2, hy - RP.LAB_H / 2, hx + RP.LAB_W * 2, hy + RP.LAB_H / 2)
     for ref, word in BNCS.items():                                  # 3. BNCs
         s, e = fp_span(t, ref); blk = t[s:e]
         fx, fy, fa, _ = fp_at(blk); ox, oy = fx - SX, SY - fy
@@ -103,27 +103,10 @@ def main(board, dump, out, places):
         t = t[:s] + blk[:i] + prop + blk[j:] + t[e:]
     jx, jy = pos['J501']                                            # 4. J501's function texts
     for w, (ox, oy, tw, th) in RP.J501_TEXTS.items():
-        t = move_text(t, w, jx + ox, jy + oy, 90)
-    # 5. block names: a free corner of the block, 0.5 mm from every label, 0.3 from every part and the outline
-    ext = np.array([(G[r]['ext'][0] + pos[r][0], G[r]['ext'][1] + pos[r][1], G[r]['ext'][2] + pos[r][2 - 2] if False else G[r]['ext'][2] + pos[r][0], G[r]['ext'][3] + pos[r][1]) for r in P])
-    labs = np.array(list(lab.values()))
-    lanes = np.array(RP.LANES)
-    taken = []
+        t = move_text(t, w, jx + ox, jy + oy, 0)
+    # 5. block names: RP.name_box (the top-left-most free place of the block, reserved before the parts were placed)
     for blk, word in NAMES.items():
-        m = RP.Mask(RP.REGIONS[blk], 0.3)
-        w, h = 1.05 * len(word) + 0.2, 1.3
-        r0 = RP.REGIONS[blk]; best = None
-        for x in np.arange(min(r[0] for r in r0), max(r[2] for r in r0), 0.1):
-            for y in np.arange(max(r[3] for r in r0) - h, min(r[1] for r in r0), -0.1):
-                b = (x, y, x + w, y + h)
-                if m.bad(b) > 0: continue
-                if RP.depth(b, ext, 0.5) > 0 or RP.depth(b, labs, 0.8) > 0: continue
-                if taken and RP.depth(b, np.array(taken), 0.5) > 0: continue
-                if blk == 'AWG' and RP.depth(b, lanes, 0.0) > 0: pass
-                score = (y - max(r[3] for r in r0)) ** 2 + 0.3 * (x - min(r[0] for r in r0)) ** 2
-                if best is None or score < best[0]: best = (score, b)
-        assert best, 'no free spot for the name of ' + blk
-        b = best[1]; taken.append(b)
+        b = RP.name_box(blk, P, G)
         t = move_text(t, word, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
         print('name', word, 'at', round((b[0] + b[2]) / 2, 2), round((b[1] + b[3]) / 2, 2))
     # 6. copper: every track and via of a net a moved part touches goes
