@@ -47,7 +47,7 @@ def pad_abs(ref, k, x, y, n):
 NEAR = {'C401': [('1', '3 8 12', 6.41)], 'C402': [('1', '3 8 12', 2.68)], 'C403': [('1', '5', 2.93)], 'C404': [('1', '5', 6.5)], 'C405': [('1', '11', 3.33)], 'C406': [('1', '11', 4.47)],
         'C407': [('1', '6', 4.2)], 'C408': [('1', '6', 7.11)], 'C409': [('1', '10', 2.77), ('2', '9', 4.36)],
         'R402': [('1', '2', 3.69)], 'R401': [('2', '2', 4.53)], 'R405': [('1', '7', 3.51)], 'R404': [('2', '7', 4.76)], 'R403': [('1', '6', 6.47)]}
-BES = ('C403', 'C404', 'C405', 'C406', 'C407')
+BES = ('C403', 'C404', 'C405', 'C406', 'C407', 'R401', 'R402', 'R404', 'R405') + (('R403',) if (len(sys.argv) > 11 and sys.argv[11] == '1') else ())
 def near_ok(ref, k, x, y):
     for n, pins, lim in NEAR.get(ref, []):
         p = pad_abs(ref, k, x, y, n)
@@ -79,7 +79,7 @@ def cand(ref):
                     if any(ov(e, f, 0.02) for f in fixed_ext) or any(ov(z, f, 0) for f in fixed_ext) or any(ov(lb, f, 0.5) for f in fixed_lab) or ov(e, U_zone, 0) or ov((lb[0] - 0.3, lb[1] - 0.3, lb[2] + 0.3, lb[3] + 0.3), U_ext, 0): continue
                     out.append((ref, k, ls, x, y, e, z, lb))
     return out
-cf = R + 'power_cands_' + '_'.join(str(v) for v in (UK, UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:10])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
+cf = R + 'power_cands_' + '_'.join(str(v) for v in (UK, UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:12])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
 if os.path.exists(cf): C = pickle.load(open(cf, 'rb'))
 else:
     C = {r: cand(r) for r in POW if r != 'U401'}; pickle.dump(C, open(cf, 'wb'))
@@ -111,6 +111,9 @@ ORDERS = [['C409', 'C402', 'C401', 'R405', 'C405', 'C406', 'R402', 'R404', 'C407
  ['C401', 'C402', 'R402', 'R401', 'C409', 'R405', 'R404', 'C405', 'C406', 'C407', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
  ['R405', 'R404', 'C409', 'C405', 'C406', 'C402', 'C401', 'R402', 'R401', 'C407', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
  ['C407', 'C403', 'R402', 'R401', 'C401', 'C402', 'R405', 'R404', 'C409', 'C405', 'C406', 'R403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']]
+ORDERS += [['C403', 'C409', 'C402', 'C401', 'R405', 'R402', 'R401', 'C407', 'R404', 'C405', 'C406', 'C404', 'C408', 'R403', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['C403', 'C407', 'R402', 'R401', 'C409', 'C402', 'C401', 'R405', 'R404', 'C405', 'C406', 'C404', 'C408', 'R403', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404'],
+ ['C403', 'C404', 'C408', 'C407', 'R402', 'R401', 'C409', 'C402', 'R405', 'R404', 'C405', 'C406', 'C401', 'R403', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']]
 ORDER = ORDERS[int(sys.argv[9]) if len(sys.argv) > 9 else 0]
 t0 = time.time(); best = [None, 99]; stat = {'deep': 0, 'empt': {}}; nodes = [0]; rnd = random.Random(int(sys.argv[8]) if len(sys.argv) > 8 else 1); BR = int(sys.argv[7]) if len(sys.argv) > 7 else 6
 def dfs(idx, ch):
