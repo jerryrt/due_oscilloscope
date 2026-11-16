@@ -63,23 +63,36 @@ def outline_lines(rects):
 def main(board, dump, out, places):
     t = open(board).read()
     D, P = RP.load(dump)
-    G = {r: RP.part_geom(p) for r, p in P.items()}
-    new = {}
+    kof = {r: int(round((rot_new[r] - P[r]['rot']) / 90.0)) % 4 for r in rot_new}
+    G = {r: RP.part_geom(p, kof.get(r, 0), ls_new.get(r, 0)) for r, p in P.items()}
+    new, rot_new, ls_new = {}, {}, {}
     for f in places:
-        new.update({k: tuple(v) for k, v in json.load(open(f))['st'].items()})
+        for k, v in json.load(open(f))['st'].items():
+            new[k] = (v[0], v[1])
+            if len(v) > 2: rot_new[k] = v[2]
+            if len(v) > 3: ls_new[k] = v[3]
     for r in new: assert r in P and r not in RP.FIXED, r
     pos = {r: new.get(r, (P[r]['x'], P[r]['y'])) for r in P}
-    for r, (x, y) in new.items():                                   # 1. move
+    for r, (x, y) in new.items():                                   # 1. move (and turn)
         s, e = fp_span(t, r); blk = t[s:e]
         fx, fy, fa, m = fp_at(blk)
-        blk = blk[:m.start()] + '\n\t\t(at %s %s%s)' % (fmt(x + SX), fmt(SY - y), (' ' + fmt(fa)) if m.group(3) is not None else '') + blk[m.end():]
+        ra = rot_new.get(r, fa)
+        blk = blk[:m.start()] + '\n\t\t(at %s %s%s)' % (fmt(x + SX), fmt(SY - y), (' ' + fmt(ra)) if (m.group(3) is not None or abs(ra) > 1e-9) else '') + blk[m.end():]
+        dlt = ra - fa
+        if abs(dlt) > 1e-9:                                         # the pads' and the texts' angles are absolute in the file: turn them by the same amount
+            blk = re.sub(r'(\(pad "[^"]*" [^\n]*\n\t\t\t\(at [-\d.]+ [-\d.]+ )?([-\d.]+)?\)', lambda mm: mm.group(0), blk) if False else blk
+            def padfix(mm, dlt=dlt):
+                a = ((float(mm.group(3) or 0) + dlt + 180.0) % 360.0) - 180.0
+                return '%s(at %s %s %s)' % (mm.group(1), mm.group(2), mm.group(4), fmt(a))
+            blk = re.sub(r'(\(pad "[^"]*" [^\n]*\n\t\t\t)\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)', lambda mm: '%s(at %s %s %s)' % (mm.group(1), mm.group(2), mm.group(3), fmt(((float(mm.group(4) or 0) + dlt + 180.0) % 360.0) - 180.0)), blk)
+            blk = re.sub(r'(\(fp_text [^\n]*\n\t\t\t)\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)', lambda mm: '%s(at %s %s %s)' % (mm.group(1), mm.group(2), mm.group(3), fmt(((float(mm.group(4) or 0) + dlt + 180.0) % 360.0) - 180.0)), blk)
         t = t[:s] + blk + t[e:]
     lab = {}                                                         # 2. designators (conservative boxes, for the name search)
     for r, p in P.items():
         if r in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'): continue
         if r in RP.FIXED and r != 'U101': continue
         g = G[r]; x, y = pos[r]
-        cx = (g['cy'][0] + g['cy'][2]) / 2 + x; ly = g['ly'] + y
+        cx = (g['lab'][0] + g['lab'][2]) / 2 + x; ly = (g['lab'][1] + g['lab'][3]) / 2 + y
         if r in BNCS or r.startswith('MH'): continue
         t = set_ref(t, r, cx, ly)
         lab[r] = (cx - RP.LAB_W * len(r) / 2, ly - RP.LAB_H / 2, cx + RP.LAB_W * len(r) / 2, ly + RP.LAB_H / 2)

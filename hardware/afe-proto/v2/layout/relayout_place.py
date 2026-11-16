@@ -30,8 +30,9 @@ REGIONS = {
 HEADER_LABEL_H = 0.5
 LANES = [(65.3, 4.6, 66.8, 18.4), (67.9, 4.6, 69.3, 18.4)]      # A1 (x 66.04) and A0 (x 68.58) cross AWG to J602: no part stands in them
 BLOCK_DIGIT = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL'}
-LAB_H, LAB_W, LAB_UP, ZONE, LAB_GAP, EXT_GAP = float(os.environ.get('RP_LABH', 1.3)), float(os.environ.get('RP_LABW', 0.95)), 0.8, float(os.environ.get('RP_ZONE', 0.3)), float(os.environ.get('RP_GAP', 0.5)), 0.05
+LAB_H, LAB_W, LAB_UP, ZONE, LAB_GAP, EXT_GAP = float(os.environ.get('RP_LABH', 1.3)), float(os.environ.get('RP_LABW', 0.95)), 0.8, float(os.environ.get('RP_ZONE', 0.3)), float(os.environ.get('RP_GAP', 0.5)), 0.02
 RES = 0.05
+SOFT_W = 8.0
 J501_TEXTS = {'ON': (2.54, -2.81, 2.2, 1.4), 'CAL': (-2.54, -2.81, 3.1, 1.4)}   # horizontal, one under pin 3 and one under pin 1: centre offset from J501's origin and the box (text + 0.2 mm all round)
 WEIGHT = {}
 for n in ('CH1_IN', 'CH1_M1', 'CH1_M2', 'CH1_M3', 'CH1_N', 'CH1_NP'): WEIGHT['/' + n] = 9
@@ -90,13 +91,40 @@ def block_of(ref):
     return BLOCK_DIGIT[ref[-3]] if ref not in FIXED else None
 
 
-def part_geom(p):
-    """rel boxes of a part about its origin: ext (courtyard + own silk), cyr, lab (label ink box), zone"""
+COS = (1.0, 0.0, -1.0, 0.0)
+SIN = (0.0, 1.0, 0.0, -1.0)
+ROTATABLE = ('R', 'C', 'BR')                          # two-pad passives turn in 90 degree steps; the label stays horizontal, centred above the turned courtyard
+
+
+def rot_box(b, k):
+    c, s_ = COS[k], SIN[k]
+    pts = [(x * c - y * s_, x * s_ + y * c) for x in (b[0], b[2]) for y in (b[1], b[3])]
+    return (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
+
+
+def rotatable(ref):
+    return ref.startswith(ROTATABLE)
+
+
+LSHIFT = [(dx, dy) for dx in (0.0, -0.25, 0.25) for dy in (0.0, 0.25)]   # the label may sit up to 0.25 mm off centre and 0.25 mm higher (silkread allows 0.3 and 0.6)
+
+
+import re
+PAS = re.compile(r'(?:R|C|BR|L|FB)(\d)\d\d$')
+ROW_LY = 1.85                    # a horizontal passive's label centre above its origin: one height for a whole row (align.py rule 2); gap to the courtyard 0.18-0.6
+
+
+def orient(p, k):
+    return round((p['rot'] + 90 * k) % 180.0) % 180
+
+
+def part_geom(p, k=0, ls=0):
+    """rel boxes of a part about its origin, turned by k * 90 degrees: ext (courtyard + own silk), cy, lab (label ink box), zone"""
     x, y = p['x'], p['y']
     cy = p['cy']; ext = list(cy)
     if p['silk']:
         ext = list(box_u(ext, p['silk']))
-    r = lambda b: (b[0] - x, b[1] - y, b[2] - x, b[3] - y)
+    r = lambda b: rot_box((b[0] - x, b[1] - y, b[2] - x, b[3] - y), k)
     cyr, extr = r(cy), r(ext)
     if p['ref'] == 'J501':                      # its function texts "ON" and "CAL" go with it, below the courtyard (J501_TEXTS)
         for (ox, oy, tw, th) in J501_TEXTS.values():
@@ -104,6 +132,9 @@ def part_geom(p):
     n = len(p['ref']); w = LAB_W * n
     cx = (cyr[0] + cyr[2]) / 2
     ly = max(cyr[3] + LAB_UP, (extr[3] + 0.3 + LAB_H / 2) if p['silk'] else 0)
+    if PAS.fullmatch(p['ref']) and orient(p, k) == 0:
+        ly = min(max(ROW_LY, cyr[3] + 0.5), cyr[3] + 1.1); ls = ls - (ls % 2)                    # no extra height for a row part
+    cx += LSHIFT[ls][0]; ly += LSHIFT[ls][1]
     lab = (cx - w / 2, ly - LAB_H / 2, cx + w / 2, ly + LAB_H / 2)
     return dict(ext=extr, cy=cyr, lab=lab, zone=(lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), ly=ly, gap=lab[1] + 0.1 - cyr[3])
 
@@ -132,7 +163,7 @@ def header_label(p):
 DECOUP = [('C104', 'U101', '8'), ('C105', 'U101', '8'), ('C305', 'U301', '8'), ('C306', 'U301', '4'), ('C502', 'U501', '1'), ('C501', 'U501', '2'), ('C503', 'U502', '8')]
 DECOUP_MAX, RISO_MAX, INV_MAX = 3.0, 5.0, 5.0                      # LR-12, LR-4 (pad 1 of the series resistor to the output pin)
 RISO = [('R108', 'U101', '7'), ('R208', 'U101', '1')]
-KEEP_AT_INV = [('R108', 'U101'), ('R208', 'U101'), ('R303', 'U301'), ('R304', 'U301'), ('C301', 'U301'), ('R107', 'U101'), ('R207', 'U101')]   # feedback / gain / series-input parts: main's relative place, moved only as far as a label zone needs
+KEEP_AT_INV = []   # feedback / gain / series-input parts: main's relative place, moved only as far as a label zone needs
 SPAN_NETS = ('/A0', '/A1')
 
 
@@ -141,62 +172,76 @@ def _pad(P, ref, n):
 
 
 def hard_constraints(P):
-    """LR rules a placement can hold: LR-12 decoupling (pad to pin <= 3 mm), LR-4 isolation resistor at its output pin (<= 5 mm), and the A0 / A1 nets' span no larger than main's"""
+    """LR rules a placement can hold. Every fn(pos_of, off) returns the excess in mm (0 = met); off(ref, (dx, dy)) turns a pad offset by the part's rotation.
+    LR-12 decoupling (pad to pin <= 3 mm), LR-4 isolation resistor at its output pin (<= 5 mm), LR-4 INV_MAX (the follower output nodes' pads span <= 4.7 mm,
+    of 5 mm of track), the A0 / A1 nets' span no larger than main's, LR-2 flow, LR-7, the 5 V feed, the channels' divider pads 5 mm apart."""
     out = []
+    def rel(ref, c):
+        return (c[0] - P[ref]['x'], c[1] - P[ref]['y'])
     def pair(a, b, pa, pb, lim, name):
-        def fn(pos_of):
+        def fn(pos_of, off):
             A, B = pos_of(a), pos_of(b)
-            d = min(math.hypot(A[0] + p[0] - B[0] - q[0], A[1] + p[1] - B[1] - q[1]) for p in pa for q in pb)
+            d = 1e9
+            for p in pa:
+                po = off(a, p)
+                for q in pb:
+                    qo = off(b, q)
+                    d = min(d, math.hypot(A[0] + po[0] - B[0] - qo[0], A[1] + po[1] - B[1] - qo[1]))
             return max(0.0, d - (lim - 0.01))
         out.append(dict(refs=(a, b), fn=fn, name=name))
     for cap, ic, pin in DECOUP:
         net = _pad(P, ic, pin)[0]['net']; ip = _pad(P, ic, pin)[0]['c']
         ks = [q for q in P[cap]['pads'] if q['net'] == net] or P[cap]['pads'][:1]
-        pair(cap, ic, [(q['c'][0] - P[cap]['x'], q['c'][1] - P[cap]['y']) for q in ks], [(ip[0] - P[ic]['x'], ip[1] - P[ic]['y'])], DECOUP_MAX, f'LR-12 {cap}>{ic}.{pin}')
+        pair(cap, ic, [rel(cap, q['c']) for q in ks], [rel(ic, ip)], DECOUP_MAX, f'LR-12 {cap}>{ic}.{pin}')
     for r, ic, pin in RISO:
         q = _pad(P, r, '1')[0]['c']; ip = _pad(P, ic, pin)[0]['c']
-        pair(r, ic, [(q[0] - P[r]['x'], q[1] - P[r]['y'])], [(ip[0] - P[ic]['x'], ip[1] - P[ic]['y'])], RISO_MAX, f'LR-4 {r}>{ic}.{pin}')
-    for net in SPAN_NETS:
-        pins = [(r, q['c'][0] - p['x'], q['c'][1] - p['y']) for r, p in P.items() for q in p['pads'] if q['net'] == net]
-        xs = [P[r]['x'] + dx for r, dx, dy in pins]; ys = [P[r]['y'] + dy for r, dx, dy in pins]
-        span0 = (max(xs) - min(xs)) + (max(ys) - min(ys))
-        def fn(pos_of, pins=pins, span0=span0):
-            xs = [pos_of(r)[0] + dx for r, dx, dy in pins]; ys = [pos_of(r)[1] + dy for r, dx, dy in pins]
-            return max(0.0, (max(xs) - min(xs)) + (max(ys) - min(ys)) - (span0 - 0.01))
-        out.append(dict(refs=tuple(r for r, _, _ in pins if r not in FIXED), fn=fn, name=f'{net} span <= main {span0:.1f}'))
-    # LR-4 INV_MAX (the follower output nodes and the AWG inverting node: <= 5 mm of track, so their pads span at most that), LR-2 flow, LR-7, the 5 V feed
-    def span(net, cap, name):
-        pins = [(r, q['c'][0] - p['x'], q['c'][1] - p['y']) for r, p in P.items() for q in p['pads'] if q['net'] == net]
-        xs0 = [P[r]['x'] + dx for r, dx, dy in pins]; ys0 = [P[r]['y'] + dy for r, dx, dy in pins]
-        def fn(pos_of, pins=pins, cap=cap):
-            xs = [pos_of(r)[0] + dx for r, dx, dy in pins]; ys = [pos_of(r)[1] + dy for r, dx, dy in pins]
+        pair(r, ic, [rel(r, q)], [rel(ic, ip)], RISO_MAX, f'LR-4 {r}>{ic}.{pin}')
+    def span_fn(net, cap, name, main_cap=False):
+        pins = [(r, rel(r, q['c'])) for r, p in P.items() for q in p['pads'] if q['net'] == net]
+        if main_cap:
+            xs0 = [P[r]['x'] + d[0] for r, d in pins]; ys0 = [P[r]['y'] + d[1] for r, d in pins]
+            cap = (max(xs0) - min(xs0)) + (max(ys0) - min(ys0))
+        def fn(pos_of, off, pins=pins, cap=cap):
+            pts = [(pos_of(r)[0] + off(r, d)[0], pos_of(r)[1] + off(r, d)[1]) for r, d in pins]
+            xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
             return max(0.0, (max(xs) - min(xs)) + (max(ys) - min(ys)) - (cap - 0.01))
-        out.append(dict(refs=tuple(r for r, _, _ in pins if r not in FIXED), fn=fn, name=name))
+        out.append(dict(refs=tuple(r for r, _ in pins if r not in FIXED), fn=fn, name=name % cap if '%' in name else name))
+    for net in SPAN_NETS:
+        span_fn(net, 0, '%s span <= main %%.1f' % net, True)
     for net in ('/CH1_OUT', '/CH2_OUT'):
-        span(net, 4.7, f'LR-4 {net} pad span <= 4.7 (INV_MAX {INV_MAX} of track)')
+        span_fn(net, 4.9, f'LR-4 {net} pad span <= 4.9 (INV_MAX {INV_MAX} of track; three pins: Steiner length = half-perimeter)')
     for prot, rnp, riso, bnc_x, adc_x in (('R101', 'R107', 'R108', 102.0, 66.04), ('R201', 'R207', 'R208', 102.0, 68.58)):
         ux = P['U101']['x']
-        def fn(pos_of, prot=prot, rnp=rnp, riso=riso, bnc_x=bnc_x, adc_x=adc_x, ux=ux):
-            xs = [bnc_x, pos_of(prot)[0], pos_of(rnp)[0], ux, pos_of(riso)[0], adc_x]
-            return sum(max(0.0, b + 0.02 - a) for a, b in zip(xs, xs[1:]))
-        out.append(dict(refs=(prot, rnp, riso), fn=fn, name=f'LR-2 flow x falls BNC > {prot} > {rnp} > U101 > {riso} > ADC pad'))
+        def f1(pos_of, off, a=prot, b=rnp, bnc_x=bnc_x):
+            return max(0.0, pos_of(b)[0] + 0.02 - pos_of(a)[0]) + max(0.0, pos_of(a)[0] + 0.02 - bnc_x)
+        def f2(pos_of, off, rnp=rnp, ux=ux):
+            return max(0.0, ux + 0.02 - pos_of(rnp)[0])
+        def f3(pos_of, off, riso=riso, ux=ux, adc_x=adc_x):
+            return max(0.0, pos_of(riso)[0] + 0.02 - ux) + max(0.0, adc_x + 0.02 - pos_of(riso)[0])
+        out.append(dict(refs=(prot, rnp), fn=f1, name=f'LR-2 flow x: BNC > {prot} > {rnp}'))
+        out.append(dict(refs=(rnp,), fn=f2, name=f'LR-2 flow x: {rnp} > U101'))
+        out.append(dict(refs=(riso,), fn=f3, name=f'LR-2 flow x: U101 > {riso} > ADC pad'))
     jx, jy = P['J301']['x'], P['J301']['y']
     for r in ('R301', 'R302'):
-        out.append(dict(refs=(r,), fn=lambda pos_of, r=r: max(0.0, math.hypot(pos_of(r)[0] - jx, pos_of(r)[1] - jy) - 15.99), name=f'LR-7 {r} within 16 mm of J301'))
-    d0 = _pad(P, 'J603', '5')[0]['c']; q0 = _pad(P, 'R306', '1')[0]['c']; off = (q0[0] - P['R306']['x'], q0[1] - P['R306']['y'])
-    out.append(dict(refs=('R306',), fn=lambda pos_of: max(0.0, abs(pos_of('R306')[0] + off[0] - d0[0]) + abs(pos_of('R306')[1] + off[1] - d0[1]) - 11.49), name='LR-7 DAC0 pad span <= 12'))
+        out.append(dict(refs=(r,), fn=lambda pos_of, off, r=r: max(0.0, math.hypot(pos_of(r)[0] - jx, pos_of(r)[1] - jy) - 15.99), name=f'LR-7 {r} within 16 mm of J301'))
+    d0 = _pad(P, 'J603', '5')[0]['c']; o306 = rel('R306', _pad(P, 'R306', '1')[0]['c'])
+    def dac(pos_of, off):
+        o = off('R306', o306); p = pos_of('R306')
+        return max(0.0, abs(p[0] + o[0] - d0[0]) + abs(p[1] + o[1] - d0[1]) - 11.49)
+    out.append(dict(refs=('R306',), fn=dac, name='LR-7 DAC0 pad span <= 12'))
     f5 = _pad(P, 'J601', '5')[0]['c']
-    out.append(dict(refs=('U401',), fn=lambda pos_of: max(0.0, math.hypot(pos_of('U401')[0] - f5[0], pos_of('U401')[1] - f5[1]) - 14.99), name='LR-2 U401 within 15 mm of the 5 V pad'))
-    def gap5(pos_of):
+    out.append(dict(refs=('U401',), fn=lambda pos_of, off: max(0.0, math.hypot(pos_of('U401')[0] - f5[0], pos_of('U401')[1] - f5[1]) - 14.99), name='LR-2 U401 within 15 mm of the 5 V pad'))
+    A = [(r, rel(r, q['c'])) for r, p in P.items() for q in p['pads'] if q['net'] in ('/CH1_N', '/CH1_NP', '/CH1_IN') and q['c'][0] < 91.0]
+    B = [(r, rel(r, q['c'])) for r, p in P.items() for q in p['pads'] if q['net'] in ('/CH2_N', '/CH2_NP', '/CH2_IN') and q['c'][0] < 91.0]
+    def gap5(pos_of, off):
         g = 1e9
-        A = [(r, dx, dy) for r, p in P.items() for q in p['pads'] if q['net'] in ('/CH1_N', '/CH1_NP', '/CH1_IN') and q['c'][0] < 91.0 for dx, dy in [(q['c'][0] - p['x'], q['c'][1] - p['y'])]]
-        B = [(r, dx, dy) for r, p in P.items() for q in p['pads'] if q['net'] in ('/CH2_N', '/CH2_NP', '/CH2_IN') and q['c'][0] < 91.0 for dx, dy in [(q['c'][0] - p['x'], q['c'][1] - p['y'])]]
         for a in A:
-            pa = pos_of(a[0])
+            pa = pos_of(a[0]); oa = off(a[0], a[1])
             for b in B:
-                pb = pos_of(b[0]); g = min(g, math.hypot(pa[0] + a[1] - pb[0] - b[1], pa[1] + a[2] - pb[1] - b[2]))
+                pb = pos_of(b[0]); ob = off(b[0], b[1])
+                g = min(g, math.hypot(pa[0] + oa[0] - pb[0] - ob[0], pa[1] + oa[1] - pb[1] - ob[1]))
         return max(0.0, 5.02 - g)
-    refs5 = tuple(r for r, p in P.items() if r not in FIXED and any(q['net'] in ('/CH1_N', '/CH1_NP', '/CH1_IN', '/CH2_N', '/CH2_NP', '/CH2_IN') for q in p['pads']))
+    refs5 = tuple(sorted({r for r, _ in A} | {r for r, _ in B}))
     out.append(dict(refs=refs5, fn=gap5, name="LR-2 the channels' divider pads >= 5 mm apart"))
     return out
 
@@ -233,20 +278,55 @@ def name_box(blk, P, G, cur=None):
 NAMES = {'POWER': 'POWER', 'REFCAL': 'REF / CAL', 'CH1': 'CH1', 'CH2': 'CH2', 'AWG': 'AWG'}
 
 
-def run(dump, out, blk, seed=1, iters=100000, pos0=None, fixed_pos=None):
+def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=None, cluster_of=None, soft=None, fixed_pos=None):
+    """Place `mine` (default: the block's movable parts not in `frozen`) inside the union of REGIONS[b] for b in `regions` (default [blk]).
+    frozen: {ref: [x, y, rot]} parts already placed (anchors, other blocks): obstacles, and terminals of the nets. cluster_of: the IC whose cluster this is
+    (moves of the IC take the other parts with it). soft: {ref: (ic, (dx, dy))} parts pulled toward the IC's position + that offset (main's relative place)."""
     D, P = load(dump)
-    G = {r: part_geom(p) for r, p in P.items()}
-    mine = [r for r in P if block_of(r) == blk and r not in FIXED]
+    regions = regions or [blk]
+    G0 = {r: part_geom(p, 0) for r, p in P.items()}
+    frozen = {k: list(v) for k, v in (frozen or {}).items()}
+    mine = mine or [r for r in P if block_of(r) == blk and r not in FIXED and r not in frozen]
     main = {r: (P[r]['x'], P[r]['y']) for r in P}
-    cur = dict(main)
-    if fixed_pos: cur.update({k: tuple(v) for k, v in fixed_pos.items()})
-    fx_ext = []
+    cur = dict(main); crot = {r: 0 for r in P}
+    for r, v in frozen.items():
+        cur[r] = (v[0], v[1]); crot[r] = int(round((v[2] - P[r]['rot']) / 90.0)) % 4
+    reg = [rc for b in regions for rc in REGIONS[b]]
+    n = len(mine); idx = {r: i for i, r in enumerate(mine)}
+    can_rot = [rotatable(r) for r in mine]
+    GEO = [[part_geom(P[r], k) for k in range(4)] if can_rot[i] else [part_geom(P[r], 0)] * 4 for i, r in enumerate(mine)]
+    rk = [0] * n; ls = [0] * n
+    is_pas = [bool(PAS.fullmatch(r)) for r in mine]
+    anchor_mode = bool(soft)                                   # a cluster: parts may stand turned; the rest of a block is horizontal
+    allowed_k = [([k for k in range(4) if orient(P[r], k) == 0] if (is_pas[i] and not anchor_mode) else (list(range(4)) if can_rot[i] else [0])) or [0] for i, r in enumerate(mine)]
+    for i in range(n): rk[i] = allowed_k[i][0]
+    def arr(key): return np.array([GEO[i][rk[i]][key] for i in range(n)])
+    ext0, lab0, zon0, cy0 = arr('ext'), arr('lab'), arr('zone'), arr('cy')
+    can_rot = [len(a) > 1 for a in allowed_k]
+    def setrot(i, k, l_=None):
+        rk[i] = k
+        if l_ is not None: ls[i] = l_
+        for a_, key in ((ext0, 'ext'), (cy0, 'cy')): a_[i] = GEO[i][k][key]
+        sh = LSHIFT[ls[i]]
+        for a_, key in ((lab0, 'lab'), (zon0, 'zone')):
+            b_ = GEO[i][k][key]; a_[i] = (b_[0] + sh[0], b_[1] + sh[1], b_[2] + sh[0], b_[3] + sh[1])
+    def rotk(ref): return rk[idx[ref]] if ref in idx else crot.get(ref, 0)
+    def off(ref, v):
+        k = rotk(ref); c, s_ = COS[k], SIN[k]
+        return (v[0] * c - v[1] * s_, v[0] * s_ + v[1] * c)
+    # fixed obstacles: the fixed parts, the frozen ones (extent, label, zone), the header labels, the names of the blocks
+    fx_ext, fx_lab, fx_zone = [], [], []
     for r in FIXED:
-        g = G[r]; x, y = cur[r]
+        g = G0[r]; x, y = cur[r]
         fx_ext.append((g['ext'][0] + x, g['ext'][1] + y, g['ext'][2] + x, g['ext'][3] + y))
-    u = G['U101']; ux, uy = cur['U101']
-    fx_lab = [(u['lab'][0] + ux, u['lab'][1] + uy, u['lab'][2] + ux, u['lab'][3] + uy)]
-    for r in FIXED:                                  # the labels of the fixed parts: the headers' by the owner's rule, U101's above it, the rest where they are
+    u = G0['U101']; ux, uy = cur['U101']
+    fx_lab.append((u['lab'][0] + ux, u['lab'][1] + uy, u['lab'][2] + ux, u['lab'][3] + uy)); fx_zone.append((u['zone'][0] + ux, u['zone'][1] + uy, u['zone'][2] + ux, u['zone'][3] + uy))
+    for r in frozen:
+        if r in FIXED: continue
+        g = part_geom(P[r], crot[r], frozen[r][3] if len(frozen[r]) > 3 else 0); x, y = cur[r]
+        fx_ext.append((g['ext'][0] + x, g['ext'][1] + y, g['ext'][2] + x, g['ext'][3] + y))
+        fx_lab.append((g['lab'][0] + x, g['lab'][1] + y, g['lab'][2] + x, g['lab'][3] + y)); fx_zone.append((g['zone'][0] + x, g['zone'][1] + y, g['zone'][2] + x, g['zone'][3] + y))
+    for r in FIXED:
         if r.startswith(('J1', 'J2', 'J3')) or r == 'U101': continue
         p = P[r]; w, h = LAB_W * len(r), LAB_H
         if r in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'):
@@ -255,74 +335,135 @@ def run(dump, out, blk, seed=1, iters=100000, pos0=None, fixed_pos=None):
             tx, ty = p['tx'], p['ty']
             if abs((p['tang'] % 180) - 90) < 1: w, h = h, w
         fx_lab.append((tx - w / 2, ty - h / 2, tx + w / 2, ty + h / 2))
-    nb = name_box(blk, P, G, cur); fx_lab.append(nb)                 # the block's name is placed before the parts
-    fx_ext, fx_lab = np.array(fx_ext), np.array(fx_lab)
-    lanes = np.array(LANES) if blk == 'AWG' else np.zeros((0, 4))
-    mext, mlab = Mask(REGIONS[blk], 0.2), Mask(REGIONS[blk], 0.4)
-    others = [r for b, rs in REGIONS.items() if b != blk for r in rs]
+    for b in regions:
+        fx_lab.append(name_box(b, P, G0, cur))
+    fx_ext, fx_lab, fx_zone = np.array(fx_ext), np.array(fx_lab), np.array(fx_zone).reshape(-1, 4)
+    lanes = np.array(LANES) if 'AWG' in regions else np.zeros((0, 4))
+    mext, mlab = Mask(reg, 0.2), Mask(reg, 0.4)
+    others = [rc for b, rs in REGIONS.items() if b not in regions for rc in rs]
+    # nets
     nets = {}
     for r, p in P.items():
         for q in p['pads']:
             nets.setdefault(q['net'], []).append((r, q['c'][0] - p['x'], q['c'][1] - p['y']))
-    idx = {r: i for i, r in enumerate(mine)}
     netl = []
-    for n, pins in nets.items():
-        w = WEIGHT.get(n, 1.0)
-        if w <= 0 or len(pins) < 2 or n.startswith('/unconnected') or not any(r in idx for r, _, _ in pins):
+    for nname, pins in nets.items():
+        w = WEIGHT.get(nname, 1.0)
+        if w <= 0 or len(pins) < 2 or nname.startswith('/unconnected') or not any(r in idx for r, _, _ in pins):
             continue
-        mv = [(idx[r], dx, dy) for r, dx, dy in pins if r in idx]
-        term = [(cur[r][0] + dx, cur[r][1] + dy) for r, dx, dy in pins if r not in idx]
+        mv = [(idx[r], (dx, dy)) for r, dx, dy in pins if r in idx]
+        term = []
+        for r, dx, dy in pins:
+            if r not in idx:
+                k = crot.get(r, 0); c, s_ = COS[k], SIN[k]
+                term.append((cur[r][0] + dx * c - dy * s_, cur[r][1] + dx * s_ + dy * c))
         netl.append((w, mv, term))
-    of = {i: [k for k, (_, mv, _) in enumerate(netl) if any(m[0] == i for m in mv)] for i in range(len(mine))}
+    of = {i: [k for k, (_, mv, _) in enumerate(netl) if any(m[0] == i for m in mv)] for i in range(n)}
     ties = [(idx[a], b, 4 * w) for a, b, w in TIES if a in idx and (b in idx or b in cur)]
-    HARD, KEEP = hard_constraints(P), keep_list(P)
-    HARD = [h for h in HARD if any(r in idx for r in h['refs'])]
-    KEEP = [k for k in KEEP if k[0] in idx]
-    consof = {i: [k for k, h in enumerate(HARD) if mine[i] in h['refs']] for i in range(len(mine))}
-    n = len(mine)
-    ext0 = np.array([G[r]['ext'] for r in mine]); lab0 = np.array([G[r]['lab'] for r in mine]); zon0 = np.array([G[r]['zone'] for r in mine])
-    cy0 = np.array([G[r]['cy'] for r in mine])
+    known = set(mine) | set(frozen) | FIXED | {r for r in P if block_of(r) not in regions}
+    HARD = [h for h in hard_constraints(P) if any(r in idx for r in h['refs']) and all(r in known or block_of(r) not in regions for r in h['refs'])]
+    consof = {i: [k for k, h in enumerate(HARD) if mine[i] in h['refs']] for i in range(n)}
+    soft = {r: v for r, v in (soft or {}).items() if r in idx}
     st = np.zeros((n, 2))
     rnd = random.Random(seed)
-    rb = [min(r[0] for r in REGIONS[blk]), min(r[1] for r in REGIONS[blk]), max(r[2] for r in REGIONS[blk]), max(r[3] for r in REGIONS[blk])]
+    rb = [min(r[0] for r in reg), min(r[1] for r in reg), max(r[2] for r in reg), max(r[3] for r in reg)]
     for i, r in enumerate(mine):
-        st[i] = (rnd.uniform(rb[0] + 2, rb[2] - 2), rnd.uniform(rb[1] + 2, rb[3] - 2))
-    clusters = {}                                         # IC in the block -> the indices of the parts that go with it; start each at main's relative layout
-    for ic in {k[1] for k in KEEP} | {h['refs'][1] for h in HARD if len(h['refs']) > 1 and h['refs'][1] in idx}:
-        mem = sorted({idx[k[0]] for k in KEEP if k[1] == ic and k[0] in idx} | {idx[h['refs'][0]] for h in HARD if len(h['refs']) > 1 and h['refs'][1] == ic and h['refs'][0] in idx})
-        if ic in idx:
-            clusters[idx[ic]] = mem
-            for j in mem: st[j] = st[idx[ic]] + np.array(main[mine[j]]) - np.array(main[ic])
+        if r in soft and soft[r][0] not in idx:
+            ic, o = soft[r]; st[i] = (cur[ic][0] + o[0], cur[ic][1] + o[1])
         else:
-            for j in mem: st[j] = main[mine[j]]
-    keep10 = [r for r in ('U401', 'C409') if r in idx] if blk == 'POWER' else []
+            st[i] = (rnd.uniform(rb[0] + 2, rb[2] - 2), rnd.uniform(rb[1] + 2, rb[3] - 2))
+    clusters = {}
+    if cluster_of and cluster_of in idx:
+        clusters[idx[cluster_of]] = [idx[r] for r in mine if r != cluster_of]
+        for j in clusters[idx[cluster_of]]:
+            if mine[j] in soft: st[j] = st[idx[cluster_of]] + np.array(soft[mine[j]][1])
+    keep10 = [r for r in ('U401', 'C409') if r in idx]
     pos_of = lambda ref: st[idx[ref]] if ref in idx else np.array(cur[ref])
+
+    # ---- D31: rows, columns and pin lines (align.py). A passive's y snaps to a row (the y of another passive of the block and orientation, or a base row),
+    # or to a pad line of a part that is not a passive (y, or x, of a pad centre within 5 mm); the rule is held by construction, not repaired afterwards.
+    blkd = {r: int(PAS.fullmatch(r).group(1)) for r in P if PAS.fullmatch(r)}
+    FZ = [(cur[r][0], cur[r][1], orient(P[r], crot[r]), blkd[r]) for r in frozen if r in blkd and r not in FIXED]
+    FZa = np.array(FZ, float).reshape(-1, 4)
+    SP = []
+    for r, p in P.items():
+        if r in blkd or r in idx: continue
+        k = crot.get(r, 0); c, s_ = COS[k], SIN[k]
+        for q in p['pads']:
+            dx, dy = q['c'][0] - p['x'], q['c'][1] - p['y']
+            SP.append((cur[r][0] + dx * c - dy * s_, cur[r][1] + dx * s_ + dy * c))
+    SPa = np.array(SP, float).reshape(-1, 2)
+    MP = [(r, [(q['c'][0] - P[r]['x'], q['c'][1] - P[r]['y']) for q in P[r]['pads']]) for r in mine if r not in blkd]
+    mpi = [i for i in range(n) if is_pas[i]]
+    base_rows = {}
+    for b in regions:
+        ylo = min(rc[1] for rc in REGIONS[b]); yhi = max(rc[3] for rc in REGIONS[b])
+        base_rows[b] = [ylo + 1.2 + 3.55 * j for j in range(int((yhi - ylo) / 3.55))]
+    def rows_of(i): return base_rows[BLOCK_DIGIT[mine[i][-3]]] if BLOCK_DIGIT[mine[i][-3]] in base_rows else [P[mine[i]]['y']]
+    modes_ok = [([1, 2] if cluster_of else [0, 1, 2]) if is_pas[i] else [0] for i in range(n)]
+    mode = [m[0] for m in modes_ok]
+    def pad_xy():
+        pts = []
+        for r, offs in MP:
+            p0 = st[idx[r]]
+            for o in offs:
+                oo = off(r, o); pts.append((p0[0] + oo[0], p0[1] + oo[1]))
+        return np.vstack([SPa, np.array(pts, float).reshape(-1, 2)]) if pts else SPa
+    def snap(i, x, y):
+        if not is_pas[i]: return x, y
+        m = mode[i]
+        if m == 0:
+            oi = orient(P[mine[i]], rk[i]); bi = blkd[mine[i]]
+            ys = list(rows_of(i))
+            ys += [st[j][1] for j in mpi if j != i and blkd[mine[j]] == bi and orient(P[mine[j]], rk[j]) == oi]
+            ys += [fy for fx, fy, fo, fb in FZ if fb == bi and fo == oi]
+            return x, min(ys, key=lambda v: abs(v - y))
+        PA = pad_xy()
+        near = PA[np.hypot(PA[:, 0] - x, PA[:, 1] - y) <= 5.0]
+        if not len(near): return x, y
+        if m == 1: return x, float(near[np.argmin(np.abs(near[:, 1] - y)), 1])
+        return float(near[np.argmin(np.abs(near[:, 0] - x)), 0]), y
+    def align_total():
+        if not mpi: return 0.0
+        X = np.array([st[i][0] for i in mpi]); Y = np.array([st[i][1] for i in mpi])
+        O = np.array([orient(P[mine[i]], rk[i]) for i in mpi]); B = np.array([blkd[mine[i]] for i in mpi])
+        ax = np.concatenate([X, FZa[:, 0]]); ay = np.concatenate([Y, FZa[:, 1]]); ao = np.concatenate([O, FZa[:, 2]]); ab = np.concatenate([B, FZa[:, 3]])
+        dx = X[:, None] - ax[None, :]; dy = Y[:, None] - ay[None, :]
+        dist = np.hypot(dx, dy)
+        same = (B[:, None] == ab[None, :]) & (O[:, None] == ao[None, :]) & (dist <= 8.0)
+        same[np.arange(len(mpi)), np.arange(len(mpi))] = False
+        ok = (same & ((np.abs(dy) <= 0.05) | (np.abs(dx) <= 0.05))).any(1)
+        PA = pad_xy()
+        if len(PA):
+            ddx = X[:, None] - PA[None, :, 0]; ddy = Y[:, None] - PA[None, :, 1]
+            ok |= ((np.hypot(ddx, ddy) <= 4.0) & ((np.abs(ddx) <= 0.05) | (np.abs(ddy) <= 0.05))).any(1)
+        return float((~ok).sum())
 
     def hp(k):
         w, mv, term = netl[k]
-        xs = [st[i][0] + dx for i, dx, dy in mv] + [t[0] for t in term]; ys = [st[i][1] + dy for i, dx, dy in mv] + [t[1] for t in term]
+        pts = [(st[i][0] + off(mine[i], d)[0], st[i][1] + off(mine[i], d)[1]) for i, d in mv] + term
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
         return w * ((max(xs) - min(xs)) + (max(ys) - min(ys)))
 
-    def sup(k):
-        return HARD[k]['fn'](pos_of)
+    def sup(k): return HARD[k]['fn'](pos_of, off)
 
-    def keepc(i):
+    def softc(i):
         t = 0.0
-        for r, ic, off in KEEP:
+        for r, (ic, o) in soft.items():
             if idx[r] == i or (ic in idx and idx[ic] == i):
                 pa = pos_of(r); pb = pos_of(ic)
-                t += 8.0 * math.hypot(pa[0] - pb[0] - off[0], pa[1] - pb[1] - off[1])
+                t += SOFT_W * math.hypot(pa[0] - pb[0] - o[0], pa[1] - pb[1] - o[1])
         return t
 
     def own(i, pos):
         sh = np.array([pos[0], pos[1], pos[0], pos[1]])
         e = ext0[i] + sh; lb = lab0[i] + sh; z = zon0[i] + sh
         v = mext.bad(e) + mlab.bad(lb)
-        v += depth(e, fx_ext, EXT_GAP) + depth(z, fx_ext, 0) + depth(lb, fx_lab, LAB_GAP) + depth(e, fx_lab, 0.3) + depth(e, lanes, 0.0)
+        v += depth(e, fx_ext, EXT_GAP) + depth(z, fx_ext, 0) + depth(lb, fx_lab, LAB_GAP) + depth(e, fx_lab, 0.3) + depth(e, fx_zone, 0) + depth(e, lanes, 0.0) + depth(z, lanes, 0.0)
         for r in keep10:
             if r == mine[i]:
                 v += max(0.0, 12.6 - seg_dist_rect(others, (pos[0] + (cy0[i][0] + cy0[i][2]) / 2, pos[1] + (cy0[i][1] + cy0[i][3]) / 2))) * 3
-        return v + sum(sup(k) for k in consof[i]) + 0 * keepc(i)
+        return v + sum(sup(k) for k in consof[i])
 
     def pairs(i, pos):
         o = [j for j in range(n) if j != i]
@@ -342,71 +483,71 @@ def run(dump, out, blk, seed=1, iters=100000, pos0=None, fixed_pos=None):
             t += w * math.hypot(pos[0] - pb[0], pos[1] - pb[1])
         return t
 
-    def total(i, pos):
-        return own(i, pos) + pairs(i, pos)
+    def total(i, pos): return own(i, pos) + pairs(i, pos)
 
     def full():
-        wl = sum(hp(k) for k in range(len(netl))) + sum(tie(i, st[i]) for i in range(n)) / 2 + sum(keepc(i) for i in range(n)) / 2
+        wl = sum(hp(k) for k in range(len(netl))) + sum(tie(i, st[i]) for i in range(n)) / 2 + sum(softc(i) for i in range(n)) / 2
         v = sum(own(i, st[i]) - sum(sup(k) for k in consof[i]) for i in range(n)) + 0.5 * sum(pairs(i, st[i]) for i in range(n)) + sum(sup(k) for k in range(len(HARD)))
+        v += align_total()
         return wl + 400 * v, wl, v
+    for i in range(n): st[i] = snap(i, st[i][0], st[i][1])
     E, wl, v = full()
-    best = (E, st.copy())
-    T0 = 25.0
-    for it in range(iters):
-        T = T0 * (1 - it / iters) ** 2 + 0.02
-        sc = 0.15 + 3.0 * T / T0
-        if clusters and rnd.random() < 0.06:               # move an IC with its support parts
-            ic = rnd.choice(list(clusters)); mem = [ic] + clusters[ic]
-            sh = np.array([round(rnd.gauss(0, sc * 2) * 100) / 100, round(rnd.gauss(0, sc * 2) * 100) / 100])
-            old = st[mem].copy(); st[mem] += sh
-            E2, _, _ = full()
-            if E2 <= E or rnd.random() < math.exp(-(E2 - E) / T):
-                E = E2
-                if E < best[0] - 1e-9: best = (E, st.copy())
+    best = (E, st.copy(), list(rk), list(ls))
+    rot_ids = [i for i in range(n) if can_rot[i]]
+    for T0, sf, sc0, nit in ((25.0, 3.0, 0.15, iters), (0.8, 0.4, 0.04, max(iters // 3, 20000))):
+        st[:] = best[1]
+        for i_, k_ in enumerate(best[2]): setrot(i_, k_, best[3][i_])
+        E, _, _ = full()
+        for it in range(nit):
+            T = T0 * (1 - it / nit) ** 2 + 0.02
+            sc = sc0 + sf * T / T0
+            u_ = rnd.random()
+            if clusters and u_ < 0.06:
+                ic = next(iter(clusters)); mem = [ic] + clusters[ic]
+                sh = np.array([round(rnd.gauss(0, sc * 2) * 100) / 100, round(rnd.gauss(0, sc * 2) * 100) / 100])
+                old = st[mem].copy(); st[mem] += sh
+                E2, _, _ = full()
+                if E2 <= E or rnd.random() < math.exp(-(E2 - E) / T):
+                    E = E2
+                    if E < best[0] - 1e-9: best = (E, st.copy(), list(rk), list(ls))
+                else: st[mem] = old
+                continue
+            i = rnd.randrange(n)
+            old = st[i].copy(); oldk = rk[i]; oldl = ls[i]; oldm = mode[i]
+            newk = oldk; newl = oldl
+            if rnd.random() < 0.12: newl = rnd.randrange(len(LSHIFT))
+            if len(allowed_k[i]) > 1 and rnd.random() < 0.12: newk = rnd.choice(allowed_k[i])
+            if len(modes_ok[i]) > 1 and rnd.random() < 0.08: mode[i] = rnd.choice(modes_ok[i])
+            if rnd.random() < 0.03: new = np.array([rnd.uniform(rb[0], rb[2]), rnd.uniform(rb[1], rb[3])])
+            else: new = np.array([round((old[0] + rnd.gauss(0, sc)) * 100) / 100, round((old[1] + rnd.gauss(0, sc)) * 100) / 100])
+            o_t = total(i, old); o_w = sum(hp(k) for k in of[i]); o_ti = tie(i, old) + softc(i); o_a = align_total()
+            if newk != oldk or newl != oldl: setrot(i, newk, newl)
+            new = np.array(snap(i, new[0], new[1]))
+            st[i] = new
+            n_t = total(i, new); n_w = sum(hp(k) for k in of[i]); n_ti = tie(i, new) + softc(i); n_a = align_total()
+            d = (n_w - o_w) + (n_ti - o_ti) + 400 * (n_t - o_t) + 400 * (n_a - o_a)
+            if d <= 0 or rnd.random() < math.exp(-d / T):
+                E += d
+                if E < best[0] - 1e-9: best = (E, st.copy(), list(rk), list(ls))
             else:
-                st[mem] = old
-            continue
-        i = rnd.randrange(n)
-        old = st[i].copy()
-        if rnd.random() < 0.03:
-            new = np.array([rnd.uniform(rb[0], rb[2]), rnd.uniform(rb[1], rb[3])])
-        else:
-            new = np.array([round((old[0] + rnd.gauss(0, sc)) * 100) / 100, round((old[1] + rnd.gauss(0, sc)) * 100) / 100])
-        o_t = total(i, old); o_w = sum(hp(k) for k in of[i]); o_ti = tie(i, old) + keepc(i)
-        st[i] = new
-        n_t = total(i, new); n_w = sum(hp(k) for k in of[i]); n_ti = tie(i, new) + keepc(i)
-        d = (n_w - o_w) + (n_ti - o_ti) + 400 * (n_t - o_t)
-        if d <= 0 or rnd.random() < math.exp(-d / T):
-            E += d
-            if E < best[0] - 1e-9: best = (E, st.copy())
-        else:
-            st[i] = old
+                st[i] = old; mode[i] = oldm
+                if newk != oldk or newl != oldl: setrot(i, oldk, oldl)
+
     st[:] = best[1]
+    for i, k in enumerate(best[2]): setrot(i, k, best[3][i])
     E, wl, v = full()
     if v > 0.01 or os.environ.get('RP_DEBUG'):
         for k, h in enumerate(HARD):
-            print('  hard', h['name'], 'excess %.3f' % sup(k))
-        print('  total terms: own-sup %.3f pairs %.3f sup %.3f' % (sum(own(i, st[i]) - sum(sup(k) for k in consof[i]) for i in range(n)), 0.5 * sum(pairs(i, st[i]) for i in range(n)), sum(sup(k) for k in range(len(HARD)))))
+            if sup(k) > 1e-6: print('  hard', h['name'], 'excess %.3f' % sup(k))
         for i in range(n):
             sh = np.array([st[i][0], st[i][1], st[i][0], st[i][1]])
-            e = ext0[i] + sh; lb = lab0[i] + sh
-            parts_ = dict(region=mext.bad(e) + mlab.bad(lb), fixed=depth(e, fx_ext, EXT_GAP) + depth(zon0[i] + sh, fx_ext, 0) + depth(lb, fx_lab, LAB_GAP) + depth(e, fx_lab, 0.3), pairs=pairs(i, st[i]))
+            e = ext0[i] + sh; lb = lab0[i] + sh; z = zon0[i] + sh
+            parts_ = dict(region=mext.bad(e) + mlab.bad(lb), fixed=depth(e, fx_ext, EXT_GAP) + depth(z, fx_ext, 0) + depth(lb, fx_lab, LAB_GAP) + depth(e, fx_lab, 0.3) + depth(e, fx_zone, 0), lanes=depth(e, lanes, 0) + depth(z, lanes, 0), pairs=pairs(i, st[i]))
             if sum(parts_.values()) > 1e-6: print('  ', mine[i], {k: round(x, 2) for k, x in parts_.items()})
-    moves = []
-    for r, ic, off in KEEP:
-        pa, pb = pos_of(r), pos_of(ic)
-        moves.append(dict(part=r, ic=ic, main_cc=round(math.hypot(*off), 2), new_cc=round(math.hypot(pa[0] - pb[0], pa[1] - pb[1]), 2), shift=round(math.hypot(pa[0] - pb[0] - off[0], pa[1] - pb[1] - off[1]), 2)))
-    res = {r: [round(float(st[idx[r]][0]), 2), round(float(st[idx[r]][1]), 2)] for r in mine}
-    json.dump(dict(blk=blk, seed=seed, wl=wl, viol=v, st=res, name=list(nb), keep_moves=moves), open(out, 'w'))
-    print(blk, 'seed', seed, 'wl %.1f viol %.4f' % (wl, v), 'parts', n, 'hard', len(HARD), 'keep', len(KEEP))
-    return res
+    print('  align leftovers:', int(align_total()))
+    res = {r: [round(float(st[idx[r]][0]), 2), round(float(st[idx[r]][1]), 2), ((round(P[r]['rot']) + 90 * rk[idx[r]] + 180) % 360) - 180, ls[idx[r]]] for r in mine}
+    json.dump(dict(blk=blk, seed=seed, wl=wl, viol=v, st=res), open(out, 'w'))
+    print(blk, 'seed', seed, 'wl %.1f viol %.4f' % (wl, v), 'parts', n, 'hard', len(HARD), 'soft', len(soft))
+    return res, v
 
 
-if __name__ == '__main__':
-    a = sys.argv
-    fp = None
-    if os.path.exists(os.path.join(os.path.dirname(a[1]), 'place.json')):
-        fp = json.load(open(os.path.join(os.path.dirname(a[1]), 'place.json')))['st']      # CH2's mock-up positions
-    for extra in a[6:]:                                              # positions of the other blocks from an earlier round
-        fp = dict(fp or {}); fp.update(json.load(open(extra))['st'])
-    run(a[1], a[2], a[3], int(a[4]) if len(a) > 4 else 1, int(a[5]) if len(a) > 5 else 100000, fixed_pos=fp)
