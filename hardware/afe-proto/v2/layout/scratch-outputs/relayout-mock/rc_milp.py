@@ -113,7 +113,22 @@ cost = np.zeros(n2)
 for p in parts:
     for j, c in enumerate(sel[p]): cost[off[p] + j] = disp(c) + (100.0 if (STAGE == 1 and c[2] >= 10) else 0.0)
 for p in ai: cost[ai[p]] = -1000.0
-res = milp(cost, constraints=[LinearConstraint(A_rest, lo, hi), LinearConstraint(A_conf, -np.inf, 1)], integrality=np.ones(n2), bounds=Bounds(0, 1), options=dict(time_limit=TL, disp=False, mip_rel_gap=0.0))
+CURP = json.load(open(R + 'rc_final_place.json'))['st']
+xcur = np.zeros(n2)
+for p in parts:
+    hit = [j for j, c in enumerate(sel[p]) if abs(c[3] - CURP[p][0]) < 1e-6 and abs(c[4] - CURP[p][1]) < 1e-6 and c[2] == CURP[p][3] and ((round(P0[p]['rot']) + 90 * c[1] + 180) % 360) - 180 == CURP[p][2]]
+    assert len(hit) == 1, ('current not a candidate', p, hit); xcur[off[p] + hit[0]] = 1
+if STAGE == 2:
+    for rk in rowvals:
+        cnt = sum(xcur[off[p] + j] for p in passives for j, c in enumerate(sel[p]) if rowkey(c) == rk); xcur[zi[rk]] = 1 if cnt >= 2 else 0
+    for (p, rk), w in wi.items(): xcur[w] = min(xcur[zi[rk]], sum(xcur[off[p] + j] for j, c in enumerate(sel[p]) if rowkey(c) == rk))
+    for p in passives: xcur[ai[p]] = min(1, sum(xcur[off[p] + j] for j, c in enumerate(sel[p]) if pinline(c)) + sum(xcur[w_] for (q, rk), w_ in wi.items() if q == p))
+Ar = A_rest @ xcur
+print('POSITIVE CONTROL: current placement conflict max', float((A_conf @ xcur).max()), 'rest rows violated', int(((Ar < np.array(lo) - 1e-9) | (Ar > np.array(hi) + 1e-9)).sum()), 'cost', float(cost @ xcur), flush=True)
+CUT = os.environ.get('CUTOFF') == '1'
+cons = [LinearConstraint(A_rest, lo, hi), LinearConstraint(A_conf, -np.inf, 1)]
+if CUT: cons.append(LinearConstraint(sp.csr_matrix(cost.reshape(1, -1)), -np.inf, float(cost @ xcur) + 1e-6))
+res = milp(cost, constraints=cons, integrality=np.ones(n2), bounds=Bounds(0, 1), options=dict(time_limit=TL, disp=False, mip_rel_gap=0.0))
 print('MILP status', res.status, res.message, 'gap', getattr(res, 'mip_gap', None), 'bound', getattr(res, 'mip_dual_bound', None), 'obj', res.fun, flush=True)
 if res.x is not None:
     print('max conflict-row sum', float((A_conf @ res.x).max()), flush=True)
