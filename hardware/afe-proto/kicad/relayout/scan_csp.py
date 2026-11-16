@@ -1,0 +1,350 @@
+import re, sys, json
+import numpy as np
+from pcbtools import boardio, labelplace as LP, silkread
+from pcbtools.boards import v1 as C
+b = boardio.read_board('kicad/afe-proto.kicad_pcb')
+FENCE = {
+ '1': [(64.4, 31.8, 92.0, 48.7)],
+ '2': [(70.4, 21.6, 92.0, 31.6)],
+ '3': [(70.4, 4.6, 92.0, 21.2)],
+ '4': [(17.5, 4.6, 43.6, 33.0)],
+ '5': [(45.0, 4.6, 64.2, 40.0)],
+}
+WALL = [(64.4, 13.0, 70.2, 30.8)]
+R412 = [(38.6, 34.5, 45.0, 47.5)]
+WALLREFS = {'R309', 'R310', 'R515', 'R516'}
+WALLFREE = {'TP101'}
+LADDER = {'R503', 'R504', 'R505', 'R506', 'R507', 'R508'}
+HAND = {'R508': (52.07, 6.5), 'R506': (57.15, 6.5), 'R504': (62.23, 6.5), 'R507': (54.61, 9.35), 'R505': (59.69, 9.35),
+        'R503': (63.05, 10.15), 'J501': (56.54, 14.9), 'C502': (58.6, 26.4), 'D501': (62.4, 28.45), 'R509': (51.0, 38.4),
+        'R405': (36.4, 11.2), 'C408': (40.2, 11.4), 'C407': (40.2, 16.25), 'R407': (42.2, 21.1), 'R401': (29.4, 17.3), 'R409': (29.6, 21.1), 'R406': (37.8, 21.1), 'R403': (32.4, 8.3), 'R404': (36.9, 7.55), 
+        'TP402': (22.0, 25.5), 'TP403': (27.0, 25.5), 'TP404': (32.0, 25.5), 'TP401': (37.0, 25.5), 'TP405': (42.0, 25.5), 'R408': (23.0, 29.5), 'R410': (29.0, 29.5),  'C402': (36.9, 14.9), 'C403': (33.9, 17.9), 'C401': (29.5, 11.5), 'R302': (78.55, 9.25),  'R303': (82.0, 7.5), 'C301': (78.65, 7.5)}
+ANCH = set(C.ANCHORS) | {'R411', 'U101', 'U301', 'U401', 'C402'} | set(HAND)
+LOCKX = WALLREFS | {'R110', 'J501'}
+NOLAB = ['J601','J602','J603','J604','J605','J606','J607','J101','J201','J301']
+refs, rel, target, fence = [], {}, {}, {}
+big = [(-1e3, -1e3, 1e3, 1e3)]
+for k, r in enumerate(b.fp_ref):
+    if np.isnan(b.fp_cx0[k]) or int(b.fp_side[k]) != 0: continue
+    refs.append(r)
+    ox, oy = float(b.fp_x[k]), float(b.fp_y[k])
+    rel[r] = (float(b.fp_cx0[k]) - ox, float(b.fp_cy0[k]) - oy, float(b.fp_cx1[k]) - ox, float(b.fp_cy1[k]) - oy)
+    x, y = ox, oy
+    m = re.fullmatch(r'[A-Z]+(\d)\d\d', r)
+    d = m.group(1) if m else '6'
+    if r in ANCH or d == '6':
+        fence[r] = big
+    elif r == 'J501': fence[r] = FENCE['5']
+    elif r in WALLREFS or r in WALLFREE: fence[r] = [(62.2, 12.0, 71.0, 31.4)]
+    elif r == 'R110': fence[r] = [(62.2, 32.0, 69.4, 48.7)]
+    elif r in ('R412', 'R413'): fence[r] = R412; y = 40.0
+    else:
+        fence[r] = FENCE[d]
+        if d == '4': y = 4.6 + (y - 4.6) * 1.55
+    target[r] = HAND.get(r, (x, y))
+ANCH |= {r for r in refs if re.fullmatch(r'[A-Z]+6\d\d', r)}
+# obstacles: headers' end labels, the identity strip
+obst = [(17.5, 34.0, 38.5, 47.0)]
+for r in ('J601','J602','J603','J604','J605','J606','J607'):
+    k = b.ref_index(r); c = (b.fp_cx0[k], b.fp_cy0[k], b.fp_cx1[k], b.fp_cy1[k]); w = len(r) * 0.9
+    cxm = (c[0] + c[2]) / 2
+    if (c[2]-c[0]) > (c[3]-c[1]):
+        if (c[1] + c[3]) / 2 < 26.67: obst.append((cxm - w / 2, c[3] + 0.2, cxm + w / 2, c[3] + 1.2))      # lower half: above, on the inboard side
+        else: obst.append((cxm - w / 2, c[1] - 1.2, cxm + w / 2, c[1] - 0.2))                              # upper half: below
+    else: obst.append((cxm - w / 2, c[3] + 0.2, cxm + w / 2, c[3] + 1.2))
+
+obst[3] = (obst[3][0] - 0.35, obst[3][1] - 0.35, obst[3][2] + 0.35, obst[3][3] + 0.35)    # J603's label: 1.0 mm clear of every part body (spec lead)
+BRIDGES_ = frozenset({'R309','R310','R515','R516','R110','D101','D201','R107','R207','TP101','TP201'})
+obst.append((65.7, 4.4, 66.4, 40.0, BRIDGES_))      # the A1 and A0 lines run up the wall: only the parts on them may stand in their columns
+obst.append((68.2, 4.4, 68.9, 40.0, BRIDGES_))
+
+# ---- hard constraints from the landed board (LR-4/LR-5/LR-12): critical parts keep their distance to the pin they serve; A0/A1 get no longer
+padrel = {}
+padpos = {}
+for j in range(len(b.p_fp)):
+    r = b.fp_ref[int(b.p_fp[j])]
+    k = int(b.p_fp[j])
+    padrel.setdefault(r, {})[b.p_pin[j]] = (float(b.p_x[j] - b.fp_x[k]), float(b.p_y[j] - b.fp_y[k]), int(b.p_net[j]))
+def pr(ref, pin): return padrel[ref][pin][:2]
+def landed(ra, pa, rb, pb):
+    xa = b.fp_x[b.ref_index(ra)] + PADREL0[ra][pa][:2][0]; ya = b.fp_y[b.ref_index(ra)] + PADREL0[ra][pa][:2][1]
+    xb = b.fp_x[b.ref_index(rb)] + PADREL0[rb][pb][:2][0]; yb = b.fp_y[b.ref_index(rb)] + PADREL0[rb][pb][:2][1]
+    return float(((xa - xb) ** 2 + (ya - yb) ** 2) ** .5)
+import os as _o2
+SLK = {kv.split(':')[0]: float(kv.split(':')[1]) for kv in _o2.environ.get('SLACKMAP', '').split(',') if kv}
+SLK_DEFAULT = float(_o2.environ.get('SLACKD', '1000'))
+import copy, os
+PADREL0 = copy.deepcopy(padrel)
+ROTOV = json.load(open('whatif/_scratch/rotov.json')) if os.path.exists('whatif/_scratch/rotov.json') else {}
+ROT0 = json.load(open('whatif/_scratch/rot.json'))
+for r_, new_ in ROTOV.items():
+    d_ = (new_ - ROT0[r_]) % 360
+    if d_ in (90, 270):
+        x0_, y0_, x1_, y1_ = rel[r_]
+        rel[r_] = (y0_, x0_, y1_, x1_)
+    for pin_, (px_, py_, n_) in list(padrel[r_].items()):
+        if d_ == 90: padrel[r_][pin_] = (-py_, px_, n_)
+        elif d_ == 270: padrel[r_][pin_] = (py_, -px_, n_)
+        elif d_ == 180: padrel[r_][pin_] = (-px_, -py_, n_)
+CAPS = []
+CRIT = set()
+SKIPN = {'', '/GND'}
+for ic in ('U101', 'U301', 'U401', 'U501', 'U502'):
+    for pin, (dx, dy, net) in padrel[ic].items():
+        if b.nets[net] in SKIPN: continue
+        for q, pads in padrel.items():
+            if q == ic or q[0] not in 'RCD' or q in ANCH and q not in HAND: continue
+            for qpin, (qx, qy, qnet) in pads.items():
+                if qnet == net:
+                    d = landed(q, qpin, ic, pin)
+                    if d <= 8.0:
+                        CRIT.add(q)
+                        CAPS.append((q, (qx, qy), ic, (dx, dy), round(d + SLK.get(q, SLK_DEFAULT), 3)))
+LIM = {('C103', 'U101', '8'): 3.0, ('C302', 'U301', '8'): float(os.environ.get('LIM302', '3.0')), ('C303', 'U301', '4'): float(os.environ.get('LIM302', '3.0')), ('C502', 'U502', '8'): 3.0, ('C501', 'U501', '1'): 3.0}
+dec = {}
+for (cap, ic, pin), L in LIM.items():
+    net = padrel[ic][pin][2]
+    for qpin, (qx, qy, qnet) in padrel[cap].items():
+        if qnet == net:
+            d = L - 0.05
+            CAPS = [c for c in CAPS if not (c[0] == cap and c[2] == ic and c[1] == (qx, qy))]
+            CAPS.append((cap, (qx, qy), ic, pr(ic, pin), round(d, 3)))
+for riso, outpin in (('R107', None), ('R207', None)):
+    pass
+for ch in C.CHANNELS:
+    rr = ch['riso']; ic, pin = ch['out_pin']
+    d = 4.8
+    CAPS.append((rr, pr(rr, '1'), ic, pr(ic, pin), round(d, 3)))
+# POWER relaxations (spec lead): FB-divider ties, absolute caps for the VIN decoupling caps, pads exempt from the tie
+ABSM = {}
+for kv in os.environ.get('ABSMAP', '').split(','):
+    if kv:
+        a_, d_ = kv.split(':'); ABSM[tuple(a_.split('@'))] = float(d_)
+IGN = {tuple(kv.split('@')) for kv in os.environ.get('IGNORE', '').split(',') if kv}
+def _pin_of(ic, off):
+    for pin_, (px_, py_, n_) in padrel[ic].items():
+        if abs(px_ - off[0]) < 1e-6 and abs(py_ - off[1]) < 1e-6: return pin_
+newcaps = []
+for c in CAPS:
+    q, qoff, ic, icoff, D = c
+    qpin = None
+    for pin_, (px_, py_, n_) in padrel[q].items():
+        if abs(px_ - qoff[0]) < 1e-6 and abs(py_ - qoff[1]) < 1e-6: qpin = pin_
+    if (q, qpin) in IGN: continue
+    absrefs = {k[0] for k in ABSM}
+    if ic == 'U401' and q in absrefs:
+        pin = _pin_of(ic, icoff)
+        if (q, pin) in ABSM:
+            c = (q, qoff, ic, icoff, ABSM[(q, pin)])
+        else:
+            continue
+    newcaps.append(c)
+CAPS = newcaps
+for _a, _pa, _b, _pb, _d in json.loads(os.environ.get('EXTRACAPS', '[]')):
+    CAPS.append((_a, padrel[_a][_pa][:2], _b, padrel[_b][_pb][:2], _d))
+SPANS = []
+for nm in ('/A0', '/A1', '/AWG_INV'):
+    nid = b.nets.index(nm)
+    mem, xs, ys = [], [], []
+    for r, pads in padrel.items():
+        for pin, (px, py, n_) in pads.items():
+            if n_ == nid and not np.isnan(b.fp_x[b.ref_index(r)]):
+                k = b.ref_index(r)
+                mem.append((r, (px, py))); xs.append(b.fp_x[k] + px); ys.append(b.fp_y[k] + py)
+    SPANS.append((mem, round(max(xs) - min(xs) + (0.4 if nm == '/AWG_INV' else 0), 3), round(max(ys) - min(ys) + (0.4 if nm == '/AWG_INV' else 0), 3)))
+# the reference to the ladder and the ADS: U501's VREF pad to R508 and U502.4
+
+import os as _os
+SC = float(_os.environ.get('CAPSCALE', '1.0'))
+if SC != 1.0:
+    keep = {(c, i) for (c, i, p_), L in LIM.items()}
+    CAPS = [(a_, pa_, b_, pb_, (D if (a_, b_) in keep else round(D * SC, 3))) for (a_, pa_, b_, pb_, D) in CAPS]
+    SPANS = [(m, round(wx * SC, 3), round(wy * SC, 3)) for m, wx, wy in SPANS]
+XMIN = {}
+print('critical', len(CRIT), sorted(CRIT)[:60])
+print('caps', len(CAPS), 'spans', [(len(m), wx, wy) for m, wx, wy in SPANS])
+
+import os
+from pcbtools import labelplace as LPm
+J = json.load(open('whatif/_scratch/relay_pos.json'))
+pos = {r: tuple(J[r]) for r in refs}
+ov = json.load(open('whatif/_scratch/override.json')) if os.path.exists('whatif/_scratch/override.json') else {}
+for r, v in ov.items(): pos[r] = tuple(v)
+for r_, v_ in HAND.items(): pos[r_] = v_
+pos['R411'] = (48.275, 3.1)
+from pcbtools.labelplace import P as _P
+
+_lmf = os.environ.get('LABMODEFILE', 'whatif/_scratch/labmode.json')
+LABMODE = json.load(open(_lmf)) if os.path.exists(_lmf) else {}
+LPm.LABMODES.update(LABMODE)
+def _setmode(p):
+    m = LABMODE.get(p.ref, 'A')
+    if m == 'A': return p
+    cy = (p.ry0 + p.ry1) / 2
+    p.ly0, p.ly1 = cy - 0.5, cy + 0.5
+    if m == 'E': p.lx0 = p.rx1 + 0.2; p.lx1 = p.lx0 + p.w
+    else: p.lx1 = p.rx0 - 0.2; p.lx0 = p.lx1 - p.w
+    return p
+parts = [_setmode(_P(r, rel[r], r not in ANCH, r in NOLAB)) for r in refs]
+rect = {}
+for i, p in enumerate(parts):
+    if p.free:
+        x, y = pos[p.ref]; bb = LPm._bb(p, x, y); best_ = None
+        for q in fence[p.ref]:
+            d = max(q[0]-bb[0], 0)+max(bb[2]-q[2], 0)+max(q[1]-bb[1], 0)+max(bb[3]-q[3], 0)
+            if best_ is None or d < best_[0]: best_ = (d, q)
+        rect[i] = best_[1]
+
+import numpy as np, time, itertools, os
+from pcbtools.labelplace import P, CC, LC, LL
+GT = float(os.environ.get('GT', '0.2')); G = float(os.environ.get('GRID', '0.1')); TMAX = float(os.environ.get('TMAX', '7.5'))
+AWGLOOSE = {'C302','C303','C304','C305','C306','R301','R304','R305','R306','R307','R308'}
+CSP = set(os.environ.get('CSPSET', 'C401,C404,C405,C406,C409,C410,C407,C408,C402,C403,R404,R405').split(','))
+FENCE = (17.5, 4.6, 43.6, 33.0)
+pin6 = (pos['U301'][0] + padrel['U301']['6'][0], pos['U301'][1] + padrel['U301']['6'][1])
+pin5 = (pos['U301'][0] + padrel['U301']['5'][0], pos['U301'][1] + padrel['U301']['5'][1])
+j603_5 = (b.fp_x[b.ref_index('J603')] + padrel['J603']['5'][0], b.fp_y[b.ref_index('J603')] + padrel['J603']['5'][1])
+print('pin6', pin6, 'pin5', pin5, 'J603.5', j603_5)
+def rot_pad(px, py, d):
+    if d == 90: return -py, px
+    if d == 270: return py, -px
+    if d == 180: return -px, -py
+    return px, py
+def setlabel(p, mode):
+    if mode == 0: return p
+    cy = (p.ry0 + p.ry1) / 2
+    p.ly0, p.ly1 = cy - 0.5, cy + 0.5
+    if mode == 1: p.lx0 = p.rx1 + 0.2; p.lx1 = p.lx0 + p.w
+    else: p.lx1 = p.rx0 - 0.2; p.lx0 = p.lx1 - p.w
+    return p
+def variant(ref, d, mode):
+    x0, y0, x1, y1 = rel[ref]
+    if d in (90, 270): x0, y0, x1, y1 = y0, x0, y1, x1
+    return setlabel(P(ref, (x0, y0, x1, y1), True, False), mode)
+def padoff(ref, pin, d): return rot_pad(padrel[ref][pin][0], padrel[ref][pin][1], d)
+def shp(p, x, y): return (x + p.rx0, y + p.ry0, x + p.rx1, y + p.ry1), (x + p.lx0, y + p.ly0, x + p.lx1, y + p.ly1)
+def conf_np(Ca, La, Cb, Lb, tol=0.05):
+    bad = np.zeros(np.broadcast(Ca[0], Cb[0]).shape, bool)
+    for a, b_, m in ((Ca, Cb, CC), (La, Cb, LC), (Lb, Ca, LC), (La, Lb, LL)):
+        px = np.minimum(a[2] + (m - tol) - b_[0], b_[2] + (m - tol) - a[0])
+        py = np.minimum(a[3] + (m - tol) - b_[1], b_[3] + (m - tol) - a[1])
+        bad |= (px > 0) & (py > 0)
+    return bad
+static = [(r, pos[r]) for r in refs if r not in CSP]
+sp = {r: P(r, rel[r], r not in ANCH, r in NOLAB) for r, _ in static}
+sp['U301'] = setlabel(sp['U301'], 1)
+def single(ref, d, mode, xs, ys, keep=None):
+    p = variant(ref, d, mode)
+    X, Y = np.meshgrid(xs, ys); X = X.ravel(); Y = Y.ravel()
+    C, L = shp(p, X, Y)
+    ok = (C[0] >= FENCE[0] - 0.01) & (C[1] >= FENCE[1] - 0.01) & (C[2] <= FENCE[2] + 0.01) & (C[3] <= FENCE[3] + 0.01)
+    ok &= (L[2] <= FENCE[2] + 0.01) & (L[3] <= FENCE[3] + 0.01) & (L[0] >= FENCE[0] - 0.01)
+    for r_, (sx, sy) in static:
+        if abs(sx - 31) > 25 or abs(sy - 19) > 22: continue
+        Cs, Ls = shp(sp[r_], sx, sy)
+        ok &= ~conf_np(C, L, Cs, Ls)
+    for q in obst:
+        if len(q) > 4 and ref in q[4]: continue
+        for a in (C, L):
+            px = np.minimum(a[2] + (LC - 0.05) - q[0], q[2] + (LC - 0.05) - a[0]); py = np.minimum(a[3] + (LC - 0.05) - q[1], q[3] + (LC - 0.05) - a[1])
+            ok &= ~((px > 0) & (py > 0))
+    return p, X[ok], Y[ok]
+def rng(c, h, g): return np.arange(c - h, c + h + 1e-9, g)
+
+G = float(os.environ.get('GRID', '0.2')); BF = set(os.environ.get('BF', '').split(','))
+u = {p: (pos['U401'][0] + padrel['U401'][p][0], pos['U401'][1] + padrel['U401'][p][1]) for p in padrel['U401'] if p in '123456789' or p in ('10', '11', '12')}
+# (ref, own pad, U401 pin, limit)
+TIES = {  # limits overridable: T405, T409, T407, T406
+        'C401': [('1', '3', 3.0)], 'C405': [('1', '5', 3.0)], 'C406': [('1', '5', 6.5)], 'C409': [('1', '6', 4.5)], 'C410': [('1', '6', 9.03)],
+        'C407': [('1', '11', 4.5)], 'C408': [('1', '11', 6.40)], 'C404': [('1', '3', 6.1), ('1', '8', 8.15), ('1', '12', 8.0)]}
+for _r, _k in (('C405', 'T405'), ('C409', 'T409'), ('C407', 'T407'), ('C406', 'T406')):
+    if os.environ.get(_k): TIES[_r] = [(TIES[_r][0][0], TIES[_r][0][1], float(os.environ[_k]))]
+FREED = ['C402', 'C403', 'R404', 'R405']
+def _pin_of_off(ref, off):
+    for pn, (px, py, nn) in padrel[ref].items():
+        if abs(px - off[0]) < 1e-6 and abs(py - off[1]) < 1e-6: return pn
+def _pin_u(off): return _pin_of_off('U401', off)
+for _f in FREED:
+    TIES[_f] = []
+    for (q, qoff, ic, icoff, D) in CAPS:
+        if q == _f and ic == 'U401':
+            lim = D
+            if _f == 'C402': lim = min(D, 3.84 if _pin_of_off(q, qoff) == '1' else 3.27)
+            if _f == 'C403': lim = min(D, 2.80) if _pin_u(icoff) == '12' else D
+            TIES[_f].append((_pin_of_off(q, qoff), _pin_u(icoff), lim))
+    print('TIES', _f, TIES[_f])
+BESIDEOK = set(os.environ.get('BESIDEOK', 'C401,C405,C409,C407,C402,C403,R404,R405').split(','))
+BF = BESIDEOK
+ROTS = {r: (0, 90, 180, 270) for r in CSP}
+cands = {}
+for ref in sorted(CSP):
+    rows = []
+    for d, mode in itertools.product((0, 90, 180, 270), (0, 1, 2) if ref in BF else (0,)):
+        if os.environ.get('PIN') and ref in FREED and d != 0: continue
+        if os.environ.get('PIN') and ref in FREED:
+            p, X, Y = single(ref, d, mode, np.array([pos[ref][0]]), np.array([pos[ref][1]]))
+        else:
+            p, X, Y = single(ref, d, mode, np.arange(FENCE[0], FENCE[2], G), np.arange(FENCE[1], FENCE[3], G))
+        ok = np.ones(len(X), bool)
+        for pad, pin, lim in TIES[ref]:
+            ox, oy = padoff(ref, pad, d)
+            ok &= np.hypot(X + ox - u[pin][0], Y + oy - u[pin][1]) <= lim + 1e-9
+        for x, y in zip(X[ok], Y[ok]): rows.append((d, mode, x, y))
+    cands[ref] = np.array(rows) if rows else np.zeros((0, 4))
+    print('CSP', ref, len(rows))
+names = sorted(CSP, key=lambda r: len(cands[r]))
+def shapes(ref):
+    rows = cands[ref]; C = np.zeros((4, len(rows))); L = np.zeros((4, len(rows)))
+    for d, md in itertools.product((0, 90, 180, 270), (0, 1, 2)):
+        m = (rows[:, 0] == d) & (rows[:, 1] == md)
+        if m.any():
+            c, l = shp(variant(ref, d, md), rows[m, 2], rows[m, 3]); C[:, m] = np.array(c); L[:, m] = np.array(l)
+    return C, L
+SH = {r: shapes(r) for r in names}
+def compat(a, b):
+    Ca, La = SH[a]; Cb, Lb = SH[b]
+    return ~conf_np([c[:, None] for c in Ca], [l[:, None] for l in La], [c[None, :] for c in Cb], [l[None, :] for l in Lb])
+CM = {}
+for i, a in enumerate(names):
+    for b in names[i + 1:]:
+        CM[(a, b)] = compat(a, b)
+        CM[(b, a)] = CM[(a, b)].T
+print('PAIRS (compatible candidate pairs):')
+for i, a in enumerate(names):
+    print('PAIR', a, {b: int(CM[(a, b)].sum()) for b in names if b != a})
+
+import time as _t
+ISB = {r: (cands[r][:, 1] != 0) for r in names}
+T0 = _t.time(); DEADLINE = float(os.environ.get('DEADLINE', '2700'))
+class Out(Exception): pass
+def run_k(K):
+    sol = []; count = [0]
+    def dfs(assign, masks, nb):
+        if _t.time() - T0 > DEADLINE: raise Out()
+        if len(assign) == len(names):
+            sol.append(dict(assign)); return len(sol) >= 3
+        rest = [r for r in names if r not in assign]
+        if nb >= K:
+            masks = {q: masks[q] & ~ISB[q] for q in rest}
+        r = min(rest, key=lambda q: masks[q].sum())
+        idx = np.nonzero(masks[r])[0]
+        count[0] += 1
+        for i in idx:
+            m2 = {q: masks[q] & CM[(r, q)][i] for q in rest if q != r}
+            if any(not v.any() for v in m2.values()): continue
+            assign[r] = i
+            if dfs(assign, m2, nb + int(ISB[r][i])): return True
+            del assign[r]
+        return False
+    masks = {r: np.ones(len(cands[r]), bool) for r in names}
+    dfs({}, masks, 0)
+    return sol, count[0]
+try:
+    for K in range(0, int(os.environ.get('KMAX', '4')) + 1):
+        sol, nodes = run_k(K)
+        print('BESIDE_BUDGET', K, 'SOLUTIONS', len(sol), 'nodes', nodes, 'elapsed', round(_t.time() - T0), flush=True)
+        for s_ in sol:
+            print('SOL', {r: [float(v) for v in cands[r][i][[0, 1, 2, 3]]] for r, i in s_.items()})
+        if sol: break
+except Out:
+    print('OVER BUDGET after', round(_t.time() - T0), 's at K', K)
