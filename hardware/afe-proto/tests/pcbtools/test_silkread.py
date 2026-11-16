@@ -94,6 +94,13 @@ def test_a_header_label_above_instead_of_at_its_end_fails():
     assert has(find({'H': (40.0, 11.6, 0.0)}), 'H:', 'beyond its left end')
 
 
+def test_a_mounting_hole_needs_no_designator():
+    s = Synth()
+    s.part('MH1', 10.0, 10.0, box=(8.0, 8.0, 12.0, 12.0), silk=None)
+    s.part('MHX', 30.0, 10.0, box=(28.0, 8.0, 32.0, 12.0), silk=None)      # not a hole's name: still needs one
+    assert silkread.findings(s.build()) == ['MHX: no designator on the top silk']
+
+
 def test_two_designators_too_close_fail():
     s = Synth()
     two(s, 'AAA', 10.0, 10.0)
@@ -109,6 +116,39 @@ def test_a_designator_on_a_via_fails():
     lab(s, 'A', 10.0, 11.4)
     s.v('', 10.0, 11.4)
     assert has(silkread.findings(s.build()), 'A:', 'on a via')
+
+
+def test_a_designator_on_a_silk_line_fails():
+    line = ('seg', 5.0, 11.4, 15.0, 11.4, 0.15)                      # a block outline through A's label
+    assert has(silkread.findings(board(), BNC, edge_headers={'H'}, silk=[line]), 'A:', 'on a silk line')
+
+
+def test_a_silk_line_near_a_designator_passes():
+    line = ('seg', 5.0, 12.2, 15.0, 12.2, 0.15)                      # 0.2 mm above A's label box, stroke included
+    assert silkread.findings(board(), BNC, edge_headers={'H'}, silk=[line]) == []
+
+
+def test_a_diagonal_silk_line_across_a_designator_fails():
+    line = ('seg', 9.0, 10.8, 11.0, 12.0, 0.1)
+    assert has(silkread.findings(board(), BNC, edge_headers={'H'}, silk=[line]), 'A:', 'on a silk line')
+
+
+def test_a_bnc_label_on_a_silk_line_fails():
+    line = ('seg', 63.0, 55.0, 63.0, 65.0, 0.15)
+    assert has(silkread.findings(board(), BNC, edge_headers={'H'}, silk=[line]), 'J2:', '"CH2 IN" lies on a silk line')
+
+
+def test_read_silk_takes_top_lines_and_rectangles():
+    x0, y0 = boardio.from_due(10.0, 10.0)
+    x1, y1 = boardio.from_due(20.0, 14.0)
+    item = lambda kind, layer, fill='': (f'\t({kind}\n\t\t(start {float(x0)} {float(y0)})\n\t\t(end {float(x1)} {float(y1)})\n'
+                                         f'\t\t(stroke\n\t\t\t(width 0.15)\n\t\t)\n{fill}\t\t(layer "{layer}")\n\t)\n')
+    txt = ('(kicad_pcb\n' + item('gr_line', 'F.SilkS') + item('gr_line', 'F.Fab') + item('gr_rect', 'F.SilkS', '\t\t(fill no)\n')
+           + item('gr_rect', 'F.SilkS', '\t\t(fill yes)\n') + ')\n')
+    got = silkread.read_silk(txt)
+    assert [g[0] for g in got] == ['seg'] * 5 + ['box'], got
+    assert got[0] == pytest.approx(('seg', 10.0, 10.0, 20.0, 14.0, 0.15))
+    assert got[-1][1:] == pytest.approx((10.0, 10.0, 20.0, 14.0))
 
 
 def test_a_bnc_label_off_its_frame_fails():
@@ -149,14 +189,15 @@ def test_a_bnc_bottom_designator_off_its_frame_fails():
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
-# Findings on 2026-11-15 under the "horizontal, above" convention, before the relayout: held exactly (a ratchet).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 211, 'kicad/afe-proto.kicad_pcb': 211}
+# Findings on 2026-11-15 under the "horizontal, above" convention (silk lines read, mounting holes skipped), before the
+# relayout: held exactly (a ratchet).
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 209, 'kicad/afe-proto.kicad_pcb': 207}
 
 
 @pytest.mark.pcbnew
 @pytest.mark.parametrize('rel', sorted(OPEN))
 def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
-    f = silkread.findings(boardio.read_board(str(p)), LABELS, edge_headers=EDGE)
+    f = silkread.findings(boardio.read_board(str(p)), LABELS, edge_headers=EDGE, silk=silkread.read_silk(p.read_text()))
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
     assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'

@@ -1,19 +1,22 @@
 """D30 (docs/afe.md): every part can be found from its designator, because every designator sits in one place against it.
 
-    findings(b, bnc_labels=None, edge_headers=())  -> [str]     the reasons it cannot (empty = it can)
+    findings(b, bnc_labels=None, edge_headers=(), silk=())  -> [str]   the reasons it cannot (empty = it can)
+    read_silk(txt)                                           -> [shape] the board-level F.SilkS lines and rectangles
 
 The owner's convention (2026-11-15), on the top side (the board has no bottom parts):
 
 1. Above its part. Every top part's designator is visible on F.SilkS, horizontal (0 degrees, reading left to right,
    whatever way the part is turned), centred over the part (its centre within ABOVE_X of the courtyard's centre in x),
    and just above it (from ABOVE_GAP_MIN to ABOVE_GAP_MAX between the courtyard's top and the text's bottom).
+   A mounting hole (MH followed by digits) is not an assembled part and needs no designator.
 2. Edge headers (`edge_headers`, the Due's socket rows): the same at one end instead. A header lying along x carries its
    designator horizontal just beyond its left end, centred on its row; one lying along y carries it horizontal just above
    its top end, centred over it. Same gaps as rule 1.
-3. Legible. No designator lies on any courtyard (its own included), pad or via drill, and two designators are at least
-   LABEL_GAP apart, box to box, so that two never read as one.
+3. Legible. No designator lies on any courtyard (its own included), pad, via drill or board-level silk line or rectangle
+   (`silk`, from read_silk: the block outlines and the S/N box), and two designators are at least LABEL_GAP apart, box to
+   box, so that two never read as one.
 4. BNCs (`bnc_labels`, {ref: function label}). Each carries its function label on the top silk, clear of every courtyard,
-   and its designator on the bottom silk beside its pins (mirrored there by the layout; this module does not read
+   and on no `silk` line, and its designator on the bottom silk beside its pins (mirrored there by the layout; this module does not read
    mirroring), none on top, each at one offset in its own frame across all of them, to BNC_TOL. A bottom designator
    counts as shown when it is on B.SilkS: the board arrays carry no visibility for the bottom.
 
@@ -21,6 +24,8 @@ Text extents are estimated, not read: a stroke-font character is CHAR_ADV of its
 1.0 mm designators in the AFE-2 render to within a pixel at 13.5 px/mm; other fonts or sizes are unmeasured)*.
 Everything is in Due mm, y up (boardio's frame), so "above" is larger y.
 """
+import re
+
 import numpy as np
 
 from pcbtools import boardio
@@ -56,7 +61,53 @@ def text_box(s, x, y, w, h, ang=0.0):
     return (x - tw / 2, y - h / 2, x + tw / 2, y + h / 2)
 
 
-def findings(b, bnc_labels=None, edge_headers=()):
+def read_silk(txt):
+    """the board-level F.SilkS graphics of a .kicad_pcb text, in Due mm: ('seg', x0, y0, x1, y1, width) for a line or an
+    unfilled rectangle's edge, ('box', x0, y0, x1, y1) for a filled rectangle"""
+    out = []
+    for m in re.finditer(r'\n\t\((gr_line|gr_rect)(.*?)\n\t\)', txt, re.S):
+        body = m.group(2)
+        if '(layer "F.SilkS")' not in body:
+            continue
+        s = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', body)
+        e = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', body)
+        w = re.search(r'\(width ([-\d.]+)\)', body)
+        w = float(w.group(1)) if w else 0.0
+        x0, y0 = boardio.to_due(float(s.group(1)), float(s.group(2)))
+        x1, y1 = boardio.to_due(float(e.group(1)), float(e.group(2)))
+        if m.group(1) == 'gr_line':
+            out.append(('seg', x0, y0, x1, y1, w))
+        elif '(fill yes)' in body:
+            out.append(('box', *_box(x0, y0, x1, y1)))
+        else:
+            for a, c in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))):
+                out.append(('seg', *a, *c, w))
+    return out
+
+
+def _on_shape(box, shape):
+    """does a text box touch a silk shape (a segment counts with its stroke width)"""
+    if shape[0] == 'box':
+        return _overlap(box, shape[1:])
+    _, x0, y0, x1, y1, w = shape
+    bx0, by0, bx1, by1 = box[0] - w / 2, box[1] - w / 2, box[2] + w / 2, box[3] + w / 2
+    t0, t1, dx, dy = 0.0, 1.0, x1 - x0, y1 - y0           # Liang-Barsky clip of the segment to the grown box
+    for p, q in ((-dx, x0 - bx0), (dx, bx1 - x0), (-dy, y0 - by0), (dy, by1 - y0)):
+        if p == 0:
+            if q <= 0:
+                return False
+        else:
+            r = q / p
+            if p < 0:
+                t0 = max(t0, r)
+            else:
+                t1 = min(t1, r)
+            if t0 >= t1:
+                return False
+    return True
+
+
+def findings(b, bnc_labels=None, edge_headers=(), silk=()):
     bnc_labels = dict(bnc_labels or {})
     edge_headers = set(edge_headers)
     refs = list(b.fp_ref)
@@ -76,7 +127,7 @@ def findings(b, bnc_labels=None, edge_headers=()):
 
     for i in parts:
         r = refs[i]
-        if r in bnc_labels:
+        if r in bnc_labels or re.fullmatch(r'MH\d+', r):
             continue
         if r not in shown:
             bad.append(f'{r}: no designator on the top silk')
@@ -102,6 +153,8 @@ def findings(b, bnc_labels=None, edge_headers=()):
             bad.append(f'{r}: designator lies on a pad')
         if any(_overlap(box, v) for v in vias):
             bad.append(f'{r}: designator lies on a via')
+        if any(_on_shape(box, sh) for sh in silk):
+            bad.append(f'{r}: designator lies on a silk line')
 
     L = sorted((r, v[0]) for r, v in shown.items())
     for a in range(len(L)):
@@ -128,6 +181,8 @@ def findings(b, bnc_labels=None, edge_headers=()):
         hidden = sorted({refs[k] for k in parts if _overlap(lb, cour[k])})
         if hidden:
             bad.append(f'{r}: "{label}" lies on the courtyard of {", ".join(hidden)}, whose body hides it')
+        if any(_on_shape(lb, sh) for sh in silk):
+            bad.append(f'{r}: "{label}" lies on a silk line')
         a = np.radians(b.fp_rot[i])
         R = np.array([[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]])     # board -> the part's own frame (y up, ccw angles)
         o = np.array([b.fp_x[i], b.fp_y[i]])
