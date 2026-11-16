@@ -158,15 +158,20 @@ def test_the_bottom_ground_plane_fills_both_bands_and_is_not_a_keepout(pcbnew_re
     """the bottom layer is free in the bands: the real board's B.Cu fill reaches into each band (but not to the edge, 0.45 mm), and a B.Cu
     track put in a band is neither counted by the top-only band check nor reported by KiCad's DRC as not allowed"""
     from pcbtools.editor import edit
-    b = boardio.read_board(BOARD)
+    # the board is saved unfilled until routing, so fill a copy with the project's ZONE_FILLER (editor.fill_zones); the property is
+    # about the zone outlines the filler honours, not about a fill stored in the file
+    p = tmp_path / 'b.kicad_pcb'
+    shutil.copy(BOARD, p)
+    shutil.copy(BOARD.with_suffix('.kicad_pro'), p.with_suffix('.kicad_pro'))      # the 0.45 mm edge clearance is the project's
+    with edit(p) as e:
+        e.fill_zones()
+    b = boardio.read_board(p)
     bz = np.flatnonzero((b.z_layer == 1) & b.z_filled & ~b.z_keepout)
     assert len(bz) == 1
     v0, v1 = b.z_vert_off[b.z_ring_off[bz[0]]], b.z_vert_off[b.z_ring_off[bz[0] + 1]]
     ys = b.z_xy[v0:v1, 1]
     edge = 0.45
     assert ys.min() == pytest.approx(L.BOARD_RECT[1] + edge, abs=0.02) and ys.max() == pytest.approx(L.BOARD_RECT[3] - edge, abs=0.02), (ys.min(), ys.max())
-    p = tmp_path / 'b.kicad_pcb'
-    shutil.copy(BOARD, p)
     y = (L.KEEPOUTS[0][1][1] + L.KEEPOUTS[0][1][3]) / 2
     with edit(p) as e:
         e.add_tracks('/GND', 'B', 40.0, y, 44.0, y, 0.2)
