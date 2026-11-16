@@ -1,0 +1,218 @@
+"""AWG block, rows first: U301 fixed where it is (label above), every other part in a row of horizontal passives (rows y_a, y_b, y_c, and a column west of the A1 lane),
+chosen by a depth-first search over discrete slots; every hard row and the lanes are checked exactly (relayout_place's own functions)."""
+import sys, math, json, random, itertools
+sys.path.insert(0, '/work/hardware/afe-proto/v2/layout')
+import numpy as np, relayout_place as RP
+R = '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/'
+D0, P0 = RP.load(R + 'dump_all.json')
+U = (76.56, 9.71)                                              # U301 stays where it is
+PARTS = ['C306', 'C305', 'R304', 'R303', 'C301', 'R306', 'R307', 'R308', 'R309', 'R301', 'R302', 'TP301', 'C303', 'C304', 'R305']
+ROWS = [7.235, 12.185, 16.15]
+POCKET_X, POCKET_ROWS = 62.3, [8.1, 11.6, 15.1]
+def ov(a, b, g): return min(a[2], b[2]) - max(a[0], b[0]) + g > 1e-6 and min(a[3], b[3]) - max(a[1], b[1]) + g > 1e-6
+reg = RP.REGIONS['AWG']; mext, mlab = RP.Mask(reg, 0.2), RP.Mask(reg, 0.4)
+lanes = RP.LANES
+g = RP.part_geom(P0['U301']); ux, uy = U
+U_ext = (g['ext'][0]+ux, g['ext'][1]+uy, g['ext'][2]+ux, g['ext'][3]+uy)
+U_lab = (g['lab'][0]+ux, g['lab'][1]+uy, g['lab'][2]+ux, g['lab'][3]+uy); U_zone = (g['zone'][0]+ux, g['zone'][1]+uy, g['zone'][2]+ux, g['zone'][3]+uy)
+fixed_ext = [U_ext]; fixed_zone = [U_zone]; fixed_lab = [U_lab]
+# fixed header labels / names near the block
+nb = RP.name_box('AWG', P0, {r: RP.part_geom(p) for r, p in P0.items()}, None); fixed_lab.append(nb)
+for r in ('J602', 'J603'):
+    c = RP.header_label(P0[r]); w, h = RP.LAB_W * 4, RP.LAB_H
+    fixed_lab.append((c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2))
+for r in ('J301', 'J605', 'MH601'):
+    c = P0[r]['cy']; fixed_ext.append(tuple(c))
+fixed_ext += [(P0[r]['silk'] or P0[r]['cy']) for r in ('J602', 'J603')]
+HARD = [h for h in RP.hard_constraints(P0) if any(r in PARTS for r in h['refs'])]
+def orient0(ref): return [k for k in range(4) if RP.orient(P0[ref], k) == 0]
+def cand(ref):
+    out = []
+    spec = ref
+    for k in orient0(ref) if ref != 'TP301' else [0]:
+        for ls in (0, 2, 4):
+            gg = RP.part_geom(P0[ref], k, ls)
+            rows = ROWS if ref not in ('C303', 'C304') else ROWS + [7.25, 7.45, 10.75, 10.95, 14.25]
+            xs = (np.concatenate([np.arange(59.5, 80.8, 0.05), np.arange(80.8, 85.3, 0.01), np.arange(85.3, 92.2, 0.05)]) if ref not in ('C303', 'C304') else np.arange(59.6, 64.2, 0.1))
+            if ref == 'TP301':
+                rows = np.arange(6.5, 17.5, 0.05)
+            for y in rows:
+                for x in xs:
+                    x = round(float(x), 2); y = round(float(y), 3)
+                    e = (gg['ext'][0]+x, gg['ext'][1]+y, gg['ext'][2]+x, gg['ext'][3]+y)
+                    z = (gg['zone'][0]+x, gg['zone'][1]+y, gg['zone'][2]+x, gg['zone'][3]+y)
+                    lb = (gg['lab'][0]+x, gg['lab'][1]+y, gg['lab'][2]+x, gg['lab'][3]+y)
+                    if mext.bad(e) > 0 or mlab.bad(lb) > 0: continue
+                    if any(ov(e, f, 0.02) for f in fixed_ext) or any(ov(z, f, 0) for f in fixed_ext) or any(ov(e, f, 0) for f in fixed_zone) or any(ov(lb, f, 0.5) for f in fixed_lab): continue
+                    if any(ov(e, l, 0) or ov(z, l, 0) for l in lanes): continue
+                    out.append((ref, k, ls, x, y, e, z, lb))
+    return out
+def pad_abs(ref, k, x, y, n):
+    c, s_ = RP.COS[k], RP.SIN[k]
+    q = [q for q in P0[ref]['pads'] if q['n'] == n][0]
+    o = (q['c'][0] - P0[ref]['x'], q['c'][1] - P0[ref]['y']); o = (o[0]*c - o[1]*s_, o[0]*s_ + o[1]*c)
+    return (x + o[0], y + o[1])
+pinU = {n: [q['c'] for q in P0['U301']['pads'] if q['n'] == n][0] for n in '12345678'}
+# U301's pads in the board are at U (76.56, 9.71); the dump is main's: shift
+dxU, dyU = U[0] - P0['U301']['x'], U[1] - P0['U301']['y']
+pinU = {n: (c[0] + dxU, c[1] + dyU) for n, c in pinU.items()}
+def ok_local(c):
+    ref, k, ls, x, y = c[:5]
+    if ref == 'C305':
+        return math.hypot(*(np.array(pad_abs(ref, k, x, y, '1')) - np.array(pinU['8']))) <= 2.79
+    if ref == 'C306':
+        return math.hypot(*(np.array(pad_abs(ref, k, x, y, '1')) - np.array(pinU['4']))) <= 2.79
+    if ref in ('R301', 'R302'):
+        return math.hypot(x - 102.0, y - 8.89) <= 15.99
+    if ref == 'R306':
+        d0 = [q['c'] for q in P0['J603']['pads'] if q['n'] == '5'][0]; p = pad_abs(ref, k, x, y, '1')
+        return abs(p[0] - d0[0]) + abs(p[1] - d0[1]) <= 11.49
+    return True
+TARGET = {'C306': (80.9, 7.235), 'R307': (85.17, 7.235), 'R301': (89.7, 7.235), 'R309': (80.9, 12.185), 'R306': (85.17, 12.185), 'R302': (89.7, 12.185),
+          'C305': (71.5, 12.185), 'R304': (71.5, 7.235),
+          'R305': (72.9, 16.15), 'C301': (77.2, 16.15), 'R303': (81.5, 16.15), 'R308': (85.8, 16.15),
+          'C303': (62.3, 8.1), 'C304': (62.3, 11.6)}
+TOL = float(sys.argv[3]) if len(sys.argv) > 3 else 1.2
+TOLX = {'R306': 1.8}
+C = {r: [c for c in cand(r) if ok_local(c) and (r in ('TP301', 'C303', 'C304') or (abs(c[3] - TARGET[r][0]) <= TOLX.get(r, TOL) and abs(c[4] - TARGET[r][1]) < 0.06))] for r in PARTS}
+print({r: len(v) for r, v in C.items()}, flush=True)
+def comp(a, b):
+    return not (ov(a[5], b[5], 0.02) or ov(a[6], b[5], 0) or ov(b[6], a[5], 0) or ov(a[7], b[7], 0.5))
+def ac3(sets):
+    ch = True
+    while ch:
+        ch = False
+        for a in sets:
+            keep = []
+            for ca in sets[a]:
+                if all(any(comp(ca, cb) for cb in sets[b]) for b in sets if b != a):
+                    keep.append(ca)
+            if len(keep) != len(sets[a]):
+                sets[a] = keep; ch = True; print('AC', a, len(keep), flush=True)
+            if not keep: return False
+    return True
+_first = ['C306', 'C305', 'R304', 'R301', 'R306', 'R302', 'R307', 'R309', 'R305', 'C301', 'R303', 'R308']
+_sets = {r: C[r] for r in _first}
+ac3(_sets); C.update(_sets); print('after AC', {r: len(v) for r, v in _sets.items()}, flush=True)
+if len(sys.argv) > 4 and sys.argv[4] == 'ac':
+    sets = {r: C[r] for r in order_ac} if False else {r: C[r] for r in ['C306', 'C305', 'R304', 'R301', 'R306', 'R302', 'R307', 'C301', 'R303', 'R308', 'R309']}
+    for a in sets:
+        print(a, {b: sum(1 for ca in sets[a] if not any(comp(ca, cb) for cb in sets[b])) for b in sets if b != a and any(not any(comp(ca, cb) for cb in sets[b]) for ca in sets[a])})
+    print('arc-consistent:', ac3(sets), {r: len(v) for r, v in sets.items()})
+    sys.exit(0)
+# nets for the cost: pads of the placed parts and of U301
+def cost(ch):
+    tot = 0.0
+    pos = {c[0]: c for c in ch}
+    netpts = {}
+    for r, c in pos.items():
+        for q in P0[r]['pads']:
+            p = pad_abs(r, c[1], c[3], c[4], q['n']); netpts.setdefault(q['net'], []).append(p)
+    for q in P0['U301']['pads']:
+        netpts.setdefault(q['net'], []).append(pinU[q['n']])
+    for n, pts in netpts.items():
+        if n in ('/GND',) or len(pts) < 2: continue
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]; tot += (max(xs) - min(xs)) + (max(ys) - min(ys))
+    return tot
+def hard_ok(ch):
+    pos = {c[0]: c for c in ch}
+    pos_of = lambda ref: np.array((pos[ref][3], pos[ref][4])) if ref in pos else np.array((P0[ref]['x'], P0[ref]['y']))
+    def off(ref, v):
+        k = pos[ref][1] if ref in pos else 0; c, s_ = RP.COS[k], RP.SIN[k]
+        return (v[0]*c - v[1]*s_, v[0]*s_ + v[1]*c)
+    # U301 itself moved: its pads shifted; the functions use P0 geometry for refs outside `pos`, so shift U301 via a wrapper
+    def pos2(ref):
+        if ref == 'U301': return np.array(U)
+        return pos_of(ref)
+    return [h['name'] for h in HARD if h['fn'](pos2, off) > 1e-6 and all(r in pos or r in ('U301', 'J603', 'J301', 'J601') or r in P0 and r not in PARTS for r in h['refs'])]
+def mates_ok(ch):
+    # D31: every passive shares a row (y) or a column (x) with another of the same orientation within 8 mm
+    pas = [c for c in ch if RP.PAS.fullmatch(c[0])]
+    bad = 0
+    for a in pas:
+        if not any(b is not a and abs(a[4] - b[4]) <= 0.05 and math.hypot(a[3]-b[3], a[4]-b[4]) <= 8 for b in pas) and not any(b is not a and abs(a[3] - b[3]) <= 0.05 and math.hypot(a[3]-b[3], a[4]-b[4]) <= 8 for b in pas):
+            bad += 1
+    return bad
+order = ['C306', 'C305', 'R304', 'R301', 'R306', 'R302', 'R307', 'C301', 'R303', 'R308', 'R309']
+last = ['C303', 'C304', 'R305', 'TP301']
+best = [None, 1e18]
+rnd = random.Random(int(sys.argv[1]) if len(sys.argv) > 1 else 1)
+sys.setrecursionlimit(10000)
+nodes = [0]
+def greedy(seed):
+    r = random.Random(seed)
+    ch = []
+    for ref in ['C303', 'C304'] + _first + ['TP301']:
+        cs = [c for c in C[ref] if all(comp(c, p) for p in ch) and (ref not in ('C303', 'C304') or c[3] <= 64.0)]
+        if not cs: return None, ref
+        if ref in ('C303', 'C304'):
+            cs.sort(key=lambda c: (c[4], r.random()))
+        elif ref in TARGET:
+            cs.sort(key=lambda c: abs(c[3] - TARGET[ref][0]) + r.random() * 0.6)
+        else:
+            pas = [c for c in ch if RP.PAS.fullmatch(c[0])]
+            if ref == 'TP301':
+                cs.sort(key=lambda c: (cost(ch + [c]), r.random()))
+            else:
+                cs = [c for c in cs if any(abs(c[4] - p[4]) < 0.05 or abs(c[3] - p[3]) < 0.05 for p in pas)] or cs
+                cs.sort(key=lambda c: (r.random()))
+        ch.append(cs[0])
+    return ch, None
+if len(sys.argv) > 4 and sys.argv[4] == 'greedy':
+    okc = 0
+    for sd in range(400):
+        ch, miss = greedy(sd)
+        if ch is None:
+            if sd < 5: print('seed', sd, 'no slot for', miss, flush=True)
+            continue
+        m, h = mates_ok(ch), hard_ok(ch)
+        if sd < 8 or (m == 0 and not h): print('seed', sd, 'mates bad', m, 'hard', h, flush=True)
+        if m == 0 and not h:
+            print('FOUND', [(c[0], c[1], c[2], c[3], c[4]) for c in ch], flush=True)
+            json.dump({c[0]: [c[3], c[4], ((round(P0[c[0]]['rot']) + 90 * c[1] + 180) % 360) - 180, c[2]] for c in ch}, open(R + 'awg_rows_result.json', 'w')); okc = 1
+            break
+    sys.exit(0)
+DIAG = [0]
+def finish(ch, j):
+    if best[0] is not None: return
+    if j == len(last):
+        if DIAG[0] < 6:
+            DIAG[0] += 1; print('leaf: mates bad', mates_ok(ch), 'hard', hard_ok(ch), [(c[0], c[3], c[4]) for c in ch], flush=True)
+        if mates_ok(ch) == 0 and not hard_ok(ch):
+            cs = cost(ch); best[0], best[1] = list(ch), cs; print('found', round(cs, 1), flush=True)
+        return
+    ref = last[j]
+    cs = [c for c in C[ref] if all(comp(c, p) for p in ch)]
+    pas = [c for c in ch if RP.PAS.fullmatch(c[0])]
+    # prefer slots that share a row or column with a placed passive
+    def key(c): return (0 if any(abs(c[4] - p[4]) < 0.05 or abs(c[3] - p[3]) < 0.05 for p in pas) else 1, cost(ch + [c]))
+    cs.sort(key=key)
+    for c in cs[:25]:
+        finish(ch + [c], j + 1)
+        if best[0] is not None: return
+def dfs(i, ch):
+    nodes[0] += 1
+    if nodes[0] > 6000: return
+    if i == len(order):
+        finish(ch, 0)
+        return
+    ref = order[i]
+    cs = [c for c in C[ref] if all(comp(c, p) for p in ch)]
+    # prefer slots in rows already used (mates) and near the partners: sort by cost of the partial placement
+    cs.sort(key=lambda c: (cost(ch + [c]) if len(cs) < 400 else abs(c[3] - TARGET.get(ref, (c[3], 0))[0]), rnd.random()))
+    seen = set()
+    for c in cs[:int(sys.argv[2]) if len(sys.argv) > 2 else 12]:
+        dfs(i + 1, ch + [c])
+dfs(0, [])
+print('nodes', nodes[0], 'best', best[1])
+if best[0]:
+    json.dump({c[0]: [c[3], c[4], ((round(P0[c[0]]['rot']) + 90 * c[1] + 180) % 360) - 180, c[2]] for c in best[0]}, open(R + 'awg_rows_result.json', 'w'))
+    for c in best[0]: print(c[:5])
+
+if len(sys.argv) > 4 and sys.argv[4] in TARGET:
+    ref = sys.argv[4]; x, y = TARGET[ref]
+    for k in orient0(ref):
+        for ls in (0, 2, 4):
+            gg = RP.part_geom(P0[ref], k, ls)
+            e = (gg['ext'][0]+x, gg['ext'][1]+y, gg['ext'][2]+x, gg['ext'][3]+y); z = (gg['zone'][0]+x, gg['zone'][1]+y, gg['zone'][2]+x, gg['zone'][3]+y); lb = (gg['lab'][0]+x, gg['lab'][1]+y, gg['lab'][2]+x, gg['lab'][3]+y)
+            print(ref, k, ls, 'mext', mext.bad(e), 'mlab', mlab.bad(lb), 'e/fixed_ext', [i for i, f in enumerate(fixed_ext) if ov(e, f, 0.02)], 'z/ext', [i for i, f in enumerate(fixed_ext) if ov(z, f, 0)], 'lab', [i for i, f in enumerate(fixed_lab) if ov(lb, f, 0.5)], 'e/zone', [i for i, f in enumerate(fixed_zone) if ov(e, f, 0)], 'U_zone', [round(v, 2) for v in U_zone], 'e', [round(v, 2) for v in e], 'lane', [i for i, l in enumerate(lanes) if ov(e, l, 0) or ov(z, l, 0)], [round(v, 2) for v in lb])
