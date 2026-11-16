@@ -13,10 +13,11 @@ FENCE = {
 WALL = [(64.4, 13.0, 70.2, 30.8)]
 R412 = [(38.6, 34.5, 45.0, 47.5)]
 WALLREFS = {'R309', 'R310', 'R515', 'R516'}
+WALLFREE = {'TP101'}
 LADDER = {'R503', 'R504', 'R505', 'R506', 'R507', 'R508'}
 HAND = {'R508': (52.07, 6.5), 'R506': (57.15, 6.5), 'R504': (62.23, 6.5), 'R507': (54.61, 9.35), 'R505': (59.69, 9.35),
-        'R503': (63.05, 10.15), 
-        'R501': (63.35, 18.5), 'R513': (53.9, 20.8), 'U502': (58.1, 21.3), 'D501': (62.2, 26.6), 'TP501': (51.2, 10.9), 'R502': (62.3, 20.6), 'R207': (79.2, 28.0), 'R107': (80.65, 40.2), 'R302': (76.4, 8.0), 'C502': (60.9, 22.9), 'R514': (53.7, 15.35), 'R520': (51.3, 15.35), 'R515': (66.04, 24.0), 'R516': (68.58, 27.3), 'D201': (72.6, 28.4), 'C503': (46.8, 9.2), 'J501': (56.54, 14.9)}
+        'R503': (63.05, 10.15), 'J501': (56.54, 14.9), 'C502': (58.6, 26.4), 'D501': (62.4, 28.45), 'R509': (51.0, 38.4),
+        'R405': (36.4, 11.2), 'C408': (40.2, 10.8), 'C407': (40.2, 15.64), 'R406': (38.0, 19.15), 'R407': (41.0, 19.55), 'R403': (32.4, 8.3), 'R404': (36.9, 7.55), 'C402': (36.9, 14.9), 'C403': (33.7, 17.9), 'C401': (29.5, 11.5)}
 ANCH = set(C.ANCHORS) | {'R411', 'U101', 'U301', 'U401', 'C402'} | set(HAND)
 LOCKX = WALLREFS | {'R110', 'J501'}
 NOLAB = ['J601','J602','J603','J604','J605','J606','J607','J101','J201','J301']
@@ -33,7 +34,7 @@ for k, r in enumerate(b.fp_ref):
     if r in ANCH or d == '6':
         fence[r] = big
     elif r == 'J501': fence[r] = FENCE['5']
-    elif r in WALLREFS: fence[r] = [(62.2, 13.0, 71.0, 30.8)]
+    elif r in WALLREFS or r in WALLFREE: fence[r] = [(62.2, 12.0, 71.0, 31.4)]
     elif r == 'R110': fence[r] = [(62.2, 32.0, 69.4, 48.7)]
     elif r in ('R412', 'R413'): fence[r] = R412; y = 40.0
     else:
@@ -51,6 +52,10 @@ for r in ('J601','J602','J603','J604','J605','J606','J607'):
         else: obst.append((cxm - w / 2, c[1] - 1.2, cxm + w / 2, c[1] - 0.2))                              # upper half: below
     else: obst.append((cxm - w / 2, c[3] + 0.2, cxm + w / 2, c[3] + 1.2))
 
+BRIDGES_ = frozenset({'R309','R310','R515','R516','R110','D101','D201','R107','R207','TP101','TP201'})
+obst.append((65.7, 4.4, 66.4, 40.0, BRIDGES_))      # the A1 and A0 lines run up the wall: only the parts on them may stand in their columns
+obst.append((68.2, 4.4, 68.9, 40.0, BRIDGES_))
+
 # ---- hard constraints from the landed board (LR-4/LR-5/LR-12): critical parts keep their distance to the pin they serve; A0/A1 get no longer
 padrel = {}
 padpos = {}
@@ -60,9 +65,25 @@ for j in range(len(b.p_fp)):
     padrel.setdefault(r, {})[b.p_pin[j]] = (float(b.p_x[j] - b.fp_x[k]), float(b.p_y[j] - b.fp_y[k]), int(b.p_net[j]))
 def pr(ref, pin): return padrel[ref][pin][:2]
 def landed(ra, pa, rb, pb):
-    xa = b.fp_x[b.ref_index(ra)] + pr(ra, pa)[0]; ya = b.fp_y[b.ref_index(ra)] + pr(ra, pa)[1]
-    xb = b.fp_x[b.ref_index(rb)] + pr(rb, pb)[0]; yb = b.fp_y[b.ref_index(rb)] + pr(rb, pb)[1]
+    xa = b.fp_x[b.ref_index(ra)] + PADREL0[ra][pa][:2][0]; ya = b.fp_y[b.ref_index(ra)] + PADREL0[ra][pa][:2][1]
+    xb = b.fp_x[b.ref_index(rb)] + PADREL0[rb][pb][:2][0]; yb = b.fp_y[b.ref_index(rb)] + PADREL0[rb][pb][:2][1]
     return float(((xa - xb) ** 2 + (ya - yb) ** 2) ** .5)
+import os as _o2
+SLK = {kv.split(':')[0]: float(kv.split(':')[1]) for kv in _o2.environ.get('SLACKMAP', '').split(',') if kv}
+SLK_DEFAULT = float(_o2.environ.get('SLACKD', '1000'))
+import copy, os
+PADREL0 = copy.deepcopy(padrel)
+ROTOV = json.load(open('whatif/_scratch/rotov.json')) if os.path.exists('whatif/_scratch/rotov.json') else {}
+ROT0 = json.load(open('whatif/_scratch/rot.json'))
+for r_, new_ in ROTOV.items():
+    d_ = (new_ - ROT0[r_]) % 360
+    if d_ in (90, 270):
+        x0_, y0_, x1_, y1_ = rel[r_]
+        rel[r_] = (y0_, x0_, y1_, x1_)
+    for pin_, (px_, py_, n_) in list(padrel[r_].items()):
+        if d_ == 90: padrel[r_][pin_] = (-py_, px_, n_)
+        elif d_ == 270: padrel[r_][pin_] = (py_, -px_, n_)
+        elif d_ == 180: padrel[r_][pin_] = (-px_, -py_, n_)
 CAPS = []
 CRIT = set()
 SKIPN = {'', '/GND'}
@@ -76,6 +97,7 @@ for ic in ('U101', 'U301', 'U401', 'U501', 'U502'):
                     d = landed(q, qpin, ic, pin)
                     if d <= 8.0:
                         CRIT.add(q)
+                        CAPS.append((q, (qx, qy), ic, (dx, dy), round(d + SLK.get(q, SLK_DEFAULT), 3)))
 LIM = {('C103', 'U101', '8'): 3.0, ('C302', 'U301', '8'): 3.0, ('C303', 'U301', '4'): 3.0, ('C502', 'U502', '8'): 3.0, ('C501', 'U501', '1'): 3.0}
 dec = {}
 for (cap, ic, pin), L in LIM.items():
@@ -91,8 +113,33 @@ for ch in C.CHANNELS:
     rr = ch['riso']; ic, pin = ch['out_pin']
     d = 4.8
     CAPS.append((rr, pr(rr, '1'), ic, pr(ic, pin), round(d, 3)))
+# POWER relaxations (spec lead): FB-divider ties, absolute caps for the VIN decoupling caps, pads exempt from the tie
+ABSM = {}
+for kv in os.environ.get('ABSMAP', '').split(','):
+    if kv:
+        a_, d_ = kv.split(':'); ABSM[tuple(a_.split('@'))] = float(d_)
+IGN = {tuple(kv.split('@')) for kv in os.environ.get('IGNORE', '').split(',') if kv}
+def _pin_of(ic, off):
+    for pin_, (px_, py_, n_) in padrel[ic].items():
+        if abs(px_ - off[0]) < 1e-6 and abs(py_ - off[1]) < 1e-6: return pin_
+newcaps = []
+for c in CAPS:
+    q, qoff, ic, icoff, D = c
+    qpin = None
+    for pin_, (px_, py_, n_) in padrel[q].items():
+        if abs(px_ - qoff[0]) < 1e-6 and abs(py_ - qoff[1]) < 1e-6: qpin = pin_
+    if (q, qpin) in IGN: continue
+    absrefs = {k[0] for k in ABSM}
+    if ic == 'U401' and q in absrefs:
+        pin = _pin_of(ic, icoff)
+        if (q, pin) in ABSM:
+            c = (q, qoff, ic, icoff, ABSM[(q, pin)])
+        else:
+            continue
+    newcaps.append(c)
+CAPS = newcaps
 SPANS = []
-for nm in ('/A0', '/A1'):
+for nm in ('/A0', '/A1', '/AWG_INV'):
     nid = b.nets.index(nm)
     mem, xs, ys = [], [], []
     for r, pads in padrel.items():
@@ -100,7 +147,7 @@ for nm in ('/A0', '/A1'):
             if n_ == nid and not np.isnan(b.fp_x[b.ref_index(r)]):
                 k = b.ref_index(r)
                 mem.append((r, (px, py))); xs.append(b.fp_x[k] + px); ys.append(b.fp_y[k] + py)
-    SPANS.append((mem, round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3)))
+    SPANS.append((mem, round(max(xs) - min(xs) + (0.4 if nm == '/AWG_INV' else 0), 3), round(max(ys) - min(ys) + (0.4 if nm == '/AWG_INV' else 0), 3)))
 # the reference to the ladder and the ADS: U501's VREF pad to R508 and U502.4
 
 import os as _os
@@ -119,6 +166,8 @@ J = json.load(open('whatif/_scratch/relay_pos.json'))
 pos = {r: tuple(J[r]) for r in refs}
 ov = json.load(open('whatif/_scratch/override.json')) if os.path.exists('whatif/_scratch/override.json') else {}
 for r, v in ov.items(): pos[r] = tuple(v)
+for r_, v_ in HAND.items(): pos[r_] = v_
+pos['R411'] = (48.275, 3.1)
 from pcbtools.labelplace import P as _P
 parts = [_P(r, rel[r], r not in ANCH, r in NOLAB) for r in refs]
 rect = {}
@@ -223,7 +272,15 @@ if os.environ.get('MAP'):
 
 if os.environ.get('CLIMB'):
     import random
-    random.seed(1)
+    random.seed(int(os.environ.get('SEED', '1')))
+    JIT = float(os.environ.get('JITTER', '0'))
+    if JIT:
+        b0 = [v for v in LPm.violations(parts, pos, rect, ANCH, obst, CAPS, SPANS) if 'outside' not in v]
+        for v in b0:
+            for nm in v.replace(':', '/').split('/')[:2]:
+                nm = nm.strip().split(' ')[0]
+                if nm in idx and nm not in ('U101', 'U301', 'U401', 'J501') and nm not in LOCKX and not nm.startswith(('J', 'MH')) and (not os.environ.get('ONLYC') or nm in os.environ['ONLYC'].split(',')):
+                    pos[nm] = (round(pos[nm][0] + random.gauss(0, JIT), 2), round(pos[nm][1] + random.gauss(0, JIT), 2))
     for rnd in range(int(os.environ['CLIMB'])):
         bad = LPm.violations(parts, pos, rect, ANCH, obst, CAPS, SPANS)
         bad = [v for v in bad if 'outside its fence' not in v and 'label outside' not in v]
@@ -235,7 +292,9 @@ if os.environ.get('CLIMB'):
                 nm = nm.strip().split(' ')[0]
                 if nm in idx: names.add(nm)
             if v.startswith('cap '): names |= set(v.split(':')[0].replace('cap ', '').split('-'))
-        names = [n for n in names if n not in ('U101', 'U301', 'U401', 'C402', 'J501')]
+        names = [n for n in names if n not in ('U101', 'U301', 'U401', 'J501')]
+        _only = set(os.environ.get('ONLYC', '').split(',')) - {''}
+        if _only: names = [n for n in names if n in _only]
         random.shuffle(names)
         improved = False
         for r in names:
@@ -248,26 +307,76 @@ if os.environ.get('CLIMB'):
             if best[0] < c0:
                 print('  climb', r, c0, '->', best[0], pos[r], best[2]); pos[r] = best[2]; improved = True
         if not improved: break
-    json.dump({r: [*pos[r]] for r in refs}, open('whatif/_scratch/relay_pos.json', 'w'))
     bad = LPm.violations(parts, pos, rect, ANCH, obst, CAPS, SPANS); print('CLIMB FINAL', len(bad), bad)
+    json.dump({r: [*pos[r]] for r in refs}, open(os.environ.get('OUTJ', 'whatif/_scratch/relay_pos.json'), 'w'))
 
 if os.environ.get('PADS'):
     for r in os.environ['PADS'].split(','):
         print('PADS', r, {pin: (round(v[0], 2), round(v[1], 2), boardio.read_board('kicad/afe-proto.kicad_pcb').nets[v[2]]) for pin, v in padrel[r].items()})
 
+_B0 = boardio.read_board('kicad/afe-proto.kicad_pcb')
+NETS = []
+_B1 = boardio.read_board('kicad/afe-proto.kicad_pcb')
+_sub = set(os.environ.get('ANNEALSUB', '').split(','))
+_byn = {}
+for r_, pads_ in padrel.items():
+    for pin_, (px_, py_, n_) in pads_.items():
+        _byn.setdefault(n_, []).append((r_, (px_, py_)))
+for n_, mem_ in _byn.items():
+    nm_ = _B1.nets[n_]
+    if nm_ in ('', '/GND') or len(mem_) < 2 or len(mem_) > 8: continue
+    if not any(m[0] in _sub for m in mem_): continue
+    NETS.append((mem_, 1.0))
+print('nets', len(NETS))
+ROT = {**json.load(open('whatif/_scratch/rot.json')), **ROTOV}
+PAS = re.compile(r'(?:R|C|BR|L|FB)(\d)\d\d$')
+ALIGN = {'passives': {r_: (PAS.fullmatch(r_).group(1), round(ROT[r_] % 180)) for r_ in refs if PAS.fullmatch(r_)},
+         'pads': {r_: [(v[0], v[1]) for v in padrel[r_].values()] for r_ in refs if not PAS.fullmatch(r_) and r_ in padrel and not r_.startswith('MH')}}
+TARGET0 = {r: (float(_B0.fp_x[_B0.ref_index(r)]), float(_B0.fp_y[_B0.ref_index(r)])) for r in refs}
 if os.environ.get('ANNEALSUB'):
-    sub = set(os.environ['ANNEALSUB'].split(','))
+    sub = set(os.environ['ANNEALSUB'].split(',')) if os.environ['ANNEALSUB'] != 'ALL' else {r for r in refs if r not in ('U101','U301','U401','C402','J501','R411') and r not in HAND and not r.startswith(('J','MH'))}
     ANCH2 = set(ANCH) - sub
     fence2 = dict(fence)
     for r in sub:
-        fence2[r] = FENCE[os.environ.get('SUBFENCE', '5')]
+        if fence[r] is big or fence[r] == big:
+            dd = re.fullmatch(r'[A-Z]+(\d)\d\d', r).group(1)
+            fence2[r] = WALL if r in WALLREFS else FENCE[dd]
+        else:
+            fence2[r] = fence[r]
     best = None
     for sd in range(int(os.environ.get('SEEDS', '6'))):
         p0 = dict(pos)
-        pos2, bad2 = LPm.anneal(refs, rel, p0, dict(pos), fence2, ANCH2, LOCKX, obst, nolabel=set(NOLAB), iters=int(os.environ.get('ITERS', '40000')), seed=sd, caps=CAPS, spans=SPANS, t0=0.8, w_disp=0.01)
+        if os.environ.get('START') == 'LANDED':
+            p0 = dict(TARGET0)
+            for r_, v_ in HAND.items():
+                p0[r_] = v_
+            for r_ in ANCH:
+                if r_ not in HAND: p0[r_] = pos[r_]
+        pos2, bad2 = LPm.anneal(refs, rel, p0, dict(TARGET0), fence2, ANCH2, LOCKX, obst, nolabel=set(NOLAB), iters=int(os.environ.get('ITERS', '40000')), seed=sd, caps=CAPS, spans=SPANS, t0=float(os.environ.get('T0', '0.25')), w_disp=float(os.environ.get('WDISP', '0.15')), weights={r: 3.0 for r in CRIT}, xmin=XMIN, nets=NETS, w_net=float(os.environ.get('WNET', '0.0')), align=ALIGN, w_align=float(os.environ.get('WALIGN', '0.0')), p_snap=float(os.environ.get('PSNAP', '0.0')))
         bad2 = [v for v in bad2 if not v.startswith(('J607/MH', 'U401/C402', 'J602/R411', 'J601/R411', 'MH602/J605'))]
         print('anneal seed', sd, len(bad2), flush=True)
         if best is None or len(bad2) < len(best[1]): best = (pos2, bad2)
     pos, bad2 = best
     print('ANNEALSUB FINAL', len(bad2), bad2)
     json.dump({r: [*pos[r]] for r in refs}, open('whatif/_scratch/relay_pos.json', 'w'))
+
+if os.environ.get('CORR'):
+    BR = {'R309','R310','R515','R516','R110','D101','D201','R107','R207','TP101','TP201','J602'}
+    for xl, xr, nm in ((65.7, 66.4, 'A1'), (68.2, 68.9, 'A0')):
+        hit = []
+        for r in refs:
+            if r in BR: continue
+            C_, L_ = LPm._shapes(pp[r], *pos[r])
+            if C_[2] > xl and C_[0] < xr and C_[3] > 4.4 and C_[1] < 40: hit.append((r, round(C_[1], 1)))
+        print('CORR', nm, hit)
+
+if os.environ.get('EVAL'):
+    PW = {r for r in refs if re.fullmatch(r'[A-Z]+4\d\d', r)}
+    for c in CAPS:
+        if c[0] in PW or c[2] in PW:
+            dx = pos[c[0]][0] + c[1][0] - pos[c[2]][0] - c[3][0]; dy = pos[c[0]][1] + c[1][1] - pos[c[2]][1] - c[3][1]
+            d = (dx * dx + dy * dy) ** .5
+            print('EVALCAP', c[0], '->', c[2], round(d, 2), 'limit', c[4], 'OK' if d <= c[4] + 0.05 else 'OVER')
+    for v in LPm.violations(parts, pos, rect, ANCH, obst, [], []):
+        a_, _, b_ = v.partition('/')
+        if re.match(r'[A-Z]+4\d\d', v) and ('/' not in v or re.match(r'[A-Z]+4\d\d', b_)): print('EVALVIOL', v)

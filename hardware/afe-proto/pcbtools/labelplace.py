@@ -466,7 +466,7 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
     return pos, violations(parts, pos, rect, anchors, obstacles, caps, spans)
 
 
-def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6, caps=(), spans=(), weights=None, xmin=None, nets=(), w_net=0.0):
+def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=(), iters=30000, seed=0, w_disp=0.02, t0=0.6, caps=(), spans=(), weights=None, xmin=None, nets=(), w_net=0.0, align=None, w_align=0.0, p_snap=0.0):
     """simulated annealing on (violations + w_disp * displacement from the target), one free part moved at a time; the parts in a violation are moved
     most. -> (best pos, its violations)"""
     LOCK.clear()
@@ -500,6 +500,52 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         pos[r] = old
         return 3 * n
 
+
+    idx_of = {q.ref: k for k, q in enumerate(parts)}
+
+    # D31 alignment (pcbtools/align.py): a two-pin passive shares its origin's y or x with a passive of its block and orientation within REACH, or sits on a pin line
+    AREACH, APIN, ATOL = 8.0, 4.0, 0.05
+    amates = {}
+    if align:
+        pas = align['passives']
+        for r1, (b1, o1) in pas.items():
+            if r1 not in idx_of:
+                continue
+            amates[r1] = [r2 for r2, (b2, o2) in pas.items() if r2 != r1 and b2 == b1 and o2 == o1 and r2 in idx_of]
+        npads = align['pads']
+
+    def aligned(r1, ovr=None):
+        q1 = ovr if ovr is not None else pos[r1]
+        for r2 in amates.get(r1, ()):
+            q2 = pos[r2]
+            if abs(q2[0] - q1[0]) ** 2 + abs(q2[1] - q1[1]) ** 2 <= AREACH ** 2 and (abs(q2[1] - q1[1]) <= ATOL or abs(q2[0] - q1[0]) <= ATOL):
+                return True
+        for rq, lst in npads.items():
+            pq = pos[rq]
+            for dx, dy in lst:
+                px, py = pq[0] + dx, pq[1] + dy
+                if (px - q1[0]) ** 2 + (py - q1[1]) ** 2 <= APIN ** 2 and (abs(px - q1[0]) <= ATOL or abs(py - q1[1]) <= ATOL):
+                    return True
+        return False
+
+    def aligncost(r, p):
+        if not align or w_align == 0:
+            return 0.0
+        old = pos[r]
+        pos[r] = p
+        n = 0
+        if r in amates:
+            n += 0 if aligned(r) else 1
+            for m in amates[r]:
+                n += 0 if aligned(m) else 1
+        else:
+            for m in {m for m2 in amates for m in [m2] if r in amates.get(m2, ())} if False else ():
+                pass
+            for m in amates:
+                if any(abs(pos[r][0] + dx - pos[m][0]) < APIN + 1 and abs(pos[r][1] + dy - pos[m][1]) < APIN + 1 for dx, dy in npads.get(r, ())):
+                    n += 0 if aligned(m) else 1
+        pos[r] = old
+        return w_align * n
 
     netsof = {}
     for ni, (members, w) in enumerate(nets):
@@ -536,6 +582,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
                 n += 1
         n += capcost(r, p)
         n += netcost(r, p)
+        n += aligncost(r, p)
         if xmin and r in xmin and p[0] < xmin[r]:
             n += 2
         t = target[r]
@@ -547,7 +594,8 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
     for it in range(iters):
         if it % 200 == 0:
             bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
-            sc = (len(bad), sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
+            ac = sum(0 if aligned(q) else 1 for q in amates) if align else 0
+            sc = (len(bad), ac, sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
             if bestv is None or sc < bestv[2]:
                 bestv = (dict(pos), bad, sc)
             hot = sorted({r.strip().split(' ')[0] for v in bad for r in v.replace(':', '/').split('/')[:2] if r.strip().split(' ')[0] in idx})
@@ -560,11 +608,23 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         if r in lock_x:
             dx = 0.0
         p = (round(round((pos[r][0] + dx) / SNAP) * SNAP, 3), round(round((pos[r][1] + dy) / SNAP) * SNAP, 3))
+        if align and r in amates and amates[r] and rng.random() < p_snap:
+            m = amates[r][rng.integers(len(amates[r]))]
+            if rng.random() < 0.5:
+                p = (pos[r][0], pos[m][1])
+            elif r not in lock_x:
+                p = (pos[m][0], pos[r][1])
+        elif align and r in amates and rng.random() < p_snap * 0.4:
+            cands = [(pos[q][0] + dx_, pos[q][1] + dy_) for q, lst in npads.items() for dx_, dy_ in lst if (pos[q][0] + dx_ - pos[r][0]) ** 2 + (pos[q][1] + dy_ - pos[r][1]) ** 2 <= 16.0]
+            if cands:
+                c = cands[rng.integers(len(cands))]
+                p = (pos[r][0], round(c[1], 3)) if rng.random() < 0.5 or r in lock_x else (round(c[0], 3), pos[r][1])
         d = cost(r, p) - cost(r, pos[r])
         if d <= 0 or rng.random() < np.exp(-d / max(temp, 1e-3)):
             pos[r] = p
     bad = violations(parts, pos, rect, anchors, obstacles, caps, spans)
-    sc = (len(bad), sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
+    ac = sum(0 if aligned(q) else 1 for q in amates) if align else 0
+    sc = (len(bad), ac, sum((weights or {}).get(q, 1.0) * (abs(pos[q][0] - target[q][0]) + abs(pos[q][1] - target[q][1])) for q in pos))
     if bestv is None or sc < bestv[2]:
         bestv = (dict(pos), bad, sc)
     return bestv[0], bestv[1]
