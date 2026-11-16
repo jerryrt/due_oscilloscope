@@ -754,6 +754,10 @@ def route(board):
     job = Job(board)
     nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1),
                               key=lambda n: (job.names[n].lstrip('/') not in HIZ, job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
+    ONLY = os.environ.get('ONLYNETS')
+    if ONLY:
+        keep = {x for x in ONLY.split(',')}
+        nets = [n for n in nets if job.names[n].lstrip('/') in keep]
     fails = {}
     for k, n in enumerate(nets):
         tn = time.time()

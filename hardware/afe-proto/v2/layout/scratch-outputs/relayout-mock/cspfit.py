@@ -11,6 +11,7 @@ OVm, vbad, mext, mlab = T.OVm, T.vbad, T.mext, T.mlab
 pl_above, pl_any = T.pl_above, T.pl_any
 HN, HO, HNP = float(os.environ.get('HN', 8)), float(os.environ.get('HO', 10)), float(os.environ.get('HNP', 12))
 CAPB = int(os.environ.get('CAPB', 12))
+JIT = float(os.environ.get('JIT', 0.3)); SEED = int(os.environ.get('SEED', 1))
 HZ = {'CH1': ('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP'), 'CH2': ('/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')}[BLK]
 def lim(net): return HN if net.endswith('_N') else (HNP if net.endswith('_NP') else HO)
 def box(p, g, x, y, key): b = g[key]; return (b[0] + x, b[1] + y, b[2] + x, b[3] + y)
@@ -157,7 +158,8 @@ def conflict(c, D):
     bad |= b2 & (pl_any(l1, D['cy']).any(0) | pl_above(D['lab'], cy1).any(1))
     return bad
 
-def solve(tmpl, relax=(), skip=(), tl=60.0, seed=1, verbose=False):
+def solve(tmpl, relax=(), skip=(), tl=60.0, seed=None, verbose=False):
+    seed = SEED if seed is None else seed
     ob = fixed_obstacles(tmpl); O = stack(ob, skip)
     free = [r for r in T.PART if r not in tmpl]
     # windows: around the fixed pads each part must stay near, else the region
@@ -197,7 +199,7 @@ def solve(tmpl, relax=(), skip=(), tl=60.0, seed=1, verbose=False):
         if anchors[r]:
             ax = sum(a[0] for a in anchors[r]) / len(anchors[r]); ay = sum(a[1] for a in anchors[r]) / len(anchors[r])
             score = score + np.hypot(D['x'] - ax, D['y'] - ay)
-        order = np.argsort(score + np.array([rng.random() * 0.3 for _ in range(n)]) if n < 200000 else score)
+        order = np.argsort(score + np.array([rng.random() * JIT for _ in range(n)]) if n < 200000 else score)
         tries = 0
         for i in order:
             c = dict(cy=D['cy'][i], z=D['z'][i], lab=D['lab'][i], ls=int(D['ls'][i]))
