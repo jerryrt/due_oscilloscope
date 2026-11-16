@@ -260,7 +260,7 @@ OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 207, 'kicad/afe-prot
 # D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
 EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101', 'U301', 'U401'}, 'kicad/afe-proto.kicad_pcb': {'U301'}}
 # and the parts whose designator sits beside them (rule 2b).
-BESIDE = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'R304', 'C301', 'C306', 'C403', 'C404', 'C405', 'C406', 'C407', 'R401', 'R402', 'R404', 'R405'}, 'kicad/afe-proto.kicad_pcb': {'R302', 'C301', 'R305'}}
+BESIDE = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405'}, 'kicad/afe-proto.kicad_pcb': {'R302', 'C301', 'R305'}}
 
 
 @pytest.mark.pcbnew
