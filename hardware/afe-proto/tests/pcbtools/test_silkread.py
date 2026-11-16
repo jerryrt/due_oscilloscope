@@ -31,10 +31,10 @@ def lab(s, ref, x, y, ang=0.0, layer=0):
     s.rt.append((x, y, 1.0, 1.0, 0.15, ang, layer, layer == 0, refs.index(ref)))
 
 
-def board(over=None):
+def board(over=None, extra=None):
     """A horizontal and V vertical, each labelled just above; header H along x, in the lower half, labelled centred above it
     (its inboard side); two BNCs
-    with their labels. `over` replaces {ref: (x, y, ang)} or hides one with None."""
+    with their labels. `over` replaces {ref: (x, y, ang)} or hides one with None; `extra(s)` adds parts."""
     s = Synth()
     two(s, 'A', 10.0, 10.0)                       # courtyard top y 10.75
     two(s, 'V', 20.0, 10.0, vertical=True)        # courtyard top y 11.5
@@ -49,6 +49,8 @@ def board(over=None):
     lab(s, 'J1', 60.0, 38.0, 0.0, 1)
     lab(s, 'J2', 60.0, 58.0, 0.0, 1)
     s.text('CH1 IN', 63.0, 42.0).text('CH2 IN', 63.0, 62.0)
+    if extra:
+        extra(s)
     return s.build()
 
 
@@ -94,6 +96,40 @@ def test_a_named_part_beside_but_off_centre_far_or_into_it_fails():
     for x, y in ((12.15, 10.6), (12.95, 10.0), (11.75, 10.0), (7.85, 10.6), (7.05, 10.0), (8.25, 10.0)):
         # east: off centre, 1.0 out, 0.2 into the courtyard; the same three west
         assert has(silkread.findings(board({'A': (x, y, 0.0)}), BNC, edge_headers={'H'}, beside={'A'}), 'A:', 'beside it'), (x, y)
+
+
+def neighbour(x, label_y=None):
+    """B, 1.0 x 1.5, centred at (x, 8.7) (courtyard top 9.45), just east of A, labelled above it at label_y"""
+    def add(s):
+        s.part('B', x, 8.7, box=(x - 0.5, 7.95, x + 0.5, 9.45), silk=None)
+        lab(s, 'B', x, label_y if label_y is not None else 9.45 + 0.15 + 0.5)
+    return add
+
+
+A_WEST = {'A': (8.5 - 0.2 - 0.45, 10.0, 0.0)}
+
+
+def test_a_part_labelled_beside_with_another_label_on_its_other_side_fails():
+    # B's label, centred above B, lands 0.35 east of A at A's centre y + 0.1: A reads 'B' on one side and 'A' on the other
+    f = silkread.findings(board(A_WEST, neighbour(12.3)), BNC, edge_headers={'H'}, beside={'A'})
+    assert f == ["A: B's designator lies east of it, where its own would be read"], f
+
+
+def test_the_same_neighbour_is_harmless_to_a_part_labelled_above():
+    assert silkread.findings(board(None, neighbour(12.3)), BNC, edge_headers={'H'}) == []
+
+
+def test_the_neighbour_one_label_gap_further_east_passes():
+    assert silkread.findings(board(A_WEST, neighbour(12.3 + 0.3)), BNC, edge_headers={'H'}, beside={'A'}) == []
+
+
+def test_a_beside_label_lying_above_another_part_fails():
+    # A labelled east (box 11.7-12.6 x 9.5-10.5); C's courtyard top 0.2 under it and centred on it; C labelled far below
+    def add(s):
+        s.part('C', 12.15, 8.8, box=(11.65, 8.3, 12.65, 9.3), silk=None)
+        lab(s, 'C', 12.15, 5.0)
+    f = silkread.findings(board({'A': (11.5 + 0.2 + 0.45, 10.0, 0.0)}, add), BNC, edge_headers={'H'}, beside={'A'})
+    assert has(f, 'A:', "where it reads as C's"), f
 
 
 def test_a_missing_designator_fails():
@@ -256,7 +292,7 @@ EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 # Findings on 2026-11-15 under the "horizontal, above" convention (silk lines read, mounting holes skipped, header labels
 # inboard), before the
 # relayout: held exactly (a ratchet).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 207, 'kicad/afe-proto.kicad_pcb': 206}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 208, 'kicad/afe-proto.kicad_pcb': 206}
 # D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
 EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101', 'U301', 'U401'}, 'kicad/afe-proto.kicad_pcb': {'U301'}}
 # and the parts whose designator sits beside them (rule 2b).

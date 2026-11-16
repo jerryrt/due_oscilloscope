@@ -26,6 +26,12 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
 3. Legible. No designator lies on any courtyard (its own included), pad, via drill or board-level silk line or rectangle
    (`silk`, from read_silk: the block outlines and the S/N box), and two designators are at least LABEL_GAP apart, box to
    box, so that two never read as one.
+3b. One reading for a part labelled beside (2a, 2b). Everywhere else a technician reads down from a designator to the
+   part under it, so a designator that also lies just under another part costs nothing. A part labelled beside breaks that
+   habit, and the technician looking for its label checks above it, east and west: so no other designator may lie in any
+   of those three places (rule 1's or 2b's position against this part, by their tolerances), or the part has two
+   labels. And its own designator may not lie in the place above another part, where the habit would give it to that
+   part.
 4. BNCs (`bnc_labels`, {ref: function label}). Each carries its function label on the top silk, clear of every courtyard,
    and on no `silk` line, and its designator on the bottom silk beside its pins (mirrored there by the layout; this module does not read
    mirroring), none on top, each at one offset in its own frame across all of them, to BNC_TOL. A bottom designator
@@ -118,6 +124,20 @@ def _on_shape(box, shape):
     return True
 
 
+def _places(box, c):
+    """the reading places (rule 1 above, rule 2b east or west) that a text box occupies against a courtyard"""
+    bx, by = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2
+    out = []
+    if abs(bx - cx) <= ABOVE_X and ABOVE_GAP_MIN <= box[1] - c[3] <= ABOVE_GAP_MAX:
+        out.append('above')
+    if abs(by - cy) <= ABOVE_X and ABOVE_GAP_MIN <= box[0] - c[2] <= ABOVE_GAP_MAX:
+        out.append('east')
+    if abs(by - cy) <= ABOVE_X and ABOVE_GAP_MIN <= c[0] - box[2] <= ABOVE_GAP_MAX:
+        out.append('west')
+    return out
+
+
 def findings(b, bnc_labels=None, edge_headers=(), silk=(), east_end=(), beside=()):
     bnc_labels = dict(bnc_labels or {})
     east_end = set(east_end)
@@ -183,6 +203,19 @@ def findings(b, bnc_labels=None, edge_headers=(), silk=(), east_end=(), beside=(
             bad.append(f'{r}: designator lies on a via')
         if any(_on_shape(box, sh) for sh in silk):
             bad.append(f'{r}: designator lies on a silk line')
+
+    for i in parts:                                                    # rule 3b
+        r = refs[i]
+        if r not in (beside | east_end) or r not in shown:
+            continue
+        for k in parts:
+            o = refs[k]
+            if o == r:
+                continue
+            if o in shown and (w := _places(shown[o][0], cour[i])):
+                bad.append(f"{r}: {o}'s designator lies {' and '.join(w)} of it, where its own would be read")
+            if 'above' in _places(shown[r][0], cour[k]):
+                bad.append(f'{r}: its designator lies above {o}, where it reads as {o}\'s')
 
     L = sorted((r, v[0]) for r, v in shown.items())
     for a in range(len(L)):
