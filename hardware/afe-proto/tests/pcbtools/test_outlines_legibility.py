@@ -383,14 +383,16 @@ def bnc_board(layer, both=False):
 
 def bnc_cfg(**over):
     return cfg(BLOCK={'J1': 'CH1'}, BLOCK_OVERRIDE={}, OUTLINE={'CH1': [(0, 0, 60, 30)]}, TEST_BLOCKS=(), TP_NETS={}, SILK_WORDS=(),
-               LR_HUNDREDS={}, EDGE_BLOCK='EDGE', BNC_BOTTOM_DESIGNATORS=('J1',), **over)
+               LR_HUNDREDS={}, EDGE_BLOCK='EDGE', **over)
 
 
-def test_lr11_wants_a_bnc_designator_on_the_bottom_silk_alone():
-    msg = 'J1: designator not on the bottom silk alone'
-    assert msg not in R.lr11(bnc_board(1), bnc_cfg()).detail                         # on the bottom: fine
-    assert msg in R.lr11(bnc_board(0), bnc_cfg()).detail                             # broken once: on top, as it was before D30
-    assert msg in R.lr11(bnc_board(1, both=True), bnc_cfg()).detail                  # broken once: on both sides
+def test_lr11_counts_a_designator_on_the_bottom_silk_and_wants_one_somewhere():
+    msg = 'J1: designator not on silk at 0.8 mm or more'
+    assert msg not in R.lr11(bnc_board(1), bnc_cfg()).detail                         # on the bottom silk: counted, no list exempts it
+    assert msg not in R.lr11(bnc_board(0), bnc_cfg()).detail                         # on the top silk: counted
+    s = bnc_board(1)
+    s.r_h[:] = 0.5                                                                    # broken once: a designator under 0.8 mm
+    assert msg in R.lr11(s, bnc_cfg()).detail
 
 
 def test_designators_are_held_0_5_mm_apart_the_d30_gap():
@@ -400,4 +402,4 @@ def test_designators_are_held_0_5_mm_apart_the_d30_gap():
     close, over, far, n = R.designator_findings(leg_board(dx=4.25), cf)               # broken once: 0.45 mm apart
     assert [(a, b_) for a, b_, g in close] == [('R101', 'R102')]
     from pcbtools.boards import v2_layout
-    assert v2_layout.DESIGNATOR_GAP_MIN == 0.5 and v2_layout.DESIGNATOR_GAP_ONE_LABEL == 0.5 and v2_layout.BNC_BOTTOM_DESIGNATORS == ('J101', 'J201', 'J301')
+    assert v2_layout.DESIGNATOR_GAP_MIN == 0.5 and v2_layout.DESIGNATOR_GAP_ONE_LABEL == 0.5

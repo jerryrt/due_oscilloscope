@@ -55,7 +55,6 @@ DESIGNATOR_FOREIGN_WAIVED = {}       # none: the relayout put every label in its
 # pair to its floor, so it still catches a label that moves toward its neighbour. Closing them means moving a part or shortening a
 # label (a human decision); the board house's minimum text height is the project's 1.0 mm, so a smaller label is not an option.
 DESIGNATOR_GAP_WAIVED = {}                 # none: D30 (owner, 2026-11-15) holds labels 0.5 mm apart, and the relayout places every pair so
-BNC_BOTTOM_DESIGNATORS = ('J101', 'J201', 'J301')     # D30 (owner, 2026-11-14): a BNC carries its function label on top and its designator on the bottom silk, mirrored
 # 8 pairs after the CH2 array moved north (17 before it, 20 at first): v2/layout/refine_designators.py (silk only, after place_designators.py) turned and moved labels until none
 # reads as one label (DESIGNATOR_GAP_ONE_LABEL: no same-baseline pair is under 0.65 mm, and the rule below is not waivable). Three
 # pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
