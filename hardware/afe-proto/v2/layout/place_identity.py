@@ -1,7 +1,7 @@
 """Put the board's identity on the v2 silk from the configuration (pcbtools/boards/v2.py: NAME, ID_LINE, SN_LABEL, JLC_ORDER_TEXT, IDENT):
 the name, the model and revision line, the S/N label and its filled box on F.SilkS, the board house's order-number text mirrored on B.SilkS.
 
-    python3 v2/layout/place_identity.py BOARD.kicad_pcb [--write OUT.kicad_pcb] [--check]
+    python3 v2/layout/place_identity.py BOARD.kicad_pcb [--write OUT.kicad_pcb] [--check] [--design v1]
 
 Pure text splice, no pcbnew (the board is not rewritten): identity items already on the board are removed and the configured ones appended
 with deterministic uuids, so the script is idempotent and a board that already has them is written back unchanged. Exit 1 on --check when
@@ -15,6 +15,13 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..'))
 from pcbtools.boards import v2 as cfg  # noqa: E402
+
+
+def use_design(name):
+    """read another board's identity (--design v1): the splice is the same, the config is the board's"""
+    global cfg
+    import importlib
+    cfg = importlib.import_module(f'pcbtools.boards.{name}')
 
 NS = uuid.UUID('6f1f6d0e-3b1a-4c5e-9b1f-0a1d2c3b4a59')
 
@@ -66,6 +73,8 @@ def apply(text):
 
 if __name__ == '__main__':
     a = sys.argv[1:]
+    if '--design' in a:
+        use_design(a[a.index('--design') + 1])
     src = open(a[0]).read()
     out = apply(src)
     if '--check' in a:

@@ -350,11 +350,11 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "07f610ab-08e9-54a2-908b-51c1fdd716d2")
-		(at 130.5 111 90)
+		(at 130.65 111 90)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C105"
-			(at 2.325 -0 0)
+			(at 2.325 0 0)
 			(layer "F.SilkS")
 			(uuid "7df99eaf-79fe-5b23-beb1-bc227f9be1fd")
 			(effects
