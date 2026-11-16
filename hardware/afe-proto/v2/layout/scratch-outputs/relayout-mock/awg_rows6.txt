@@ -1,0 +1,10 @@
+{'C306': 45, 'C305': 3, 'R304': 6, 'R303': 834, 'C301': 162, 'R306': 1092, 'R307': 564, 'R308': 258, 'R309': 90, 'R301': 88, 'R302': 88, 'TP301': 247685, 'C303': 456, 'C304': 456, 'R305': 120}
+AC C306 40
+AC R306 0
+after AC {'C306': 40, 'C305': 3, 'R304': 6, 'R301': 88, 'R306': 0, 'R302': 88, 'R307': 564, 'R309': 90, 'R305': 120, 'C301': 162, 'R303': 834, 'R308': 258}
+seed 0 no slot for R306
+seed 1 no slot for R306
+seed 2 no slot for R306
+seed 3 no slot for R306
+seed 4 no slot for R306
+capped: peak_rss_kb=375396 wall_s=6.79 exit=0 cap=2G limit_s=1200 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

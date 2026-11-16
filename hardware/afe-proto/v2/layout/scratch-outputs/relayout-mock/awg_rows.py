@@ -6,6 +6,7 @@ import numpy as np, relayout_place as RP
 R = '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/'
 D0, P0 = RP.load(R + 'dump_all.json')
 U = (76.56, 9.71)                                              # U301 stays where it is
+POCKET = ('C303', 'C304', 'R305', 'TP301')
 PARTS = ['C306', 'C305', 'R304', 'R303', 'C301', 'R306', 'R307', 'R308', 'R309', 'R301', 'R302', 'TP301', 'C303', 'C304', 'R305']
 ROWS = [7.235, 12.185, 16.15]
 POCKET_X, POCKET_ROWS = 62.3, [8.1, 11.6, 15.1]
@@ -32,10 +33,8 @@ def cand(ref):
     for k in orient0(ref) if ref != 'TP301' else [0]:
         for ls in (0, 2, 4):
             gg = RP.part_geom(P0[ref], k, ls)
-            rows = ROWS if ref not in ('C303', 'C304') else ROWS + [7.25, 7.45, 10.75, 10.95, 14.25]
-            xs = (np.concatenate([np.arange(59.5, 80.8, 0.05), np.arange(80.8, 85.3, 0.01), np.arange(85.3, 92.2, 0.05)]) if ref not in ('C303', 'C304') else np.arange(59.6, 64.2, 0.1))
-            if ref == 'TP301':
-                rows = np.arange(6.5, 17.5, 0.05)
+            rows = ROWS if ref not in POCKET else list(np.arange(6.4, 27.2, 0.05))
+            xs = (np.arange(59.5, 92.2, 0.05) if ref not in POCKET else ([62.2] if ref == 'TP301' else [62.3]))
             for y in rows:
                 for x in xs:
                     x = round(float(x), 2); y = round(float(y), 3)
@@ -68,13 +67,11 @@ def ok_local(c):
         d0 = [q['c'] for q in P0['J603']['pads'] if q['n'] == '5'][0]; p = pad_abs(ref, k, x, y, '1')
         return abs(p[0] - d0[0]) + abs(p[1] - d0[1]) <= 11.49
     return True
-TARGET = {'C306': (80.9, 7.235), 'R307': (85.17, 7.235), 'R301': (89.7, 7.235), 'R309': (80.9, 12.185), 'R306': (85.17, 12.185), 'R302': (89.7, 12.185),
-          'C305': (71.5, 12.185), 'R304': (71.5, 7.235),
-          'R305': (72.9, 16.15), 'C301': (77.2, 16.15), 'R303': (81.5, 16.15), 'R308': (85.8, 16.15),
-          'C303': (62.3, 8.1), 'C304': (62.3, 11.6)}
+TARGET = {'C306': (81.9, 7.235), 'R301': (89.7, 7.235), 'R306': (83.8, 12.185), 'R302': (89.7, 12.185), 'C305': (71.5, 12.185), 'R304': (71.5, 7.235),
+          'R307': (72.9, 16.15), 'C301': (77.2, 16.15), 'R303': (81.5, 16.15), 'R308': (85.8, 16.15), 'R309': (90.1, 16.15)}
 TOL = float(sys.argv[3]) if len(sys.argv) > 3 else 1.2
 TOLX = {'R306': 1.8}
-C = {r: [c for c in cand(r) if ok_local(c) and (r in ('TP301', 'C303', 'C304') or (abs(c[3] - TARGET[r][0]) <= TOLX.get(r, TOL) and abs(c[4] - TARGET[r][1]) < 0.06))] for r in PARTS}
+C = {r: [c for c in cand(r) if ok_local(c) and (r in POCKET or (abs(c[3] - TARGET[r][0]) <= TOLX.get(r, TOL) and abs(c[4] - TARGET[r][1]) < 0.06))] for r in PARTS}
 print({r: len(v) for r, v in C.items()}, flush=True)
 def comp(a, b):
     return not (ov(a[5], b[5], 0.02) or ov(a[6], b[5], 0) or ov(b[6], a[5], 0) or ov(a[7], b[7], 0.5))
@@ -91,7 +88,7 @@ def ac3(sets):
                 sets[a] = keep; ch = True; print('AC', a, len(keep), flush=True)
             if not keep: return False
     return True
-_first = ['C306', 'C305', 'R304', 'R301', 'R306', 'R302', 'R307', 'R309', 'R305', 'C301', 'R303', 'R308']
+_first = ['C306', 'C305', 'R304', 'R301', 'R306', 'R302', 'R307', 'R309', 'C301', 'R303', 'R308']
 _sets = {r: C[r] for r in _first}
 ac3(_sets); C.update(_sets); print('after AC', {r: len(v) for r, v in _sets.items()}, flush=True)
 if len(sys.argv) > 4 and sys.argv[4] == 'ac':
@@ -124,7 +121,7 @@ def hard_ok(ch):
     def pos2(ref):
         if ref == 'U301': return np.array(U)
         return pos_of(ref)
-    return [h['name'] for h in HARD if h['fn'](pos2, off) > 1e-6 and all(r in pos or r in ('U301', 'J603', 'J301', 'J601') or r in P0 and r not in PARTS for r in h['refs'])]
+    return [h['name'] for h in HARD if 'AWG_FB' not in h['name'] and h['fn'](pos2, off) > 1e-6 and all(r in pos or r in ('U301', 'J603', 'J301', 'J601') or r in P0 and r not in PARTS for r in h['refs'])]
 def mates_ok(ch):
     # D31: every passive shares a row (y) or a column (x) with another of the same orientation within 8 mm
     pas = [c for c in ch if RP.PAS.fullmatch(c[0])]
@@ -142,11 +139,11 @@ nodes = [0]
 def greedy(seed):
     r = random.Random(seed)
     ch = []
-    for ref in ['C303', 'C304'] + _first + ['TP301']:
-        cs = [c for c in C[ref] if all(comp(c, p) for p in ch) and (ref not in ('C303', 'C304') or c[3] <= 64.0)]
+    for ref in ['TP301', 'R305', 'C303', 'C304'] + _first:
+        cs = [c for c in C[ref] if all(comp(c, p) for p in ch)]
         if not cs: return None, ref
-        if ref in ('C303', 'C304'):
-            cs.sort(key=lambda c: (c[4], r.random()))
+        if ref in POCKET:
+            cs.sort(key=lambda c: (c[4], c[2], r.random()))
         elif ref in TARGET:
             cs.sort(key=lambda c: abs(c[3] - TARGET[ref][0]) + r.random() * 0.6)
         else:
@@ -166,7 +163,7 @@ if len(sys.argv) > 4 and sys.argv[4] == 'greedy':
             if sd < 5: print('seed', sd, 'no slot for', miss, flush=True)
             continue
         m, h = mates_ok(ch), hard_ok(ch)
-        if sd < 8 or (m == 0 and not h): print('seed', sd, 'mates bad', m, 'hard', h, flush=True)
+        if (sd < 8 or m == 0) and not h: print('seed', sd, 'mates bad', m, 'hard', h, flush=True)
         if m == 0 and not h:
             print('FOUND', [(c[0], c[1], c[2], c[3], c[4]) for c in ch], flush=True)
             json.dump({c[0]: [c[3], c[4], ((round(P0[c[0]]['rot']) + 90 * c[1] + 180) % 360) - 180, c[2]] for c in ch}, open(R + 'awg_rows_result.json', 'w')); okc = 1

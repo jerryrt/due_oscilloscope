@@ -1,0 +1,127 @@
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.000
+   R208 {'region': 0.0, 'fixed': 0.1, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 100 wl 371.4 viol 0.1000 parts 8 hard 6 soft 8
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 101 wl 362.9 viol 0.2500 parts 8 hard 6 soft 8
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.000
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R208 {'region': 0.0, 'fixed': 0.1, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 102 wl 377.3 viol 0.3500 parts 8 hard 6 soft 8
+CH1 seed 103 wl 377.0 viol 0.0000 parts 8 hard 6 soft 8
+  hard LR-12 C306>U301.4 excess 0.000
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 3.77, 'pairs': 0.5}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.5}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.02, 'pairs': 0.0}
+AWG seed 100 wl 1793.1 viol 4.2850 parts 13 hard 5 soft 12
+AWG seed 101 wl 1482.5 viol 0.0000 parts 13 hard 5 soft 12
+POWER seed 100 wl 1465.2 viol 0.0000 parts 15 hard 1 soft 14
+REFCAL seed 100 wl 204.0 viol 0.0000 parts 3 hard 2 soft 2
+  hard LR-12 C503>U502.8 excess 0.002
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+REFCAL seed 100 wl 185.5 viol 0.0668 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.002
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+REFCAL seed 101 wl 187.5 viol 0.0668 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.012
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+REFCAL seed 102 wl 187.6 viol 0.0666 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.002
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+REFCAL seed 103 wl 185.5 viol 0.0668 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.002
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.06}
+REFCAL seed 104 wl 185.5 viol 0.0668 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.002
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+REFCAL seed 105 wl 187.5 viol 0.0668 parts 2 hard 1 soft 1
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.21}
+   C304 {'region': 0.0, 'fixed': 0.18, 'lanes': 0.0, 'pairs': 0.0}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.17, 'pairs': 0.21}
+AWG seed 200 wl 170.8 viol 1.5550 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.15, 'pairs': 0.23}
+   C304 {'region': 0.0, 'fixed': 0.02, 'lanes': 0.0, 'pairs': 0.23}
+   C303 {'region': 0.0, 'fixed': 0.18, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 201 wl 184.4 viol 1.5750 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.89, 'pairs': 0.38}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.38}
+   C303 {'region': 0.0, 'fixed': 0.18, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 202 wl 176.6 viol 1.4450 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.54, 'lanes': 0.0, 'pairs': 0.0}
+   C304 {'region': 0.0, 'fixed': 0.18, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 203 wl 202.5 viol 0.7200 parts 3 hard 0 soft 0
+   C304 {'region': 0.0, 'fixed': 1.65, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 204 wl 229.7 viol 1.6450 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.54, 'lanes': 0.0, 'pairs': 0.0}
+   C303 {'region': 0.0, 'fixed': 0.18, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 205 wl 202.5 viol 0.7200 parts 3 hard 0 soft 0
+POWER seed 200 wl 381.0 viol 0.0000 parts 7 hard 0 soft 0
+   J501 {'region': 0.0, 'fixed': 4.15, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 200 wl 1785.8 viol 4.1500 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 201 wl 1850.8 viol 0.3000 parts 26 hard 0 soft 0
+   BR509 {'region': 0.0, 'fixed': 0.63, 'lanes': 0.0, 'pairs': 0.0}
+   R511 {'region': 0.0, 'fixed': 0.36, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 202 wl 1577.5 viol 0.9900 parts 26 hard 0 soft 0
+   R503 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 203 wl 1744.1 viol 0.3000 parts 26 hard 0 soft 0
+   R507 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 204 wl 1611.1 viol 0.3000 parts 26 hard 0 soft 0
+   R513 {'region': 0.0, 'fixed': 1.13, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 205 wl 1570.5 viol 1.1300 parts 26 hard 0 soft 0
+CH2 seed 200 wl 150.6 viol 0.0000 parts 10 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   TP101 {'region': 0.0, 'fixed': 2.27, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 200 wl 831.4 viol 6.6113 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   TP101 {'region': 0.0, 'fixed': 2.27, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 201 wl 875.4 viol 6.6113 parts 12 hard 3 soft 0
+  hard /A1 span <= main 56.1 excess 2.780
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   R106 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   TP101 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   C101 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+CH1 seed 202 wl 928.4 viol 7.1525 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   TP101 {'region': 0.0, 'fixed': 2.27, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 203 wl 1027.0 viol 6.6113 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   TP101 {'region': 0.0, 'fixed': 2.27, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 204 wl 1024.0 viol 6.6113 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.340
+   TP101 {'region': 0.0, 'fixed': 3.69, 'lanes': 0.0, 'pairs': 0.02}
+   R101 {'region': 0.0, 'fixed': 0.69, 'lanes': 0.0, 'pairs': 0.02}
+CH1 seed 205 wl 941.4 viol 8.7413 parts 12 hard 3 soft 0
+Traceback (most recent call last):
+  File "/work/hardware/afe-proto/v2/layout/relayout_run.py", line 54, in <module>
+    for x in log: print(x)
+  File "/work/hardware/afe-proto/v2/layout/relayout_run.py", line 48, in main
+    for t in range(tries):
+  File "/usr/lib/python3.14/json/__init__.py", line 181, in dump
+    for chunk in iterable:
+                 ^^^^^^^^
+  File "/usr/lib/python3.14/json/encoder.py", line 444, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/usr/lib/python3.14/json/encoder.py", line 413, in _iterencode_dict
+    yield from chunks
+  File "/usr/lib/python3.14/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/lib/python3.14/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/lib/python3.14/json/encoder.py", line 451, in _iterencode
+    newobj = _default(o)
+  File "/usr/lib/python3.14/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type bool is not JSON serializable
+when serializing list item 1
+when serializing list item 9
+when serializing dict item 'log'
+capped: peak_rss_kb=199176 wall_s=1830.56 exit=1 cap=2G limit_s=3300 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

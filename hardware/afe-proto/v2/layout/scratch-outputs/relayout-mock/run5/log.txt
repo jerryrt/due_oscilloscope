@@ -1,0 +1,13 @@
+POWER seed 200 wl 471.5 viol 0.0000 parts 7 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 200 wl 1754.9 viol 0.0800 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 201 wl 1572.3 viol 0.0500 parts 26 hard 0 soft 0
+   BR507 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 202 wl 1692.5 viol 0.0800 parts 26 hard 0 soft 0
+   R509 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 203 wl 1803.5 viol 0.0500 parts 26 hard 0 soft 0
+   BR511 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 204 wl 1772.3 viol 0.0800 parts 26 hard 0 soft 0
+   R506 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 205 wl 1571.1 viol 0.0500 parts 26 hard 0 soft 0

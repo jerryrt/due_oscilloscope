@@ -1,0 +1,20 @@
+{'C306': 21, 'C305': 3, 'R304': 6, 'R303': 210, 'C301': 216, 'R306': 342, 'R307': 144, 'R308': 216, 'R309': 96, 'R301': 112, 'R302': 112, 'TP301': 749, 'C303': 1842, 'C304': 1842, 'R305': 1872}
+AC R306 318
+AC C301 142
+AC R303 138
+AC R308 18
+AC R307 142
+AC R309 18
+AC R303 18
+AC C301 18
+AC R307 18
+after AC {'C306': 21, 'C305': 3, 'R304': 6, 'R301': 112, 'R306': 318, 'R302': 112, 'R307': 18, 'R309': 18, 'C301': 18, 'R303': 18, 'R308': 18}
+seed 0 mates bad 3 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+seed 1 mates bad 3 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+seed 2 mates bad 4 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+seed 3 no slot for R308
+seed 4 no slot for R308
+seed 5 mates bad 1 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+seed 6 mates bad 1 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+seed 7 mates bad 3 hard ['LR-4 /AWG_FB pad tree <= main 12.58']
+capped: peak_rss_kb=236560 wall_s=6.83 exit=0 cap=2G limit_s=1500 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

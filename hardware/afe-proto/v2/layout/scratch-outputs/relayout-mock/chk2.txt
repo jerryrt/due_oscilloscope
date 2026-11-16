@@ -1,0 +1,20 @@
+07:34:07: Debug: Adding duplicate image handler for 'PNG file'
+07:34:07: Debug: Adding duplicate image handler for 'JPEG file'
+07:34:07: Debug: Adding duplicate image handler for 'TIFF file'
+07:34:07: Debug: Adding duplicate image handler for 'GIF file'
+07:34:07: Debug: Adding duplicate image handler for 'PNM file'
+07:34:07: Debug: Adding duplicate image handler for 'PCX file'
+07:34:07: Debug: Adding duplicate image handler for 'IFF file'
+07:34:07: Debug: Adding duplicate image handler for 'Windows icon file'
+07:34:07: Debug: Adding duplicate image handler for 'Windows cursor file'
+07:34:07: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+07:34:07: Debug: Adding duplicate image handler for 'TGA file'
+07:34:07: Debug: Adding duplicate image handler for 'XPM file'
+courtyards overlap: J605 MH602
+courtyards overlap: J607 MH602
+outside the board: J101
+outside the board: J201
+outside the board: J604
+outside the board: J301
+findings: 6
+capped: peak_rss_kb=166460 wall_s=1.46 exit=0 cap=2G limit_s=300 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

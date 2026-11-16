@@ -1,0 +1,5 @@
+candidates C104 2573 C105 2573 R108 2323
+triples 816732 (('C104', 1, 2, np.float64(79.7), np.float64(37.6)), ('C105', 1, 2, np.float64(77.6), np.float64(34.0)), ('R108', 0, 0, np.float64(82.5), np.float64(39.0)))
+C104-C105 compatible pairs 122274
+R108 within 5 mm of pin 7 (no span rule): 16993
+capped: peak_rss_kb=66640 wall_s=900.02 exit=124 cap=2G limit_s=900 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

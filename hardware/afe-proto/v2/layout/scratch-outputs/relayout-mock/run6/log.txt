@@ -1,0 +1,24 @@
+POWER seed 200 wl 460.7 viol 0.0000 parts 7 hard 0 soft 0
+   R513 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+   J501 {'region': 0.0, 'fixed': 4.22, 'lanes': 0.0, 'pairs': 0.02}
+REFCAL seed 200 wl 1762.1 viol 4.2450 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 201 wl 1648.1 viol 0.0500 parts 26 hard 0 soft 0
+   J501 {'region': 0.0, 'fixed': 4.22, 'lanes': 0.0, 'pairs': 0.0}
+   BR507 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 202 wl 1704.4 viol 4.3050 parts 26 hard 0 soft 0
+   R512 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 203 wl 1839.1 viol 0.0500 parts 26 hard 0 soft 0
+   BR511 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 204 wl 1802.9 viol 0.0900 parts 26 hard 0 soft 0
+   R506 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 205 wl 1580.1 viol 0.0500 parts 26 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.08}
+   J501 {'region': 0.0, 'fixed': 4.79, 'lanes': 0.0, 'pairs': 0.2}
+   BR507 {'region': 0.0, 'fixed': 0.17, 'lanes': 0.0, 'pairs': 0.2}
+   TP501 {'region': 0.0, 'fixed': 0.19, 'lanes': 0.0, 'pairs': 0.08}
+REFCAL seed 206 wl 1589.9 viol 5.4363 parts 26 hard 0 soft 0
+   BR503 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 207 wl 1897.0 viol 0.0800 parts 26 hard 0 soft 0
+   TP501 {'region': 0.0, 'fixed': 1.13, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 208 wl 1616.8 viol 1.1250 parts 26 hard 0 soft 0

@@ -1,0 +1,39 @@
+CH1 seed 100 wl 371.9 viol 0.0000 parts 8 hard 6 soft 8
+  hard LR-12 C305>U301.8 excess 0.055
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 3.02, 'pairs': 0.0}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.14, 'pairs': 0.0}
+AWG seed 100 wl 2171.5 viol 4.2150 parts 16 hard 5 soft 15
+AWG seed 101 wl 1989.2 viol 0.0000 parts 16 hard 5 soft 15
+POWER seed 100 wl 1450.0 viol 0.0000 parts 15 hard 1 soft 14
+REFCAL seed 100 wl 195.5 viol 0.0000 parts 3 hard 2 soft 2
+REFCAL seed 100 wl 184.0 viol 0.0000 parts 2 hard 1 soft 1
+POWER seed 200 wl 478.9 viol 0.0000 parts 7 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 200 wl 1759.1 viol 0.0900 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 201 wl 1623.2 viol 0.0500 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+   J501 {'region': 0.0, 'fixed': 4.22, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 202 wl 1659.8 viol 4.2750 parts 26 hard 0 soft 0
+   BR508 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 203 wl 1764.1 viol 0.0800 parts 26 hard 0 soft 0
+   BR511 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 204 wl 1775.4 viol 0.0800 parts 26 hard 0 soft 0
+   R506 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 205 wl 1573.5 viol 0.0500 parts 26 hard 0 soft 0
+   J501 {'region': 0.0, 'fixed': 4.79, 'lanes': 0.0, 'pairs': 0.01}
+   BR501 {'region': 0.0, 'fixed': 0.36, 'lanes': 0.0, 'pairs': 0.01}
+REFCAL seed 206 wl 1519.2 viol 5.1600 parts 26 hard 0 soft 0
+   BR503 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 207 wl 1914.0 viol 0.0900 parts 26 hard 0 soft 0
+CH2 seed 200 wl 141.8 viol 0.0000 parts 10 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 2.11, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 200 wl 1013.2 viol 6.1950 parts 12 hard 3 soft 0
+  hard /A1 span <= main 56.1 excess 0.155
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 1.75, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 201 wl 761.2 viol 5.9950 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 2.11, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 202 wl 854.2 viol 6.1950 parts 12 hard 3 soft 0

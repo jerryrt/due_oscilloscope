@@ -1,0 +1,62 @@
+CH1 seed 100 wl 371.9 viol 0.0000 parts 8 hard 6 soft 8
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 3.8, 'pairs': 0.36}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.36}
+AWG seed 100 wl 1669.1 viol 4.1550 parts 13 hard 5 soft 12
+AWG seed 101 wl 1452.1 viol 0.0000 parts 13 hard 5 soft 12
+POWER seed 100 wl 1449.2 viol 0.0000 parts 15 hard 1 soft 14
+REFCAL seed 100 wl 195.5 viol 0.0000 parts 3 hard 2 soft 2
+REFCAL seed 100 wl 183.2 viol 0.0000 parts 2 hard 1 soft 1
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+AWG seed 200 wl 155.0 viol 0.0700 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.05}
+   C304 {'region': 0.0, 'fixed': 0.02, 'lanes': 0.0, 'pairs': 0.05}
+AWG seed 201 wl 155.1 viol 0.0700 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.05}
+   C303 {'region': 0.0, 'fixed': 0.02, 'lanes': 0.0, 'pairs': 0.05}
+AWG seed 202 wl 155.1 viol 0.0700 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+AWG seed 203 wl 156.5 viol 0.2200 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+AWG seed 204 wl 156.5 viol 0.2200 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.11}
+   C303 {'region': 0.0, 'fixed': 0.1, 'lanes': 0.41, 'pairs': 0.11}
+AWG seed 205 wl 160.0 viol 0.6200 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+AWG seed 206 wl 156.5 viol 0.2200 parts 3 hard 0 soft 0
+   R305 {'region': 0.0, 'fixed': 0.32, 'lanes': 0.19, 'pairs': 0.0}
+   C304 {'region': 0.0, 'fixed': 0.11, 'lanes': 0.0, 'pairs': 0.0}
+AWG seed 207 wl 151.9 viol 0.6200 parts 3 hard 0 soft 0
+POWER seed 200 wl 477.5 viol 0.0000 parts 7 hard 0 soft 0
+   J501 {'region': 0.0, 'fixed': 4.79, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 200 wl 1689.4 viol 4.7900 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 201 wl 1605.8 viol 0.0500 parts 26 hard 0 soft 0
+   R501 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+   J501 {'region': 0.0, 'fixed': 4.22, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 202 wl 1648.5 viol 4.2750 parts 26 hard 0 soft 0
+   BR508 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 203 wl 1760.3 viol 0.0800 parts 26 hard 0 soft 0
+   BR511 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 204 wl 1738.1 viol 0.0900 parts 26 hard 0 soft 0
+   R506 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 205 wl 1569.9 viol 0.0500 parts 26 hard 0 soft 0
+   J501 {'region': 0.0, 'fixed': 4.79, 'lanes': 0.0, 'pairs': 0.29}
+   BR501 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.29}
+REFCAL seed 206 wl 1514.7 viol 5.1600 parts 26 hard 0 soft 0
+   BR503 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.0}
+REFCAL seed 207 wl 1907.9 viol 0.0900 parts 26 hard 0 soft 0
+CH2 seed 200 wl 142.6 viol 0.0000 parts 10 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 2.11, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 200 wl 757.4 viol 6.1950 parts 12 hard 3 soft 0
+  hard /A1 span <= main 56.1 excess 0.155
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 1.75, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 201 wl 764.9 viol 5.9950 parts 12 hard 3 soft 0
+  hard LR-2 flow x falls BNC > R101 > R107 > U101 > R108 > ADC pad excess 4.090
+   TP101 {'region': 0.0, 'fixed': 2.11, 'lanes': 0.0, 'pairs': 0.0}
+CH1 seed 202 wl 854.7 viol 6.1950 parts 12 hard 3 soft 0

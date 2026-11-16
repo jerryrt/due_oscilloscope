@@ -82,28 +82,23 @@ def comp(a, b):
     return not (ov(a[5], b[5], 0.02) or ov(a[6], b[5], 0) or ov(b[6], a[5], 0) or ov(a[7], b[7], 0.5))
 
 
-C4 = cand_line('C104', p8, 2.8, [1, 3], [0, 2, 4])                      # C104 horizontal, on pin 8's line
-ptsC = [(x, y) for x in np.arange(74, 81, 0.1) for y in np.arange(30, 44, 0.1)]
-C5 = []
-for k in (1, 3):
-    for ls in (0, 2, 4): C5 += around('C105', p8, 2.8, k, ls, ptsC)
-pts8 = [(x, y) for x in np.arange(74, 82.6, 0.1) for y in np.arange(33, 43, 0.1)]
-R8 = []
-for k in (1, 3):
-    for ls in (0, 2, 4): R8 += around('R108', p7, 5.0, k, ls, pts8, True)
-print('horizontal parts: C104 on the pin line', len(C4), 'C105', len(C5), 'R108', len(R8), flush=True)
-def lr(a, pin):
+
+
+
+def lrd(a, pin):
     o1 = a[8][[q['n'] for q in P[a[0]]['pads']].index('1')]
     return math.hypot(a[3]+o1[0]-pin[0], a[4]+o1[1]-pin[1])
+C4 = [c for k in range(4) for ls in (0, 2, 4) for c in around('C104', p8, 2.8, k, ls, [(83.235, round(float(y), 2)) for y in np.arange(36.5, 41, 0.05)])]
+C5 = [c for k in range(4) for ls in (0, 2, 4) for c in around('C105', p8, 2.8, k, ls, [(80.695, round(float(y), 2)) for y in np.arange(36.5, 42, 0.05)])]
+R8 = [c for k in range(4) for ls in (0, 2, 4) for c in around('R108', p7, 5.0, k, ls, [(round(float(x), 2), 35.495) for x in np.arange(72, 79.9, 0.05)], True)]
+print('C104 on pin 6 column', len(C4), 'C105 on pin 8 column', len(C5), 'R108 on the pin row', len(R8), flush=True)
 best = []
 for a in C4:
     for b in C5:
         if not comp(a, b): continue
         for c in R8:
             if comp(a, c) and comp(b, c):
-                o1 = c[8][[q['n'] for q in P['R108']['pads']].index('1')]
-                xs = [c[3]+o1[0], p6[0], p7[0]]; ys = [c[4]+o1[1], p6[1], p7[1]]
-                best.append((lr(a, p8) + lr(b, p8) + lr(c, p7), a[:5], b[:5], c[:5], round(lr(a, p8), 2), round(lr(b, p8), 2), round(lr(c, p7), 2), round((max(xs)-min(xs)) + (max(ys)-min(ys)), 2)))
+                best.append((lrd(a, p8) + lrd(b, p8) + lrd(c, p7), a[:5], b[:5], c[:5], round(lrd(a, p8), 2), round(lrd(b, p8), 2), round(lrd(c, p7), 2)))
 best.sort(key=lambda t: t[0])
-print('horizontal triples:', len(best))
-for t in best[:5]: print(t)
+print('all three on U101 pad lines:', len(best))
+for t in best[:8]: print(t)

@@ -23,7 +23,7 @@ REGIONS = {
     'REFCAL': [(44.2, 4.6, 57.4, 27.8), (44.2, 27.8, 62.0, 38.0), (44.2, 38.0, 57.4, 47.1), (34.6, 26.6, 44.2, 48.9)],
     'CH1': [(62.4, 33.0, 74.9, 49.0), (74.9, 33.0, 80.1, 47.1), (80.1, 33.0, 92.25, 49.0), (58.0, 38.6, 62.4, 49.0)],
     'CH2': [(69.0, 19.75, 92.25, 32.9)],
-    'AWG': [(59.0, 6.2, 62.2, 18.4), (62.2, 4.55, 80.0, 18.4), (80.0, 6.2, 84.9, 18.4), (84.9, 4.55, 92.25, 18.4), (70.4, 18.4, 92.25, 19.25)],
+    'AWG': [(59.0, 6.2, 62.2, 18.4), (62.2, 4.55, 80.0, 18.4), (80.0, 6.2, 84.9, 18.4), (84.9, 4.55, 92.25, 18.4), (70.4, 18.4, 92.25, 19.25), (59.0, 18.4, 65.0, 27.4)],
 }
 # the Due's edge-row headers carry their designator on the inboard side, centred along the header (owner, bcbc1e3d): the blocks give up a strip there,
 # as a notch only where the label stands. {ref: (centre x, centre y of the label)}; the header's courtyard is (x0, y0, x1, y1) in the dump

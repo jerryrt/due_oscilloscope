@@ -1,0 +1,387 @@
+  hard LR-12 C104>U101.8 excess 0.078
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.560
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 100 wl 400.5 viol 1.0878 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.064
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.100
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.02, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 101 wl 373.7 viol 0.4343 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 1.382
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.310
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 102 wl 413.5 viol 2.1417 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.041
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.480
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.445
+   R207 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R208 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.56, 'lanes': 0.0, 'pairs': 1.7}
+   C105 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.7}
+  align leftovers: 0
+CH1 seed 103 wl 382.4 viol 3.2359 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 1.328
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.100
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 104 wl 407.1 viol 1.6779 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.033
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.325
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.060
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.11}
+   R208 {'region': 0.0, 'fixed': 0.04, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.2}
+   C105 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.31}
+  align leftovers: 0
+CH1 seed 105 wl 399.5 viol 0.7630 parts 8 hard 10 soft 8
+  hard LR-12 C104>U101.8 excess 0.078
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.795
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 106 wl 400.1 viol 1.3228 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.044
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.015
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R208 {'region': 0.0, 'fixed': 0.43, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.05, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 107 wl 384.4 viol 0.7941 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.604
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.620
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.04, 'lanes': 0.0, 'pairs': 1.7}
+   C105 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.7}
+  align leftovers: 0
+CH1 seed 108 wl 394.4 viol 3.4189 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.024
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+   C104 {'region': 0.0, 'fixed': 0.08, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 109 wl 405.0 viol 0.8041 parts 8 hard 10 soft 8
+  hard LR-12 C104>U101.8 excess 1.328
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.250
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.100
+   R108 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 110 wl 421.3 viol 1.6779 parts 8 hard 10 soft 8
+  hard LR-12 C105>U101.8 excess 0.078
+  hard LR-4 /CH1_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.470
+  hard LR-4 /CH2_OUT pad span <= 4.9 (INV_MAX 5.0 of track; three pins: Steiner length = half-perimeter) excess 0.005
+   R208 {'region': 0.0, 'fixed': 0.44, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+CH1 seed 111 wl 423.6 viol 0.9978 parts 8 hard 10 soft 8
+  hard LR-12 C305>U301.8 excess 0.004
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 2.9, 'pairs': 0.0}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.73}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.73, 'pairs': 0.14}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.15, 'pairs': 0.87}
+  align leftovers: 0
+AWG seed 100 wl 2314.0 viol 5.6491 parts 16 hard 5 soft 15
+  hard LR-7 DAC0 pad span <= 12 excess 0.735
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.94}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.65}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.39}
+   R307 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.65}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.24, 'pairs': 0.26}
+   R309 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.6}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.29}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.32}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.29}
+  align leftovers: 0
+AWG seed 101 wl 1946.3 viol 4.1712 parts 16 hard 5 soft 15
+  hard LR-7 R302 within 16 mm of J301 excess 0.010
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 3.8, 'pairs': 0.36}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.93}
+   R302 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.93}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.36}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+  align leftovers: 0
+AWG seed 102 wl 2853.5 viol 5.0950 parts 16 hard 5 soft 15
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.46}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.13}
+   R302 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 1.04}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.87}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.28}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.21}
+   R307 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.26}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.41, 'pairs': 0.03}
+   R309 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.56}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.26}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.31}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.09}
+   C304 {'region': 0.27, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.7}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.7}
+  align leftovers: 0
+AWG seed 103 wl 1827.0 viol 10.2025 parts 16 hard 5 soft 15
+  hard LR-12 C305>U301.8 excess 0.556
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 5.04}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.57}
+   R302 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 1.24}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.94}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.57}
+   R307 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.2}
+   C306 {'region': 0.0, 'fixed': 0.09, 'lanes': 0.0, 'pairs': 0.51}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.16, 'pairs': 0.41}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.11, 'pairs': 0.0}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.41}
+  align leftovers: 0
+AWG seed 104 wl 2252.4 viol 7.0464 parts 16 hard 5 soft 15
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 5.14}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 3.27}
+   R302 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.44}
+   R303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.91}
+   C301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.91}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.53}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 3.12}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.9}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.64}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.84}
+  align leftovers: 0
+AWG seed 105 wl 2232.5 viol 9.8400 parts 16 hard 5 soft 15
+  hard LR-12 C305>U301.8 excess 0.385
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.39}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.35}
+   R302 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.35}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.1}
+   R303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.52}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.19}
+   C301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.21}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.19}
+   R307 {'region': 0.0, 'fixed': 0.01, 'lanes': 0.0, 'pairs': 0.84}
+   R308 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.22}
+   R309 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.34}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.92}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.86}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.1}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.67}
+  align leftovers: 0
+AWG seed 106 wl 2250.8 viol 6.0113 parts 16 hard 5 soft 15
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 2.8, 'pairs': 0.28}
+   R302 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.28}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.28}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   R309 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 1.88, 'pairs': 0.0}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.29}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.98}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.98}
+  align leftovers: 0
+AWG seed 107 wl 2292.7 viol 6.2387 parts 16 hard 5 soft 15
+  hard LR-12 C305>U301.8 excess 0.218
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.82}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.14}
+   TP301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.91}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.55}
+   C301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.37}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.86}
+   R309 {'region': 0.0, 'fixed': 0.01, 'lanes': 0.0, 'pairs': 0.14}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.12, 'pairs': 0.83}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.86}
+  align leftovers: 0
+AWG seed 108 wl 2314.6 viol 5.0780 parts 16 hard 5 soft 15
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 3.3, 'pairs': 0.48}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.09}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.11}
+   R307 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+   C305 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.93, 'pairs': 0.07}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.55}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.89, 'pairs': 0.3}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.24}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+  align leftovers: 0
+AWG seed 109 wl 2309.9 viol 6.3893 parts 16 hard 5 soft 15
+  hard LR-7 DAC0 pad span <= 12 excess 0.050
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.74}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.65}
+   R303 {'region': 0.0, 'fixed': 0.01, 'lanes': 0.0, 'pairs': 1.04}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   C301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.22}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.88}
+   R309 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   C305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.12}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.65}
+   C303 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.53}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.55}
+   R305 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.53}
+  align leftovers: 0
+AWG seed 110 wl 2104.4 viol 6.0050 parts 16 hard 5 soft 15
+   U301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 3.59}
+   R301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.12}
+   R302 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.03}
+   R304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   C301 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.03}
+   R306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.12}
+   R307 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.83}
+   C306 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 2.76}
+   C304 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+  align leftovers: 0
+AWG seed 111 wl 2106.8 viol 5.7500 parts 16 hard 5 soft 15
+  align leftovers: 0
+POWER seed 100 wl 2272.8 viol 0.0000 parts 15 hard 1 soft 14
+  align leftovers: 0
+REFCAL seed 100 wl 198.2 viol 0.0000 parts 3 hard 2 soft 2
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 100 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 101 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 102 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 103 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 104 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 105 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 106 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 107 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 108 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 109 wl 209.6 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 110 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  hard LR-12 C503>U502.8 excess 0.005
+   U502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   C503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 111 wl 219.7 viol 0.0350 parts 2 hard 1 soft 1
+  align leftovers: 0
+POWER seed 200 wl 545.7 viol 0.0000 parts 7 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.88, 'lanes': 0.0, 'pairs': 0.0}
+   R509 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.23}
+   R508 {'region': 0.0, 'fixed': 1.43, 'lanes': 0.0, 'pairs': 0.0}
+   BR503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.85}
+   R501 {'region': 0.0, 'fixed': 0.94, 'lanes': 0.0, 'pairs': 0.37}
+   J501 {'region': 0.0, 'fixed': 6.77, 'lanes': 0.0, 'pairs': 0.37}
+   R502 {'region': 0.0, 'fixed': 1.47, 'lanes': 0.0, 'pairs': 0.01}
+   R504 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.64}
+  align leftovers: 0
+REFCAL seed 200 wl 1700.0 viol 12.7150 parts 26 hard 0 soft 0
+   R509 {'region': 0.0, 'fixed': 1.64, 'lanes': 0.0, 'pairs': 0.02}
+   BR503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R512 {'region': 0.0, 'fixed': 0.31, 'lanes': 0.0, 'pairs': 0.0}
+   BR502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   R501 {'region': 0.0, 'fixed': 0.64, 'lanes': 0.0, 'pairs': 0.03}
+   BR508 {'region': 0.0, 'fixed': 0.11, 'lanes': 0.0, 'pairs': 0.0}
+   R504 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   BR507 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.31}
+   R514 {'region': 0.0, 'fixed': 1.43, 'lanes': 0.0, 'pairs': 0.0}
+   BR501 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   R506 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.31}
+   R511 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+   BR504 {'region': 0.0, 'fixed': 0.83, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+REFCAL seed 201 wl 1651.9 viol 5.3050 parts 26 hard 0 soft 0
+   BR502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.71}
+   R501 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   BR506 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.0}
+   BR509 {'region': 0.0, 'fixed': 1.67, 'lanes': 0.0, 'pairs': 0.01}
+   R504 {'region': 0.0, 'fixed': 1.64, 'lanes': 0.0, 'pairs': 0.03}
+   R514 {'region': 0.0, 'fixed': 1.16, 'lanes': 0.0, 'pairs': 0.03}
+   BR501 {'region': 0.0, 'fixed': 0.93, 'lanes': 0.0, 'pairs': 0.03}
+   BR511 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.03}
+   TP501 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 1.71}
+   R511 {'region': 0.0, 'fixed': 0.87, 'lanes': 0.0, 'pairs': 0.0}
+  align leftovers: 0
+REFCAL seed 202 wl 1684.5 viol 8.3362 parts 26 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 1.42, 'lanes': 0.0, 'pairs': 0.0}
+   R509 {'region': 0.0, 'fixed': 1.64, 'lanes': 0.0, 'pairs': 0.03}
+   R512 {'region': 0.0, 'fixed': 1.51, 'lanes': 0.0, 'pairs': 0.03}
+   R501 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   BR508 {'region': 0.0, 'fixed': 0.9, 'lanes': 0.0, 'pairs': 0.02}
+   R503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+   BR507 {'region': 0.0, 'fixed': 0.71, 'lanes': 0.0, 'pairs': 0.0}
+   R511 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+  align leftovers: 0
+REFCAL seed 203 wl 1687.1 viol 6.2450 parts 26 hard 0 soft 0
+   R508 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   BR502 {'region': 0.0, 'fixed': 1.55, 'lanes': 0.0, 'pairs': 0.0}
+   R503 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   R507 {'region': 0.0, 'fixed': 0.31, 'lanes': 0.0, 'pairs': 0.0}
+   BR507 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+   R510 {'region': 0.0, 'fixed': 1.64, 'lanes': 0.0, 'pairs': 0.03}
+   BR511 {'region': 0.0, 'fixed': 0.68, 'lanes': 0.0, 'pairs': 0.01}
+   BR504 {'region': 0.0, 'fixed': 0.82, 'lanes': 0.0, 'pairs': 0.02}
+  align leftovers: 0
+REFCAL seed 204 wl 1814.9 viol 5.0400 parts 26 hard 0 soft 0
+   BR502 {'region': 0.0, 'fixed': 2.3, 'lanes': 0.0, 'pairs': 0.03}
+   R507 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   BR509 {'region': 0.0, 'fixed': 2.03, 'lanes': 0.0, 'pairs': 0.02}
+   R514 {'region': 0.0, 'fixed': 0.93, 'lanes': 0.0, 'pairs': 0.0}
+   R506 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.02}
+  align leftovers: 0
+REFCAL seed 205 wl 1886.6 viol 5.3050 parts 26 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.03}
+   R513 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.38}
+   BR508 {'region': 0.0, 'fixed': 0.93, 'lanes': 0.0, 'pairs': 0.03}
+   J501 {'region': 0.0, 'fixed': 1.55, 'lanes': 0.0, 'pairs': 0.0}
+   R502 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.09}
+   R504 {'region': 0.0, 'fixed': 1.27, 'lanes': 0.0, 'pairs': 0.03}
+   BR507 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.07}
+   BR511 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.16}
+   R506 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.46}
+   TP501 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.82}
+  align leftovers: 0
+REFCAL seed 206 wl 1752.6 viol 5.0825 parts 26 hard 0 soft 0
+   BR510 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.03}
+   R508 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.47}
+   BR503 {'region': 0.0, 'fixed': 1.55, 'lanes': 0.0, 'pairs': 0.0}
+   R505 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   BR508 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.47}
+   BR506 {'region': 0.0, 'fixed': 0.66, 'lanes': 0.0, 'pairs': 0.0}
+   R506 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.01}
+   TP501 {'region': 0.0, 'fixed': 0.3, 'lanes': 0.0, 'pairs': 0.0}
+   BR504 {'region': 0.0, 'fixed': 0.0, 'lanes': 0.0, 'pairs': 0.04}
+  align leftovers: 0
+REFCAL seed 207 wl 1882.5 viol 3.0137 parts 26 hard 0 soft 0
