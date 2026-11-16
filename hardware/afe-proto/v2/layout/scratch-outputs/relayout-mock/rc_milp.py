@@ -39,10 +39,11 @@ def tie_ok(c):
         if min(math.hypot(pp[0] - xy[0], pp[1] - xy[1]) for (ic, pn), xy in icp.items() if any(w['net'] == net and w['n'] == pn for w in ics0[ic]['pads'])) > lim: return False
     return True
 DROP = set(sys.argv[5].split(',')) if len(sys.argv) > 5 and sys.argv[5] else set()
-parts = sorted(r for r in C if r not in ICS and r not in DROP)
+parts = sorted(r for r in C if r not in DROP)
 def cur(r):
     p = PN[r]; return (p['x'], p['y'])
 def disp(c):
+    if c[0] in ICS: return 0.0
     x, y = cur(c[0]); return math.hypot(c[3] - x, c[4] - y)
 def orient_of(c): return RP.orient(P0[c[0]], c[1])
 def rowkey(c):
@@ -51,12 +52,23 @@ def pinline(c):
     o = orient_of(c)
     return any(math.hypot(c[3] - pp[0], c[4] - pp[1]) <= 4 and ((o == 0 and abs(c[4] - pp[1]) <= 0.05) or (o == 90 and abs(c[3] - pp[0]) <= 0.05)) for pp in icp.values())
 PASRE = RP.PAS
-sel = {r: C[r] for r in parts}
+TRIM = int(sys.argv[7]) if len(sys.argv) > 7 else 10**6
+sel = {r: C[r][:TRIM] for r in parts}
 print('domains', {r: len(v) for r, v in sel.items()}, flush=True)
 off = {}; n = 0
 for r in parts: off[r] = n; n += len(sel[r])
 def OV2(A, B, g): return ((np.minimum(A[:, None, 2], B[None, :, 2]) - np.maximum(A[:, None, 0], B[None, :, 0]) + g) > 1e-6) & ((np.minimum(A[:, None, 3], B[None, :, 3]) - np.maximum(A[:, None, 1], B[None, :, 1]) + g) > 1e-6)
 def arr(p, i): return np.array([c[i] for c in sel[p]])
+AX, AG0, AG1 = 0.3, 0.0, 0.6
+def PLABOVE(LB, CY):
+    bx = (LB[:, None, 0] + LB[:, None, 2]) / 2; cx = (CY[None, :, 0] + CY[None, :, 2]) / 2
+    return (np.abs(bx - cx) <= AX) & ((LB[:, None, 1] - CY[None, :, 3]) >= AG0 - 1e-9) & ((LB[:, None, 1] - CY[None, :, 3]) <= AG1 + 1e-9)
+def PLSIDE(LB, CY):
+    ys = (LB[:, None, 1] < CY[None, :, 3]) & (CY[None, :, 1] < LB[:, None, 3])
+    e = ys & ((LB[:, None, 0] - CY[None, :, 2]) >= AG0 - 1e-9) & ((LB[:, None, 0] - CY[None, :, 2]) <= AG1 + 1e-9)
+    w = ys & ((CY[None, :, 0] - LB[:, None, 2]) >= AG0 - 1e-9) & ((CY[None, :, 0] - LB[:, None, 2]) <= AG1 + 1e-9)
+    return e | w
+def PLANY(LB, CY): return PLABOVE(LB, CY) | PLSIDE(LB, CY)
 rows, cols = [], []; nrow = 0
 for i, p in enumerate(parts):
     CY1, Z1, L1, E1 = arr(p, 5), arr(p, 6), arr(p, 7), arr(p, 8)
@@ -65,11 +77,14 @@ for i, p in enumerate(parts):
         a1 = E1 if p == 'J501' else CY1; a2 = E2 if q == 'J501' else CY2
         # quick reject: bounding windows far apart
         if len(CY1) == 0 or len(CY2) == 0: continue
-        if CY1[:, 2].min() + 9 < CY2[:, 0].min() or CY2[:, 2].min() + 9 < CY1[:, 0].min() or CY1[:, 3].min() + 9 < CY2[:, 1].min() or CY2[:, 3].min() + 9 < CY1[:, 1].min(): continue
-        bad = OV2(a1, a2, 0.0) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.5)
+        if CY1[:, 2].max() < CY2[:, 0].min() or CY2[:, 2].max() < CY1[:, 0].min() or CY1[:, 3].max() < CY2[:, 1].min() or CY2[:, 3].max() < CY1[:, 1].min(): continue
+        bad = OV2(a1, a2, 0.0) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.5) | OV2(a1, L2, 0) | OV2(L1, a2, 0)
+        b1 = (np.array([c[2] for c in sel[p]]) >= 10)[:, None]; b2 = (np.array([c[2] for c in sel[q]]) >= 10)[None, :]
+        bad |= (b1 & (PLANY(L2, CY1).T | PLABOVE(L1, CY2))) | (b2 & (PLANY(L1, CY2) | PLABOVE(L2, CY1).T))
         ii, jj = np.nonzero(bad)
         rows += list(np.repeat(np.arange(nrow, nrow + len(ii)), 2)); cols += [v for a_, b_ in zip(ii, jj) for v in (off[p] + a_, off[q] + b_)]; nrow += len(ii)
 print('conflict rows', nrow, flush=True)
+globals()['_viol'] = None
 passives = [p for p in parts if PASRE.fullmatch(p)]
 rowvals = sorted({rowkey(c) for p in passives for c in sel[p]}) if STAGE == 2 else []
 zi = {rk: n + i for i, rk in enumerate(rowvals)}; n2 = n + len(rowvals)
@@ -101,11 +116,10 @@ for p in ai: cost[ai[p]] = -1000.0
 res = milp(cost, constraints=[LinearConstraint(A_rest, lo, hi), LinearConstraint(A_conf, -np.inf, 1)], integrality=np.ones(n2), bounds=Bounds(0, 1), options=dict(time_limit=TL, disp=False, mip_rel_gap=0.0))
 print('MILP status', res.status, res.message, 'gap', getattr(res, 'mip_gap', None), 'bound', getattr(res, 'mip_dual_bound', None), 'obj', res.fun, flush=True)
 if res.x is not None:
+    print('max conflict-row sum', float((A_conf @ res.x).max()), flush=True)
     ch = []
     for p in parts:
         j = int(np.argmax(res.x[off[p]:off[p] + len(sel[p])])); ch.append(sel[p][j])
     print('MILP feasible; beside', [c[0] for c in ch if c[2] >= 10], 'aligned', int(round(sum(res.x[ai[p]] for p in passives))) if ai else None, flush=True)
     st = {c[0]: [c[3], c[4], ((round(P0[c[0]]['rot']) + 90 * c[1] + 180) % 360) - 180, c[2]] for c in ch}
-    for r in ICS:
-        c = C[r][0]; st[r] = [c[3], c[4], ((round(P0[r]['rot']) + 90 * c[1] + 180) % 360) - 180, 0]
-    json.dump(dict(st=st), open(R + 'rc_milp_stage%d_%s.json' % (STAGE, sys.argv[6] if len(sys.argv) > 6 else 'a'), 'w')); print(st)
+    json.dump(dict(st=st), open(R + 'rc_milp_stage%d_%s_t%dn.json' % (STAGE, sys.argv[6] if len(sys.argv) > 6 else 'a', TRIM), 'w')); print(st)

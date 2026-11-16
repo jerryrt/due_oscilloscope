@@ -55,7 +55,7 @@ def cands_for(r, center, ks, lss, rad, step):
             if not len(idx): continue
             for c0 in range(0, len(idx), 2000):
                 ii = idx[c0:c0 + 2000]
-                bad = OVm(CYB[ii], f_cy, 0.02).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1)
+                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1) | OVm(CYB[ii], f_lab, 0).any(1)
                 infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
                 bad |= OVm(infl, f_ext, 0).any(1)
                 for j in np.nonzero(~bad)[0]:

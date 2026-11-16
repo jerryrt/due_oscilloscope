@@ -22,13 +22,28 @@ def vbad(mask, B):          # vectorised Mask.bad for boxes B (n,4)
 def OVm(A, B, g):           # (n,4) x (m,4) -> (n,m) bool
     return ((np.minimum(A[:, None, 2], B[None, :, 2]) - np.maximum(A[:, None, 0], B[None, :, 0]) + g) > 1e-6) & ((np.minimum(A[:, None, 3], B[None, :, 3]) - np.maximum(A[:, None, 1], B[None, :, 1]) + g) > 1e-6)
 # obstacles: parts of every other block (courtyard, extent with silk) and their labels, at board positions
+
+AX, AG0, AG1 = 0.3, 0.0, 0.6
+def pl_above(LB, CY):
+    bx = (LB[:, None, 0] + LB[:, None, 2]) / 2; cx = (CY[None, :, 0] + CY[None, :, 2]) / 2
+    return (np.abs(bx - cx) <= AX) & ((LB[:, None, 1] - CY[None, :, 3]) >= AG0 - 1e-9) & ((LB[:, None, 1] - CY[None, :, 3]) <= AG1 + 1e-9)
+def pl_side(LB, CY):
+    ys = (LB[:, None, 1] < CY[None, :, 3]) & (CY[None, :, 1] < LB[:, None, 3])
+    e = ys & ((LB[:, None, 0] - CY[None, :, 2]) >= AG0 - 1e-9) & ((LB[:, None, 0] - CY[None, :, 2]) <= AG1 + 1e-9)
+    w = ys & ((CY[None, :, 0] - LB[:, None, 2]) >= AG0 - 1e-9) & ((CY[None, :, 0] - LB[:, None, 2]) <= AG1 + 1e-9)
+    return e | w
+def pl_any(LB, CY): return pl_above(LB, CY) | pl_side(LB, CY)
+BESIDE_FIX = {'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405'}
+
 f_cy, f_ext, f_lab = [], [], []
+f_bcy = []
 def add_part(r, p):
     g = RP.part_geom(p); x, y = p['x'], p['y']
     f_cy.append((g['cy'][0] + x, g['cy'][1] + y, g['cy'][2] + x, g['cy'][3] + y)); f_ext.append((g['ext'][0] + x, g['ext'][1] + y, g['ext'][2] + x, g['ext'][3] + y))
 for r, p in PN.items():
     if r in PART: continue
     add_part(r, p)
+    if r in BESIDE_FIX: f_bcy.append(f_cy[-1])
     if r in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'):
         c = RP.header_label(p); w, h = RP.LAB_W * 4, RP.LAB_H; f_lab.append((c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2))
     elif r in ('U101', 'U301', 'U401'):
@@ -38,7 +53,8 @@ for r, p in PN.items():
         if abs((p['tang'] % 180) - 90) < 1: w, h = h, w
         f_lab.append((p['tx'] - w / 2, p['ty'] - h / 2, p['tx'] + w / 2, p['ty'] + h / 2))
 f_ext.append((35.5, 45.2, 44.2, 46.9)); f_cy.append((35.5, 45.2, 44.2, 46.9))      # the block name stays top-left
-f_cy = np.array(f_cy); f_ext = np.array(f_ext); f_lab = np.array(f_lab)
+f_cy = np.array(f_cy); f_ext = np.array(f_ext); f_lab = np.array(f_lab); f_bcy = np.array(f_bcy)
+
 def cands_for(r, center, ks, lss, rad, step):
     p = P0[r]; out = []
     cx, cy_ = center
@@ -55,9 +71,11 @@ def cands_for(r, center, ks, lss, rad, step):
             if not len(idx): continue
             for c0 in range(0, len(idx), 2000):
                 ii = idx[c0:c0 + 2000]
-                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1)
+                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1) | OVm(CYB[ii], f_lab, 0).any(1)
                 infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
                 bad |= OVm(infl, f_ext, 0).any(1)
+                bad |= pl_any(LB[ii], f_bcy).any(1)
+                if ls >= 10: bad |= pl_above(LB[ii], f_cy).any(1) | pl_any(f_lab, CYB[ii]).any(0)
                 for j in np.nonzero(~bad)[0]:
                     q = ii[j]; out.append((r, k, ls, float(X[q]), float(Y[q]), tuple(CYB[q]), tuple(ZB[q]), tuple(LB[q]), tuple(E[q])))
     return out
@@ -112,16 +130,13 @@ def pinline(c):
 if __name__ == '__main__':
     C = {}
     for r in ICS:
-        p = P0[r]; k = 0
-        off_ = OFFS[r]
-        C[r] = cands_for(r, (p['x'] + off_[0], p['y'] + off_[1]), [k], [0], 0.0, 1.0)[:1]
-        print(r, 'main position legal in the model:', len(C[r]) == 1, flush=True)
-        c = C[r][0]; cs, sn = RP.COS[c[1]], RP.SIN[c[1]]
+        p = P0[r]; off_ = OFFS[r]
+        C[r] = cands_for(r, (p['x'] + off_[0], p['y'] + off_[1]), [0], (0, 2, 4, 10, 11), 0.0, 1.0)
+        print(r, 'label modes legal at the fixed position:', len(C[r]), flush=True)
+        c = C[r][0]
         for w in P0[r]['pads']:
-            if not w['n']: continue
-            o = (w['c'][0] - P0[r]['x'], w['c'][1] - P0[r]['y']); o = (o[0] * cs - o[1] * sn, o[0] * sn + o[1] * cs); icp.setdefault((r, w['n']), (c[3] + o[0], c[4] + o[1]))
-        f_cy = np.vstack([f_cy, [c[5]]]); f_ext = np.vstack([f_ext, [c[8]]]); f_lab = np.vstack([f_lab, [c[7]]])
-        print(r, 'fixed', len(C[r]), flush=True)
+            if w['n']: icp.setdefault((r, w['n']), (c[3] + w['c'][0] - P0[r]['x'], c[4] + w['c'][1] - P0[r]['y']))
+        f_cy = np.vstack([f_cy, [c[5]]]); f_ext = np.vstack([f_ext, [c[8]]])
     others = [r for r in PART if r not in ICS]
     near, hist = {}, {}
     for r in others:
