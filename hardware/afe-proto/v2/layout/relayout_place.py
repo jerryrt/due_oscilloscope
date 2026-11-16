@@ -254,7 +254,7 @@ def hard_constraints(P):
     d0 = _pad(P, 'J603', '5')[0]['c']; o306 = rel('R306', _pad(P, 'R306', '1')[0]['c'])
     def dac(pos_of, off):
         o = off('R306', o306); p = pos_of('R306')
-        return max(0.0, abs(p[0] + o[0] - d0[0]) + abs(p[1] + o[1] - d0[1]) - 11.49)
+        return max(0.0, abs(p[0] + o[0] - d0[0]) + abs(p[1] + o[1] - d0[1]) - 11.99)
     out.append(dict(refs=('R306',), fn=dac, name='LR-7 DAC0 pad span <= 12'))
     f5 = _pad(P, 'J601', '5')[0]['c']
     out.append(dict(refs=('U401',), fn=lambda pos_of, off: max(0.0, math.hypot(pos_of('U401')[0] - f5[0], pos_of('U401')[1] - f5[1]) - 14.99), name='LR-2 U401 within 15 mm of the 5 V pad'))
