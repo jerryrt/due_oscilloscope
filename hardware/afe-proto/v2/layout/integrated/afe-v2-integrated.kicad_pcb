@@ -10560,7 +10560,7 @@
 		(descr "Through hole straight socket strip, 1x08, 2.54mm pitch, single row (from Kicad 4.0.7), script generated")
 		(tags "Through hole socket strip THT 1x08 2.54mm single row")
 		(property "Reference" "J603"
-			(at 2.615 8.89 0)
+			(at 2.615 9.19 0)
 			(layer "F.SilkS")
 			(uuid "1404d0de-8a17-57c4-9994-62bbe20be4f4")
 			(effects
@@ -22668,7 +22668,7 @@
 	)
 	(gr_line
 		(start 112.2 145.45)
-		(end 130 145.45)
+		(end 130.55 145.45)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -22697,8 +22697,8 @@
 		(uuid "3765a3b1-e354-5d16-8279-803748bef66d")
 	)
 	(gr_line
-		(start 130 145.45)
-		(end 130 143.8)
+		(start 130.55 145.45)
+		(end 130.55 143.8)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -22707,8 +22707,8 @@
 		(uuid "e3d9bc79-db49-53d6-84d7-af130dde546b")
 	)
 	(gr_line
-		(start 130 143.8)
-		(end 134.9 143.8)
+		(start 130.55 143.8)
+		(end 135 143.8)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -22717,7 +22717,7 @@
 		(uuid "92634624-dcbf-54d8-865e-439386594651")
 	)
 	(gr_line
-		(start 134.9 145.45)
+		(start 135 145.45)
 		(end 142.25 145.45)
 		(stroke
 			(width 0.15)
@@ -22727,8 +22727,8 @@
 		(uuid "78482127-5a5a-5d4c-8d50-57e9d82125c6")
 	)
 	(gr_line
-		(start 134.9 145.45)
-		(end 134.9 143.8)
+		(start 135 145.45)
+		(end 135 143.8)
 		(stroke
 			(width 0.15)
 			(type default)
