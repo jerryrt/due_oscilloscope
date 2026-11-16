@@ -4,7 +4,7 @@ from pcbtools import boardio, silkread, align
 b = boardio.read_board_retry(sys.argv[1])
 BNC = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 H = {'J601','J602','J603','J604','J605','J606','J607'}
-f = silkread.findings(b, BNC, edge_headers=H, east_end={'U101', 'U301', 'U401'}, beside={'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405'}, silk=silkread.read_silk(open(sys.argv[1]).read()))
+f = silkread.findings(b, BNC, edge_headers=H, east_end={'U101', 'U301', 'U401'}, beside={'R304', 'C301', 'C306', 'C402', 'C403', 'C405', 'C406', 'C407', 'C408', 'R402', 'R403', 'R404', 'R405', 'C502'}, silk=silkread.read_silk(open(sys.argv[1]).read()))
 print('silkread', len(f))
 for x in f: print('  ', x)
 a = align.findings(b)
