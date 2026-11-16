@@ -469,6 +469,12 @@ def test_lr11():
     # a designator below 0.79 mm is not on silk "at 0.8 mm"
     s = Synth('/A1').part('R101', 5, 5, h=0.78).part('TP101', 6, 5).p('TP101', '1', 6, 5, '/A1').text('CH1')
     assert 'R101: designator not on silk at 0.8 mm or more' in R.lr11(s.build(), C11).detail
+    # a designator on the bottom silk counts (D30's BNCs); one on F.Fab, or on the bottom under 0.8 mm, does not
+    for layer, h, ok in ((1, 1.0, True), (2, 1.0, False), (1, 0.78, False)):
+        s = Synth('/A1').part('R101', 5, 5, silk=None).part('TP101', 6, 5).p('TP101', '1', 6, 5, '/A1').text('CH1')
+        s.rt.append((5, 5, h, 0.8, 0.12, 0.0, layer, False, 0))
+        d = R.lr11(s.build(), C11).detail
+        assert ('R101: designator not on silk' in d) is not ok, (layer, h, d)
 
 
 # ----------------------------------------------------------------------------- LR-2 (the flow rule, small geometry)

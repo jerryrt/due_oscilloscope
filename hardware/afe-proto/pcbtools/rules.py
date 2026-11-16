@@ -956,7 +956,10 @@ def lr11(b, cfg):
     for i, r in enumerate(refs):
         ndes += 1
         k = refrow.get(i)
-        if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
+        # on the top silk and visible, or on the bottom silk: D30 puts the BNCs' designators on the bottom (boardio reads no
+        # visibility there, and r_on_silk is top-only for silkread's sake); silkread holds every other part to the top
+        on = k is not None and (b.r_on_silk[k] or int(b.r_layer[k]) == 1)     # 1: boardio.R_LAYERS['B.SilkS']
+        if not on or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
             bad.append(f'{r}: designator not on silk at 0.8 mm or more')
     for r, n in cfg.TP_NETS.items():
         if (r, cfg.TP_PIN) not in pt.lookup or pad_net(b, r, cfg.TP_PIN) != n:
