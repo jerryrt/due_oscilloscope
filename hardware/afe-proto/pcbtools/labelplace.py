@@ -28,6 +28,9 @@ SNAP = 0.05
 SLACK = 200.0
 
 
+LABMODES = {}            # {ref: 'E' | 'W'}: a designator beside the part (silkread rules 2a / 2b) instead of above it
+
+
 class P:
     """one part's constants"""
     def __init__(self, ref, r, free, nolabel=False):
@@ -39,6 +42,14 @@ class P:
         self.cx = (self.rx0 + self.rx1) / 2
         self.lx0, self.lx1 = self.cx - self.w / 2, self.cx + self.w / 2
         self.ly0, self.ly1 = (self.ry1, self.ry1) if nolabel else (self.ry1 + GAP, self.ry1 + GAP + LABEL_H)
+        m = LABMODES.get(ref)
+        if m and not nolabel:
+            cy = (self.ry0 + self.ry1) / 2
+            self.ly0, self.ly1 = cy - LABEL_H / 2, cy + LABEL_H / 2
+            if m == 'E':
+                self.lx0 = self.rx1 + GAP; self.lx1 = self.lx0 + self.w
+            else:
+                self.lx1 = self.rx0 - GAP; self.lx0 = self.lx1 - self.w
 
 
 def _shapes(p, x, y):
