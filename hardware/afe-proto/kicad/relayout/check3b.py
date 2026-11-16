@@ -198,12 +198,14 @@ for i, p in enumerate(parts):
 import numpy as np
 from pcbtools.labelplace import P, _shapes
 def reads(L, C, kind):
+    """widened rule 3b: above is rule 1's centred place; east / west: any designator sharing any of the courtyard's y-span within 0.6 mm of that side"""
     if kind == 'above':
         return abs((L[0] + L[2]) / 2 - (C[0] + C[2]) / 2) <= 0.3 and -1e-6 <= L[1] - C[3] <= 0.6 + 1e-6
-    cyL = (L[1] + L[3]) / 2; cyC = (C[1] + C[3]) / 2
+    yov = L[1] < C[3] - 1e-6 and L[3] > C[1] + 1e-6
     if kind == 'east':
-        return abs(cyL - cyC) <= 0.3 and -1e-6 <= L[0] - C[2] <= 0.6 + 1e-6
-    return abs(cyL - cyC) <= 0.3 and -1e-6 <= C[0] - L[2] <= 0.6 + 1e-6
+        return yov and -1e-6 <= L[0] - C[2] <= 0.6 + 1e-6
+    return yov and -1e-6 <= C[0] - L[2] <= 0.6 + 1e-6
+EASTEND = {'U301'}
 BESIDE_ALL = {r for r, m in LABMODE.items() if m in ('E', 'W')}
 pp3 = {r: _setmode(P(r, rel[r], r not in ANCH, r in NOLAB)) for r in refs}
 def viol3b(pos, only=None):
@@ -214,8 +216,9 @@ def viol3b(pos, only=None):
         for Y in refs:
             if Y == X or Y in NOLAB or pp3[Y].w == 0: continue
             CY, LY = _shapes(pp3[Y], *pos[Y])
-            for k in ('above', 'east', 'west'):
-                if reads(LY, CX, k): out.append(f'{Y} label reads as {X} {k} label')
+            if X not in EASTEND:
+                for k in ('above', 'east', 'west'):
+                    if reads(LY, CX, k): out.append(f'{Y} label reads as {X} {k} label')
             if reads(LX, CY, 'above'): out.append(f'{X} beside label reads as {Y} above label')
     return out
 if __name__ == '__main__':

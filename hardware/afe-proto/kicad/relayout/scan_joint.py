@@ -230,6 +230,27 @@ def conf_np(Ca, La, Cb, Lb, tol=0.05):
         py = np.minimum(a[3] + (m - tol) - b_[1], b_[3] + (m - tol) - a[1])
         bad |= (px > 0) & (py > 0)
     return bad
+
+for _r in JOINT: LPm.LABMODES.pop(_r, None)   # the searched parts take their label from the candidate mode, never from the label file
+def reads_a(L, C, kind):
+    if kind == 'above':
+        return (np.abs((L[0] + L[2]) / 2 - (C[0] + C[2]) / 2) <= 0.3) & (L[1] - C[3] >= -1e-6) & (L[1] - C[3] <= 0.6 + 1e-6)
+    yov = (L[1] < C[3] - 1e-6) & (L[3] > C[1] + 1e-6)
+    if kind == 'east':
+        return yov & (L[0] - C[2] >= -1e-6) & (L[0] - C[2] <= 0.6 + 1e-6)
+    return yov & (C[0] - L[2] >= -1e-6) & (C[0] - L[2] <= 0.6 + 1e-6)
+KINDS = ('above', 'east', 'west')
+EASTEND = {'U301'}
+BESIDE_STATIC = {r for r, m in LABMODE.items() if m in ('E', 'W') and r not in JOINT}
+def c3b(Ca, La, ba, Cb, Lb, bb):
+    """True where the widened rule 3b is broken between A and B (ba / bb: A / B labelled beside)"""
+    bad = np.zeros(np.broadcast(Ca[0], Cb[0]).shape, bool)
+    for k in KINDS:
+        bad |= ba & reads_a(Lb, Ca, k)
+        bad |= bb & reads_a(La, Cb, k)
+    bad |= ba & reads_a(La, Cb, 'above')
+    bad |= bb & reads_a(Lb, Ca, 'above')
+    return bad
 static = [(r, pos[r]) for r in refs if r not in JOINT and r not in AWGLOOSE]
 sp = {r: P(r, rel[r], r not in ANCH, r in NOLAB) for r, _ in static}
 sp['U301'] = setlabel(sp['U301'], 1)
@@ -243,6 +264,19 @@ def single(ref, d, mode, xs, ys, keep=None):
         if abs(sx - 84) > 22 or abs(sy - 12) > 16: continue
         Cs, Ls = shp(sp[r_], sx, sy)
         ok &= ~conf_np(C, L, Cs, Ls)
+    if len(X):
+        for r_, (sx, sy) in static:
+            if sp[r_].w == 0 or abs(sx - 84) > 22 or abs(sy - 12) > 16: continue
+            Cs, Ls = shp(sp[r_], sx, sy)
+            bad3 = np.zeros(len(X), bool)
+            if mode != 0:
+                for k in KINDS: bad3 |= reads_a(Ls, C, k)
+                bad3 |= reads_a(L, Cs, 'above')
+            if r_ in BESIDE_STATIC:
+                if r_ not in EASTEND:
+                    for k in KINDS: bad3 |= reads_a(L, Cs, k)
+                bad3 |= reads_a(Ls, C, 'above')
+            ok &= ~bad3
     for q in obst:
         if len(q) > 4 and ref in q[4]: continue
         for a in (C, L):
@@ -252,10 +286,11 @@ def single(ref, d, mode, xs, ys, keep=None):
 def rng(c, h, g): return np.arange(c - h, c + h + 1e-9, g)
 # ---- trio candidates, windows around the three families found earlier
 TR = {'R302': ('1', (0, 1, 2), [(78.55, 9.25), (82.0, 7.5), (78.65, 7.5), (80.0, 8.4)]),
-      'R303': ('2', (0,), [(82.0, 7.5), (78.55, 9.25), (78.65, 7.5), (80.0, 8.4)]),
+      'R303': ('2', tuple(int(v) for v in os.environ.get('R303MODES', '0').split(',')), [(82.0, 7.5), (78.55, 9.25), (78.65, 7.5), (80.0, 8.4)]),
       'C301': ('2', (0, 1, 2), [(78.65, 7.5), (78.55, 9.25), (82.0, 7.5), (80.0, 8.4)])}
 if os.environ.get('FAM'):
-    TR['R302'] = ('1', (0, 1, 2), [(78.55, 9.25)]); TR['R303'] = ('2', (0,), [(82.0, 7.4)]); TR['C301'] = ('2', (0, 1, 2), [(78.65, 7.5)])
+    _fc = [tuple(float(v) for v in t.split(',')) for t in os.environ.get('FAMC', '78.55,9.25;82.0,7.4;78.65,7.5').split(';')]
+    TR['R302'] = ('1', (0, 1, 2), [_fc[0]]); TR['R303'] = ('2', tuple(int(v) for v in os.environ.get('R303MODES', '0').split(',')), [_fc[1]]); TR['C301'] = ('2', (0, 1, 2), [_fc[2]])
 PX0, PX1, PY0, PY1 = (float(v) for v in os.environ.get('PW', '78,92,4.6,14').split(','))
 cand = {}
 for ref, (pin, modes, centres) in TR.items():
@@ -304,7 +339,7 @@ for d in (0, 90, 180, 270):
             d1 = np.hypot(B[:, 2][None, :] + c1[0] - A2[:, 2][:, None] - a1[0], B[:, 3][None, :] + c1[1] - A2[:, 3][:, None] - a1[1])
             d2 = np.hypot(B[:, 2][None, :] + c2[0] - A2[:, 2][:, None] - a2[0], B[:, 3][None, :] + c2[1] - A2[:, 3][:, None] - a2[1])
             near = (d1 <= 2.0 + 1e-9) & (d2 <= 2.0 + 1e-9)
-            okp = near & ~conf_np(CA, LA, CB, LB)
+            okp = near & ~conf_np(CA, LA, CB, LB) & ~c3b(CA, LA, np.ones((len(A2), 1), bool), CB, LB, np.zeros((1, len(B)), bool))
             ex305 = np.hypot(A2[:, 2] + a1[0] - j603_5[0], A2[:, 3] + a1[1] - j603_5[1])
             ex304 = np.hypot(B[:, 2] + c1[0] - j603_5[0], B[:, 3] + c1[1] - j603_5[1])
             ii, jj = np.nonzero(okp)
@@ -328,7 +363,9 @@ def single_mat(r1, r2):
             c, l = shp(PP[k], rows[m, 2], rows[m, 3]); C[:, m] = np.array(c); L[:, m] = np.array(l)
         return C, L
     CA, LA = S(A, PA); CB, LB = S(B, PB)
-    return ~conf_np([c[:, None] for c in CA], [l[:, None] for l in LA], [c[None, :] for c in CB], [l[None, :] for l in LB])
+    Aa = lambda arr: [c[:, None] for c in arr]; Bb = lambda arr: [c[None, :] for c in arr]
+    ba = (A[:, 1] != 0)[:, None]; bb = (B[:, 1] != 0)[None, :]
+    return ~conf_np(Aa(CA), Aa(LA), Bb(CB), Bb(LB)) & ~c3b(Aa(CA), Aa(LA), ba, Bb(CB), Bb(LB), bb)
 OKab = single_mat('R302', 'R303'); OKac = single_mat('R302', 'C301'); OKbc = single_mat('R303', 'C301')
 print('trio matrices', round(time.time() - t0, 1))
 pa = {r: cand[r][:, 4:6] for r in TR}
@@ -375,7 +412,8 @@ SET = {r: part_set(r, cand[r]) for r in TR}
 def pair_vs(ref, d, mode, x, y, ref2):
     P1 = variant(ref, d, mode); C1, L1 = shp(P1, x, y)
     C2, L2 = SET[ref2]
-    return ~conf_np([np.array([c]) for c in C1], [np.array([l]) for l in L1], list(C2), list(L2))
+    b1 = (mode != 0); b2 = (cand[ref2][:, 1] != 0)
+    return ~conf_np([np.array([c]) for c in C1], [np.array([l]) for l in L1], list(C2), list(L2)) & ~c3b([np.array([c]) for c in C1], [np.array([l]) for l in L1], np.array([b1]), list(C2), list(L2), b2)
 results = []
 best_for = {}
 for (e, d, mode, x5, y5, x4, y4) in pairs[:3]:

@@ -253,13 +253,13 @@ def rng(c, h, g): return np.arange(c - h, c + h + 1e-9, g)
 
 
 def reads_a(L, C, kind):
-    """a designator box L reads as the label of the part with courtyard C in the above / east / west place (centred to 0.3, gap 0 to 0.6)"""
+    """widened rule 3b (see check3b.py)"""
     if kind == 'above':
         return (np.abs((L[0] + L[2]) / 2 - (C[0] + C[2]) / 2) <= 0.3) & (L[1] - C[3] >= -1e-6) & (L[1] - C[3] <= 0.6 + 1e-6)
-    cyL = (L[1] + L[3]) / 2; cyC = (C[1] + C[3]) / 2
+    yov = (L[1] < C[3] - 1e-6) & (L[3] > C[1] + 1e-6)
     if kind == 'east':
-        return (np.abs(cyL - cyC) <= 0.3) & (L[0] - C[2] >= -1e-6) & (L[0] - C[2] <= 0.6 + 1e-6)
-    return (np.abs(cyL - cyC) <= 0.3) & (C[0] - L[2] >= -1e-6) & (C[0] - L[2] <= 0.6 + 1e-6)
+        return yov & (L[0] - C[2] >= -1e-6) & (L[0] - C[2] <= 0.6 + 1e-6)
+    return yov & (C[0] - L[2] >= -1e-6) & (C[0] - L[2] <= 0.6 + 1e-6)
 KINDS = ('above', 'east', 'west')
 RULE3B = not os.environ.get('NO3B')
 for _r in CSP: LPm.LABMODES.pop(_r, None)
@@ -288,11 +288,13 @@ for _f in FREED:
     print('TIES', _f, TIES[_f])
 BESIDEOK = set(os.environ.get('BESIDEOK', 'C401,C405,C409,C407,C402,C403,R404,R405').split(','))
 BF = BESIDEOK
+BESIDEONLY = set(v for v in os.environ.get('BESIDEONLY', '').split(',') if v)
 ROTS = {r: (0, 90, 180, 270) for r in CSP}
 cands = {}
 for ref in sorted(CSP):
     rows = []
-    for d, mode in itertools.product((0, 90, 180, 270), (0, 1, 2) if ref in BF else (0,)):
+    _modes = ((1, 2) if ref in BESIDEONLY else (0,)) if BESIDEONLY else ((0, 1, 2) if ref in BF else (0,))
+    for d, mode in itertools.product((0, 90, 180, 270), _modes):
         if os.environ.get('PIN') and ref in FREED and d != 0: continue
         if os.environ.get('PIN') and ref in FREED:
             p, X, Y = single(ref, d, mode, np.array([pos[ref][0]]), np.array([pos[ref][1]]))
@@ -376,7 +378,7 @@ def run_k(K):
     dfs({}, masks, 0)
     return sol, count[0]
 try:
-    for K in range(0, int(os.environ.get('KMAX', '4')) + 1):
+    for K in range(int(os.environ.get('KMIN', '0')), int(os.environ.get('KMAX', '4')) + 1):
         sol, nodes = run_k(K)
         print('BESIDE_BUDGET', K, 'SOLUTIONS', len(sol), 'nodes', nodes, 'elapsed', round(_t.time() - T0), flush=True)
         for s_ in sol:
