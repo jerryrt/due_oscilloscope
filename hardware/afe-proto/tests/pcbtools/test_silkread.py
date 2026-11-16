@@ -64,6 +64,26 @@ def test_the_good_board_has_no_findings():
     assert find() == []
 
 
+def ic_board(label):
+    """an IC U1 (courtyard 20-26 x 8-12) with its designator at `label`"""
+    s = Synth()
+    s.part('U1', 23.0, 10.0, box=(20.0, 8.0, 26.0, 12.0), silk=None)
+    lab(s, 'U1', *label)
+    return s.build()
+
+
+def test_a_named_ic_may_carry_its_designator_beside_its_east_end():
+    east = (26.0 + 0.2 + 0.9, 10.0, 0.0)                             # 'U1' is 1.8 wide: west edge 0.2 mm east of the courtyard
+    assert silkread.findings(ic_board(east), east_end={'U1'}) == []
+    assert has(silkread.findings(ic_board(east)), 'U1:', 'not centred above it')      # unnamed: the ordinary rule
+
+
+def test_a_named_ic_beside_its_end_but_off_centre_or_far_fails():
+    for x, y in ((26.0 + 0.2 + 0.9, 10.6), (26.0 + 1.0 + 0.9, 10.0), (20.0 - 0.2 - 0.9, 10.0), (26.0 - 0.2 + 0.9, 10.0)):
+        # off centre, far, the west end, 0.2 mm into the courtyard
+        assert has(silkread.findings(ic_board((x, y, 0.0)), east_end={'U1'}), 'U1:', 'beside its east end'), (x, y)
+
+
 def test_a_missing_designator_fails():
     assert has(find({'A': None}), 'A:', 'no designator')
 
@@ -225,12 +245,15 @@ EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 # inboard), before the
 # relayout: held exactly (a ratchet).
 OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 207, 'kicad/afe-proto.kicad_pcb': 207}
+# D30's named exceptions to rule 1, per board: the IC whose designator sits beside its pin-free east end (rule 2a).
+EAST_END = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': {'U101'}, 'kicad/afe-proto.kicad_pcb': set()}
 
 
 @pytest.mark.pcbnew
 @pytest.mark.parametrize('rel', sorted(OPEN))
 def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
-    f = silkread.findings(boardio.read_board(str(p)), LABELS, edge_headers=EDGE, silk=silkread.read_silk(p.read_text()))
+    f = silkread.findings(boardio.read_board(str(p)), LABELS, edge_headers=EDGE, silk=silkread.read_silk(p.read_text()),
+                          east_end=EAST_END[rel])
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
     assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'

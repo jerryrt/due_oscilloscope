@@ -1,6 +1,6 @@
 """D30 (docs/afe.md): every part can be found from its designator, because every designator sits in one place against it.
 
-    findings(b, bnc_labels=None, edge_headers=(), silk=())  -> [str]   the reasons it cannot (empty = it can)
+    findings(b, bnc_labels=None, edge_headers=(), silk=(), east_end=())  -> [str]   the reasons it cannot (empty = it can)
     read_silk(txt)                                           -> [shape] the board-level F.SilkS lines and rectangles
 
 The owner's convention (2026-11-15), on the top side (the board has no bottom parts):
@@ -14,6 +14,11 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    board, just above it in the lower half (the halves split at the centre of the board outline, or of the parts'
    courtyards when the arrays carry no outline). One lying along y carries it horizontal just above its top end, centred
    over it. Same gaps as rule 1.
+2a. Beside the pin-free end (`east_end`, named parts only; owner's order of 2026-11-16, electrical rules before labels).
+   An IC whose pin row faces parts the electrical rules tie to its pins, so that no label above it leaves them a legal
+   place, carries its designator horizontal just east of its courtyard instead: from touching to ABOVE_GAP_MAX between
+   the courtyard's east edge and the text's west edge, centred on the courtyard in y to ABOVE_X. The board names each
+   such part and D30 records why; nothing else may use it.
 3. Legible. No designator lies on any courtyard (its own included), pad, via drill or board-level silk line or rectangle
    (`silk`, from read_silk: the block outlines and the S/N box), and two designators are at least LABEL_GAP apart, box to
    box, so that two never read as one.
@@ -109,8 +114,9 @@ def _on_shape(box, shape):
     return True
 
 
-def findings(b, bnc_labels=None, edge_headers=(), silk=()):
+def findings(b, bnc_labels=None, edge_headers=(), silk=(), east_end=()):
     bnc_labels = dict(bnc_labels or {})
+    east_end = set(east_end)
     edge_headers = set(edge_headers)
     refs = list(b.fp_ref)
     row = {int(k): i for i, k in enumerate(b.fp_idx)}
@@ -144,7 +150,11 @@ def findings(b, bnc_labels=None, edge_headers=(), silk=()):
         if min(ang % 360.0, 360.0 - ang % 360.0) > 0.5:
             bad.append(f'{r}: designator at {ang:g} degrees, not horizontal')
         across = abs((box[0] + box[2]) / 2 - (c[0] + c[2]) / 2)
-        if r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]) and (c[1] + c[3]) / 2 > mid_y:   # along x, upper half
+        if r in east_end:                                              # rule 2a
+            across = abs((box[1] + box[3]) / 2 - (c[1] + c[3]) / 2)
+            gap = box[0] - c[2]
+            where = 'beside its east end'
+        elif r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]) and (c[1] + c[3]) / 2 > mid_y:   # along x, upper half
             gap = c[1] - box[3]
             where = 'below it, on its inboard side'
         elif r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]):                               # along x, lower half
