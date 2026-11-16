@@ -55,6 +55,7 @@ for r, p in PN.items():
 f_ext.append((35.5, 45.2, 44.2, 46.9)); f_cy.append((35.5, 45.2, 44.2, 46.9))      # the block name stays top-left
 f_cy = np.array(f_cy); f_ext = np.array(f_ext); f_lab = np.array(f_lab); f_bcy = np.array(f_bcy)
 
+RELAX = set(os.environ.get('RELAX', '').split(','))
 def cands_for(r, center, ks, lss, rad, step):
     p = P0[r]; out = []
     cx, cy_ = center
@@ -64,18 +65,21 @@ def cands_for(r, center, ks, lss, rad, step):
         for ls in lss:
             gg = RP.part_geom(p, k, ls)
             def box(b): return np.stack([X + b[0], Y + b[1], X + b[2], Y + b[3]], 1)
-            E = box(gg['ext']); CYB = box(gg['cy']); LB = box(gg['lab'])
+            E = box(gg['ext']); CYB = box(gg['cy']); LB = box(gg['lab']); LBC = np.stack([(LB[:, 0] + LB[:, 2]) / 2 - 0.01, (LB[:, 1] + LB[:, 3]) / 2 - 0.01, (LB[:, 0] + LB[:, 2]) / 2 + 0.01, (LB[:, 1] + LB[:, 3]) / 2 + 0.01], 1) if os.environ.get('LABMASK', 'centre') == 'centre' else LB
             ZB = box((gg['lab'][0] - 0.06, gg['lab'][1] - 0.06, gg['lab'][2] + 0.06, gg['lab'][3] + 0.06)) if ls >= 10 else box(gg['zone'])
-            ok = (vbad(mext, E) <= 0) & (vbad(mlab, LB) <= 0)
+            ok = np.ones(len(X), bool) if 'mask' in RELAX else (vbad(mext, E) <= 0) & (vbad(mlab, LBC) <= 0)
             idx = np.nonzero(ok)[0]
             if not len(idx): continue
             for c0 in range(0, len(idx), 2000):
                 ii = idx[c0:c0 + 2000]
-                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1) | OVm(CYB[ii], f_lab, 0).any(1)
-                infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
-                bad |= OVm(infl, f_ext, 0).any(1)
-                bad |= pl_any(LB[ii], f_bcy).any(1)
-                if ls >= 10: bad |= pl_above(LB[ii], f_cy).any(1) | pl_any(f_lab, CYB[ii]).any(0)
+                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1)
+                if 'lab' not in RELAX:
+                    if 'lab_gap' not in RELAX: bad |= OVm(LB[ii], f_lab, 0.5).any(1)
+                    if 'lab_cy' not in RELAX: bad |= OVm(CYB[ii], f_lab, 0).any(1)
+                    infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
+                    if 'lab_ext' not in RELAX: bad |= OVm(infl, f_ext, 0).any(1)
+                    if 'lab_3b' not in RELAX: bad |= pl_any(LB[ii], f_bcy).any(1)
+                    if ls >= 10 and 'lab_3b' not in RELAX: bad |= pl_above(LB[ii], f_cy).any(1) | pl_any(f_lab, CYB[ii]).any(0)
                 for j in np.nonzero(~bad)[0]:
                     q = ii[j]; out.append((r, k, ls, float(X[q]), float(Y[q]), tuple(CYB[q]), tuple(ZB[q]), tuple(LB[q]), tuple(E[q])))
     return out
@@ -103,6 +107,7 @@ def padpos(c, n):
     q = [q for q in p['pads'] if q['n'] == n][0]; o = (q['c'][0] - p['x'], q['c'][1] - p['y']); o = (o[0] * cs - o[1] * sn, o[0] * sn + o[1] * cs)
     return (c[3] + o[0], c[4] + o[1])
 def tie_ok(c):
+    if 'tie' in RELAX: return True
     for n, net, lim, ic, pn in LIM.get(c[0], []):
         pp = padpos(c, n); xy = icp[(ic, pn)]
         if math.hypot(pp[0] - xy[0], pp[1] - xy[1]) > lim: return False

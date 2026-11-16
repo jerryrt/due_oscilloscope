@@ -5,6 +5,7 @@ import numpy as np, relayout_place as RP, scipy.sparse as sp
 from scipy.optimize import milp, LinearConstraint, Bounds
 R = '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/'
 RP.ZONE = 0.06
+RELAXM = set(os.environ.get('RELAXM', '').split(','))
 STAGE, K, TL = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]); CAP = int(sys.argv[4]) if len(sys.argv) > 4 else 99
 D0, P0 = RP.load(R + 'dump_all.json'); DN, PN = RP.load(R + 'dump_new.json')
 C = pickle.load(open(R + 'ch_sel_%s.pkl' % os.environ.get('TAGX', sys.argv[6] if len(sys.argv) > 6 else 'a'), 'rb'))
@@ -80,9 +81,9 @@ for i, p in enumerate([] if os.environ.get('NOCONF') == '1' else parts):
         # quick reject: bounding windows far apart
         if len(CY1) == 0 or len(CY2) == 0: continue
         if CY1[:, 2].max() < CY2[:, 0].min() or CY2[:, 2].max() < CY1[:, 0].min() or CY1[:, 3].max() < CY2[:, 1].min() or CY2[:, 3].max() < CY1[:, 1].min(): continue
-        bad = OV2(a1, a2, 0.0) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.5) | OV2(a1, L2, 0) | OV2(L1, a2, 0)
+        bad = OV2(a1, a2, 0.0) | OV2(Z1, a2, 0) | OV2(a1, Z2, 0) | OV2(L1, L2, 0.0 if 'labgap' in RELAXM else 0.5) | OV2(a1, L2, 0) | OV2(L1, a2, 0)
         b1 = (np.array([c[2] for c in sel[p]]) >= 10)[:, None]; b2 = (np.array([c[2] for c in sel[q]]) >= 10)[None, :]
-        bad |= (b1 & (PLANY(L2, CY1).T | PLABOVE(L1, CY2))) | (b2 & (PLANY(L1, CY2) | PLABOVE(L2, CY1).T))
+        if '3b' not in RELAXM: bad |= (b1 & (PLANY(L2, CY1).T | PLABOVE(L1, CY2))) | (b2 & (PLANY(L1, CY2) | PLABOVE(L2, CY1).T))
         ii, jj = np.nonzero(bad)
         rows += list(np.repeat(np.arange(nrow, nrow + len(ii)), 2)); cols += [v for a_, b_ in zip(ii, jj) for v in (off[p] + a_, off[q] + b_)]; nrow += len(ii)
 print('conflict rows', nrow, flush=True)
@@ -96,7 +97,7 @@ if STAGE == 2:
         for rk in sorted({rowkey(c) for c in sel[p]}): wi[(p, rk)] = n2; n2 += 1
 ai = {p: n2 + i for i, p in enumerate(passives)} if STAGE == 2 else {}; n2 += len(ai)
 HIZ = {'CH1': ['/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP'], 'CH2': ['/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP']}[os.environ['BLK']]
-HN, HO = float(os.environ.get('HN', 8.0)), float(os.environ.get('HO', 10.0))
+HN, HO = float(os.environ.get('HN', 8.0)), float(os.environ.get('HO', 10.0)); HNP = float(os.environ.get('HNP', HO))
 netpads = {}
 for r_, p_ in P0.items():
     for q_ in p_['pads']:
@@ -131,7 +132,7 @@ for net_, (ixa, ixb, iya, iyb) in hv.items():          # xmax, xmin, ymax, ymin
         elif not net_.endswith('_NP'): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HO)
     elif STAGE == 3:
         if net_.endswith('_N'): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN)
-    elif STAGE != 0 and net_[1:] not in os.environ.get('SKIPNETS', '').split(','): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN if net_.endswith('_N') else HO)
+    elif STAGE != 0 and 'hpwl' not in RELAXM and net_[1:] not in os.environ.get('SKIPNETS', '').split(','): add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HN if net_.endswith('_N') else (HNP if net_.endswith('_NP') else HO))
 if STAGE == 0:
     for net_ in HIZ:
         if not net_.endswith('_N'): ixa, ixb, iya, iyb = hv[net_]; add([(ixa, 1), (ixb, -1), (iya, 1), (iyb, -1)], -np.inf, HO)

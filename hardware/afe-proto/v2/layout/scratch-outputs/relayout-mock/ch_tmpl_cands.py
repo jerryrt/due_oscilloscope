@@ -55,6 +55,7 @@ for r, p in PN.items():
 f_ext.append((35.5, 45.2, 44.2, 46.9)); f_cy.append((35.5, 45.2, 44.2, 46.9))      # the block name stays top-left
 f_cy = np.array(f_cy); f_ext = np.array(f_ext); f_lab = np.array(f_lab); f_bcy = np.array(f_bcy)
 
+RELAX = set(os.environ.get('RELAX', '').split(','))
 def cands_for(r, center, ks, lss, rad, step):
     p = P0[r]; out = []
     cx, cy_ = center
@@ -64,18 +65,21 @@ def cands_for(r, center, ks, lss, rad, step):
         for ls in lss:
             gg = RP.part_geom(p, k, ls)
             def box(b): return np.stack([X + b[0], Y + b[1], X + b[2], Y + b[3]], 1)
-            E = box(gg['ext']); CYB = box(gg['cy']); LB = box(gg['lab'])
+            E = box(gg['ext']); CYB = box(gg['cy']); LB = box(gg['lab']); LBC = np.stack([(LB[:, 0] + LB[:, 2]) / 2 - 0.01, (LB[:, 1] + LB[:, 3]) / 2 - 0.01, (LB[:, 0] + LB[:, 2]) / 2 + 0.01, (LB[:, 1] + LB[:, 3]) / 2 + 0.01], 1) if os.environ.get('LABMASK', 'centre') == 'centre' else LB
             ZB = box((gg['lab'][0] - 0.06, gg['lab'][1] - 0.06, gg['lab'][2] + 0.06, gg['lab'][3] + 0.06)) if ls >= 10 else box(gg['zone'])
-            ok = (vbad(mext, E) <= 0) & (vbad(mlab, LB) <= 0)
+            ok = np.ones(len(X), bool) if 'mask' in RELAX else (vbad(mext, E) <= 0) & (vbad(mlab, LBC) <= 0)
             idx = np.nonzero(ok)[0]
             if not len(idx): continue
             for c0 in range(0, len(idx), 2000):
                 ii = idx[c0:c0 + 2000]
-                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1) | OVm(LB[ii], f_lab, 0.5).any(1) | OVm(CYB[ii], f_lab, 0).any(1)
-                infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
-                bad |= OVm(infl, f_ext, 0).any(1)
-                bad |= pl_any(LB[ii], f_bcy).any(1)
-                if ls >= 10: bad |= pl_above(LB[ii], f_cy).any(1) | pl_any(f_lab, CYB[ii]).any(0)
+                bad = OVm(CYB[ii], f_cy, 0.0).any(1) | OVm(ZB[ii], f_cy, 0).any(1)
+                if 'lab' not in RELAX:
+                    if 'lab_gap' not in RELAX: bad |= OVm(LB[ii], f_lab, 0.5).any(1)
+                    if 'lab_cy' not in RELAX: bad |= OVm(CYB[ii], f_lab, 0).any(1)
+                    infl = LB[ii] + np.array([-0.3, -0.3, 0.3, 0.3])
+                    if 'lab_ext' not in RELAX: bad |= OVm(infl, f_ext, 0).any(1)
+                    if 'lab_3b' not in RELAX: bad |= pl_any(LB[ii], f_bcy).any(1)
+                    if ls >= 10 and 'lab_3b' not in RELAX: bad |= pl_above(LB[ii], f_cy).any(1) | pl_any(f_lab, CYB[ii]).any(0)
                 for j in np.nonzero(~bad)[0]:
                     q = ii[j]; out.append((r, k, ls, float(X[q]), float(Y[q]), tuple(CYB[q]), tuple(ZB[q]), tuple(LB[q]), tuple(E[q])))
     return out
@@ -103,6 +107,7 @@ def padpos(c, n):
     q = [q for q in p['pads'] if q['n'] == n][0]; o = (q['c'][0] - p['x'], q['c'][1] - p['y']); o = (o[0] * cs - o[1] * sn, o[0] * sn + o[1] * cs)
     return (c[3] + o[0], c[4] + o[1])
 def tie_ok(c):
+    if 'tie' in RELAX: return True
     for n, net, lim, ic, pn in LIM.get(c[0], []):
         pp = padpos(c, n); xy = icp[(ic, pn)]
         if math.hypot(pp[0] - xy[0], pp[1] - xy[1]) > lim: return False
@@ -142,7 +147,6 @@ def gen2(r):
     L = list({(c[0], c[1], c[2], c[3], c[4]): c for c in L}.values())
     return [c for c in L if tie_ok(c)]
 def dmain(c): return math.hypot(c[3] - P0[c[0]]['x'], c[4] - P0[c[0]]['y'])
-
 XL = float(os.environ.get('XL', 83.1)); YB = float(os.environ.get('YB', 41.0)); PITCH = float(os.environ.get('PITCH', 1.8))
 ROT = {'R107': 180, 'R105': 180, 'C102': 180, 'R103': 0, 'R102': 180, 'C101': 180, 'R207': 180, 'R205': 180, 'C202': 180, 'R203': 0, 'R202': 180, 'C201': 180}
 LROWS = os.environ.get('LROWS', 'R107,R105,C102' if BLK == 'CH1' else 'R207,R205,C202').split(',')
@@ -166,6 +170,18 @@ def gen3(r):
     L += cands_for(r, (pm['x'], pm['y']), ks, (0, 2, 4, 10, 11), 6.0, 0.25)
     L = list({(c[0], c[1], c[2], c[3], c[4]): c for c in L}.values())
     return [c for c in L if tie_ok(c)]
+
+def make_cand(r):
+    p = PN[r]; k = int(round((p['rot'] - round(P0[r]['rot'])) / 90.0)) % 4
+    best = None
+    for ls in (0, 2, 4, 10, 11):
+        gg = RP.part_geom(P0[r], k, ls); lb = gg['lab']
+        d = math.hypot(p['x'] + (lb[0] + lb[2]) / 2 - p['tx'], p['y'] + (lb[1] + lb[3]) / 2 - p['ty'])
+        if best is None or d < best[0]: best = (d, ls, gg)
+    d, ls, gg = best; x, y = round(p['x'], 3), round(p['y'], 3)
+    def bx(b): return (x + b[0], y + b[1], x + b[2], y + b[3])
+    zb = bx((gg['lab'][0] - 0.06, gg['lab'][1] - 0.06, gg['lab'][2] + 0.06, gg['lab'][3] + 0.06)) if ls >= 10 else bx(gg['zone'])
+    return (r, k, ls, x, y, bx(gg['cy']), zb, bx(gg['lab']), bx(gg['ext']))
 if __name__ == '__main__':
     TAG = sys.argv[1]; NMB = int(os.environ.get('NMB', 900)); NM, NC, NR = int(os.environ.get('NM', 250)), int(os.environ.get('NC', 40)), int(os.environ.get('NR', 40))
     C = {}; rs = random.Random(1)
@@ -190,11 +206,17 @@ if __name__ == '__main__':
                 oth = [pp for (rr, nn), pp in fixedpads.items() if rr != r and any(w['n'] == nn and w['net'] == q_['net'] for w in P0[rr]['pads'])]
                 if oth: anchors.append((sum(p[0] for p in oth) / len(oth), sum(p[1] for p in oth) / len(oth)))
         if not anchors: anchors = [CXY]
+        POOL = int(os.environ.get('POOL', 0))
         a_ = []
-        for ax_, ay_ in anchors + [CXY]:
-            a_ += sorted(L, key=lambda c: math.hypot(c[3] - ax_, c[4] - ay_))[:(NMB if r in ('C103', 'R101', 'R104', 'R106', 'R201', 'R204', 'R206', 'C203') else NM) // (len(anchors) + 1)]
+        if POOL:
+            for ax_, ay_ in anchors + [CXY]:
+                near_ = [c for c in L if math.hypot(c[3] - ax_, c[4] - ay_) <= 7.0]
+                a_ += rs.sample(near_, min(len(near_), POOL // (len(anchors) + 1)))
+        else:
+            for ax_, ay_ in anchors + [CXY]:
+                a_ += sorted(L, key=lambda c: math.hypot(c[3] - ax_, c[4] - ay_))[:(NMB if r in ('C103', 'R101', 'R104', 'R106', 'R201', 'R204', 'R206', 'C203') else NM) // (len(anchors) + 1)]
         b_ = sorted(L, key=disp)[:NC]
-        rest = [c for c in L if c not in a_ and c not in b_]
-        C[r] = list(dict.fromkeys(a_ + b_ + (rs.sample(rest, min(NR, len(rest))) if rest else [])))
+        rest = [c for c in L if c not in a_ and c not in b_] if not POOL else []
+        C[r] = list(dict.fromkeys([make_cand(r)] + a_ + b_ + (rs.sample(rest, min(NR, len(rest))) if rest else [])))
         print(r, len(L), len(C[r]), flush=True)
     pickle.dump(C, open(R + 'ch_sel_%s.pkl' % TAG, 'wb')); print('done', flush=True)
