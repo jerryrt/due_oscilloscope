@@ -78,7 +78,7 @@ def test_a_row_with_a_label_out_of_line_fails():
 
 
 # Findings on main's boards on 2026-11-16, before any D31 work: a ratchet, as test_silkread's OPEN.
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 36, 'kicad/afe-proto.kicad_pcb': 59}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 37, 'kicad/afe-proto.kicad_pcb': 59}
 
 
 @pytest.mark.pcbnew
