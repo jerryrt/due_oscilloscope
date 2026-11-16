@@ -251,6 +251,19 @@ def single(ref, d, mode, xs, ys, keep=None):
     return p, X[ok], Y[ok]
 def rng(c, h, g): return np.arange(c - h, c + h + 1e-9, g)
 
+
+def reads_a(L, C, kind):
+    """a designator box L reads as the label of the part with courtyard C in the above / east / west place (centred to 0.3, gap 0 to 0.6)"""
+    if kind == 'above':
+        return (np.abs((L[0] + L[2]) / 2 - (C[0] + C[2]) / 2) <= 0.3) & (L[1] - C[3] >= -1e-6) & (L[1] - C[3] <= 0.6 + 1e-6)
+    cyL = (L[1] + L[3]) / 2; cyC = (C[1] + C[3]) / 2
+    if kind == 'east':
+        return (np.abs(cyL - cyC) <= 0.3) & (L[0] - C[2] >= -1e-6) & (L[0] - C[2] <= 0.6 + 1e-6)
+    return (np.abs(cyL - cyC) <= 0.3) & (C[0] - L[2] >= -1e-6) & (C[0] - L[2] <= 0.6 + 1e-6)
+KINDS = ('above', 'east', 'west')
+RULE3B = not os.environ.get('NO3B')
+for _r in CSP: LPm.LABMODES.pop(_r, None)
+BESIDE_STATIC = {r: m for r, m in LABMODE.items() if m in ('E', 'W') and r not in CSP}
 G = float(os.environ.get('GRID', '0.2')); BF = set(os.environ.get('BF', '').split(','))
 u = {p: (pos['U401'][0] + padrel['U401'][p][0], pos['U401'][1] + padrel['U401'][p][1]) for p in padrel['U401'] if p in '123456789' or p in ('10', '11', '12')}
 # (ref, own pad, U401 pin, limit)
@@ -289,8 +302,22 @@ for ref in sorted(CSP):
         for pad, pin, lim in TIES[ref]:
             ox, oy = padoff(ref, pad, d)
             ok &= np.hypot(X + ox - u[pin][0], Y + oy - u[pin][1]) <= lim + 1e-9
+        if RULE3B and len(X):
+            pv = variant(ref, d, mode); C_, L_ = shp(pv, X, Y)
+            for r_, (sx, sy) in static:
+                if sp[r_].w == 0 or abs(sx - 31) > 25 or abs(sy - 19) > 22: continue
+                Cs, Ls = shp(sp[r_], sx, sy)
+                bad3 = np.zeros(len(X), bool)
+                if mode != 0:
+                    for k in KINDS: bad3 |= reads_a(Ls, C_, k)
+                    bad3 |= reads_a(L_, Cs, 'above')
+                if r_ in BESIDE_STATIC:
+                    for k in KINDS: bad3 |= reads_a(L_, Cs, k)
+                    bad3 |= reads_a(Ls, C_, 'above')
+                ok &= ~bad3
         for x, y in zip(X[ok], Y[ok]): rows.append((d, mode, x, y))
     cands[ref] = np.array(rows) if rows else np.zeros((0, 4))
+    if ref == 'C405': print('CTRL C405 at (28.6..28.8,10.6) west label present:', int(((np.abs(cands[ref][:,2]-28.7)<0.11)&(np.abs(cands[ref][:,3]-10.6)<0.11)&(cands[ref][:,1]==2)).sum()) if len(cands[ref]) else 0)
     print('CSP', ref, len(rows))
 names = sorted(CSP, key=lambda r: len(cands[r]))
 def shapes(ref):
@@ -303,7 +330,16 @@ def shapes(ref):
 SH = {r: shapes(r) for r in names}
 def compat(a, b):
     Ca, La = SH[a]; Cb, Lb = SH[b]
-    return ~conf_np([c[:, None] for c in Ca], [l[:, None] for l in La], [c[None, :] for c in Cb], [l[None, :] for l in Lb])
+    A = lambda arr: [c[:, None] for c in arr]; B = lambda arr: [c[None, :] for c in arr]
+    ok_ = ~conf_np(A(Ca), A(La), B(Cb), B(Lb))
+    if RULE3B:
+        bA = (cands[a][:, 1] != 0)[:, None]; bB = (cands[b][:, 1] != 0)[None, :]
+        for k in KINDS:
+            ok_ &= ~(bA & reads_a(B(Lb), A(Ca), k))
+            ok_ &= ~(bB & reads_a(A(La), B(Cb), k))
+        ok_ &= ~(bA & reads_a(A(La), B(Cb), 'above'))
+        ok_ &= ~(bB & reads_a(B(Lb), A(Ca), 'above'))
+    return ok_
 CM = {}
 for i, a in enumerate(names):
     for b in names[i + 1:]:
