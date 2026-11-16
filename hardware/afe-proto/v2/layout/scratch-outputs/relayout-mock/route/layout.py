@@ -1,5 +1,7 @@
-# shim: the relayout has no hand pre-routes
-PREROUTE = []
+import os
+_ns = {}
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'hand', 'routes_awgfb.py')).read(), _ns)
+PREROUTE = _ns['ROUTES']
 PREEND = []
 PREVIA = []
 BRIDGE_PADS = []

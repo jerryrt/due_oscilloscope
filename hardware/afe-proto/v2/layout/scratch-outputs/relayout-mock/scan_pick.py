@@ -27,12 +27,12 @@ for var, (Lc, Rc) in variants().items():
         px = xl + px_off; py = yb + row * PITCH
         base = abs(px - u[0]) + abs(py - u[1])
         cand.append((base, xl, yb))
-    cand = [c for c in cand if 6.0 <= c[0] <= 9.0]
+    cand = [c for c in cand if 6.0 <= c[0] <= float(os.environ.get('NPMAX', 9.0))]
     cand.sort()
     pick = []
     for c in cand:
-        if all(abs(c[1] - q[1]) > 1.0 or abs(c[2] - q[2]) > 0.8 for q in pick): pick.append(c)
-        if len(pick) >= 4: break
+        if all(abs(c[1] - q[1]) > float(os.environ.get('PX', 1.0)) or abs(c[2] - q[2]) > float(os.environ.get('PY', 0.8)) for q in pick): pick.append(c)
+        if len(pick) >= int(os.environ.get('NPICK', 4)): break
     print(var, 'row', row, 'west', west, 'legal', len(S[var]), 'with NP base 6-9:', len(cand), 'picked', [(round(a, 2), round(b, 2), round(c, 2)) for a, b, c in pick])
     picks += [(var, b, c, a) for a, b, c in pick]
-json.dump(picks, open(R + 'picks_%s.json' % BLK, 'w'))
+json.dump(picks, open(R + os.environ.get('PICKFILE', 'picks_%s.json') % BLK, 'w'))

@@ -138,6 +138,8 @@ def domain(r, tmpl, ob, O, windows, relax=()):
                         bad |= pl_any(LB[ii], bcy_).any(1)
                         if len(blab_): bad |= pl_above(blab_, CYB[ii]).any(0)
                         if ls >= 10: bad |= pl_above(LB[ii], cy_).any(1) | pl_any(lab_, CYB[ii]).any(0)
+                        if ls >= 10: bad |= amb(LB[ii], cy_, np.ones(len(ii), bool)).any(1)
+                        if len(blab_): bad |= amb(blab_, CYB[ii], np.ones(len(blab_), bool)).any(0)
                     jj = ii[~bad]
                     for key, arr in (('cy', CYB), ('z', ZB), ('lab', LB), ('ext', E)): out[key].append(arr[jj])
                     out['x'].append(X[jj]); out['y'].append(Y[jj]); out['k'].append(np.full(len(jj), k)); out['ls'].append(np.full(len(jj), ls))
@@ -147,6 +149,16 @@ def domain(r, tmpl, ob, O, windows, relax=()):
         D = {k_: v[u] for k_, v in D.items()}
     return D
 
+
+AMB = 0.6 if not os.environ.get('NOAMB') else -10.0
+def amb(LB, CY, both):
+    """label boxes LB (n,4) against courtyards CY (m,4): the label lies above (or, for a beside label, above or below) another part within AMB mm
+    and shares part of its x span, so it reads as that part's"""
+    xo = (np.minimum(LB[:, None, 2], CY[None, :, 2]) - np.maximum(LB[:, None, 0], CY[None, :, 0])) > 1e-6
+    up = (LB[:, None, 1] - CY[None, :, 3] >= -1e-9) & (LB[:, None, 1] - CY[None, :, 3] <= AMB + 1e-9)
+    dn = (CY[None, :, 1] - LB[:, None, 3] >= -1e-9) & (CY[None, :, 1] - LB[:, None, 3] <= AMB + 1e-9)
+    return xo & (up | (np.asarray(both)[:, None] & dn & (os.environ.get('AMBBOTH', '1') == '1')))
+CAPF = int(os.environ.get('CAPF', 99))
 def OV2(A, B, g): return ((np.minimum(A[:, None, 2], B[None, :, 2]) - np.maximum(A[:, None, 0], B[None, :, 0]) + g) > 1e-6) & ((np.minimum(A[:, None, 3], B[None, :, 3]) - np.maximum(A[:, None, 1], B[None, :, 1]) + g) > 1e-6)
 def conflict(c, D):
     """boolean over D: candidate c (dict of boxes) conflicts with each domain entry"""
@@ -154,6 +166,8 @@ def conflict(c, D):
     cy1, z1, l1 = A(c['cy']), A(c['z']), A(c['lab'])
     bad = OV2(cy1, D['cy'], 0.0)[0] | OV2(z1, D['cy'], 0)[0] | OV2(cy1, D['z'], 0)[0] | OV2(l1, D['lab'], 0.5)[0] | OV2(cy1, D['lab'], 0)[0] | OV2(l1, D['cy'], 0)[0]
     b1 = c['ls'] >= 10; b2 = D['ls'] >= 10
+    if b1: bad |= amb(l1, D['cy'], [True])[0]
+    bad |= b2 & amb(D['lab'], cy1, np.ones(len(b2), bool)).any(1)
     if b1: bad |= pl_any(D['lab'], cy1).any(1) | pl_above(l1, D['cy']).any(0)
     bad |= b2 & (pl_any(l1, D['cy']).any(0) | pl_above(D['lab'], cy1).any(1))
     return bad
@@ -161,6 +175,11 @@ def conflict(c, D):
 def solve(tmpl, relax=(), skip=(), tl=60.0, seed=None, verbose=False):
     seed = SEED if seed is None else seed
     ob = fixed_obstacles(tmpl); O = stack(ob, skip)
+    for rr, ic in (('R107', 'U101'), ('R207', 'U101')):
+        if rr in tmpl and tmpl[rr][0] <= P0[ic]['x'] + 0.01: return None, ('template flow: %s.x not right of U101' % rr,)
+    for rr in tmpl:                       # the template's own labels against every other part, and its courtyards against every label
+        others = np.array([ob[k]['cy'] for k in ob if k != rr and ob[k]['cy'] is not None])
+        if amb(np.array([ob[rr]['lab']]), others, [True]).any(): return None, ('template label reads as another part', rr)
     free = [r for r in T.PART if r not in tmpl]
     # windows: around the fixed pads each part must stay near, else the region
     xs = [q for rc in RP.REGIONS[BLK] for q in (rc[0], rc[2])]; ys = [q for rc in RP.REGIONS[BLK] for q in (rc[1], rc[3])]
@@ -204,10 +223,11 @@ def solve(tmpl, relax=(), skip=(), tl=60.0, seed=None, verbose=False):
         for i in order:
             c = dict(cy=D['cy'][i], z=D['z'][i], lab=D['lab'][i], ls=int(D['ls'][i]))
             nb = nbes + (1 if c['ls'] >= 10 else 0)
+            if nb > CAPF: continue
             rest = {q: doms[q] for q in doms if q != r}; new = {}; dead = False
             for q, Dq in rest.items():
                 m = ~conflict(c, Dq)
-                if nb >= CAPB - 6: m &= Dq['ls'] < 10 if CAPB - 6 <= nb else m
+                if nb >= CAPF: m &= Dq['ls'] < 10
                 if not m.any(): dead = True; break
                 new[q] = sub(Dq, m)
             nodes[0] += 1
@@ -230,7 +250,7 @@ def to_placement(tmpl, chosen):
     return st
 
 if __name__ == '__main__':
-    picks = json.load(open(R + 'picks_%s.json' % BLK))
+    picks = json.load(open(R + os.environ.get('PICKFILE', 'picks_%s.json') % BLK))
     only = os.environ.get('ONLY')
     for var, xl, yb, base in picks:
         if only and var != only: continue
@@ -238,4 +258,5 @@ if __name__ == '__main__':
         res, info = solve(t, tl=float(os.environ.get('TL', 60)), verbose=False)
         print(var, round(xl, 2), round(yb, 2), 'NPbase', round(base, 2), '->', 'FIT' if res else info, flush=True)
         if res:
-            json.dump(dict(st=to_placement(t, res), var=var, xl=xl, yb=yb), open(R + 'csp_%s_%s_%s.json' % (BLK, var, str(round(xl, 2))), 'w')); print('FOUND', flush=True); break
+            json.dump(dict(st=to_placement(t, res), var=var, xl=xl, yb=yb), open(R + ('hand/all2/' if os.environ.get('ALL') else '') + 'csp_%s_%s_%s_%s%s.json' % (BLK, var, str(round(xl, 2)), str(round(yb, 2)), os.environ.get('CTAG', '')), 'w')); print('FOUND', flush=True)
+            if not os.environ.get('ALL'): break

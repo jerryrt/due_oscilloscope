@@ -24,3 +24,5 @@ HZ=CH1_N,CH1_M1,CH1_M2,CH1_M3,CH1_NP,CH2_N,CH2_M1,CH2_M2,CH2_M3,CH2_NP
 ONLYNETS=$HZ ROUTE_IN=$T/hand/pipe_$S.kicad_pcb ROUTE_OUT=$T/hand/pipe_$S.routed.kicad_pcb RIPUP_SECONDS=30 RIPUP_ROUNDS=1 python3 -I route3.py > $T/hand/pipe_r_$S.txt 2>&1
 grep -E "saved|unrouted" $T/hand/pipe_r_$S.txt | tr '\n' ' ' | cut -c1-200
 python3 $T/hand/hizlen.py $T/hand/pipe_$S.routed.kicad_pcb
+cd /work
+echo "SUMMARY seed $S beside: $(cat $T/hand/pipe_eb_$S.txt | tr ',' '\n' | grep -c .) $(EXTRA_BESIDE=$(cat $T/hand/pipe_eb_$S.txt) python3 $R/ac.py $R/hand/pipe_$S.kicad_pcb 2>&1 | grep -E '^silkread|^align' | tr '\n' ' ')"
