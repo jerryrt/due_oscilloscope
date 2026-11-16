@@ -19,9 +19,9 @@ ID_LINE = f'{MODEL}  REV {REV}'
 FILE_STEM = f'{NAME}-{MODEL}-REV{REV}'
 SN_LABEL = 'S/N'
 JLC_ORDER_TEXT = 'JLCJLCJLCJLC'                 # the board house replaces it with the order number (bottom silk)
-# top silk, Due mm, text centres (h in mm): in the free area west of the first fence, outside the bands
-IDENT = dict(name=(26.0, 33.0, 2.0), line=(27.0, 30.4, 1.2), sn_label=(22.0, 27.6, 1.0), sn_box=(24.5, 26.1, 34.5, 29.1),
-             jlc=(35.0, 27.0, 1.0))
+# top silk, Due mm, text centres (h in mm): in the free area under J606 (x 17.5-38.5, y 34-47), outside the bands
+IDENT = dict(name=(26.0, 44.0, 2.0), line=(27.0, 41.4, 1.2), sn_label=(22.0, 38.6, 1.0), sn_box=(24.5, 37.1, 34.5, 40.1),
+             jlc=(35.0, 38.0, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
 FIXTURE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v1-34b2e51', 'kicad'))

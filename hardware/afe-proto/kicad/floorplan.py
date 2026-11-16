@@ -11,11 +11,11 @@ HERE = pathlib.Path(__file__).parent
 X0, X1, Y0, Y1 = 17.0, 117.0, 0.0, 53.34
 
 # block -> list of fence rectangles (x0, y0, x1, y1); a block agent places and routes only inside its fences
-FENCES = {
-    'POWER': [(18.0, 4.6, 44.0, 22.0)],
-    'REFCAL': [(44.5, 4.6, 64.5, 36.0)],
-    'SCOPE': [(64.8, 33.5, 97.8, 50.3), (69.4, 19.9, 97.8, 33.0), (98.5, 16.5, 116.4, 50.0)],
-    'AWG': [(69.8, 4.4, 95.5, 19.4), (98.5, 0.6, 116.4, 15.5)],
+FENCES = {   # AFE-1 relayout: hulls of the placed blocks (member courtyards and designators, 0.3 mm clearance); two rectangles where a wall part
+    'POWER': [(19.4, 4.8, 44.5, 31.8)],                     # of another block stands next to the block
+    'REFCAL': [(44.7, 5.4, 65.15, 25.4), (44.7, 25.4, 64.46, 39.45)],
+    'SCOPE': [(64.65, 26.07, 92.25, 47.8), (72.0, 21.4, 92.25, 29.5), (98.5, 16.5, 116.4, 50.0)],
+    'AWG': [(70.1, 4.7, 92.3, 21.4), (98.5, 0.6, 116.4, 15.5)],
 }
 # corridors: copper owned by a block that runs outside its fence
 CORRIDORS = {
@@ -76,11 +76,11 @@ row('AWG supply decoupling parts', 'AWG', 'AWG', ('inside', ), '', '', 'AWG', 'V
 row('SCOPE dual (U101)', 'SCOPE', 'SCOPE', ('inside', ), '', '', 'SCOPE (one agent for both channels)', 'U101 is shared; CH1 and CH2 are labelled on the silk beside its halves, CH2 laid out in CH1\'s pattern, mirrored')
 
 BRIDGES = [  # ref, nets, at (x, y), crosses
-    ('BR1 (R515)', 'VREF / VREF_M', (66.04, 22.8), 'the A1 line (x 66.04)'),
-    ('BR2 (R516)', 'VREF_M / VREF_P', (68.58, 24.5), 'the A0 line (x 68.58)'),
-    ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.58, 21.1), 'the A0 line (x 68.58)'),
-    ('BR4 (R309)', 'AWG_S / AWG_I', (66.04, 19.5), 'the A1 line (x 66.04)'),
-    ('BR6 (R110)', 'P33_S / P33_U', (66.04, 35.7), 'the A1 column (x 66.04)'),
+    ('BR1 (R515)', 'VREF / VREF_M', (66.05, 21.75), 'the A1 line (x 66.04)'),
+    ('BR2 (R516)', 'VREF_M / VREF_P', (68.6, 24.7), 'the A0 line (x 68.58)'),
+    ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.6, 15.55), 'the A0 line (x 68.58)'),
+    ('BR4 (R309)', 'AWG_S / AWG_I', (66.05, 18.85), 'the A1 line (x 66.04)'),
+    ('BR6 (R110)', 'P33_S / P33_U', (66.05, 39.3), 'the A1 column (x 66.04)'),
 ]
 
 COL = {'POWER': '#d9822b', 'REFCAL': '#2a9d8f', 'SCOPE': '#3a6ea5', 'AWG': '#8a4fa8'}
