@@ -50,6 +50,7 @@ Design notes drawn directly from the numbers above:
 | Charge-pump output resistance | 2.5 ohm at 100 mA, VIN 5.5 V | Sec 5.5 |
 | Note | at VIN = 5.5 V the charge pump may enter PWM mode in hot conditions (footnote); package WSON-12 3x2 mm | Sec 5.5 |
 | Not read | startup time/inrush, EN thresholds beyond VIH 1.2 V / VIL 0.4 V, PG thresholds | *(check)* |
+| Layout guidance | The converter switches fast and at large current, so layout matters. On the top layer, same side as the chip: the input capacitor as close as possible, joined to the VIN and GND pins by short wide traces; the charge-pump output capacitor as close as possible to its output and GND pins, with the returns of the input and pump-output capacitors meeting at one point next to the GND pin; the flying capacitor as close as possible, joined to C1+ and C1- by short wide traces; each output capacitor as close as possible to its own OUT pin, its ground going back to the thermal pad; the four feedback-divider resistors (R1 to R4) as close as possible to their own FB pin, the grounded ones (R2, R4) returning to the thermal pad. Long traces, narrow traces and vias in these connections are to be avoided. **No distance in millimetres is given.** | Sec 7.4.1, p17 (paraphrased) |
 
 ## Converters
 
