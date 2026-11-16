@@ -1,2 +1,360 @@
 ...............................................s........................ [  7%]
-............................
+................................................
+plates 1.6 mm air + 1.6 mm er 4.5, 2 x 2 mm: analytic 18.1105 fF; 0.2/0.1/0.05 mm [18.8606, 18.4779, 18.2924] fF; observed order 1.045; finest error 1.004 %, extrapolated 18.1179 fF error 0.0409 %
+........................ [ 15%]
+FF..................................................................FFFF [ 23%]
+FF...................................................................... [ 31%]
+........................................................................ [ 39%]
+........................................................................ [ 47%]
+......x.............................s................................... [ 55%]
+........................................................................ [ 63%]
+........................................................................ [ 70%]
+........................................................................ [ 78%]
+........................................................................ [ 86%]
+........................................................................ [ 94%]
+.................................................F                       [100%]
+=================================== FAILURES ===================================
+______________ test_the_drills_equal_the_holes_of_the_board_file _______________
+
+built = ('/tmp/pytest-of-ubuntu/pytest-0/fab0/COPPIA-AFE-2-REVA-fab.zip', PosixPath('/tmp/pytest-of-ubuntu/pytest-0/fab0'))
+
+    def test_the_drills_equal_the_holes_of_the_board_file(built):
+        assert fab.check_drills(text(built[0], 'PTH.drl'), text(built[0], 'NPTH.drl'), BOARD.read_text()) == []
+        pth, npth = fab.board_holes(BOARD.read_text())
+>       assert sum(pth.values()) == 144 and sum(npth.values()) == 2
+E       AssertionError: assert (104 == 144)
+E        +  where 104 = sum(dict_values([95, 6, 3]))
+E        +    where dict_values([95, 6, 3]) = <built-in method values of dict object at 0x76277db39180>()
+E        +      where <built-in method values of dict object at 0x76277db39180> = {(1.0, 'round'): 95, (2.2, 'round'): 6, (0.3, 'round'): 3}.values
+
+hardware/afe-proto/tests/pcbtools/test_fab.py:43: AssertionError
+_ test_a_fresh_build_equals_the_committed_manifest_and_a_second_build_is_identical _
+
+built = ('/tmp/pytest-of-ubuntu/pytest-0/fab0/COPPIA-AFE-2-REVA-fab.zip', PosixPath('/tmp/pytest-of-ubuntu/pytest-0/fab0'))
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_a_fresh_build_equals_the_0')
+
+    def test_a_fresh_build_equals_the_committed_manifest_and_a_second_build_is_identical(built, tmp_path):
+        zp2 = fab.build(str(BOARD), str(tmp_path), str(AFE / f'v2/bom/{fab.IDENT}-bom.csv'), str(AFE / f'v2/bom/{fab.IDENT}-cpl.csv'))
+        assert open(zp2, 'rb').read() == open(built[0], 'rb').read()
+>       assert fab.manifest(built[0]) == json.loads(MANIFEST.read_text())
+E       AssertionError: assert {'zip_sha256'...c1e63'}, ...]} == {'zip_sha256'...7fb23'}, ...]}
+E         
+E         Differing items:
+E         {'members': [{'name': 'COPPIA-AFE-2-REVA-B_Cu.gbl', 'size': 164442, 'sha256': '9eefac6727d078cf1dc6b98a669b23ea66a2e5a...2-REVA-F_Mask.gts', 'size': 13884, 'sha256': '7aa89f5900bae68c631e408bb474f88aab1d10a9d0a743e76efe2007873c1e63'}, ...]} != {'members': [{'name': 'COPPIA-AFE-2-REVA-B_Cu.gbl', 'size': 165686, 'sha256': '45c2bfd7ff9cc17702f9698924c3666d49d0864...2-REVA-F_Mask.gts', 'size': 13935, 'sha256': '8de8dc468f21058e654e47f2363757d0a0aecc9308c600b42c49b21bc737fb23'}, ...]}
+E         {'zip_sha256': 'a0d43024b40acf2173311538d911b5d414cf778386b8b06a7da37fecfe70...
+E         
+E         ...Full output truncated, use '-vv' to show
+
+hardware/afe-proto/tests/pcbtools/test_fab.py:49: AssertionError
+_________________ test_v2_package_is_reproduced_byte_for_byte __________________
+
+pcbnew_required = None, tools = None, memo_drc = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_v2_package_is_reproduced_0')
+
+    @pytest.mark.pcbnew
+    def test_v2_package_is_reproduced_byte_for_byte(pcbnew_required, tools, memo_drc, tmp_path):
+>       out = run(tmp_path)
+              ^^^^^^^^^^^^^
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:83: in run
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
+hardware/afe-proto/pcbtools/gate3/engine.py:983: in generate
+    D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+b = BoardArrays(path='/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', copper_layers=2, nets=('...2288,  2493,  2662, 11107, 17212]), z_ring_hole=array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int8))
+text = '(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1....518907 92.615345) (xy 67.5495 92.6105)\n\t\t\t\t(xy 166.4505 92.6105)\n\t\t\t)\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n'
+drc_fn = <function generate.<locals>.<lambda> at 0x76277e0aa560>
+drc_baseline = 158
+spec = {'net': '/+5V_F', 'source': 'R406.2', 'pins': ('U401.12', 'U401.3'), 'upstream': ('/+5V_DUE', 'R406.1', 'J601.5'), ...}
+origin = (50.0, 150.0)
+
+    def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
+        """what joins the proved pins to the source, from the board's own copper (see connectivity.py), with the zone fills left out,
+        against KiCad's DRC, and with one track cut at a time. `spec` is the table's PROOF."""
+        net, src, pins = spec['net'], spec['source'], tuple(spec['pins'])
+        g = CONN.copper_graph(b, net)
+        g0 = CONN.copper_graph(b, net, zones=False)
+        zones = CONN.board_zones(text)
+        paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+        up_net, up_a, up_b = spec['upstream']
+        up = CONN.copper_graph(b, up_net)
+        up_path = CONN.join_path(up, up_a, up_b)
+        arms = []
+        for label, pin, pick in spec['arms']:
+>           tr = [n for n in paths[pin] if n[0].startswith('track')]
+                             ^^^^^^^^^^
+E           TypeError: 'NoneType' object is not iterable
+
+hardware/afe-proto/pcbtools/gate3/engine.py:630: TypeError
+___________________ test_broken_once_a_table_entry_is_caught ___________________
+
+pcbnew_required = None, tools = None, memo_drc = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_broken_once_a_table_entry0')
+
+    @pytest.mark.pcbnew
+    def test_broken_once_a_table_entry_is_caught(pcbnew_required, tools, memo_drc, tmp_path):
+        t = types.SimpleNamespace(**{k: v for k, v in vars(TABLE).items() if not k.startswith('_')})
+        t.LR_RENAMES = (('LR-12 DECOUP_MAX', 'LR-4 supply decoupling ({:.1f} mm)', 'DECOUP_MAX'),)
+>       bad = differences(run(tmp_path, t))
+                          ^^^^^^^^^^^^^^^^
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:83: in run
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
+hardware/afe-proto/pcbtools/gate3/engine.py:983: in generate
+    D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+b = BoardArrays(path='/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', copper_layers=2, nets=('...2288,  2493,  2662, 11107, 17212]), z_ring_hole=array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int8))
+text = '(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1....518907 92.615345) (xy 67.5495 92.6105)\n\t\t\t\t(xy 166.4505 92.6105)\n\t\t\t)\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n'
+drc_fn = <function generate.<locals>.<lambda> at 0x76277dca78a0>
+drc_baseline = 158
+spec = {'net': '/+5V_F', 'source': 'R406.2', 'pins': ('U401.12', 'U401.3'), 'upstream': ('/+5V_DUE', 'R406.1', 'J601.5'), ...}
+origin = (50.0, 150.0)
+
+    def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
+        """what joins the proved pins to the source, from the board's own copper (see connectivity.py), with the zone fills left out,
+        against KiCad's DRC, and with one track cut at a time. `spec` is the table's PROOF."""
+        net, src, pins = spec['net'], spec['source'], tuple(spec['pins'])
+        g = CONN.copper_graph(b, net)
+        g0 = CONN.copper_graph(b, net, zones=False)
+        zones = CONN.board_zones(text)
+        paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+        up_net, up_a, up_b = spec['upstream']
+        up = CONN.copper_graph(b, up_net)
+        up_path = CONN.join_path(up, up_a, up_b)
+        arms = []
+        for label, pin, pick in spec['arms']:
+>           tr = [n for n in paths[pin] if n[0].startswith('track')]
+                             ^^^^^^^^^^
+E           TypeError: 'NoneType' object is not iterable
+
+hardware/afe-proto/pcbtools/gate3/engine.py:630: TypeError
+__________________ test_broken_once_an_engine_rule_is_caught ___________________
+
+pcbnew_required = None, tools = None, memo_drc = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_broken_once_an_engine_rul0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76277dffc140>
+
+    @pytest.mark.pcbnew
+    def test_broken_once_an_engine_rule_is_caught(pcbnew_required, tools, memo_drc, tmp_path, monkeypatch):
+        import pcbtools.gate3.engine as eng
+        monkeypatch.setattr(eng, 'classify_net', lambda name, classes: None)         # no ADC / divider / VREF line is recognised
+>       bad = differences(run(tmp_path))
+                          ^^^^^^^^^^^^^
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:83: in run
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
+hardware/afe-proto/pcbtools/gate3/engine.py:983: in generate
+    D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+b = BoardArrays(path='/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', copper_layers=2, nets=('...2288,  2493,  2662, 11107, 17212]), z_ring_hole=array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int8))
+text = '(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1....518907 92.615345) (xy 67.5495 92.6105)\n\t\t\t\t(xy 166.4505 92.6105)\n\t\t\t)\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n'
+drc_fn = <function generate.<locals>.<lambda> at 0x76277d06f5e0>
+drc_baseline = 158
+spec = {'net': '/+5V_F', 'source': 'R406.2', 'pins': ('U401.12', 'U401.3'), 'upstream': ('/+5V_DUE', 'R406.1', 'J601.5'), ...}
+origin = (50.0, 150.0)
+
+    def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
+        """what joins the proved pins to the source, from the board's own copper (see connectivity.py), with the zone fills left out,
+        against KiCad's DRC, and with one track cut at a time. `spec` is the table's PROOF."""
+        net, src, pins = spec['net'], spec['source'], tuple(spec['pins'])
+        g = CONN.copper_graph(b, net)
+        g0 = CONN.copper_graph(b, net, zones=False)
+        zones = CONN.board_zones(text)
+        paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+        up_net, up_a, up_b = spec['upstream']
+        up = CONN.copper_graph(b, up_net)
+        up_path = CONN.join_path(up, up_a, up_b)
+        arms = []
+        for label, pin, pick in spec['arms']:
+>           tr = [n for n in paths[pin] if n[0].startswith('track')]
+                             ^^^^^^^^^^
+E           TypeError: 'NoneType' object is not iterable
+
+hardware/afe-proto/pcbtools/gate3/engine.py:630: TypeError
+_____ test_command_line_reproduces_the_package_and_the_stamp_is_injectable _____
+
+pcbnew_required = None, tools = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_command_line_reproduces_t0')
+
+    @pytest.mark.pcbnew
+    @pytest.mark.slow
+    def test_command_line_reproduces_the_package_and_the_stamp_is_injectable(pcbnew_required, tools, tmp_path):
+        """the real entry point in a child process, as build_gate3.sh runs it, with the clock inputs injected through its flags"""
+        stamp = injected()
+        out = tmp_path / 'out'
+        r = subprocess.run([sys.executable, '-B', '-m', 'pcbtools.gate3', '--config', 'v2_layout', '--table', 'gate3_v2', '--out', str(out),
+                            '--stamp', stamp], capture_output=True, text=True, cwd=str(AFE), timeout=600)
+>       assert r.returncode == 0, r.stderr[-500:]
+E       AssertionError: py", line 983, in generate
+E             D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+E                            ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/work/hardware/afe-proto/pcbtools/gate3/engine.py", line 630, in prove_net
+E             tr = [n for n in paths[pin] if n[0].startswith('track')]
+E                              ~~~~~^^^^^
+E         TypeError: 'NoneType' object is not iterable
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/venv/bin/python3', '-B', '-m', 'pcbtools.gate3', '--config', 'v2_layout', '--table', 'gat...in] if n[0].startswith(\'track\')]\n                     ~~~~~^^^^^\nTypeError: \'NoneType\' object is not iterable\n').returncode
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:118: AssertionError
+________________ test_the_package_does_not_depend_on_file_times ________________
+
+pcbnew_required = None, tools = None, memo_drc = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_the_package_does_not_depe0')
+
+    @pytest.mark.pcbnew
+    def test_the_package_does_not_depend_on_file_times(pcbnew_required, tools, memo_drc, tmp_path):
+        """the board newer than the renders, and the renders newer than the board: the same bytes either way (the defect this guards: the
+        render rows were keyed to modification times, and a fresh checkout failed the equivalence until the renders were touched)"""
+        board = pathlib.Path(__import__('os').path.join(AFE, '..', '..', TABLE.BOARD)).resolve()
+        renders = [pathlib.Path(__import__('os').path.join(AFE, '..', '..', TABLE.RENDER_DIR, n)).resolve() for _, n in TABLE.RENDERS]
+        saved = {p: (p.stat().st_atime, p.stat().st_mtime) for p in [board] + renders}
+        try:
+            for order in ([board] + renders, renders + [board]):
+                _touch_in_order(order, 1_700_000_000)
+>               assert differences(run(tmp_path / f'o{order[0].name[:3]}')) == []
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:83: in run
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
+hardware/afe-proto/pcbtools/gate3/engine.py:983: in generate
+    D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+b = BoardArrays(path='/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', copper_layers=2, nets=('...2288,  2493,  2662, 11107, 17212]), z_ring_hole=array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int8))
+text = '(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1....518907 92.615345) (xy 67.5495 92.6105)\n\t\t\t\t(xy 166.4505 92.6105)\n\t\t\t)\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n'
+drc_fn = <function generate.<locals>.<lambda> at 0x76277d11a2a0>
+drc_baseline = 158
+spec = {'net': '/+5V_F', 'source': 'R406.2', 'pins': ('U401.12', 'U401.3'), 'upstream': ('/+5V_DUE', 'R406.1', 'J601.5'), ...}
+origin = (50.0, 150.0)
+
+    def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
+        """what joins the proved pins to the source, from the board's own copper (see connectivity.py), with the zone fills left out,
+        against KiCad's DRC, and with one track cut at a time. `spec` is the table's PROOF."""
+        net, src, pins = spec['net'], spec['source'], tuple(spec['pins'])
+        g = CONN.copper_graph(b, net)
+        g0 = CONN.copper_graph(b, net, zones=False)
+        zones = CONN.board_zones(text)
+        paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+        up_net, up_a, up_b = spec['upstream']
+        up = CONN.copper_graph(b, up_net)
+        up_path = CONN.join_path(up, up_a, up_b)
+        arms = []
+        for label, pin, pick in spec['arms']:
+>           tr = [n for n in paths[pin] if n[0].startswith('track')]
+                             ^^^^^^^^^^
+E           TypeError: 'NoneType' object is not iterable
+
+hardware/afe-proto/pcbtools/gate3/engine.py:630: TypeError
+____ test_broken_once_a_render_altered_after_the_manifest_is_stale_by_hash _____
+
+pcbnew_required = None, tools = None, memo_drc = None
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu/pytest-0/test_broken_once_a_render_alte0')
+
+    @pytest.mark.pcbnew
+    def test_broken_once_a_render_altered_after_the_manifest_is_stale_by_hash(pcbnew_required, tools, memo_drc, tmp_path):
+        """one byte changed in a render copy: its row must read STALE (the freshness row can fail), and the package must differ"""
+        import pcbtools.gate3.engine as eng
+        real = eng.sec_renders
+    
+        def altered(T):
+            rows = real(T)
+            t = types.SimpleNamespace(**{k: v for k, v in vars(T).items() if not k.startswith('_')})
+            d = tmp_path / 'r'
+            shutil.copytree(os.path.join(eng.REPO, T.RENDER_DIR), d)
+            f = d / T.RENDERS[0][1]
+            b = bytearray(f.read_bytes())
+            b[-1] ^= 1
+            f.write_bytes(bytes(b))
+            t.RENDER_DIR = str(d)
+            return real(t)
+        import unittest.mock as mock
+        with mock.patch.object(eng, 'sec_renders', altered):
+>           out = run(tmp_path / 'out')
+                  ^^^^^^^^^^^^^^^^^^^^^
+
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py:83: in run
+    eng.generate(CFG, table, str(tmp_path), 'v2_layout', stamp=injected())
+hardware/afe-proto/pcbtools/gate3/engine.py:983: in generate
+    D['proof5v'] = prove_net(b, text, lambda s: run_drc(board, board_text=s), D['drc']['unconnected'], T.PROOF, T.DUE_ORIGIN)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+b = BoardArrays(path='/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', copper_layers=2, nets=('...2288,  2493,  2662, 11107, 17212]), z_ring_hole=array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int8))
+text = '(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1....518907 92.615345) (xy 67.5495 92.6105)\n\t\t\t\t(xy 166.4505 92.6105)\n\t\t\t)\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n'
+drc_fn = <function generate.<locals>.<lambda> at 0x76276c341a60>
+drc_baseline = 158
+spec = {'net': '/+5V_F', 'source': 'R406.2', 'pins': ('U401.12', 'U401.3'), 'upstream': ('/+5V_DUE', 'R406.1', 'J601.5'), ...}
+origin = (50.0, 150.0)
+
+    def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
+        """what joins the proved pins to the source, from the board's own copper (see connectivity.py), with the zone fills left out,
+        against KiCad's DRC, and with one track cut at a time. `spec` is the table's PROOF."""
+        net, src, pins = spec['net'], spec['source'], tuple(spec['pins'])
+        g = CONN.copper_graph(b, net)
+        g0 = CONN.copper_graph(b, net, zones=False)
+        zones = CONN.board_zones(text)
+        paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+        up_net, up_a, up_b = spec['upstream']
+        up = CONN.copper_graph(b, up_net)
+        up_path = CONN.join_path(up, up_a, up_b)
+        arms = []
+        for label, pin, pick in spec['arms']:
+>           tr = [n for n in paths[pin] if n[0].startswith('track')]
+                             ^^^^^^^^^^
+E           TypeError: 'NoneType' object is not iterable
+
+hardware/afe-proto/pcbtools/gate3/engine.py:630: TypeError
+________________________ test_pcbnew_group_actually_ran ________________________
+
+pcbnew_required = None
+request = <FixtureRequest for <Function test_pcbnew_group_actually_ran>>
+
+    def test_pcbnew_group_actually_ran(pcbnew_required, request):
+        RAN = request.config._pcbtools_ran
+        assert RAN['pcbnew_selected'] > 0, 'no pcbnew-marked test was collected: the marker group is empty'
+>       assert RAN['pcbnew_passed'] == RAN['pcbnew_selected'], (
+            f"{RAN['pcbnew_passed']} of {RAN['pcbnew_selected']} pcbnew-marked tests passed: the rest were skipped, "
+            'deselected after collection, or failed')
+E       AssertionError: 118 of 124 pcbnew-marked tests passed: the rest were skipped, deselected after collection, or failed
+E       assert 118 == 124
+
+hardware/afe-proto/tests/pcbtools/test_guard.py:11: AssertionError
+=============================== warnings summary ===============================
+pcbtools/test_align.py::test_the_board_only_gets_more_aligned[kicad/afe-proto.kicad_pcb]
+  /usr/lib/python3/dist-packages/pcbnew.py:63: DeprecationWarning: The SWIG-based Python interface to the PCB editor is deprecated and will be removed in a future version of KiCad.  Please plan to move to the new IPC API and/or make use of the kicad-cli tool for your KiCad automation needs.
+    warnings.warn("The SWIG-based Python interface to the PCB editor is deprecated and will be removed "
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] hardware/afe-proto/tests/pcbtools/test_budgets.py:21: budgets.json does not exist yet: budgets are measured in the image
+SKIPPED [1] hardware/afe-proto/tests/pcbtools/test_pw2_ac.py:362: TI's LM27762_TRANS.LIB is not present (tools/fetch_models.py)
+XFAIL hardware/afe-proto/tests/pcbtools/test_planar.py::test_v1_refcal_finds_the_hand_found_crossing - the model disagrees with the hand derivation: the frozen design is not found to need exactly SNS_B and R520 does not make the block planar (README, "v1 REFCAL"); waiting for the geometry (where leg D runs relative to R517-R519) that the hand derivation used and the topology lacks
+FAILED hardware/afe-proto/tests/pcbtools/test_fab.py::test_the_drills_equal_the_holes_of_the_board_file
+FAILED hardware/afe-proto/tests/pcbtools/test_fab.py::test_a_fresh_build_equals_the_committed_manifest_and_a_second_build_is_identical
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_v2_package_is_reproduced_byte_for_byte
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_broken_once_a_table_entry_is_caught
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_broken_once_an_engine_rule_is_caught
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_command_line_reproduces_the_package_and_the_stamp_is_injectable
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_the_package_does_not_depend_on_file_times
+FAILED hardware/afe-proto/tests/pcbtools/test_gate3_equivalence.py::test_broken_once_a_render_altered_after_the_manifest_is_stale_by_hash
+FAILED hardware/afe-proto/tests/pcbtools/test_guard.py::test_pcbnew_group_actually_ran
+9 failed, 902 passed, 2 skipped, 1 xfailed, 1 warning in 521.68s (0:08:41)
+capped: peak_rss_kb=3026888 wall_s=522.05 exit=1 cap=3G limit_s=3000 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac
