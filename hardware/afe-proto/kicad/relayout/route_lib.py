@@ -61,11 +61,16 @@ class Board:
             for L in (0, 1): box(masks[L], x - VIA_D / 2, y - VIA_D / 2, x + VIA_D / 2, y + VIA_D / 2)
         # LR-1: no bottom copper under an analog part (courtyards of the analog fences' parts block the bottom layer and every via) ; LR-9 per net
         gnd_id = b.nets.index(C.GND)
+        self._court_bottom = np.zeros((NX, NY), bool)
         if net_id != gnd_id and 'court' not in self.relax:
             for i_, r_ in enumerate(b.fp_ref):
                 if np.isnan(b.fp_cx0[i_]): continue
                 if C.BLOCK.get(r_) in ('AWG', 'SCOPE', 'REFCAL') and not r_.startswith(('J', 'MH')):
-                    box(masks[1], b.fp_cx0[i_], b.fp_cy0[i_], b.fp_cx1[i_], b.fp_cy1[i_])
+                    box(self._court_bottom, b.fp_cx0[i_] - 0.45, b.fp_cy0[i_] - 0.45, b.fp_cx1[i_] + 0.45, b.fp_cy1[i_] + 0.45)   # LR-1: ZONE_PAD 0.3 + half the track width (bottom segments only, vias are not counted)
+        self._keep_top = np.zeros((NX, NY), bool)
+        if any(b.nets[net_id].startswith(p_) for p_ in C.SENSITIVE):          # LR-5: sensitive copper stays 10 mm from the generator's courtyards
+            for r_ in C.GEN:
+                i_ = b.ref_index(r_); box(self._keep_top, b.fp_cx0[i_] - C.KEEPOUT - 0.1, b.fp_cy0[i_] - C.KEEPOUT - 0.1, b.fp_cx1[i_] + C.KEEPOUT + 0.1, b.fp_cy1[i_] + C.KEEPOUT + 0.1)
         for r_ in (net_courtyards or []):
             i_ = b.ref_index(r_); box(masks[0], b.fp_cx0[i_], b.fp_cy0[i_], b.fp_cx1[i_], b.fp_cy1[i_])
         # the top-layer keepout bands
@@ -82,6 +87,8 @@ class Board:
         trk_ok = [d >= CLR + width / 2 + 0.03 + extra_margin for d in dist]
         via_ok = [d >= CLR + VIA_D / 2 + 0.03 + extra_margin for d in dist]
         via_ok = via_ok[0] & via_ok[1]
+        trk_ok[1] = trk_ok[1] & ~self._court_bottom
+        trk_ok[0] = trk_ok[0] & ~self._keep_top
         own = [np.zeros((NX, NY), bool), np.zeros((NX, NY), bool)]
         def pad_cells(j):
             f, bt = self.pad_layers(j)
@@ -97,6 +104,23 @@ class Board:
                 i = int(round((b.p_x[j] - X0) / H)); k = int(round((b.p_y[j] - Y0) / H)); out.append((0, i, k))
             return out
         tree = set(pad_cells(pads[0])); done = {pads[0]}
+        def seg_cells(L_, p0, p1):
+            n_ = max(2, int(math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / (H / 2)) + 1)
+            out_ = set()
+            for t_ in np.linspace(0, 1, n_):
+                x_ = p0[0] + t_ * (p1[0] - p0[0]); y_ = p0[1] + t_ * (p1[1] - p0[1])
+                i_ = int(round((x_ - X0) / H)); k_ = int(round((y_ - Y0) / H))
+                if 0 <= i_ < NX and 0 <= k_ < NY: out_.add((L_, i_, k_))
+            return out_
+        own_cells = set()
+        for tr in self.tracks:
+            if tr[0] == net and (tr[5] if len(tr) > 5 else None) == tag: own_cells |= seg_cells(tr[1], tr[2], tr[3])
+        if tag is None:
+            for k_ in range(len(b.s_idx)):
+                if int(b.s_net[k_]) == nid: own_cells |= seg_cells(int(b.s_layer[k_]), (b.s_x0[k_], b.s_y0[k_]), (b.s_x1[k_], b.s_y1[k_]))
+        for c_ in own_cells: trk_ok[c_[0]][c_[1], c_[2]] = True
+        # an own track that touches the first pad is already part of the tree
+        tree |= own_cells
         segs = []; vs = []; fails = []
         for L, i, k in tree: trk_ok[L][i, k] = True
         while len(done) < len(pads):
@@ -140,6 +164,40 @@ class Board:
             segs += self._runs(net, run, width)
             tree |= set(path) | set(start); done.add(j)
         return segs, vs, fails
+
+    def escape(self, net, j, ref, dist=1.3, width=0.2, extra_margin=0.0):
+        """a short stub from pad j out of the courtyard of `ref` (fine-pitch IC): returns (segments, vias, ok)"""
+        b = self.b; nid = b.nets.index(net)
+        self._tag = None
+        masks = self.copper_masks(nid, self.tracks, self.vias, tag=None, pad_subset={j})
+        dist_m = [ndimage.distance_transform_edt(~m) * H for m in masks]
+        ok = (dist_m[0] >= CLR + width / 2 + 0.03 + extra_margin) & ~self._keep_top
+        i_ = b.ref_index(ref); bx = (b.fp_cx0[i_], b.fp_cy0[i_], b.fp_cx1[i_], b.fp_cy1[i_])
+        # distance from the courtyard box
+        dx = np.maximum(np.maximum(bx[0] - GX[:, None], 0), GX[:, None] - bx[2]); dy = np.maximum(np.maximum(bx[1] - GY[None, :], 0), GY[None, :] - bx[3])
+        dbox = np.hypot(dx, dy)
+        x0, y0, x1, y1 = b.p_bx0[j], b.p_by0[j], b.p_bx1[j], b.p_by1[j]
+        start = [(i, k) for i in range(NX) for k in range(NY) if False]
+        i0 = max(0, int((x0 - X0) / H)); i1 = min(NX - 1, int((x1 - X0) / H) + 1); j0 = max(0, int((y0 - Y0) / H)); j1 = min(NY - 1, int((y1 - Y0) / H) + 1)
+        start = [(i, k) for i in range(i0, i1 + 1) for k in range(j0, j1 + 1) if x0 <= GX[i] <= x1 and y0 <= GY[k] <= y1]
+        if not start: start = [(int(round((b.p_x[j] - X0) / H)), int(round((b.p_y[j] - Y0) / H)))]
+        for c in start: ok[c] = True
+        g = {c: 0.0 for c in start}; came = {}; pq = [(0.0, c) for c in start]; heapq.heapify(pq); end = None
+        while pq:
+            gc, cur = heapq.heappop(pq)
+            if gc > g.get(cur, 1e18) + 1e-9: continue
+            if cur not in start and dbox[cur] >= dist: end = cur; break
+            if gc > 6.0: break
+            for di, dk in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                nb = (cur[0] + di, cur[1] + dk)
+                if not (0 <= nb[0] < NX and 0 <= nb[1] < NY) or not ok[nb]: continue
+                if di and dk and not (ok[cur[0] + di, cur[1]] and ok[cur[0], cur[1] + dk]): continue
+                ng = gc + H * (1.4142 if di and dk else 1.0)
+                if ng < g.get(nb, 1e18): g[nb] = ng; came[nb] = cur; heapq.heappush(pq, (ng, nb))
+        if end is None: return [], [], False
+        path = [end]
+        while path[-1] in came: path.append(came[path[-1]])
+        return self._runs(net, [(0, i, k) for i, k in path], width), [], True
     def _runs(self, net, run, width):
         if len(run) < 2: return []
         L = run[0][0]; pts = [(float(GX[i]), float(GY[k])) for _, i, k in run]

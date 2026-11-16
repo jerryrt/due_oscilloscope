@@ -13,14 +13,31 @@ def L_of(segs): return sum(math.hypot(s[3][0] - s[2][0], s[3][1] - s[2][1]) for 
 done = set()
 log = []
 def go(net, **kw):
-    segs, vs, fails = B.route(net, **kw)
-    if fails and kw.get('width', 0.2) > 0.2:          # a fine-pitch pad the wide track cannot leave: retry at 0.2
-        kw2 = dict(kw); kw2['width'] = 0.2
-        s2, v2, f2 = B.route(net, **kw2)
-        if len(f2) < len(fails): segs, vs, fails = s2, v2, f2
+    ladder = [dict(), dict(width=0.2), dict(width=0.2, extra_margin=-0.03), dict(bottom_cost=4.0), dict(bottom_cost=4.0, width=0.2), dict(vias=False, bottom=False), dict(vias=False, bottom=False, width=0.2)]
+    best = None
+    for step in ladder:
+        kw2 = dict(kw); kw2.update({k: v for k, v in step.items() if not (k == 'width' and kw.get('width', 0.2) <= v)})
+        segs, vs, fails = B.route(net, **kw2)
+        hop = L_of([s for s in segs if s[1] == 1]) > 2.9 or len(vs) > 2
+        score = (len(fails), hop)
+        if best is None or score < best[4]: best = (segs, vs, fails, kw2, score)
+        if not fails and not hop: break
+    segs, vs, fails, kw2, _sc = best
     B.add(segs, vs)
     tag = kw.get('tag')
-    print('NET %-10s %-12s len %6.1f vias %d bottom %5.1f fails %s' % (net, tag or '', L_of(segs), len(vs), L_of([s for s in segs if s[1] == 1]), fails), flush=True)
+    print('NET %-10s %-12s len %6.1f vias %d bottom %5.1f w %.2f margin %.2f fails %s' % (net, tag or '', L_of(segs), len(vs), L_of([s for s in segs if s[1] == 1]), kw2.get('width', 0.2), kw2.get('extra_margin', 0.0), fails), flush=True)
+    for f_ in fails:
+        ref, pin = f_.split('.'); j = row[(ref, pin)]
+        nid_ = b.nets.index(net); others_ = {k for k in range(len(b.p_fp)) if int(b.p_net[k]) == nid_ and k != j and (kw.get('pads_subset') is None or k in kw['pads_subset'])}
+        if others_:
+            kk = min(others_, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
+            for name, relax, extra in (('margin -0.05', set(), dict(extra_margin=-0.05)), ('width 0.15', set(), dict(width=0.15)), ('bottom courtyard rule off', {'court'}, {}), ('HIZ 0.85 off', {'hiz'}, {}), ('top-only off (vias on)', set(), dict(bottom=True, vias=True))):
+                B.relax = set(relax)
+                kw3 = {k_: v_ for k_, v_ in kw.items() if k_ != 'pads_subset'}; kw3.update(extra); kw3['pads_subset'] = {j, kk}
+                s3, v3, f3 = B.route(net, **kw3); B.relax = set()
+                print('      probe', f_, name, '->', 'ROUTES' if not f3 else 'fails', 'len %.1f' % L_of(s3), flush=True)
+        near = sorted({(b.nets[int(b.p_net[k])], b.fp_ref[int(b.p_fp[k])] + '.' + str(b.p_pin[k])) for k in range(len(b.p_fp)) if k != j and math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]) < 2.0})
+        print('    FAIL', f_, 'at', round(float(b.p_x[j]), 2), round(float(b.p_y[j]), 2), 'neighbour pads within 2 mm:', near[:10], flush=True)
     return segs, vs, fails
 POWER = {'/+5V_DUE': 0.5, '/+5V_F': 0.5, '/+3V3A': 0.4, '/VNEG': 0.4, '/VREF': 0.3, '/SC_VCC': 0.4, '/P33_U': 0.3, '/P33_S': 0.3}
 # 1. A1, A0, AWG_INV: top only
@@ -30,6 +47,18 @@ HORD = ['/CH1_N', '/CH1_NP', '/CH1_R1A', '/CH1_R2A', '/CH2_R1A', '/CH2_N', '/CH2
 for n in HORD:
     segs, vs, fails = go(n, width=0.2); done.add(n)
     print('   HIZ length', n, round(L_of(segs), 2))
+def span(n):
+    idx = net_pads(n); return (b.p_x[idx].max() - b.p_x[idx].min()) + (b.p_y[idx].max() - b.p_y[idx].min())
+ANALOG = [r for r in b.fp_ref if C.BLOCK.get(r) in ('AWG', 'SCOPE', 'REFCAL') and not r.startswith(('J', 'MH'))]
+POWERS = {'/+5V_DUE': 0.5, '/+5V_F': 0.5, '/+3V3A': 0.4, '/VNEG': 0.4, '/VREF': 0.3, '/SC_VCC': 0.4, '/P33_U': 0.3, '/P33_S': 0.3}
+def route_plain(n):
+    w = POWERS.get(n, 0.2)
+    own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
+    cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1', '/SDA1_A', '/SCL1_A') else None
+    go(n, width=w, bottom=True, vias=True, net_courtyards=cour); done.add(n)
+RAILV = {'/VREF', '/+3V3A', '/VNEG'}
+short = sorted([n for n in b.nets if n and n != C.GND and n not in done and n not in RAILV and len(net_pads(n)) >= 2 and n not in POWERS and span(n) <= 12.0], key=span)
+for n in short: route_plain(n)
 # 2. VREF: the source, then each branch on its own copper (LR-8); extra VREF pads join the nearest branch
 vp = net_pads('/VREF')
 src_rows = {row[k] for k in C.VREF_SOURCE}
@@ -56,16 +85,9 @@ for rail, pl in PLAN.items():
         go(rail, width=0.4, bottom=True, vias=True, pads_subset=leg | {near}, tag='leg-' + name)
     go(rail, width=0.4, bottom=True, vias=True, pads_subset=hub, tag='hub')
     done.add(rail)
-# 4. everything else, shortest first, power last; the I2C pair keeps out of the analog courtyards (LR-9)
-def span(n):
-    idx = net_pads(n); return (b.p_x[idx].max() - b.p_x[idx].min()) + (b.p_y[idx].max() - b.p_y[idx].min())
+# 4. everything left, shortest first, power last
 others = [n for n in b.nets if n and n != C.GND and n not in done and len(net_pads(n)) >= 2]
-others.sort(key=lambda n: (n in POWER, span(n)))
-ANALOG = [r for r in b.fp_ref if C.BLOCK.get(r) in ('AWG', 'SCOPE', 'REFCAL') and not r.startswith(('J', 'MH'))]
-for n in others:
-    w = POWER.get(n, 0.2)
-    own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
-    cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1', '/SDA1_A', '/SCL1_A') else None
-    segs, vs, fails = go(n, width=w, bottom=True, vias=True, net_courtyards=cour)
+others.sort(key=lambda n: (n in POWERS, span(n)))
+for n in others: route_plain(n)
 B.save('whatif/_scratch/route2/signals2.kicad_pcb')
 print('done', round(time.time() - t0), 's')
