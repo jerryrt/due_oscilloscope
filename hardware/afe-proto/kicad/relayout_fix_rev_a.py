@@ -17,7 +17,8 @@ WALLFREE = {'TP101'}
 LADDER = {'R503', 'R504', 'R505', 'R506', 'R507', 'R508'}
 HAND = {'R508': (52.07, 6.5), 'R506': (57.15, 6.5), 'R504': (62.23, 6.5), 'R507': (54.61, 9.35), 'R505': (59.69, 9.35),
         'R503': (63.05, 10.15), 'J501': (56.54, 14.9), 'C502': (58.6, 26.4), 'D501': (62.4, 28.45), 'R509': (51.0, 38.4),
-        'R405': (36.4, 11.2), 'C408': (40.2, 10.8), 'C407': (40.2, 15.64), 'R406': (38.0, 19.15), 'R407': (41.0, 19.55), 'R403': (32.4, 8.3), 'R404': (36.9, 7.55), 'C402': (36.9, 14.9), 'C403': (33.7, 17.9), 'C401': (29.5, 11.5)}
+        'R405': (36.4, 11.2), 'C408': (40.2, 11.4), 'C407': (40.2, 16.25), 'R407': (42.2, 21.1), 'R401': (29.4, 17.3), 'R409': (29.6, 21.1), 'R406': (37.8, 21.1), 'R403': (32.4, 8.3), 'R404': (36.9, 7.55), 
+        'TP402': (22.0, 25.5), 'TP403': (27.0, 25.5), 'TP404': (32.0, 25.5), 'TP401': (37.0, 25.5), 'TP405': (42.0, 25.5), 'R408': (23.0, 29.5), 'R410': (29.0, 29.5),  'C402': (36.9, 14.9), 'C403': (33.9, 17.9), 'C401': (29.5, 11.5)}
 ANCH = set(C.ANCHORS) | {'R411', 'U101', 'U301', 'U401', 'C402'} | set(HAND)
 LOCKX = WALLREFS | {'R110', 'J501'}
 NOLAB = ['J601','J602','J603','J604','J605','J606','J607','J101','J201','J301']
@@ -344,7 +345,7 @@ if os.environ.get('ANNEALSUB'):
         else:
             fence2[r] = fence[r]
     best = None
-    for sd in range(int(os.environ.get('SEEDS', '6'))):
+    for sd in range(int(os.environ.get('SEEDB', '0')), int(os.environ.get('SEEDB', '0')) + int(os.environ.get('SEEDS', '6'))):
         p0 = dict(pos)
         if os.environ.get('START') == 'LANDED':
             p0 = dict(TARGET0)
@@ -380,3 +381,12 @@ if os.environ.get('EVAL'):
     for v in LPm.violations(parts, pos, rect, ANCH, obst, [], []):
         a_, _, b_ = v.partition('/')
         if re.match(r'[A-Z]+4\d\d', v) and ('/' not in v or re.match(r'[A-Z]+4\d\d', b_)): print('EVALVIOL', v)
+
+if os.environ.get('EXPLAIN'):
+    from pcbtools.labelplace import _pen, CC, LC, LL
+    for pr_ in os.environ['EXPLAIN'].split(','):
+        a_, b_ = pr_.split('/')
+        Ci, Li = LPm._shapes(pp[a_], *pos[a_]); Cj, Lj = LPm._shapes(pp[b_], *pos[b_])
+        for nm, x, y, m in (('C-C', Ci, Cj, CC), ('Li-Cj', Li, Cj, LC), ('Lj-Ci', Lj, Ci, LC), ('L-L', Li, Lj, LL)):
+            px, py = _pen(x, y, m - 0.05)
+            if px > 0 and py > 0: print('EXPLAIN', a_, b_, nm, [round(v, 2) for v in x], [round(v, 2) for v in y], 'pos', pos[a_], pos[b_])

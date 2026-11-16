@@ -61,6 +61,18 @@ def _pair_bad(pi, xi, yi, pj, xj, yj, tol=0.0):
     return False
 
 
+def _pair_depth(pi, xi, yi, pj, xj, yj):
+    """how far the pair violates: the sum over its four shape pairs of the shortest way out (0 for a pair that is clear), plus one so that a violation never costs less than a count"""
+    Ci, Li = _shapes(pi, xi, yi)
+    Cj, Lj = _shapes(pj, xj, yj)
+    d = 0.0
+    for a, b, m in ((Ci, Cj, CC), (Li, Cj, LC), (Lj, Ci, LC), (Li, Lj, LL)):
+        px, py = _pen(a, b, m - 0.05)
+        if px > 0 and py > 0:
+            d += min(px, py)
+    return d + 1.0 if d > 0 else 0.0
+
+
 def _bb(p, x, y):
     return (x + min(p.rx0, p.lx0), y + p.ry0, x + max(p.rx1, p.lx1), y + p.ly1)
 
@@ -413,7 +425,7 @@ def polish(refs, rel, pos, fence, anchors, lock_x, obstacles, nolabel=(), rounds
             if any(m[0] == r for m in sp[0]):
                 n += 1 if cap_bad([], [sp], pos) else 0
         pos[r] = old
-        return 3 * n
+        return 12 * n
 
     def cost(r, p):
         """violations that involve part r with the others, at position p"""
@@ -498,7 +510,7 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
             if any(m[0] == r for m in sp[0]):
                 n += 1 if cap_bad([], [sp], pos) else 0
         pos[r] = old
-        return 3 * n
+        return 12 * n
 
 
     idx_of = {q.ref: k for k, q in enumerate(parts)}
@@ -568,8 +580,8 @@ def anneal(refs, rel, pos, target, fence, anchors, lock_x, obstacles, nolabel=()
         i = idx[r]
         n = 0.0
         for j, o in enumerate(parts):
-            if j != i and (parts[i].free or o.free) and _pair_bad(parts[i], *p, o, *pos[o.ref], tol=0.05):
-                n += 1
+            if j != i and (parts[i].free or o.free):
+                n += _pair_depth(parts[i], *p, o, *pos[o.ref])
         for q in obstacles:
             if _obst_bad(parts[i], *p, q, tol=0.05):
                 n += 1
