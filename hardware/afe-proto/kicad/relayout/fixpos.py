@@ -152,6 +152,12 @@ for nm in ('/A0', '/A1', '/AWG_INV'):
                 k = b.ref_index(r)
                 mem.append((r, (px, py))); xs.append(b.fp_x[k] + px); ys.append(b.fp_y[k] + py)
     SPANS.append((mem, round(max(xs) - min(xs) + (0.4 if nm == '/AWG_INV' else 0), 3), round(max(ys) - min(ys) + (0.4 if nm == '/AWG_INV' else 0), 3)))
+if os.environ.get('HIZSPAN'):
+    for _n in C.HIZ:
+        _nid = b.nets.index(_n)
+        _w = 4.0 if _n.endswith('_N') else 5.0       # dx <= w and dy <= w keeps the pad half-perimeter within 8 (N nets) and 10
+        _mem = [(r, (pad_[0], pad_[1])) for r, pads in padrel.items() for pin, pad_ in pads.items() if pad_[2] == _nid and not np.isnan(b.fp_x[b.ref_index(r)])]
+        SPANS.append((_mem, _w, _w))
 # the reference to the ladder and the ADS: U501's VREF pad to R508 and U502.4
 
 import os as _os

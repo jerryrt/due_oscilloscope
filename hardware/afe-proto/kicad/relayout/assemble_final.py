@@ -57,7 +57,7 @@ def free_spot(word, fence_rects, h=1.0, M=0.5, south=False):
 for word, blk in (('POWER', 'POWER'), ('REF/CAL', 'REFCAL'), ('CH1', 'SCOPE'), ('CH2', 'SCOPE'), ('AWG', 'AWG')):
     rects = C.FENCES[blk][:1] if word == 'CH1' else (C.FENCES[blk][1:2] if word == 'CH2' else C.FENCES[blk][:1])
     so = word in ('AWG', 'REF/CAL')
-    sp = free_spot(word, rects, south=so) or free_spot(word, rects, M=0.3, south=so) or free_spot(word, C.FENCES[blk], M=0.3, south=so)
+    sp = free_spot(word, rects, south=so) or free_spot(word, rects, M=0.3, south=so) or free_spot(word, rects, M=0.2, south=so) or free_spot(word, C.FENCES[blk], M=0.3, south=so)
     print('title', word, sp)
     if sp:
         out += text(word, sp[1], sp[2], 1.0, key='title' + word)
