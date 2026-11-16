@@ -3,6 +3,7 @@ its part) on hand-built boards with known answers, each rule broken once on purp
 finding counts are held exactly (a ratchet: a change that adds one fails, a change that removes some records the new count)."""
 import pathlib
 
+import numpy as np
 import pytest
 
 from pcbtools import boardio, silkread
@@ -31,7 +32,8 @@ def lab(s, ref, x, y, ang=0.0, layer=0):
 
 
 def board(over=None):
-    """A horizontal and V vertical, each labelled just above; header H along x labelled beyond its left end; two BNCs
+    """A horizontal and V vertical, each labelled just above; header H along x, in the lower half, labelled centred above it
+    (its inboard side); two BNCs
     with their labels. `over` replaces {ref: (x, y, ang)} or hides one with None."""
     s = Synth()
     two(s, 'A', 10.0, 10.0)                       # courtyard top y 10.75
@@ -39,7 +41,7 @@ def board(over=None):
     s.part('H', 40.0, 10.0, box=(35.0, 9.0, 45.0, 11.0), silk=None)
     for r, y in (('J1', 40.0), ('J2', 60.0)):
         s.part(r, 60.0, y, box=(58.0, y - 1.0, 66.0, y + 1.0), silk=None)
-    pos = {'A': (10.0, 11.4, 0.0), 'V': (20.0, 12.15, 0.0), 'H': (34.25, 10.0, 0.0)}
+    pos = {'A': (10.0, 11.4, 0.0), 'V': (20.0, 12.15, 0.0), 'H': (40.0, 11.6, 0.0)}
     pos.update(over or {})
     for r, v in pos.items():
         if v is not None:
@@ -90,8 +92,38 @@ def test_a_designator_on_its_own_part_fails():
     assert has(find({'A': (10.0, 10.0, 0.0)}), 'A:', 'courtyard of A')
 
 
-def test_a_header_label_above_instead_of_at_its_end_fails():
-    assert has(find({'H': (40.0, 11.6, 0.0)}), 'H:', 'beyond its left end')
+def test_a_header_label_at_its_end_fails():
+    assert has(find({'H': (34.25, 10.0, 0.0)}), 'H:', 'above it, on its inboard side')
+
+
+def test_a_header_label_on_its_outboard_side_fails():
+    assert has(find({'H': (40.0, 8.4, 0.0)}), 'H:', 'above it, on its inboard side')
+
+
+def test_a_header_label_off_centre_along_its_length_fails():
+    assert has(find({'H': (38.0, 11.6, 0.0)}), 'H:', 'off centre 2.00')
+
+
+def _with_outline(b, y1):
+    outline = np.array([[0.0, 0.0], [100.0, 0.0], [100.0, y1], [0.0, y1]])
+    return boardio.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 'outline': outline})
+
+
+@pytest.mark.parametrize('label_y,ok', [(88.4, True), (91.6, False)])
+def test_a_header_in_the_upper_half_takes_its_label_below(label_y, ok):
+    s = Synth()
+    s.part('H', 40.0, 90.0, box=(35.0, 89.0, 45.0, 91.0), silk=None)
+    lab(s, 'H', 40.0, label_y)
+    f = silkread.findings(_with_outline(s.build(), 100.0), edge_headers={'H'})
+    assert (f == []) if ok else has(f, 'H:', 'below it, on its inboard side'), f
+
+
+def test_the_outline_decides_the_half():
+    """the same header and label, read against a taller board, is in the lower half and wants its label above"""
+    s = Synth()
+    s.part('H', 40.0, 90.0, box=(35.0, 89.0, 45.0, 91.0), silk=None)
+    lab(s, 'H', 40.0, 88.4)
+    assert has(silkread.findings(_with_outline(s.build(), 200.0), edge_headers={'H'}), 'H:', 'above it, on its inboard side')
 
 
 def test_a_mounting_hole_needs_no_designator():
@@ -189,9 +221,10 @@ def test_a_bnc_bottom_designator_off_its_frame_fails():
 
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
-# Findings on 2026-11-15 under the "horizontal, above" convention (silk lines read, mounting holes skipped), before the
+# Findings on 2026-11-15 under the "horizontal, above" convention (silk lines read, mounting holes skipped, header labels
+# inboard), before the
 # relayout: held exactly (a ratchet).
-OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 209, 'kicad/afe-proto.kicad_pcb': 207}
+OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 207, 'kicad/afe-proto.kicad_pcb': 207}
 
 
 @pytest.mark.pcbnew

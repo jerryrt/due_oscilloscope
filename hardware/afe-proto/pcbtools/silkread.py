@@ -9,9 +9,11 @@ The owner's convention (2026-11-15), on the top side (the board has no bottom pa
    whatever way the part is turned), centred over the part (its centre within ABOVE_X of the courtyard's centre in x),
    and just above it (from ABOVE_GAP_MIN to ABOVE_GAP_MAX between the courtyard's top and the text's bottom).
    A mounting hole (MH followed by digits) is not an assembled part and needs no designator.
-2. Edge headers (`edge_headers`, the Due's socket rows): the same at one end instead. A header lying along x carries its
-   designator horizontal just beyond its left end, centred on its row; one lying along y carries it horizontal just above
-   its top end, centred over it. Same gaps as rule 1.
+2. Edge headers (`edge_headers`, the Due's socket rows; owner, 2026-11-15). A header lying along x carries its designator
+   horizontal, centred along its length, on its inboard side: just below it when the header is in the upper half of the
+   board, just above it in the lower half (the halves split at the centre of the board outline, or of the parts'
+   courtyards when the arrays carry no outline). One lying along y carries it horizontal just above its top end, centred
+   over it. Same gaps as rule 1.
 3. Legible. No designator lies on any courtyard (its own included), pad, via drill or board-level silk line or rectangle
    (`silk`, from read_silk: the block outlines and the S/N box), and two designators are at least LABEL_GAP apart, box to
    box, so that two never read as one.
@@ -118,6 +120,11 @@ def findings(b, bnc_labels=None, edge_headers=(), silk=()):
     pads = [(x0, y0, x1, y1) for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
     vias = [(x - d / 2 - VIA_CLEAR, y - d / 2 - VIA_CLEAR, x + d / 2 + VIA_CLEAR, y + d / 2 + VIA_CLEAR)
             for x, y, d in zip(b.v_x, b.v_y, b.v_drill)]
+    if len(b.outline):
+        mid_y = (float(np.min(b.outline[:, 1])) + float(np.max(b.outline[:, 1]))) / 2
+    else:
+        cs = [cour[i] for i in parts]
+        mid_y = (min(c[1] for c in cs) + max(c[3] for c in cs)) / 2 if cs else 0.0
     shown = {}                                   # ref -> (box, angle) of its visible top designator
     for j in range(len(b.r_fp)):
         i = row[int(b.r_fp[j])]
@@ -136,12 +143,14 @@ def findings(b, bnc_labels=None, edge_headers=(), silk=()):
         c = cour[i]
         if min(ang % 360.0, 360.0 - ang % 360.0) > 0.5:
             bad.append(f'{r}: designator at {ang:g} degrees, not horizontal')
-        if r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]):        # a header along x: label beyond its left end
-            across = abs((box[1] + box[3]) / 2 - (c[1] + c[3]) / 2)
-            gap = c[0] - box[2]
-            where = 'beyond its left end'
+        across = abs((box[0] + box[2]) / 2 - (c[0] + c[2]) / 2)
+        if r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]) and (c[1] + c[3]) / 2 > mid_y:   # along x, upper half
+            gap = c[1] - box[3]
+            where = 'below it, on its inboard side'
+        elif r in edge_headers and (c[2] - c[0]) >= (c[3] - c[1]):                               # along x, lower half
+            gap = box[1] - c[3]
+            where = 'above it, on its inboard side'
         else:                                                          # every other part, and a header along y: above
-            across = abs((box[0] + box[2]) / 2 - (c[0] + c[2]) / 2)
             gap = box[1] - c[3]
             where = 'above it'
         if across > ABOVE_X or not (ABOVE_GAP_MIN <= gap <= ABOVE_GAP_MAX):
