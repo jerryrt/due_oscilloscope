@@ -40,11 +40,9 @@ def pad_abs(ref, k, x, y, n):
     q = [q for q in P0[ref]['pads'] if q['n'] == n][0]
     o = (q['c'][0] - P0[ref]['x'], q['c'][1] - P0[ref]['y']); o = (o[0] * c - o[1] * s_, o[0] * s_ + o[1] * c)
     return (x + o[0], y + o[1])
-NEAR = {'C401': [('1', '3 8 12', 5.41)], 'C402': [('1', '3 8 12', 2.8)], 'C403': [('1', '5', 2.8)], 'C404': [('1', '5', 5.5)], 'C405': [('1', '11', 2.8)], 'C406': [('1', '11', float((sys.argv[5] if len(sys.argv) > 5 else 3.47)))],
-        'C407': [('1', '6', 2.8)], 'C408': [('1', '6', 6.11)], 'C409': [('1', '10', float((sys.argv[6] if len(sys.argv) > 6 else 2.8))), ('2', '9', float((sys.argv[6] if len(sys.argv) > 6 else 3.4)))], 'R402': [('1', '2', 2.8)], 'R401': [('2', '2', R401L)],
-        'R404': [('2', '7', 3.76)], 'R405': [('1', '7', 2.8)], 'R403': [('1', '6', 5.47)], 'R406': [('2', '3 8 12', 8.28)]}
-FSC = float(sys.argv[9]) if len(sys.argv) > 9 else 1.0
-NEAR = {r: [(n, p, l * FSC) for n, p, l in v] for r, v in NEAR.items()}
+NEAR = {'C401': [('1', '3 8 12', 3.0)], 'C402': [('1', '3 8 12', 3.0)], 'C403': [('1', '5', 2.8)], 'C404': [('1', '5', 6.5)], 'C405': [('1', '11', 2.8)], 'C406': [('1', '11', 4.47)],
+        'C407': [('1', '6', 2.8)], 'C408': [('1', '6', 7.11)], 'C409': [('1', '10', 2.8), ('2', '9', 4.36)],
+        'R402': [('1', '2', 3.69)], 'R401': [('2', '2', 6.0)], 'R405': [('1', '7', 3.51)], 'R404': [('2', '7', 6.0)], 'R403': [('1', '6', 6.0)]}
 def near_ok(ref, k, x, y):
     for n, pins, lim in NEAR.get(ref, []):
         p = pad_abs(ref, k, x, y, n)
@@ -102,6 +100,7 @@ def lonely(chs):
                 if math.hypot(a[3] - pp[0], a[4] - pp[1]) <= 4 and ((o == 0 and abs(a[4] - pp[1]) <= 0.05) or (o == 90 and abs(a[3] - pp[0]) <= 0.05)): ok = True; break
         if not ok: bad += 1
     return bad
+ORDER = ['C409', 'C405', 'C406', 'R405', 'C407', 'C403', 'R402', 'R401', 'C401', 'C402', 'C404', 'C408', 'R404', 'R403', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']
 t0 = time.time(); best = [None, 99]; stat = {'deep': 0, 'empt': {}}; nodes = [0]; rnd = random.Random(int(sys.argv[8]) if len(sys.argv) > 8 else 1); BR = int(sys.argv[7]) if len(sys.argv) > 7 else 6
 def dfs(idx, ch):
     nodes[0] += 1
@@ -110,7 +109,7 @@ def dfs(idx, ch):
         m = lonely(ch)
         if m < best[1]: best[0], best[1] = list(ch), m; print('sol lonely', m, 'nodes', nodes[0], flush=True)
         return
-    r = min(idx, key=lambda q: len(idx[q]) + rnd.random())
+    r = [q for q in ORDER if q in idx][0]
     cs = idx[r]
     if len(ch) > stat['deep']: stat['deep'] = len(ch); print('depth', len(ch), r, len(cs), flush=True)
     pas = [c for c in ch if PASRE.fullmatch(c[0])]
