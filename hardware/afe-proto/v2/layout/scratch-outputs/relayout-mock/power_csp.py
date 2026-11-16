@@ -79,10 +79,11 @@ def cand(ref):
                     if any(ov(e, f, 0.02) for f in fixed_ext) or any(ov(z, f, 0) for f in fixed_ext) or any(ov(lb, f, 0.5) for f in fixed_lab) or ov(e, U_zone, 0) or ov((lb[0] - 0.3, lb[1] - 0.3, lb[2] + 0.3, lb[3] + 0.3), U_ext, 0): continue
                     out.append((ref, k, ls, x, y, e, z, lb))
     return out
-cf = R + 'power_cands_' + '_'.join(str(v) for v in (UK, UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:12])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
+cf = R + 'power_cands_' + '_'.join(str(v) for v in (UK, UX, UY, R401L, RP.ZONE, sys.argv[5:7], sys.argv[9:12], sys.argv[13:14])).replace(' ', '').replace("'", '').replace('[', '').replace(']', '') + '.pkl'
 if os.path.exists(cf): C = pickle.load(open(cf, 'rb'))
 else:
-    C = {r: cand(r) for r in POW if r != 'U401'}; pickle.dump(C, open(cf, 'wb'))
+    FREE = ('BR401', 'R406', 'R407', 'TP401', 'TP402', 'TP403', 'TP404') if (len(sys.argv) > 13 and sys.argv[13] == 'ties') else ()
+    C = {r: cand(r) for r in POW if r != 'U401' and r not in FREE}; pickle.dump(C, open(cf, 'wb'))
 print('domains', {r: len(v) for r, v in C.items()}, flush=True)
 REST = sorted(C, key=lambda r: len(C[r]))
 def OVv(A, b, g):
