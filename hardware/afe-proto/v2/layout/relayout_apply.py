@@ -8,7 +8,7 @@ height relayout_place.py reserved; the edge header J601 and J605 per the owner's
 function texts below it; the five block names to free corners; strips every track and via of every net that touches a moved part (the board is
 to be re-routed; the zones are left as they are, stale); replaces the block outlines on the top silk by solid lines round REGIONS.
 """
-import json, math, re, sys, uuid
+import json, math, os, re, sys, uuid
 import numpy as np
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 import relayout_place as RP
@@ -60,17 +60,32 @@ def outline_lines(rects):
     return segs
 
 
+def clip_gap(segs, gx=(73.9, 90.3), gy=(32.0, 34.0)):
+    """the outline lines leave a gap round U101 and its east-end designator (a label may not touch a silk line)"""
+    out = []
+    for (a, b, c, d) in segs:
+        if abs(b - d) < 1e-9 and gy[0] <= b <= gy[1]:
+            lo, hi = sorted((a, c))
+            for x0, x1 in ((lo, min(hi, gx[0])), (max(lo, gx[1]), hi)):
+                if x1 - x0 > 1e-9: out.append((x0, b, x1, b))
+        elif abs(a - c) < 1e-9 and gx[0] <= a <= gx[1] and not (max(b, d) < gy[0] or min(b, d) > gy[1]):
+            out.append((a, b, c, d))
+        else:
+            out.append((a, b, c, d))
+    return out
+
+
 def main(board, dump, out, places):
     t = open(board).read()
     D, P = RP.load(dump)
-    kof = {r: int(round((rot_new[r] - P[r]['rot']) / 90.0)) % 4 for r in rot_new}
-    G = {r: RP.part_geom(p, kof.get(r, 0), ls_new.get(r, 0)) for r, p in P.items()}
     new, rot_new, ls_new = {}, {}, {}
     for f in places:
         for k, v in json.load(open(f))['st'].items():
             new[k] = (v[0], v[1])
             if len(v) > 2: rot_new[k] = v[2]
             if len(v) > 3: ls_new[k] = v[3]
+    kof = {r: int(round((rot_new[r] - P[r]['rot']) / 90.0)) % 4 for r in rot_new}
+    G = {r: RP.part_geom(p, kof.get(r, 0), ls_new.get(r, 0)) for r, p in P.items()}
     for r in new: assert r in P and r not in RP.FIXED, r
     pos = {r: new.get(r, (P[r]['x'], P[r]['y'])) for r in P}
     for r, (x, y) in new.items():                                   # 1. move (and turn)
@@ -90,12 +105,15 @@ def main(board, dump, out, places):
     lab = {}                                                         # 2. designators (conservative boxes, for the name search)
     for r, p in P.items():
         if r in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'): continue
-        if r in RP.FIXED and r != 'U101': continue
+        if r in RP.FIXED: continue
+        if r not in new and not os.environ.get('APPLY_ALL_LABELS'): continue      # a block not re-placed in this round keeps its labels
         g = G[r]; x, y = pos[r]
         cx = (g['lab'][0] + g['lab'][2]) / 2 + x; ly = (g['lab'][1] + g['lab'][3]) / 2 + y
         if r in BNCS or r.startswith('MH'): continue
         t = set_ref(t, r, cx, ly)
         lab[r] = (cx - RP.LAB_W * len(r) / 2, ly - RP.LAB_H / 2, cx + RP.LAB_W * len(r) / 2, ly + RP.LAB_H / 2)
+    ul, uz, (ucx, ucy) = RP.u101_label_east(P)
+    t = set_ref(t, 'U101', ucx, ucy); lab['U101'] = ul                        # U101 alone: beside its pin-free east end
     for h in ('J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'):          # edge headers: the owner's rule (bcbc1e3d), RP.header_label
         hx, hy = RP.header_label(P[h]); t = set_ref(t, h, hx, hy)
         lab[h] = (hx - RP.LAB_W * 2, hy - RP.LAB_H / 2, hx + RP.LAB_W * 2, hy + RP.LAB_H / 2)
@@ -115,7 +133,7 @@ def main(board, dump, out, places):
             q = prop.rindex('\n\t\t\t)'); prop = prop[:q] + '\n\t\t\t\t(justify mirror)' + prop[q:]
         t = t[:s] + blk[:i] + prop + blk[j:] + t[e:]
     jx, jy = pos['J501']                                            # 4. J501's function texts
-    for w, (ox, oy, tw, th) in RP.J501_TEXTS.items():
+    for w, (ox, oy, tw, th) in (RP.J501_TEXTS.items() if 'J501' in new else []):
         t = move_text(t, w, jx + ox, jy + oy, 0)
     # 5. block names: RP.name_box (the top-left-most free place of the block, reserved before the parts were placed)
     for blk, word in NAMES.items():
@@ -142,7 +160,7 @@ def main(board, dump, out, places):
     t, n = re.subn(r'\n\t\(gr_line\n\t\t\(start ([-\d.]+) ([-\d.]+)\)\n\t\t\(end ([-\d.]+) ([-\d.]+)\)\n\t\t\(stroke(?:(?!\n\t\)).)*?\(layer "F\.SilkS"\)\n\t\t\(uuid "[^"]*"\)\n\t\)', lambda m: old(m), t, flags=re.S)
     lines = []
     for blk, rs in RP.REGIONS.items():
-        for (a, b, c, d) in outline_lines(rs):
+        for (a, b, c, d) in clip_gap(outline_lines(rs)):
             lines.append('\n\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)'
                          % (fmt(a + SX), fmt(SY - b), fmt(c + SX), fmt(SY - d), uuid.uuid5(uuid.NAMESPACE_URL, 'relayout%s%s%s%s%s' % (blk, a, b, c, d))))
     k = t.index('\n\t(gr_line'); t = t[:k] + ''.join(lines) + t[k:]

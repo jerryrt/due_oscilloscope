@@ -33,6 +33,7 @@ BLOCK_DIGIT = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL'}
 LAB_H, LAB_W, LAB_UP, ZONE, LAB_GAP, EXT_GAP = float(os.environ.get('RP_LABH', 1.3)), float(os.environ.get('RP_LABW', 0.95)), 0.8, float(os.environ.get('RP_ZONE', 0.3)), float(os.environ.get('RP_GAP', 0.5)), 0.02
 RES = 0.05
 SOFT_W = 8.0
+CLUSTER_FREE = {'C104', 'C105', 'R108', 'R107', 'R207', 'R208'}   # the U101 cluster's passives may stand vertical (owner, d5dafbf3 round)
 J501_TEXTS = {'ON': (2.54, -2.81, 2.2, 1.4), 'CAL': (-2.54, -2.81, 3.1, 1.4)}   # horizontal, one under pin 3 and one under pin 1: centre offset from J501's origin and the box (text + 0.2 mm all round)
 WEIGHT = {}
 for n in ('CH1_IN', 'CH1_M1', 'CH1_M2', 'CH1_M3', 'CH1_N', 'CH1_NP'): WEIGHT['/' + n] = 9
@@ -139,6 +140,15 @@ def part_geom(p, k=0, ls=0):
     return dict(ext=extr, cy=cyr, lab=lab, zone=(lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), ly=ly, gap=lab[1] + 0.1 - cyr[3])
 
 
+def u101_label_east(P, cur=None):
+    """U101's designator horizontal beside its pin-free east end: text west edge 0.3 mm from the courtyard, centred in y on it. Returns (label box, zone box, centre)"""
+    x, y = (cur or {}).get('U101', (P['U101']['x'], P['U101']['y']))
+    c = P['U101']['cy']; w = LAB_W * 4
+    cx = c[2] + 0.3 + w / 2; cy = (c[1] + c[3]) / 2
+    lab = (cx - w / 2, cy - LAB_H / 2, cx + w / 2, cy + LAB_H / 2)
+    return lab, (lab[0] - ZONE, lab[1] - ZONE, lab[2] + ZONE, lab[3] + ZONE), (cx, cy)
+
+
 def seg_dist_rect(rects, pt):
     best = 1e9
     for r in rects:
@@ -161,7 +171,7 @@ def header_label(p):
 
 
 DECOUP = [('C104', 'U101', '8'), ('C105', 'U101', '8'), ('C305', 'U301', '8'), ('C306', 'U301', '4'), ('C502', 'U501', '1'), ('C501', 'U501', '2'), ('C503', 'U502', '8')]
-DECOUP_MAX, RISO_MAX, INV_MAX = 3.0, 5.0, 5.0                      # LR-12, LR-4 (pad 1 of the series resistor to the output pin)
+DECOUP_MAX, RISO_MAX, INV_MAX = 2.8, 5.0, 5.0                      # LR-12, LR-4 (pad 1 of the series resistor to the output pin)
 RISO = [('R108', 'U101', '7'), ('R208', 'U101', '1')]
 KEEP_AT_INV = []   # feedback / gain / series-input parts: main's relative place, moved only as far as a label zone needs
 SPAN_NETS = ('/A0', '/A1')
@@ -209,7 +219,7 @@ def hard_constraints(P):
     for net in SPAN_NETS:
         span_fn(net, 0, '%s span <= main %%.1f' % net, True)
     for net in ('/CH1_OUT', '/CH2_OUT'):
-        span_fn(net, 4.9, f'LR-4 {net} pad span <= 4.9 (INV_MAX {INV_MAX} of track; three pins: Steiner length = half-perimeter)')
+        span_fn(net, 5.0, f'LR-4 {net} pad span <= 5.0 (INV_MAX {INV_MAX} of track; three pins: Steiner length = half-perimeter)')
     for prot, rnp, riso, bnc_x, adc_x in (('R101', 'R107', 'R108', 102.0, 66.04), ('R201', 'R207', 'R208', 102.0, 68.58)):
         ux = P['U101']['x']
         def f1(pos_of, off, a=prot, b=rnp, bnc_x=bnc_x):
@@ -278,7 +288,7 @@ def name_box(blk, P, G, cur=None):
 NAMES = {'POWER': 'POWER', 'REFCAL': 'REF / CAL', 'CH1': 'CH1', 'CH2': 'CH2', 'AWG': 'AWG'}
 
 
-def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=None, cluster_of=None, soft=None, fixed_pos=None):
+def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=None, cluster_of=None, soft=None, fixed_pos=None, init=None):
     """Place `mine` (default: the block's movable parts not in `frozen`) inside the union of REGIONS[b] for b in `regions` (default [blk]).
     frozen: {ref: [x, y, rot]} parts already placed (anchors, other blocks): obstacles, and terminals of the nets. cluster_of: the IC whose cluster this is
     (moves of the IC take the other parts with it). soft: {ref: (ic, (dx, dy))} parts pulled toward the IC's position + that offset (main's relative place)."""
@@ -298,7 +308,7 @@ def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=No
     rk = [0] * n; ls = [0] * n
     is_pas = [bool(PAS.fullmatch(r)) for r in mine]
     anchor_mode = bool(soft)                                   # a cluster: parts may stand turned; the rest of a block is horizontal
-    allowed_k = [([k for k in range(4) if orient(P[r], k) == 0] if (is_pas[i] and not anchor_mode) else (list(range(4)) if can_rot[i] else [0])) or [0] for i, r in enumerate(mine)]
+    allowed_k = [([k for k in range(4) if orient(P[r], k) == 0] if (is_pas[i] and not anchor_mode and r not in CLUSTER_FREE) else (list(range(4)) if can_rot[i] else [0])) or [0] for i, r in enumerate(mine)]
     for i in range(n): rk[i] = allowed_k[i][0]
     def arr(key): return np.array([GEO[i][rk[i]][key] for i in range(n)])
     ext0, lab0, zon0, cy0 = arr('ext'), arr('lab'), arr('zone'), arr('cy')
@@ -319,8 +329,8 @@ def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=No
     for r in FIXED:
         g = G0[r]; x, y = cur[r]
         fx_ext.append((g['ext'][0] + x, g['ext'][1] + y, g['ext'][2] + x, g['ext'][3] + y))
-    u = G0['U101']; ux, uy = cur['U101']
-    fx_lab.append((u['lab'][0] + ux, u['lab'][1] + uy, u['lab'][2] + ux, u['lab'][3] + uy)); fx_zone.append((u['zone'][0] + ux, u['zone'][1] + uy, u['zone'][2] + ux, u['zone'][3] + uy))
+    ul, uz, _ = u101_label_east(P, cur)
+    fx_lab.append(ul); fx_zone.append(uz)
     for r in frozen:
         if r in FIXED: continue
         g = part_geom(P[r], crot[r], frozen[r][3] if len(frozen[r]) > 3 else 0); x, y = cur[r]
@@ -490,11 +500,17 @@ def run(dump, out, blk, seed=1, iters=100000, mine=None, frozen=None, regions=No
         v = sum(own(i, st[i]) - sum(sup(k) for k in consof[i]) for i in range(n)) + 0.5 * sum(pairs(i, st[i]) for i in range(n)) + sum(sup(k) for k in range(len(HARD)))
         v += align_total()
         return wl + 400 * v, wl, v
-    for i in range(n): st[i] = snap(i, st[i][0], st[i][1])
+    for r_, (x_, y_, k_, l_) in (init or {}).items():
+        if r_ in idx:
+            i_ = idx[r_]; setrot(i_, k_, l_); st[i_] = (x_, y_)
+    for i in range(n):
+        if not any(mine[i] == r_ for r_ in (init or {})): st[i] = snap(i, st[i][0], st[i][1])
     E, wl, v = full()
     best = (E, st.copy(), list(rk), list(ls))
     rot_ids = [i for i in range(n) if can_rot[i]]
-    for T0, sf, sc0, nit in ((25.0, 3.0, 0.15, iters), (0.8, 0.4, 0.04, max(iters // 3, 20000))):
+    passes = ((25.0, 3.0, 0.15, iters), (0.8, 0.4, 0.04, max(iters // 3, 20000)))
+    if os.environ.get('RP_POLISH'): passes = ((1.5, 0.6, 0.05, iters),)
+    for T0, sf, sc0, nit in passes:
         st[:] = best[1]
         for i_, k_ in enumerate(best[2]): setrot(i_, k_, best[3][i_])
         E, _, _ = full()
