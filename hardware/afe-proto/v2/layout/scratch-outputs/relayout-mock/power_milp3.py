@@ -139,7 +139,7 @@ if True:
     for r in parts:
         for j, c in enumerate(sel[r]): cost[off[r] + j] = disp(c) + (100.0 if c[2] >= 10 else 0.0) - (8.0 if pinline(c) else 0.0)
 res = milp(cost, constraints=cons, integrality=np.ones(n), bounds=Bounds(0, 1), options=dict(time_limit=TL, disp=False))
-print('MILP status', res.status, res.message, flush=True)
+print('MILP status', res.status, res.message, 'gap', getattr(res, 'mip_gap', None), 'bound', getattr(res, 'mip_dual_bound', None), 'obj', res.fun, flush=True)
 if res.x is not None and res.status in (0, 1):
     ch = []
     for p in parts:
