@@ -31,6 +31,7 @@ u = P0['U401']; gU = RP.part_geom(u)
 U_ext = (gU['ext'][0] + UX, gU['ext'][1] + UY, gU['ext'][2] + UX, gU['ext'][3] + UY)
 U_lab = (gU['lab'][0] + UX, gU['lab'][1] + UY, gU['lab'][2] + UX, gU['lab'][3] + UY)
 U_zone = (gU['zone'][0] + UX, gU['zone'][1] + UY, gU['zone'][2] + UX, gU['zone'][3] + UY)
+_ul, _uz, _ = RP.u101_label_east(P0, {'U401': (UX, UY)}, 'U401'); U_lab, U_zone = _ul, _uz
 fixed_ext.append(U_ext); fixed_lab.append(U_lab)
 fixed_ext.append((17.9, 33.8, 26.0, 37.0))        # the block name stays top-left
 assert math.hypot(UX - 38.1, UY - 2.54) <= 14.99, 'U401 more than 15 mm from the 5 V pad'
@@ -42,9 +43,10 @@ def pad_abs(ref, k, x, y, n):
     q = [q for q in P0[ref]['pads'] if q['n'] == n][0]
     o = (q['c'][0] - P0[ref]['x'], q['c'][1] - P0[ref]['y']); o = (o[0] * c - o[1] * s_, o[0] * s_ + o[1] * c)
     return (x + o[0], y + o[1])
-NEAR = {'C401': [('1', '3 8 12', 5.2)], 'C402': [('1', '3 8 12', 3.0)], 'C403': [('1', '5', 10.5)], 'C404': [('1', '5', 12.5)], 'C405': [('1', '11', 5.9)], 'C406': [('1', '11', 5.9)],
-        'C407': [('1', '6', 6.3)], 'C408': [('1', '6', 8.4)], 'C409': [('1', '10', 3.0), ('2', '9', 3.3)],
-        'R402': [('1', '2', 3.69)], 'R401': [('2', '2', 5.5)], 'R405': [('1', '7', 3.51)], 'R404': [('2', '7', 4.0)], 'R403': [('1', '6', 6.0)]}
+NEAR = {'C401': [('1', '3 8 12', 3.0)], 'C402': [('1', '3 8 12', 2.68)], 'C403': [('1', '5', 2.8)], 'C404': [('1', '5', 6.5)], 'C405': [('1', '11', 2.8)], 'C406': [('1', '11', 4.47)],
+        'C407': [('1', '6', 2.8)], 'C408': [('1', '6', 7.11)], 'C409': [('1', '10', 2.77), ('2', '9', 4.36)],
+        'R402': [('1', '2', 3.69)], 'R401': [('2', '2', 4.53)], 'R405': [('1', '7', 3.51)], 'R404': [('2', '7', 4.76)], 'R403': [('1', '6', 6.47)]}
+BES = ('C403', 'C404', 'C405', 'C406', 'C407')
 def near_ok(ref, k, x, y):
     for n, pins, lim in NEAR.get(ref, []):
         p = pad_abs(ref, k, x, y, n)
@@ -54,7 +56,7 @@ FREE_STEP = 0.25
 def cand(ref):
     out = []; p = P0[ref]
     ks = range(4) if ref.startswith(RP.ROTATABLE) else [0]
-    lss = (0, 2, 4)
+    lss = (0, 2, 4, 10, 11) if ref in BES else (0, 2, 4)
     for k in ks:
         for ls in lss:
             gg = RP.part_geom(p, k, ls)
@@ -72,6 +74,7 @@ def cand(ref):
                     lb = (gg['lab'][0] + x, gg['lab'][1] + y, gg['lab'][2] + x, gg['lab'][3] + y)
                     if mlab.bad(lb) > 0: continue
                     z = (gg['zone'][0] + x, gg['zone'][1] + y, gg['zone'][2] + x, gg['zone'][3] + y)
+                    if ls >= 10: z = (lb[0] - 0.06, lb[1] - 0.06, lb[2] + 0.06, lb[3] + 0.06)
                     if any(ov(e, f, 0.02) for f in fixed_ext) or any(ov(z, f, 0) for f in fixed_ext) or any(ov(lb, f, 0.5) for f in fixed_lab) or ov(e, U_zone, 0) or ov((lb[0] - 0.3, lb[1] - 0.3, lb[2] + 0.3, lb[3] + 0.3), U_ext, 0): continue
                     out.append((ref, k, ls, x, y, e, z, lb))
     return out
@@ -102,7 +105,7 @@ def lonely(chs):
                 if math.hypot(a[3] - pp[0], a[4] - pp[1]) <= 4 and ((o == 0 and abs(a[4] - pp[1]) <= 0.05) or (o == 90 and abs(a[3] - pp[0]) <= 0.05)): ok = True; break
         if not ok: bad += 1
     return bad
-ORDER = ['C409', 'C402', 'R405', 'C405', 'C406', 'R402', 'R404', 'C407', 'C401', 'R401', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']
+ORDER = ['C409', 'C402', 'C401', 'R405', 'C405', 'C406', 'R402', 'R404', 'C407', 'R401', 'R403', 'C403', 'C404', 'C408', 'R406', 'R407', 'BR401', 'TP401', 'TP402', 'TP403', 'TP404']
 t0 = time.time(); best = [None, 99]; stat = {'deep': 0, 'empt': {}}; nodes = [0]; rnd = random.Random(int(sys.argv[8]) if len(sys.argv) > 8 else 1); BR = int(sys.argv[7]) if len(sys.argv) > 7 else 6
 def dfs(idx, ch):
     nodes[0] += 1
