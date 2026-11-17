@@ -14,23 +14,21 @@ project could mistake for its own.
 transform and its inverse. `board.frame_of(cfg)` accepts a 2-sequence, a mapping with `FRAME`, or an object with a
 `FRAME` attribute. Lengths in the arrays are millimetres in this frame; angles are degrees counter-clockwise.
 
-Names for the rules are added here as each rule moves in (`MIGRATION.md`).
+## Policy (one for the whole package)
 
-## Rules: how they read a configuration (`pcbkit.config`)
+* **Project names raise.** Anything specific to one project (a net, a part, a table, a rectangle, a prefix, the frame) has no default: a rule or tool that needs one and does not find it raises
+  `pcbkit.config.ConfigError` naming the key (`ConfigError` is a `ValueError`, so a tool that still raises `ValueError` for a missing name is compatible), and never passes.
+* **Tunables default.** A margin, a limit, a tolerance, a step has the default listed in its row of this document and is reported as `default` when the project does not set it. A design value
+  (a distance from a design rule, such as `KEEPOUT_DIST`) is a project name, not a tunable.
+* **The effective configuration is reported.** `rules.effective_config(cfg, rule)` (and `labels.effective_config`, `pinlabels.effective_config`) returns every name a call reads with its value and `project` or
+  `default`; every rule function takes `report=[]` to receive the same rows; a run prints it and a report carries it.
+* **The typo guard.** `pcbkit.config.DECLARED` is the registry of every name a module declares (`config.declare(rule, names)`, at import; `import pcbkit` imports the rule modules). Each rule checks the names of the configuration
+  it is given: a name no module declares is *unrecognised*, listed by `effective_config` and otherwise ignored (an AFE configuration carries many names of its own); a name that is not declared but is a likely typo of a declared one
+  raises `ConfigError` naming both. "Near" is edit distance 2 when the shorter name has at least 6 characters, 1 when it has 4 or 5, and never for shorter names: a short name is within 2 edits of half the alphabet (the AFE's
+  `GEN` is within 2 of `GND`, and a flat distance of 2 would have raised on its configuration). A declared name never raises, even when it is near another declared name (`config.declared_pairs_near()` lists such pairs).
+  On the AFE's configurations (`v2_layout`, `v2`, `v1`, `v1r`, `v1_frozen`) nothing raises (`tests/afe_effective_config.py`). A module that does not declare its names yet (`pinlabels`) is simply not guarded.
 
-Every rule declares its names in a table (`GROUND_PLANE_NAMES`, `BOTTOM_HOPS_NAMES` in `pcbkit/rules.py`): a **project** name (a net, a part, a
-table, a rectangle, a prefix) is required and a missing one raises `ConfigError` naming the rule and the key, never a pass; a **tunable** (a
-margin, a limit, a tolerance) has the default shown below and is reported as `default` when the project does not set it. `rules.effective_config(cfg, rule)`
-returns the effective configuration as text (name, `project` or `default`, value; the layout of `labels.effective_config`), and every rule function
-takes `report=[]` to receive the same rows. A rule never reads a name it does not list.
-
-**One `ConfigError` for the package** is `pcbkit.config.ConfigError`. **The typo guard:** `pcbkit.config.DECLARED` is the registry of every name any module
-declares (`config.declare(rule, names)`, called at import). Each rule checks the names of the configuration it is given: a name no module declares is
-*unrecognised*, listed by `effective_config` and otherwise ignored (an AFE configuration carries many names of its own); a name that is not declared but
-is a likely typo of a declared one raises `ConfigError` naming both (edit distance 2 when the shorter name has at least 6 characters, 1 when it has 4 or 5,
-never for shorter names). A declared name never raises, even when it is near another declared name (`config.declared_pairs_near()` lists such pairs: none
-today). The registry holds the modules imported so far; `import pcbkit` imports them all. On the AFE's configurations (`v2_layout`, `v2`, `v1`, `v1r`,
-`v1_frozen`) nothing raises (`tests/afe_effective_config.py`).
+Each rule declares its names in a `*_NAMES` table in `pcbkit/rules.py`; a rule never reads a name it does not list. The sections below give every name, its kind, type, unit and default.
 
 ### rules.ground_plane
 
