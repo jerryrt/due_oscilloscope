@@ -55,7 +55,7 @@ def test_the_outline_round_trips_at_the_configured_size(built):
 def test_the_drills_equal_the_holes_of_the_board_file(built):
     assert fab.check_drills(text(built[0], 'PTH.drl'), text(built[0], 'NPTH.drl'), BOARD.read_text()) == []
     pth, npth = fab.board_holes(BOARD.read_text())
-    assert pth == {(0.3, 'round'): 59, (1.0, 'round'): 95, (2.2, 'round'): 6} and npth == {(2.7, 'round'): 2}     # written down, counted by hand from the board
+    assert pth == {(0.3, 'round'): 71, (1.0, 'round'): 95, (2.2, 'round'): 6} and npth == {(2.7, 'round'): 2}     # written down, counted by hand from the board
 
 
 def _jlc_refs(board_text):
