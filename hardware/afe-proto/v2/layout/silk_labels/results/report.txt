@@ -1,0 +1,46 @@
+BLOCK       parts  with-label(new)  without(new)   with-label(main)
+POWER          22         16              6             22
+CH1            19         11              8             19
+CH2            14          8              6             14
+AWG            17          7             10             17
+REFCAL         31          8             23             31
+EDGE            9          7              2              9
+TOTAL         112         57             55            112
+without a label (new): ['BR102', 'BR501', 'BR502', 'BR503', 'BR504', 'BR506', 'BR508', 'BR509', 'BR510', 'BR511', 'C101', 'C201', 'C301', 'C304', 'C305', 'C402', 'C403', 'C405', 'C407', 'C501', 'C502', 'D101', 'MH601', 'MH602', 'R102', 'R103', 'R106', 'R107', 'R108', 'R202', 'R203', 'R206', 'R207', 'R208', 'R301', 'R302', 'R303', 'R304', 'R305', 'R306', 'R307', 'R404', 'R405', 'R501', 'R502', 'R503', 'R504', 'R505', 'R506', 'R507', 'R508', 'R509', 'R510', 'R511', 'R512']
+beside set (east/west at 0 degrees): ['BR101', 'BR401', 'C102', 'C104', 'C105', 'C202', 'C303', 'C306', 'C401', 'C404', 'C406', 'C408', 'C409', 'C503', 'D201', 'J601', 'R308', 'R401', 'R402', 'R403', 'R406', 'TP201', 'TP404']
+places used by passives and anchors: {'west0': 14, 'above': 12, 'west90': 5, 'east0': 9, 'east90': 2, 'below': 6}
+ANCHORS (U, J, TP):
+   J101  visible=yes  BNC rule (outside the body, one frame offset)
+   J201  visible=yes  BNC rule (outside the body, one frame offset)
+   J301  visible=yes  BNC rule (outside the body, one frame offset)
+   J501  visible=yes  NO PLACE (kept as on main)
+   J601  visible=yes  strict west0
+   J602  visible=yes  strict above
+   J603  visible=yes  strict west90
+   J604  visible=yes  strict above
+   J605  visible=yes  strict above
+   J606  visible=yes  strict above
+   J607  visible=yes  strict above
+   TP101 visible=yes  strict above
+   TP201 visible=yes  strict east0
+   TP301 visible=yes  strict east90
+   TP401 visible=yes  strict below
+   TP402 visible=yes  strict above
+   TP403 visible=yes  strict above
+   TP404 visible=yes  strict east0
+   TP501 visible=yes  strict west90
+   U101  visible=yes  NO PLACE (kept as on main)
+   U301  visible=yes  NO PLACE (kept as on main)
+   U401  visible=yes  NO PLACE (kept as on main)
+   U501  visible=yes  NO PLACE (kept as on main)
+   U502  visible=yes  NO PLACE (kept as on main)
+ALL ANCHORS LABELLED BY A PLACE THE TEST ACCEPTS: NO
+silkread (silk-above) findings: main 207  new 93
+  of the new findings: 53 are "no designator" (the part lost its label), 13 name a part placed below or at 90 degrees (the owner's order, not in silk-above's rules), rest 13
+  rest: ['J501: designator not centred above it (off centre 2.71 mm, gap 1.34 mm)', 'U501: designator at 90 degrees, not horizontal', 'U501: designator not centred above it (off centre 2.38 mm, gap -3.20 mm)', 'U501: designator lies on the courtyard of TP501, U501', 'U101: designator not centred above it (off centre 0.50 mm, gap -3.49 mm)', 'U101: designator lies on the courtyard of U101', 'U301: designator not centred above it (off centre 0.50 mm, gap -5.10 mm)', 'U301: designator lies on the courtyard of U301', 'U502: designator at 90 degrees, not horizontal', 'U502: designator not centred above it (off centre 1.87 mm, gap -1.30 mm)', 'U502: designator lies on the courtyard of U502', 'J604: designator not centred below it, on its inboard side (off centre 0.00 mm, gap -4.72 mm)', 'J606: designator not centred below it, on its inboard side (off centre 0.00 mm, gap -4.72 mm)', 'J607: designator not centred below it, on its inboard side (off centre 0.00 mm, gap -4.72 mm)', 'U401: designator at 90 degrees, not horizontal', 'U401: designator not centred above it (off centre 2.50 mm, gap -6.72 mm)', "C104: U101's designator lies east of it, where its own would be read", 'J101: 1 "CH1 IN" labels on top, 0 designators on the bottom and 1 on top; wanted one label, one bottom designator, none ', 'J201: 1 "CH2 IN" labels on top, 0 designators on the bottom and 1 on top; wanted one label, one bottom designator, none ', 'J301: 1 "AWG OUT" labels on top, 0 designators on the bottom and 1 on top; wanted one label, one bottom designator, none']
+align findings: main 45  new 16
+LR-11 terms main: pairs under 1.0 mm 8, over a pad 0, too far 0, designators judged 112, one-label 0, foreign 0
+LR-11 terms new : pairs under 1.0 mm 1, over a pad 0, too far 0, designators judged 57, one-label 0, foreign 0
+labels whose centre is outside the board outline: []
+(c) labels whose nearest other label is not farther than their own part: []
+(b) labels not inside their own block outline: ['J101', 'J201', 'J301']
