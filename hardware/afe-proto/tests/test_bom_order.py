@@ -132,7 +132,9 @@ def placements_equal_board(o, refs):
 def test_order_placements_equal_the_boards_smt_footprints():
     data = bom.Data(bom.HERE, {})
     refs = board_smt_refs()
-    assert len(refs) >= 77                    # a floor: the board's SMT parts (77 since its 13 bridges left), not an empty list
+    # the placements are the design's JLC-fitted parts that are not DNP: computed from v2/kicad/design.py, equal to the board's
+    from pcbtools.boards import v2_sch
+    assert len(refs) == sum(1 for p in v2_sch.PARTS if p["fitted_by"] == "JLC" and not p["dnp"])
     o = order.build(data, order.lines_from_rows(order.smt_rows(order.read_board(str(BOARD))))
                     + order.owner_lines(data, []), 5, bom.PCB_RATE)
     assert placements_equal_board(o, refs)

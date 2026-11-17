@@ -26,7 +26,8 @@ def expand(path, board):
 def unresolved(text, board):
     """[model path as written] whose file is not there; a path through ${KICAD10_3DMODEL_DIR} needs the library to exist at all"""
     refs = MODEL.findall(text)
-    assert len(refs) >= 85, f'{len(refs)} model entries: the scan moved'                  # a floor: the board's parts, not an empty list (v2 names 89 since its 13 bridges left; v1 more)
+    nfp = text.count('\n\t(footprint ')
+    assert nfp and len(refs) >= 0.8 * nfp, f'{len(refs)} model entries for {nfp} footprints: the scan moved'      # a sanity floor, a fraction of the board's own footprints (v2 names 89 of 99)
     unknown = sorted({r for r in refs if '${' in r and not r.startswith(('${KIPRJMOD}', '${KICAD10_3DMODEL_DIR}'))})
     assert not unknown, f'an unknown variable in {unknown}'
     if any(r.startswith('${KICAD10_3DMODEL_DIR}') for r in refs) and not MODEL_DIR.is_dir():
