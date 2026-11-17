@@ -107,6 +107,12 @@ def build_rich(pcb, path):
             fp.SetOrientationDegrees(rot)
         b.Add(fp)
     r2 = b.FindFootprintByReference('R2')
+    ft = pcb.PCB_TEXT(r2)                                   # a text on F.Fab well outside R2's body: part of the F.Fab box
+    ft.SetText('FABTXT')
+    ft.SetPosition(pt(pcb, 80, 145))
+    ft.SetLayer(pcb.F_Fab)
+    ft.SetTextHeight(pcb.FromMM(1.0))
+    r2.Add(ft)
     r2.Reference().SetVisible(False)
     r2.Reference().SetHorizJustify(pcb.GR_TEXT_H_ALIGN_LEFT)
     x1 = pcb.FOOTPRINT(b)

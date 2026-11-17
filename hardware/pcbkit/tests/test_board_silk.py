@@ -30,7 +30,7 @@ def test_footprint_fab_body_box(rich, pcbnew_mod):
     _, b, pb = rich
     for f in pb.GetFootprints():
         i = b.ref_index(f.GetReference())
-        shapes = [g for g in f.GraphicalItems() if g.GetLayer() == pcbnew_mod.F_Fab and g.GetClass() == 'PCB_SHAPE']
+        shapes = [g for g in f.GraphicalItems() if g.GetLayer() == pcbnew_mod.F_Fab]        # every F.Fab graphic, text included
         got = (b.fp_fab_x0[i], b.fp_fab_y0[i], b.fp_fab_x1[i], b.fp_fab_y1[i])
         if not shapes:
             assert np.isnan(got).all(), f.GetReference()
@@ -42,6 +42,8 @@ def test_footprint_fab_body_box(rich, pcbnew_mod):
     i = b.ref_index('R1')
     w, h = b.fp_fab_x1[i] - b.fp_fab_x0[i], b.fp_fab_y1[i] - b.fp_fab_y0[i]
     assert h > w > 0.5 and abs(0.5 * (b.fp_fab_x0[i] + b.fp_fab_x1[i]) - 10.0) < 0.01
+    k = b.ref_index('R2')
+    assert b.fp_fab_y1[k] - b.fp_fab_y0[k] > 4.0                  # R2's F.Fab text 5 mm from its body is inside the box
     j = b.ref_index('X1')
     assert np.isnan([b.fp_fab_x0[j], b.fp_fab_y0[j], b.fp_fab_x1[j], b.fp_fab_y1[j]]).all()
 
