@@ -240,12 +240,12 @@ LR-1's limit is 3.0 mm and 2 vias per hop; the checker reports 4 bottom run(s), 
 
 **KiCad's own connectivity.** kicad-cli DRC (`--severity-all`, section 3) reports **0 unconnected items** on the board, its nets assigned from the schematic: KiCad sees the net connected through the same tracks. The check is only worth that if it can fire, so one track is cut at a time in a scratch copy of the board file (the board is never touched), the graph predicts which pads lose the source, and DRC is run on the cut copy:
 
-| arm | track cut | removed from the scratch text | graph: pads that lose the source | DRC unconnected items | DRC item(s) | agree |
+| arm | track cut | removed from the scratch text | graph: pads that lose the source | DRC unconnected items | DRC pair(s): pads of the lost piece each names | agree |
 |---|---|---|---|---|---|---|
-| stub at U401 pin 8 | F.Cu (35.000,12.250)-(33.950,12.250) | 1 | U401.8 | 1 | Track [/+5V_F] on F.Cu, length 0.3000 mm / Pad 8 [/+5V_F] of U401 on F.Cu | yes |
-| stub at U401 pin 12 | F.Cu (33.950,14.250)-(35.000,14.250) | 1 | U401.12 | 1 | Track [/+5V_F] on F.Cu, length 0.3000 mm / Pad 12 [/+5V_F] of U401 on F.Cu | yes |
-| trunk, middle of the pin 3 run | F.Cu (18.400,6.000)-(35.300,6.000) | 1 | C401.1, C403.1, C404.1, TP402.1, U401.12, U401.3 | 1 | Pad 8 [/+5V_F] of U401 on F.Cu / Track [/+5V_F] on F.Cu, length 1.0500 mm | yes |
-| track, middle of the pin 12 run | F.Cu (18.400,20.000)-(18.400,6.000) | 1 | C401.1, C403.1, C404.1, TP402.1, U401.12, U401.3 | 2 | Track [/+5V_F] on F.Cu, length 1.0500 mm / Track [/+5V_F] on F.Cu, length 13.6500 mm \| Track [/+5V_F] on F.Cu, length 0.3000 mm / Track [/+5V_F] on F.Cu, length 0.3000 mm | yes |
+| stub at U401 pin 8 | F.Cu (35.000,12.250)-(33.950,12.250) | 1 | U401.8 | 1 | U401.8 | yes |
+| stub at U401 pin 12 | F.Cu (33.950,14.250)-(35.000,14.250) | 1 | U401.12 | 1 | U401.12 | yes |
+| trunk, middle of the pin 3 run | F.Cu (18.400,6.000)-(35.300,6.000) | 1 | C401.1, C403.1, C404.1, TP402.1, U401.12, U401.3 | 1 | C401.1, C403.1, C404.1, TP402.1, U401.12, U401.3 | yes |
+| track, middle of the pin 12 run | F.Cu (18.400,20.000)-(18.400,6.000) | 1 | C401.1, C403.1, C404.1, TP402.1, U401.12, U401.3 | 2 | C401.1, C404.1, U401.3 \| C403.1, TP402.1, U401.12 | yes |
 
 **Which rule sees this net.** LR-6 (the star rails) checks only `/+3V3A` and `/VNEG` (`STAR` and `GROUPS` in `pcbtools/boards/v1.py`); `/+5V_F` is in neither, and no LR row looks at its connectivity. The only check that sees it is LR-10 (kicad-cli DRC, unconnected items), which is what the figure above is, and this section's graph. LR-6 therefore says nothing about U401 pins 3, 8 and 12.
 
