@@ -59,19 +59,19 @@ def _rng(prefix, a, b):
 
 
 KEY_PARTS = {
-    'CH1': {'J101', 'U101', 'D101', 'TP101', 'BR101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
-    'CH2': {'J201', 'D201', 'TP201', 'BR201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
+    'CH1': {'J101', 'U101', 'D101', 'TP101'} | _rng('R', 101, 108) | _rng('C', 101, 105),
+    'CH2': {'J201', 'D201', 'TP201'} | _rng('R', 201, 208) | _rng('C', 201, 203),
     'AWG': {'U301', 'J301', 'C301', 'TP301'} | _rng('R', 301, 309) | _rng('C', 303, 306),
     'POWER': {'U401'} | _rng('R', 401, 407) | _rng('C', 401, 409) | _rng('TP', 401, 404),
     'REFCAL': {'U501', 'U502', 'J501', 'TP501'} | _rng('R', 501, 514) | _rng('C', 501, 503),
     'EDGE': _rng('J', 601, 607) | {'MH601', 'MH602'},
 }
 
-# the bridges (placeholders until the layout names the nets): BR101 from the +3V3A rail (the LM27762's OUT+) to the dual's V+
-# segment, BR201 from CH2's Riso / clamp side to the Due A0 pin; the CH2 clamp D201 sits on the dual side of both
-BRIDGE_JOINS = {'BR101': (('fn', 'U401', 'OUT+'), ('fn', 'U101', 'V+')), 'BR201': (('pin', 'R208', '2'), ('pin', 'J602', '8'))}
+# There are no 0 ohm bridges in the design: the layout adds one (BR + the block's number) only where a net must cross a line, in design.py
+# and on the board together. What is held here is the clamp: D201 sits on A0 (R208.2) and on the dual's V+ rail.
+BRIDGE_JOINS = {}
 BRIDGE_SIDES = [(('pin', 'D201', '3'), ('pin', 'R208', '2')), (('pin', 'D201', '2'), ('fn', 'U101', 'V+'))]
-BRIDGE_TEXT = 'the CH2 clamp D201 sits on the dual side of both'
+BRIDGE_TEXT = "the CH2 clamp D201 sits on A0 (R208.2) and on the dual's V+"
 
 # The Due header-pin table (docs/due-header-table.md, V03): header -> {pin: net}. Everything else passes through. The AFE's SDA/SCL are
 # the SAM3X's TWI0 on PWMH0.9 / .10 (labelled SDA1 / SCL1 on the header, no on-board pull-ups there; TWI1 is D20/D21).
@@ -414,12 +414,8 @@ def arm_designator(parts):
     P(parts, 'R405')['ref'] = 'R505'                              # renumbered into the wrong hundred (nets follow by ref)
 
 
-def arm_bridge_value(parts):
-    P(parts, 'BR101')['value'] = '1k 1%'                          # a bridge that is not 0 ohm
-
-
-def arm_bridge_open(parts):
-    P(parts, 'BR201')['pins']['2'] = 'ORPHAN'                     # a bridge that no longer reaches the pin
+def arm_clamp_off(parts):
+    P(parts, 'D201')['pins']['3'] = 'ORPHAN'                      # the CH2 clamp no longer on A0 (R208.2)
 
 
 def arm_enable(parts):
@@ -458,7 +454,7 @@ ARM_NO_FLAG = 'GND'                                              # the PWR_FLAG 
 
 
 def flip_arms():
-    """the 24 arms of the old check.py, in its order, as FlipArms"""
+    """the arms of the old check.py, in its order, as FlipArms: its 24 less the two bridge arms (no bridge in the design), plus the clamp arm in the place of 'bridge open'"""
     A = sr.FlipArm
     arms = [A('scope value', ('N1', 'B1'), arm_value_scope), A('awg value', ('N2', 'B1'), arm_value_awg),
             A('scope pin swap', ('N1',), arm_swap_scope), A('awg pin swap', ('N2',), arm_swap_awg),
@@ -468,7 +464,7 @@ def flip_arms():
             A('rail feedback value', ('C1', 'B1'), arm_rail), A('ADS1115 pair', ('C3',), arm_ads_pair),
             A('LCSC changed', ('B1',), arm_lcsc), A('Due SDA/SCL swapped', ('H1',), arm_due),
             A('ladder rung', ('C2',), arm_ladder), A('LM27762 EN- off VIN', ('C1',), arm_enable),
-            A('bridge not 0 ohm', ('N1',), arm_bridge_value), A('bridge open', ('C6', 'E2'), arm_bridge_open),
+            A('CH2 clamp off A0', ('C6', 'E2'), arm_clamp_off),
             A('block field', ('D1', 'D2'), arm_block_field), A('designator out of its block', ('D1', 'D2'), arm_designator),
             A('CAL header TAP_on', ('C4',), arm_cal_header), A('scope V- on the negative rail', ('C5', 'N1'), arm_scope_neg),
             A('SPICE scope connection', ('N1',), mut_spice=spice_scope_conn), A('SPICE awg value', ('N2',), mut_spice=spice_awg_value),

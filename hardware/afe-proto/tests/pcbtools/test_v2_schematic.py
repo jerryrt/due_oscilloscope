@@ -43,20 +43,46 @@ need_cli = pytest.mark.skipif(not HAVE_CLI, reason='no kicad-cli')
 OLD_SCOPE_NETLIST = os.path.join('scope', 'scope_v2.cir')
 
 
+def _old_bridge_arms():
+    """the old check.py's two bridge arms, which the live design (no bridge) no longer has; the frozen fixture puts them back"""
+    def value(parts):
+        P_(parts, 'BR101')['value'] = '1k 1%'                         # a bridge that is not 0 ohm
+
+    def opened(parts):
+        P_(parts, 'BR201')['pins']['2'] = 'ORPHAN'                    # a bridge that no longer reaches the pin
+    return value, opened
+
+
+def P_(parts, ref):
+    return next(p for p in parts if p['ref'] == ref)
+
+
 @pytest.fixture
 def frozen(monkeypatch):
     """The first revision's design and studies: the old tools (tests/fixtures/v2-kicad-276a116/kicad, goldens in tests/golden) can only be compared with the
-    port on the design they were run on, so the values landed on 2026-11-13 are put back for the test and restored after it."""
-    old = {p['ref']: p for p in v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS}
-    saved = {}
-    for p in v2_sch.PARTS:
-        saved[p['ref']] = {k: p[k] for k in ('value', 'lcsc', 'note')}
-        p.update({k: old[p['ref']][k] for k in ('value', 'lcsc', 'note')})
+    port on the design they were run on, so the WHOLE first-revision design (its two 0 ohm bridges, the split +3V3A_U and CH2_RISO nets, the dual's
+    other half assignment) and the config that read it (key parts, bridge rows, power flags, the 24 arms) are put back for the test and restored after it."""
+    old = v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS
+    saved = copy.deepcopy(v2_sch.PARTS)
+    v2_sch.PARTS[:] = copy.deepcopy(old)                              # in place: every module that holds the list sees the old design
+    monkeypatch.setattr(v2, 'KEY_PARTS', {**v2.KEY_PARTS, 'CH1': v2.KEY_PARTS['CH1'] | {'BR101'}, 'CH2': v2.KEY_PARTS['CH2'] | {'BR201'}})
+    monkeypatch.setattr(v2, 'BRIDGE_JOINS', {'BR101': (('fn', 'U401', 'OUT+'), ('fn', 'U101', 'V+')), 'BR201': (('pin', 'R208', '2'), ('pin', 'J602', '8'))})
+    monkeypatch.setattr(v2, 'BRIDGE_TEXT', 'the CH2 clamp D201 sits on the dual side of both')
+    monkeypatch.setattr(v2, 'PWR_FLAG_NETS', ['GND', '+5V_DUE', '+5V_F', '+3V3A_U'])
+    monkeypatch.setattr(v2_sch, 'PWR_FLAG_NETS', ['GND', '+5V_DUE', '+5V_F', '+3V3A_U'])
+    live_arms = v2.flip_arms
+
+    def old_arms():
+        arms = live_arms()
+        i = [a.why for a in arms].index('CH2 clamp off A0')
+        value, opened = _old_bridge_arms()
+        A = sr.FlipArm
+        return arms[:i] + [A('bridge not 0 ohm', ('N1',), value), A('bridge open', ('C6', 'E2'), opened)] + arms[i + 1:]
+    monkeypatch.setattr(v2, 'flip_arms', old_arms)
     monkeypatch.setattr(sys.modules[__name__], 'SIM', SIM_OLD)
     monkeypatch.setattr(v2, 'SPICE_ROWS', (('N1', 'scope', OLD_SCOPE_NETLIST), ('N2', 'awg', os.path.join('awg', 'awg.cir'))))
     yield
-    for p in v2_sch.PARTS:
-        p.update(saved[p['ref']])
+    v2_sch.PARTS[:] = saved
 
 
 def pure_rows(parts=None, spice=None, tag=''):
@@ -81,17 +107,19 @@ def verdicts(rows):
 def test_the_design_is_loaded_from_one_place_and_leaves_no_plain_module_name():
     import sys
     assert 'design' not in sys.modules and v2_sch._design.__name__ == 'pcbtools._live_v2.design'
-    # the frozen design is the first revision's; the live one differs from it only by the values landed on 2026-11-13 (D-V2-17):
-    # the scope's six resistors and two capacitors per channel, and the AWG's R305 and R306. Anything else that moves is a failure.
+    # the frozen design is the first revision's; the live one differs from it by the values landed on 2026-11-13 (D-V2-17: the scope's six
+    # resistors and two capacitors per channel, and the AWG's R305 and R306) and by the bridge removal: BR101 and BR201 are gone, CH2 sits
+    # on the dual's half A (U101 pins 1-3, CH1 on 5-7) and the nets +3V3A_U and CH2_RISO are merged into +3V3A and A0. Anything else that moves is a failure.
     old, new = v2_sch._load_design(str(FIX / 'kicad' / 'design.py')).PARTS, v2_sch.PARTS
-    assert [p['ref'] for p in old] == [p['ref'] for p in new]
+    assert [p['ref'] for p in old if p['ref'] not in ('BR101', 'BR201')] == [p['ref'] for p in new]
     changed = set()
-    for a, b in zip(old, new):
-        assert {k: v for k, v in a.items() if k not in ('value', 'lcsc', 'note')} == {k: v for k, v in b.items() if k not in ('value', 'lcsc', 'note')}, a['ref']
+    for a, b in zip([p for p in old if p['ref'] not in ('BR101', 'BR201')], new):
+        assert {k: v for k, v in a.items() if k not in ('value', 'lcsc', 'note', 'pins')} == {k: v for k, v in b.items() if k not in ('value', 'lcsc', 'note', 'pins')}, a['ref']
         if a != b:
             changed.add(a['ref'])
-    assert changed == {f'{k}{ch * 100 + n}' for ch in (1, 2) for k, n in (('R', 1), ('R', 2), ('R', 3), ('R', 4), ('R', 5), ('R', 6), ('C', 1), ('C', 2))} | {'R305', 'R306'}
-
+    assert changed == {f'{k}{ch * 100 + n}' for ch in (1, 2) for k, n in (('R', 1), ('R', 2), ('R', 3), ('R', 4), ('R', 5), ('R', 6), ('C', 1), ('C', 2))} | {'R305', 'R306'} | {'U101', 'C104', 'C105', 'D201', 'R208'}
+    pins = {a['ref']: (a['pins'], b['pins']) for a, b in zip([p for p in old if p['ref'] not in ('BR101', 'BR201')], new) if a['pins'] != b['pins']}
+    assert set(pins) == {'U101', 'C104', 'C105', 'D201', 'R208'}
 
 def test_the_old_tools_are_frozen_with_what_they_read():
     assert sorted(p.name for p in (FIX / 'kicad').iterdir() if p.is_file()) == sorted(
@@ -171,6 +199,7 @@ def test_compare_on_the_real_blocks_has_no_difference_and_a_changed_value_is_one
     assert d and 'R 3000.0' in d[0]
 
 
+@pytest.mark.usefixtures("frozen")                                      # the live design has no bridge: the first revision's has two
 def test_a_bridge_that_is_not_zero_ohm_is_refused():
     p = sch_synth.project_from_parts(copy.deepcopy(v2.PARTS), v2.DATASHEET_PINS)
     p.comps['BR101']['value'] = '1k 1%'
@@ -344,8 +373,8 @@ def test_known_figures_of_the_power_calibration_and_scope_rows():
     assert "reference loaded by ['R106', 'R206', 'R305']" in d['C5']
     assert d['N1'] == 'scope: 29 SPICE elements after reduction, 29 schematic elements'
     assert d['N2'] == 'awg: 14 SPICE elements after reduction, 14 schematic elements'
-    assert d['D2'].startswith('each block holds exactly its key part list: CH1 18, CH2 15, AWG 17, POWER 21, REFCAL 21, EDGE 9')
-    assert d['B1'] == '64 studied parts against 65 parts.csv keys' and d['C6'].startswith("BR101 joins ['+3V3A', '+3V3A_U']")
+    assert d['D2'].startswith('each block holds exactly its key part list: CH1 17, CH2 14, AWG 17, POWER 21, REFCAL 21, EDGE 9')
+    assert d['B1'] == '64 studied parts against 65 parts.csv keys' and d['C6'] == "the CH2 clamp D201 sits on A0 (R208.2) and on the dual's V+"
 
 
 def test_study_rows_known_entries():
@@ -366,11 +395,12 @@ NO_ERC_ARMS = ('GND flag removed', 'pin left out without NC')           # the fi
 PURE_ARMS = [a for a in v2.flip_arms() if a.why not in NO_ERC_ARMS]
 
 
-def test_there_are_24_arms_with_the_old_names():
+def test_there_are_23_arms_the_old_ones_less_the_bridge_arms_plus_the_clamp():
     arms = v2.flip_arms()
-    assert len(arms) == 24 and len({a.why for a in arms}) == 24
+    assert len(arms) == 23 and len({a.why for a in arms}) == 23
     old = re.findall(r'^PASS M-(.*?): ', (GOLD / 'check.raw.txt').read_text(), re.M)
-    assert [a.why for a in arms] == old and len(old) == 24
+    assert len(old) == 24
+    assert [a.why for a in arms] == [('CH2 clamp off A0' if w == 'bridge open' else w) for w in old if w != 'bridge not 0 ohm']
     assert [(a.why, a.expect) for a in arms if a.why in NO_ERC_ARMS] == [('pin left out without NC', ()), ('GND flag removed', ('S1',))]
 
 

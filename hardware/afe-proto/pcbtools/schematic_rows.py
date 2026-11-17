@@ -237,7 +237,7 @@ def bridge_row(p, cfg, tag=''):
     have = {ref: {p.pn.get((ref, '1')), p.pn.get((ref, '2'))} for ref in cfg.BRIDGE_JOINS}
     sides = all(end_net(p, a) is not None and end_net(p, a) == end_net(p, b) for a, b in cfg.BRIDGE_SIDES)
     return Row(cfg.ROW_IDS['bridge'] + tag, have == want and sides,
-               ', '.join(f'{ref} joins {sorted(have[ref], key=str)}' for ref in cfg.BRIDGE_JOINS) + '; ' + cfg.BRIDGE_TEXT)
+               '; '.join([', '.join(f'{ref} joins {sorted(have[ref], key=str)}' for ref in cfg.BRIDGE_JOINS)] * bool(cfg.BRIDGE_JOINS) + [cfg.BRIDGE_TEXT]))
 
 
 def header_row(p, cfg, tag=''):
