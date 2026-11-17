@@ -1,17 +1,15 @@
-F.SilkS board-level segments: 53 ; outline table blocks: {'POWER': 1, 'REFCAL': 2, 'CH1': 3, 'CH2': 2, 'AWG': 2}
-parts whose courtyard is not inside a rectangle of their own block (13): [('D201', 'CH2'), ('D101', 'CH1'), ('BR503', 'REFCAL'), ('BR502', 'REFCAL'), ('R501', 'REFCAL'), ('BR102', 'CH1'), ('J101', 'CH1'), ('U101', 'CH1'), ('R306', 'AWG'), ('J201', 'CH2'), ('BR501', 'REFCAL'), ('J301', 'AWG'), ('BR504', 'REFCAL')]
+F.SilkS board-level segments: 43 ; outline table blocks: {'POWER': 1, 'REFCAL': 1, 'CH1': 2, 'CH2': 2, 'AWG': 2}
+parts whose courtyard is not inside a rectangle of their own block (11): [('D201', 'CH2'), ('D101', 'CH1'), ('BR503', 'REFCAL'), ('BR502', 'REFCAL'), ('BR102', 'CH1'), ('J101', 'CH1'), ('U101', 'CH1'), ('J201', 'CH2'), ('BR501', 'REFCAL'), ('J301', 'AWG'), ('BR504', 'REFCAL')]
 parts whose courtyard enters another block's rectangle (4): [('D201', 'CH2', 'CH1'), ('U101', 'CH1', 'CH2'), ('BR501', 'REFCAL', 'CH2'), ('BR504', 'REFCAL', 'CH2')]
 rectangles of different blocks that overlap (0): []
 block POWER   rectangles 1, separate polygons 1
-block REFCAL  rectangles 2, separate polygons 2
-block CH1     rectangles 3, separate polygons 2
+block REFCAL  rectangles 1, separate polygons 1
+block CH1     rectangles 2, separate polygons 2
 block CH2     rectangles 2, separate polygons 2
 block AWG     rectangles 2, separate polygons 2
-  POWER rect (17.9, 4.6, 43.6, 26.0): silk breaks (edge: from-to) {'S': [(np.float64(43.6), 43.6)], 'N': [(np.float64(43.6), 43.6)]}
-  REFCAL rect (44.2, 4.6, 64.4, 27.8): silk breaks (edge: from-to) {'E': [(np.float64(5.9), np.float64(8.95))]}
-  REFCAL rect (64.6, 18.6, 68.9, 26.0): silk breaks (edge: from-to) {'W': [(18.6, np.float64(20.25)), (np.float64(22.05), np.float64(23.6))], 'E': [(np.float64(20.3), np.float64(21.85)), (np.float64(23.75), np.float64(25.25))]}
-  CH1 rect (63.9, 33.0, 93.0, 50.0): silk breaks (edge: from-to) {'S': [(np.float64(65.0), np.float64(67.1)), (np.float64(72.75), np.float64(74.85)), (np.float64(79.7), np.float64(80.4)), (np.float64(84.8), np.float64(85.5)), (np.float64(92.3), 93.0)], 'N': [(63.9, np.float64(65.2)), (np.float64(67.45), np.float64(88.05)), (np.float64(88.5), np.float64(91.8)), (np.float64(92.3), 93.0)], 'W': [(np.float64(34.9), np.float64(36.5)), (np.float64(49.1), 50.0)], 'E': [(33.0, 50.0)]}
-  CH1 rect (60.4, 34.6, 64.0, 36.8): silk breaks (edge: from-to) {'E': [(34.6, 36.8)]}
-  CH2 rect (69.0, 19.75, 93.0, 32.9): silk breaks (edge: from-to) {'S': [(np.float64(92.3), 93.0)], 'N': [(np.float64(70.9), np.float64(74.85)), (np.float64(79.7), np.float64(80.4)), (np.float64(84.8), np.float64(85.5)), (np.float64(92.3), 93.0)], 'W': [(np.float64(20.3), np.float64(21.85)), (np.float64(23.75), np.float64(25.25))], 'E': [(19.75, 32.9)]}
-  AWG rect (70.4, 4.55, 92.3, 19.25): silk breaks (edge: from-to) {'S': [(np.float64(83.05), np.float64(84.6))]}
+  POWER rect (17.9, 4.6, 43.6, 26.0): silk breaks (edge: from-to) {'S': [(np.float64(43.6), 43.6)]}
+  REFCAL rect (44.2, 4.6, 64.8, 27.8): silk breaks (edge: from-to) {'E': [(np.float64(18.75), np.float64(20.25)), (np.float64(22.0), np.float64(23.6))]}
+  CH1 rect (63.9, 33.0, 92.3, 49.0): silk breaks (edge: from-to) {'S': [(np.float64(65.0), np.float64(67.1)), (np.float64(72.75), np.float64(74.85)), (np.float64(79.7), np.float64(80.4)), (np.float64(84.8), np.float64(85.5))], 'W': [(np.float64(34.9), np.float64(36.5))]}
+  CH2 rect (69.0, 19.75, 92.3, 32.9): silk breaks (edge: from-to) {'N': [(np.float64(70.9), np.float64(74.85)), (np.float64(79.7), np.float64(80.4)), (np.float64(84.8), np.float64(85.5))], 'W': [(np.float64(20.3), np.float64(21.85)), (np.float64(23.75), np.float64(25.25))], 'E': [(np.float64(32.9), 32.9)]}
+  AWG rect (70.4, 4.3, 92.3, 19.25): silk breaks (edge: from-to) {'E': [(np.float64(19.25), 19.25), (np.float64(32.9), 19.25)]}
   AWG rect (98.51, 0.0, 116.09, 17.78): silk breaks (edge: from-to) {'W': [(np.float64(17.78), 17.78)], 'E': [(np.float64(17.78), 17.78)]}

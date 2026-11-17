@@ -11,7 +11,14 @@ ol = importlib.util.module_from_spec(spec); spec.loader.exec_module(ol)
 old = {k: [tuple(r) for r in v] for k, v in ol.RECTS.items()}
 new = {k: [tuple(r) for r in v] for k, v in old.items()}
 CH2_W = min(r[0] for r in old['CH2'] if r[0] < 98)                                   # CH2's main rectangle starts here (69.0)
-new['REFCAL'] = [r if not (abs(r[0] - 64.6) < 0.01 and abs(r[1] - 18.6) < 0.01) else (r[0], r[1], round(CH2_W - 0.1, 3), r[3]) for r in old['REFCAL']]
+# AFE-1 way (afe1-labels kicad/labels/rects.py): ONE plain rectangle per block around its main group, and no extra small boxes; the strays sit outside. So REFCAL's second
+# rectangle (64.6, 18.6, 68.9, 26.0) and CH1's small box (60.4, 34.6, 64.0, 36.8) are dropped; the three BNC boxes stay.
+new['REFCAL'] = [r for r in old['REFCAL'] if not (abs(r[0] - 64.6) < 0.01 and abs(r[1] - 18.6) < 0.01)]
+new['CH1'] = [r for r in old['CH1'] if not (abs(r[0] - 60.4) < 0.01 and abs(r[1] - 34.6) < 0.01)]
+import os
+if os.environ.get('MAINRECTS'):                      # AFE-1's rects.py (descent + grow) result for the main rectangle of each block; the BNC boxes are handled below
+    mr = json.load(open(os.environ['MAINRECTS']))
+    for k, v in mr.items(): new[k] = [tuple(round(float(c), 3) for c in v)] + [r for r in new[k] if r[0] >= 98.0]
 txt = open(inp).read()
 B = lambda x, y: (x + 50.0, 150.0 - y)
 edges_old = []
@@ -45,17 +52,18 @@ import pcbnew
 pb = pcbnew.LoadBoard(inp); mmf = pcbnew.ToMM
 due = lambda v: (mmf(v.x) - 50.0, 150.0 - mmf(v.y))
 pad_boxes, silk_segs = [], []
+BREAKS = []
 for f in pb.GetFootprints():
     for p in f.Pads():
-        bb = p.GetBoundingBox(); pad_boxes.append((mmf(bb.GetX()) - 50.0, 150.0 - mmf(bb.GetBottom()), mmf(bb.GetRight()) - 50.0, 150.0 - mmf(bb.GetY())))
+        bb = p.GetBoundingBox(); pad_boxes.append((mmf(bb.GetX()) - 50.0, 150.0 - mmf(bb.GetBottom()), mmf(bb.GetRight()) - 50.0, 150.0 - mmf(bb.GetY()), f.GetReference()))
     for g in f.GraphicalItems():
         if g.GetLayer() != pcbnew.F_SilkS or not hasattr(g, 'GetShape'): continue
         w = mmf(g.GetWidth())
         if g.GetShape() == pcbnew.SHAPE_T_SEGMENT:
-            (x0, y0), (x1, y1) = due(g.GetStart()), due(g.GetEnd()); silk_segs.append((x0, y0, x1, y1, w))
+            (x0, y0), (x1, y1) = due(g.GetStart()), due(g.GetEnd()); silk_segs.append((x0, y0, x1, y1, w, f.GetReference()))
         else:
             bx = g.GetBoundingBox(); x0, y1 = due(bx.GetOrigin()); x1, y0 = due(pcbnew.VECTOR2I(bx.GetRight(), bx.GetBottom()))
-            for a_, c_ in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): silk_segs.append((*a_, *c_, w))
+            for a_, c_ in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): silk_segs.append((*a_, *c_, w, f.GetReference()))
 # ---- the BNC boxes, as AFE-1's round 11 (afe1-labels a49fe27f, kicad/labels/place3.py) draws them: ONE margin m on all four sides of every box, measured line centre to the BNC's own footprint
 # silk rectangle, m = (input pitch - silk height) / 2, so the J101 and J201 boxes share one line; the J301 box stands apart
 BNCS = {'J101': 'CH1', 'J201': 'CH2', 'J301': 'AWG'}
@@ -92,11 +100,11 @@ def seg_dist(px, py, x0, y0, x1, y1):
 
 
 def blocked(px, py):
-    for x0, y0, x1, y1 in pad_boxes:                                        # 0.2 mm clear of a pad, and half the 0.15 mm line
-        if x0 - CLEAR - 0.075 <= px <= x1 + CLEAR + 0.075 and y0 - CLEAR - 0.075 <= py <= y1 + CLEAR + 0.075: return True
-    for x0, y0, x1, y1, w in silk_segs:
-        if seg_dist(px, py, x0, y0, x1, y1) < CLEAR + 0.075 + w / 2: return True
-    return False
+    for x0, y0, x1, y1, rf in pad_boxes:                                    # 0.2 mm clear of a pad, and half the 0.15 mm line
+        if x0 - CLEAR - 0.075 <= px <= x1 + CLEAR + 0.075 and y0 - CLEAR - 0.075 <= py <= y1 + CLEAR + 0.075: return 'pad of ' + rf
+    for x0, y0, x1, y1, w, rf in silk_segs:
+        if seg_dist(px, py, x0, y0, x1, y1) < CLEAR + 0.075 + w / 2: return 'silk of ' + rf
+    return None
 
 
 add = ''; reopened = 0; drawn_ = set()
@@ -105,8 +113,16 @@ for blk, rs in new.items():
         for ei, (p, q) in enumerate((((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)))):
             n = max(2, int(round(math.hypot(q[0] - p[0], q[1] - p[1]) / 0.05)) + 1)
             pts = [(p[0] + (q[0] - p[0]) * k / (n - 1), p[1] + (q[1] - p[1]) * k / (n - 1)) for k in range(n)]
-            free = [not blocked(*pt) for pt in pts]
+            cause = [blocked(*pt) for pt in pts]; free = [c_ is None for c_ in cause]
             k = 0; piece = 0
+            if not all(free):
+                kk = 0
+                while kk < n:                                   # the gaps of this edge: where, how long, and why
+                    if free[kk]: kk += 1; continue
+                    jj = kk
+                    while jj + 1 < n and not free[jj + 1]: jj += 1
+                    BREAKS.append({'block': blk, 'rect': ri, 'edge': ['S', 'E', 'N', 'W'][ei], 'from': [round(pts[kk][0], 2), round(pts[kk][1], 2)], 'to': [round(pts[jj][0], 2), round(pts[jj][1], 2)], 'because': sorted(set(cause[kk:jj + 1]))})
+                    kk = jj + 1
             while k < n:
                 if not free[k]: k += 1; continue
                 j = k
@@ -125,4 +141,5 @@ i = txt.rindex('\n)')
 txt = txt[:i] + add + txt[i:]
 open(out, 'w').write(txt)
 json.dump({k: [list(r) for r in v] for k, v in new.items()}, open(rects_out, 'w'), indent=1)
+json.dump(BREAKS, open(rects_out.replace('.json', '_breaks.json'), 'w'), indent=1)
 print('removed', removed, 'old outline segments; rectangles', sum(len(v) for v in new.values()), '; edges reopened at a pad or footprint silk:', reopened, '; REFCAL', new['REFCAL'])

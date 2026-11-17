@@ -29,11 +29,13 @@ def _box(block):
 
 
 RECTS = {
+    # AFE-1's way (afe1-labels, kicad/labels/rects.py): ONE plain rectangle per block around its main group, no extra small boxes, strays sit outside; the BNC boxes keep one margin
+    # on all four sides of the BNC's footprint silk, (input pitch - silk height)/2, the two inputs sharing one line. No two rectangles overlap.
     'POWER': [(17.9, 4.6, 43.6, 26.0)],
-    'REFCAL': [(44.2, 4.6, 64.4, 27.8), (64.6, 18.6, 68.9, 26.0)],      # the second rectangle stops 0.1 mm short of CH2's (it was 70.2 and overlapped it)
-    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), (98.51, 36.71, 116.09, 54.49)],      # the BNC boxes: one margin on all four sides of the BNC's footprint silk, (input pitch - silk height)/2, the two inputs sharing one line
-    'CH2': [(69.0, 19.75, 93.0, 32.9), (98.51, 18.93, 116.09, 36.71)],
-    'AWG': [(70.4, 4.55, 92.3, 19.25), (98.51, 0.0, 116.09, 17.78)],
+    'REFCAL': [(44.2, 4.6, 64.8, 27.8)],                    # its small second rectangle is gone: BR501-BR504 are strays outside
+    'CH1': [(63.9, 33.0, 92.3, 49.0), (98.51, 36.71, 116.09, 54.49)],      # the small BR box is gone (BR102 is a stray); east edge 92.3 and north edge 49.0 stand clear of the J605 / J606 / J607 pads
+    'CH2': [(69.0, 19.75, 92.3, 32.9), (98.51, 18.93, 116.09, 36.71)],
+    'AWG': [(70.4, 4.3, 92.3, 19.25), (98.51, 0.0, 116.09, 17.78)],
 }
 
 # The AWG's BNC outline (the last AWG rectangle) was a bracket on the board, a left side with two stubs; its right side and bottom

@@ -46,7 +46,7 @@ choice = {}
 for corner in ORDER:                                         # try the same corner for every block first
     ok_all = True; trial = {}
     for t, blk in NAMES.items():
-        rs = RECTS[blk]; x0, y0, x1, y1 = max(rs, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
+        rs = RECTS[blk]; x0, y0, x1, y1 = max(rs, key=lambda r: (r[0] < 98.0, (r[2] - r[0]) * (r[3] - r[1])))
         L = len(t) * 0.95 * SIZE; found = None
         for d in sorted((math.hypot(i * 0.1, j * 0.1), i * 0.1, j * 0.1) for i in range(0, 120) for j in range(0, 120)):
             _, dx, dy = d
@@ -62,7 +62,7 @@ if not placed and REFCAL_ABOVE:
     pass
 if not placed:                                               # per block: the first corner that has room
     for t, blk in NAMES.items():
-        rs = RECTS[blk]; x0, y0, x1, y1 = max(rs, key=lambda r: (r[2] - r[0]) * (r[3] - r[1])); L = len(t) * 0.95 * SIZE; got = None
+        rs = RECTS[blk]; x0, y0, x1, y1 = max(rs, key=lambda r: (r[0] < 98.0, (r[2] - r[0]) * (r[3] - r[1]))); L = len(t) * 0.95 * SIZE; got = None
         for corner in ORDER:
             for d in sorted((math.hypot(i * 0.1, j * 0.1), i * 0.1, j * 0.1) for i in range(0, 120) for j in range(0, 120)):
                 _, dx, dy = d
@@ -95,7 +95,7 @@ if not placed.get('REF / CAL'):                      # the four corners of both 
 t_ = txt
 for t, v in placed.items():
     if not v and t == 'REF / CAL':                              # owner: above the top-left corner of its rectangle, touching it (0.3 mm clear of the line)
-        x0_, y0_, x1_, y1_ = max(RECTS['REFCAL'], key=lambda r: (r[2] - r[0]) * (r[3] - r[1])); L_ = len(t) * 0.95 * SIZE
+        x0_, y0_, x1_, y1_ = max(RECTS['REFCAL'], key=lambda r: (r[0] < 98.0, (r[2] - r[0]) * (r[3] - r[1]))); L_ = len(t) * 0.95 * SIZE
         v = ('above the NW corner', (round(x0_ + L_ / 2, 3), round(y1_ + 1.25, 3))); report['placed'][t] = ['above NW corner', list(v[1])]
     if not v:
         mm_ = re.search(r'\(gr_text "%s"\s+\(at ([-\d.]+) ([-\d.]+)' % re.escape(t), t_); v = ('kept', (float(mm_.group(1)) - 50.0, 150.0 - float(mm_.group(2))))

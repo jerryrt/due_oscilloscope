@@ -9,6 +9,6 @@
 [PASS] LR-7: DAC0 2.2 mm; back-termination at the BNC; shell pads on ground
 [PASS] LR-8: VREF: 6 branches each on its own copper
 [PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
-[FAIL] LR-11: C409: designator not on silk at 0.8 mm or more; R304: designator not on silk at 0.8 mm or more; R307: designator not on silk at 0.8 mm or more; R203: designator not on silk at 0.8 mm or more; R303: designator not on silk at 0.8 mm or more; R202: designator not on silk at 0.8 mm or more; C102: designator not on silk at 0.8 mm or more; R508: designator not on silk at 0.8 mm or more
+[FAIL] LR-11: C409: designator not on silk at 0.8 mm or more; R304: designator not on silk at 0.8 mm or more; R509: designator not on silk at 0.8 mm or more; R307: designator not on silk at 0.8 mm or more; R203: designator not on silk at 0.8 mm or more; R303: designator not on silk at 0.8 mm or more; R202: designator not on silk at 0.8 mm or more; C102: designator not on silk at 0.8 mm or more
 [SKIP] LR-10: skipped by request (--no-drc)
 FAIL: LR-11

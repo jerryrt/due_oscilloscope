@@ -1,0 +1,194 @@
+[
+ {
+  "block": "REFCAL",
+  "rect": 0,
+  "edge": "E",
+  "from": [
+   64.8,
+   18.8
+  ],
+  "to": [
+   64.8,
+   20.2
+  ],
+  "because": [
+   "pad of BR502"
+  ]
+ },
+ {
+  "block": "REFCAL",
+  "rect": 0,
+  "edge": "E",
+  "from": [
+   64.8,
+   22.05
+  ],
+  "to": [
+   64.8,
+   23.55
+  ],
+  "because": [
+   "pad of BR503"
+  ]
+ },
+ {
+  "block": "CH1",
+  "rect": 0,
+  "edge": "S",
+  "from": [
+   65.05,
+   33.0
+  ],
+  "to": [
+   67.05,
+   33.0
+  ],
+  "because": [
+   "pad of D101"
+  ]
+ },
+ {
+  "block": "CH1",
+  "rect": 0,
+  "edge": "S",
+  "from": [
+   72.8,
+   33.0
+  ],
+  "to": [
+   74.8,
+   33.0
+  ],
+  "because": [
+   "pad of D201"
+  ]
+ },
+ {
+  "block": "CH1",
+  "rect": 0,
+  "edge": "S",
+  "from": [
+   79.75,
+   33.0
+  ],
+  "to": [
+   80.35,
+   33.0
+  ],
+  "because": [
+   "silk of U101"
+  ]
+ },
+ {
+  "block": "CH1",
+  "rect": 0,
+  "edge": "S",
+  "from": [
+   84.85,
+   33.0
+  ],
+  "to": [
+   85.45,
+   33.0
+  ],
+  "because": [
+   "silk of U101"
+  ]
+ },
+ {
+  "block": "CH1",
+  "rect": 0,
+  "edge": "W",
+  "from": [
+   63.9,
+   36.45
+  ],
+  "to": [
+   63.9,
+   34.95
+  ],
+  "because": [
+   "pad of BR102"
+  ]
+ },
+ {
+  "block": "CH2",
+  "rect": 0,
+  "edge": "N",
+  "from": [
+   85.45,
+   32.9
+  ],
+  "to": [
+   84.85,
+   32.9
+  ],
+  "because": [
+   "silk of U101"
+  ]
+ },
+ {
+  "block": "CH2",
+  "rect": 0,
+  "edge": "N",
+  "from": [
+   80.35,
+   32.9
+  ],
+  "to": [
+   79.75,
+   32.9
+  ],
+  "because": [
+   "silk of U101"
+  ]
+ },
+ {
+  "block": "CH2",
+  "rect": 0,
+  "edge": "N",
+  "from": [
+   74.8,
+   32.9
+  ],
+  "to": [
+   70.95,
+   32.9
+  ],
+  "because": [
+   "pad of D201"
+  ]
+ },
+ {
+  "block": "CH2",
+  "rect": 0,
+  "edge": "W",
+  "from": [
+   69.0,
+   25.2
+  ],
+  "to": [
+   69.0,
+   23.8
+  ],
+  "because": [
+   "pad of BR504"
+  ]
+ },
+ {
+  "block": "CH2",
+  "rect": 0,
+  "edge": "W",
+  "from": [
+   69.0,
+   21.8
+  ],
+  "to": [
+   69.0,
+   20.35
+  ],
+  "because": [
+   "pad of BR501"
+  ]
+ }
+]

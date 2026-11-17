@@ -51,7 +51,7 @@
   "J603": [
    "above",
    81.3,
-   5.4,
+   5.1,
    "relaxed"
   ],
   "J604": [
@@ -180,6 +180,12 @@
    41.91,
    "strict"
   ],
+  "BR502": [
+   "west90",
+   64.015,
+   16.4,
+   "strict"
+  ],
   "C407": [
    "below",
    28.05,
@@ -204,12 +210,6 @@
    12.2,
    "strict"
   ],
-  "R509": [
-   "below",
-   61.525,
-   15.274999000000001,
-   "strict"
-  ],
   "C104": [
    "west0",
    76.25499899999998,
@@ -220,12 +220,6 @@
    "above",
    74.5,
    15.499999999999998,
-   "strict"
-  ],
-  "BR503": [
-   "west90",
-   63.665,
-   23.9,
    "strict"
   ],
   "C306": [
@@ -252,16 +246,16 @@
    39.1,
    "strict"
   ],
+  "BR503": [
+   "above",
+   62.239999999999995,
+   24.325,
+   "strict"
+  ],
   "R513": [
    "east0",
    47.475,
    19.425001,
-   "strict"
-  ],
-  "C503": [
-   "east0",
-   58.925,
-   24.275000000000002,
    "strict"
   ],
   "C203": [
@@ -371,7 +365,6 @@
   "BR101",
   "BR102",
   "BR501",
-  "BR502",
   "BR504",
   "BR506",
   "BR508",
@@ -389,6 +382,7 @@
   "C409",
   "C501",
   "C502",
+  "C503",
   "R101",
   "R102",
   "R103",
@@ -414,6 +408,7 @@
   "R505",
   "R507",
   "R508",
+  "R509",
   "R510",
   "R511",
   "R514"
@@ -425,7 +420,6 @@
   "C306",
   "C404",
   "C408",
-  "C503",
   "D201",
   "J601",
   "R107",
@@ -531,15 +525,14 @@
    "pad or via": 3963,
    "on another part body": 186784,
    "own part body/pads": 48584,
-   "own part (body and pads) not nearer than another part by 0.15 mm": 1423,
-   "silk line or outline": 8627,
-   "outside own block outline": 1451,
+   "own part (body and pads) not nearer than another part by 0.15 mm": 1428,
+   "silk line or outline": 7372,
+   "outside own block outline": 2592,
    "board text / pin label": 1478
   },
   "passives with no static place at all": [
    "BR102",
    "BR501",
-   "BR502",
    "BR504",
    "BR506",
    "BR509",
@@ -566,7 +559,6 @@
    "R205",
    "R302",
    "R303",
-   "R306",
    "R404",
    "R405",
    "R501",
@@ -578,32 +570,34 @@
    "R510"
   ],
   "dropped with static places but lost to label spacing or stacking": [
+   "C503",
+   "R509",
    "R514"
   ],
   "dropped with no static place, by the single test whose removal alone would give a place": {
-   "own body not nearer by 0.25 mm": 31,
-   "outside own block outline": 4,
+   "outside own block outline": 3,
+   "own body not nearer by 0.25 mm": 29,
    "board text / pin label": 2,
-   "silk line or outline": 2,
-   "pad or via": 4
+   "silk line or outline": 1,
+   "pad or via": 3
   },
   "dropped passives for which that test alone is the blocker (any place)": {
-   "own body not nearer by 0.25 mm": 31,
-   "silk line or outline": 2,
-   "outside own block outline": 4,
-   "pad or via": 4,
+   "own body not nearer by 0.25 mm": 29,
+   "pad or via": 3,
+   "outside own block outline": 3,
+   "own part (body and pads) not nearer than another part by 0.15 mm": 0,
    "board text / pin label": 2,
-   "own part (body and pads) not nearer than another part by 0.15 mm": 0
+   "silk line or outline": 1
   }
  },
  "kinds": {
   "bnc90": 3,
-  "above": 26,
-  "east0": 11,
+  "above": 27,
+  "east0": 10,
   "west0": 11,
   "east90": 1,
-  "below": 6,
+  "below": 5,
   "west90": 3
  },
- "iterations": 21397
+ "iterations": 13421
 }

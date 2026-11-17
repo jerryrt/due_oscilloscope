@@ -1,4 +1,16 @@
-parts with a label 61 ; failing either step 1
+18:06:18: Debug: Adding duplicate image handler for 'PNG file'
+18:06:18: Debug: Adding duplicate image handler for 'JPEG file'
+18:06:18: Debug: Adding duplicate image handler for 'TIFF file'
+18:06:18: Debug: Adding duplicate image handler for 'GIF file'
+18:06:18: Debug: Adding duplicate image handler for 'PNM file'
+18:06:18: Debug: Adding duplicate image handler for 'PCX file'
+18:06:18: Debug: Adding duplicate image handler for 'IFF file'
+18:06:18: Debug: Adding duplicate image handler for 'Windows icon file'
+18:06:18: Debug: Adding duplicate image handler for 'Windows cursor file'
+18:06:18: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+18:06:18: Debug: Adding duplicate image handler for 'TGA file'
+18:06:18: Debug: Adding duplicate image handler for 'XPM file'
+parts with a label 60 ; failing either step 1
   FAIL J605    step2(part: own label 0.48, other label of J101 at 0.54)
   R305: d(part,own label) 0.45; step1 ok; step2 ok
   BR510: d(part,own label) 0.10; step1 ok; step2 ok

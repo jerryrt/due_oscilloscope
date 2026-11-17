@@ -1186,8 +1186,9 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R509"
-			(at 1.4 1.525 0)
+			(at 2.975 -0.775 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "c1442b36-76f8-55da-972e-ef4fa06db879")
 			(effects
 				(font
@@ -3999,7 +4000,7 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "BR503"
-			(at -2.375001 -1.1 90)
+			(at -3.8 -1.525 0)
 			(layer "F.SilkS")
 			(uuid "51c0665a-d08c-59a9-b26e-65cac3e36018")
 			(effects
@@ -4664,9 +4665,8 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "BR502"
-			(at 1.575 3.425 0)
+			(at -2.025 3.1 90)
 			(layer "F.SilkS")
-			(hide yes)
 			(uuid "a3e89707-105b-55ce-b201-3bf9a11debb2")
 			(effects
 				(font
@@ -10588,7 +10588,7 @@
 		(descr "Through hole straight socket strip, 1x08, 2.54mm pitch, single row (from Kicad 4.0.7), script generated")
 		(tags "Through hole socket strip THT 1x08 2.54mm single row")
 		(property "Reference" "J603"
-			(at 2.86 7.64 0)
+			(at 2.56 7.64 0)
 			(layer "F.SilkS")
 			(uuid "1404d0de-8a17-57c4-9994-62bbe20be4f4")
 			(effects
@@ -11437,8 +11437,9 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C503"
-			(at 0.3 2.825 0)
+			(at 1.825 2.325 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "60573d52-f6fe-5eb8-89f2-3e2089708a36")
 			(effects
 				(font
@@ -22449,7 +22450,7 @@
 		)
 	)
 	(gr_text "CH1"
-		(at 115.910 101.820 0)
+		(at 115.910 102.020 0)
 		(layer "F.SilkS")
 		(uuid "2baf1636-7bd3-4229-ab4b-8dc8b6c97206")
 		(effects
@@ -30918,7 +30919,7 @@
 	)
 	(gr_line
 		(start 94.2 145.4)
-		(end 114.4 145.4)
+		(end 114.8 145.4)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -30927,8 +30928,8 @@
 		(uuid "95063d66-7cef-5d56-bd81-72661cc2ca14")
 	)
 	(gr_line
-		(start 114.4 145.4)
-		(end 114.4 144.1)
+		(start 114.8 145.4)
+		(end 114.8 131.25)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -30937,8 +30938,8 @@
 		(uuid "148e427c-25ce-5577-9258-de0619288d5a")
 	)
 	(gr_line
-		(start 114.4 141.05)
-		(end 114.4 122.2)
+		(start 114.8 129.75)
+		(end 114.8 128.0)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -30947,7 +30948,17 @@
 		(uuid "3383e8b5-0f57-52af-b6d2-a86e0d14cbd8")
 	)
 	(gr_line
-		(start 114.4 122.2)
+		(start 114.8 126.4)
+		(end 114.8 122.2)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "be6e5fb2-763b-5ffd-bc13-799fd7aecf62")
+	)
+	(gr_line
+		(start 114.8 122.2)
 		(end 94.2 122.2)
 		(stroke
 			(width 0.15)
@@ -30965,76 +30976,6 @@
 		)
 		(layer "F.SilkS")
 		(uuid "fd6b44e3-1d25-598b-a750-7a30022761d9")
-	)
-	(gr_line
-		(start 114.6 131.4)
-		(end 118.9 131.4)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "bb6283ff-ab93-5034-b233-7c509deff4c6")
-	)
-	(gr_line
-		(start 118.9 131.4)
-		(end 118.9 129.7)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "439e6c9b-4ae6-54cc-bd0c-3e33710d21bd")
-	)
-	(gr_line
-		(start 118.9 128.15)
-		(end 118.9 126.25)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "4b43dc30-4311-5f6f-a200-edee8ab2080f")
-	)
-	(gr_line
-		(start 118.9 124.75)
-		(end 118.9 124.0)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "97ec48a8-c753-5635-9926-5ab3efa6a63b")
-	)
-	(gr_line
-		(start 118.9 124.0)
-		(end 114.6 124.0)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "f5de62d4-935b-5fb1-b218-324c94c2889c")
-	)
-	(gr_line
-		(start 114.6 124.0)
-		(end 114.6 126.4)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "6c723ec8-a488-5013-83a1-c4ebe0b7f5b8")
-	)
-	(gr_line
-		(start 114.6 127.95)
-		(end 114.6 129.75)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "bcb7574d-95d0-5ddf-b610-b1874dba8c08")
 	)
 	(gr_line
 		(start 113.9 117.0)
@@ -31087,8 +31028,18 @@
 		(uuid "93a0cd5f-84ab-58ae-9b96-3dc750539a70")
 	)
 	(gr_line
-		(start 142.3 100.0)
-		(end 141.8 100.0)
+		(start 142.3 117.0)
+		(end 142.3 101.0)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "e1ff2471-737f-5c57-b20c-d743ca7af18f")
+	)
+	(gr_line
+		(start 142.3 101.0)
+		(end 113.9 101.0)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -31097,27 +31048,7 @@
 		(uuid "73a378d9-b578-5044-9865-50b890c69c3c")
 	)
 	(gr_line
-		(start 138.5 100.0)
-		(end 138.05 100.0)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "10a6b4db-4113-52bc-a97e-a937ee6c08db")
-	)
-	(gr_line
-		(start 117.45 100.0)
-		(end 115.2 100.0)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "33ac231a-c5f1-5746-93d7-a0023937d569")
-	)
-	(gr_line
-		(start 113.9 100.9)
+		(start 113.9 101.0)
 		(end 113.9 113.5)
 		(stroke
 			(width 0.15)
@@ -31137,36 +31068,6 @@
 		(uuid "f40e4164-9124-5939-b3c7-1a95574aa9bf")
 	)
 	(gr_line
-		(start 110.4 115.4)
-		(end 114.0 115.4)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "a98bb4fc-1397-5e3f-8e06-8e365b8801ea")
-	)
-	(gr_line
-		(start 114.0 113.2)
-		(end 110.4 113.2)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "465f5c31-a4a3-5708-80ea-e7cfb30ba6c9")
-	)
-	(gr_line
-		(start 110.4 113.2)
-		(end 110.4 115.4)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "71cbff3e-d7e8-5ffc-aadb-6d88cc28784d")
-	)
-	(gr_line
 		(start 148.51 113.29)
 		(end 166.09 113.29)
 		(stroke
@@ -31174,7 +31075,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "a529ed9e-2a77-5dbd-acfa-ba6c3c398d54")
+		(uuid "a98bb4fc-1397-5e3f-8e06-8e365b8801ea")
 	)
 	(gr_line
 		(start 166.09 113.29)
@@ -31184,7 +31085,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "e8bd98a4-4af4-5c5f-857c-4219cd1b2547")
+		(uuid "0c1a86a5-a8bb-55dd-b1e9-ead3eee1db6c")
 	)
 	(gr_line
 		(start 166.09 95.51)
@@ -31194,7 +31095,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "c24b540a-72b9-552d-8fef-d278e96a6d9a")
+		(uuid "465f5c31-a4a3-5708-80ea-e7cfb30ba6c9")
 	)
 	(gr_line
 		(start 148.51 95.51)
@@ -31204,7 +31105,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "687cd364-20ea-5e23-879a-1138cc9aedc6")
+		(uuid "71cbff3e-d7e8-5ffc-aadb-6d88cc28784d")
 	)
 	(gr_line
 		(start 119.0 130.25)
@@ -31215,6 +31116,16 @@
 		)
 		(layer "F.SilkS")
 		(uuid "ac290253-0b0d-570a-90fd-fdf065c2cdef")
+	)
+	(gr_line
+		(start 142.3 130.25)
+		(end 142.3 117.1)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "cc97edb5-5b6f-52ee-98e2-2d57b157beda")
 	)
 	(gr_line
 		(start 142.3 117.1)
@@ -31317,8 +31228,8 @@
 		(uuid "502f1db3-ae3c-5ce4-ab01-952c1be4aa05")
 	)
 	(gr_line
-		(start 120.4 145.45)
-		(end 133.05 145.45)
+		(start 120.4 145.7)
+		(end 142.3 145.7)
 		(stroke
 			(width 0.15)
 			(type default)
@@ -31327,17 +31238,7 @@
 		(uuid "6bdf4c00-39c3-596b-82fa-ed92073c9e95")
 	)
 	(gr_line
-		(start 134.6 145.45)
-		(end 142.3 145.45)
-		(stroke
-			(width 0.15)
-			(type default)
-		)
-		(layer "F.SilkS")
-		(uuid "819d7f67-6f61-5603-963a-2e525e778ba5")
-	)
-	(gr_line
-		(start 142.3 145.45)
+		(start 142.3 145.7)
 		(end 142.3 130.75)
 		(stroke
 			(width 0.15)
@@ -31358,7 +31259,7 @@
 	)
 	(gr_line
 		(start 120.4 130.75)
-		(end 120.4 145.45)
+		(end 120.4 145.7)
 		(stroke
 			(width 0.15)
 			(type default)
