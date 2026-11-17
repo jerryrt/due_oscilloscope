@@ -163,7 +163,9 @@ for n, ax, ay, bx, by, w in tracks:
     for m, a2, c2, d2, e2, w2 in tracks:
         if m != n: continue
         for q in ((ax, ay), (bx, by)):
-            if abs(q[0] - a2) + abs(q[1] - c2) < 0.02 or abs(q[0] - d2) + abs(q[1] - e2) < 0.02:
+            dxx, dyy = d2 - a2, e2 - c2; LL = dxx * dxx + dyy * dyy
+            tt = 0 if LL == 0 else max(0, min(1, ((q[0] - a2) * dxx + (q[1] - c2) * dyy) / LL))
+            if math.hypot(q[0] - a2 - tt * dxx, q[1] - c2 - tt * dyy) < 0.02:       # end on the other track's body (a T junction) joins too
                 union(('t', n, round(ax, 3), round(ay, 3), round(bx, 3), round(by, 3)), ('t', m, round(a2, 3), round(c2, 3), round(d2, 3), round(e2, 3)))
     for m, vx, vy, vd in vias:
         if m == n and (math.hypot(ax - vx, ay - vy) < 0.05 or math.hypot(bx - vx, by - vy) < 0.05):
@@ -365,9 +367,12 @@ def pad_at(pt, net):
 def polyline(path, net=None):
     pts = [xy(*c) for c in path]
     if net:
+        def inside_pad(p, pt):
+            x0, y0, x1, y1 = p['bb']; sh = max(0.15, 0.25 * min(x1 - x0, y1 - y0))
+            return (min(max(pt[0], x0 + sh), x1 - sh), min(max(pt[1], y0 + sh), y1 - sh))      # the nearest point of the pad's inner half: copper for round and rounded pads too
         p0, p1 = pad_at(pts[0], net), pad_at(pts[-1], net)
-        if p0: pts = [((p0['bb'][0] + p0['bb'][2]) / 2, (p0['bb'][1] + p0['bb'][3]) / 2)] + pts
-        if p1: pts = pts + [((p1['bb'][0] + p1['bb'][2]) / 2, (p1['bb'][1] + p1['bb'][3]) / 2)]
+        if p0: pts = [inside_pad(p0, pts[0])] + pts
+        if p1: pts = pts + [inside_pad(p1, pts[-1])]
     out = [pts[0]]
     for a, c, d in zip(pts, pts[1:], pts[2:]):
         if abs((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) > 1e-9:
@@ -557,6 +562,11 @@ for i, (n1, o1, a, b_) in enumerate(SEGS):
         if n1 == n2 or (o1 == o2 and '#' not in n1 and '#' not in str(n2)): continue
         if o1 == o2 and n2 in ('%s' % o1,): continue
         if max(min(a[0], b_[0]), min(c[0], d[0])) - min(max(a[0], b_[0]), max(c[0], d[0])) > 0.45 or max(min(a[1], b_[1]), min(c[1], d[1])) - min(max(a[1], b_[1]), max(c[1], d[1])) > 0.45: continue
+        if o1 == o2:                      # groups of one supply / Kelvin net meet legitimately at their star or source pads
+            mx_, my_ = (a[0] + b_[0]) / 2, (a[1] + b_[1]) / 2
+            sp = [key[tuple(q.split('.'))] for q in (STAR.get(o1, []) + KELVIN.get(o1, {}).get('src', [])) if tuple(q.split('.')) in key]
+            if any(math.hypot(mx_ - (p_['bb'][0] + p_['bb'][2]) / 2, my_ - (p_['bb'][1] + p_['bb'][3]) / 2) < 1.5 for p_ in sp):
+                continue
         lim = 0.9 if (o2 in HIZ or o1 in HIZ) else 0.37
         if seg_dist(a, b_, c, d) < lim:
             confl.append((((a[0] + b_[0]) / 2), ((a[1] + b_[1]) / 2), n1, n2))
