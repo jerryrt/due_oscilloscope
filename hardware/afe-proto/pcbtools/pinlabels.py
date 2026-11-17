@@ -345,12 +345,14 @@ def apply_labels(text, plan, cfg, all_ids=None):
     ids = {label_uuid(r, p) for r, p in (all_ids or [(p.ref, p.pin) for p in plan])}
     blk = re.compile(r'\n\t\(gr_text .*?\n\t\)(?=\n)', re.S)
     ours = [m for m in blk.finditer(text) if any(f'(uuid "{u}")' in m.group(0) for u in ids)]
+    blocks = ''.join(label_block(p).replace('{t}', _fmt(cfg.PIN_LABEL_THICK)) for p in plan)
+    if sorted(m.group(0)[1:] + '\n' for m in ours) == sorted(blk_.group(0)[1:] + '\n' for blk_ in blk.finditer('\n' + blocks)):
+        return text                                        # already applied, in whatever order the file keeps them (KiCad re-sorts on save)
     first = ours[0].start() + 1 if ours else None          # where the old labels began, counted in the text with them removed
     text = blk.sub(lambda m: '' if any(f'(uuid "{u}")' in m.group(0) for u in ids) else m.group(0), text)
     last = None
     for m in blk.finditer(text):
         last = m
-    blocks = ''.join(label_block(p).replace('{t}', _fmt(cfg.PIN_LABEL_THICK)) for p in plan)
     at = first if first is not None else (last.end() + 1 if last else text.index('\n\t(gr_line\n') + 1)
     return text[:at] + blocks + text[at:]
 
