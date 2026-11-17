@@ -12,7 +12,9 @@ from pcbtools import boardio, silkread as S
 inp, out, rects_p, rep_p = sys.argv[1:5]
 RECTS = json.load(open(rects_p)); txt = open(inp).read(); b = boardio.read_board(inp)
 refs = list(b.fp_ref)
-cour = [S._box(b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]) for i in range(len(refs)) if int(b.fp_side[i]) == 0 and not np.isnan(b.fp_cx0[i])]
+cour_r = [(refs[i], S._box(b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i])) for i in range(len(refs)) if int(b.fp_side[i]) == 0 and not np.isnan(b.fp_cx0[i])]
+cour = [c for _, c in cour_r]
+pad_owner = [refs[int(f)] for f in b.p_fp]
 pads = [(x0, y0, x1, y1) for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
 NAMES = {'POWER': 'POWER', 'REF / CAL': 'REFCAL', 'CH1': 'CH1', 'CH2': 'CH2', 'AWG': 'AWG'}
 SIZE = 1.2
@@ -69,6 +71,24 @@ if not placed:                                               # per block: the fi
         placed[t] = got
     report['all_blocks_at'] = None
 report['placed'] = {t: v for t, v in placed.items()}
+if not placed.get('REF / CAL'):                      # the four corners of both REFCAL rectangles, with what is in the way (text at the exact corner, and over every slide)
+    t = 'REF / CAL'; L = len(t) * 0.95 * SIZE; rep = {}
+    for ri, (x0, y0, x1, y1) in enumerate(RECTS['REFCAL']):
+        for corner in ORDER:
+            blk_ = {}; slides = 0
+            for i in range(0, 120):
+                for j in range(0, 120):
+                    dx, dy = i * 0.1, j * 0.1
+                    x = (x0 + 0.3 + L / 2 + dx) if 'W' in corner else (x1 - 0.3 - L / 2 - dx); y = (y1 - 0.3 - SIZE * 0.6 - dy) if corner[0] == 'N' else (y0 + 0.3 + SIZE * 0.6 + dy)
+                    if x - L / 2 < x0 + 0.3 - 1e-9 or x + L / 2 > x1 - 0.3 + 1e-9 or y - SIZE * 0.6 < y0 + 0.3 - 1e-9 or y + SIZE * 0.6 > y1 - 0.3 + 1e-9: continue
+                    slides += 1; bx = tbox(t, x, y)
+                    for rr, c in cour_r:
+                        if S._overlap(bx, c): blk_['courtyard of ' + rr] = blk_.get('courtyard of ' + rr, 0) + 1
+                    for p, o in zip(pads, pad_owner):
+                        if lgap(bx, p) < 0.15: blk_['pad of ' + o] = blk_.get('pad of ' + o, 0) + 1
+            rep['rect%d %s' % (ri, corner)] = {'positions tried': slides, 'blockers (positions blocked)': dict(sorted(blk_.items(), key=lambda kv: -kv[1])[:6])}
+    report['REF / CAL corners'] = rep
+
 t_ = txt
 for t, v in placed.items():
     if not v:

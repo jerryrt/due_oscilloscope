@@ -34,5 +34,67 @@
     0.0
    ]
   ]
+ },
+ "REF / CAL corners": {
+  "rect0 NW": {
+   "positions tried": 11280,
+   "blockers (positions blocked)": {
+    "pad of U502": 29368,
+    "courtyard of U502": 7238,
+    "pad of C503": 4557,
+    "pad of R512": 4068,
+    "courtyard of C503": 3960,
+    "pad of R514": 3924
+   }
+  },
+  "rect0 NE": {
+   "positions tried": 11280,
+   "blockers (positions blocked)": {
+    "pad of U502": 29372,
+    "courtyard of U502": 7238,
+    "pad of C503": 4607,
+    "pad of R512": 4047,
+    "courtyard of C503": 3960,
+    "pad of R514": 3876
+   }
+  },
+  "rect0 SW": {
+   "positions tried": 11280,
+   "blockers (positions blocked)": {
+    "pad of U502": 9178,
+    "pad of J501": 6995,
+    "pad of U501": 5865,
+    "courtyard of J501": 4794,
+    "pad of R505": 4606,
+    "pad of BR506": 4535
+   }
+  },
+  "rect0 SE": {
+   "positions tried": 11280,
+   "blockers (positions blocked)": {
+    "pad of U502": 9178,
+    "pad of J501": 7063,
+    "pad of U501": 5843,
+    "courtyard of J501": 4794,
+    "pad of R505": 4606,
+    "pad of BR506": 4537
+   }
+  },
+  "rect1 NW": {
+   "positions tried": 0,
+   "blockers (positions blocked)": {}
+  },
+  "rect1 NE": {
+   "positions tried": 0,
+   "blockers (positions blocked)": {}
+  },
+  "rect1 SW": {
+   "positions tried": 0,
+   "blockers (positions blocked)": {}
+  },
+  "rect1 SE": {
+   "positions tried": 0,
+   "blockers (positions blocked)": {}
+  }
  }
 }

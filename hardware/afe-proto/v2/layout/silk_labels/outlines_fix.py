@@ -3,7 +3,7 @@
 Block outlines as simple closed RECTANGLES from v2/layout/outlines.py RECTS (main's table), with REFCAL's second rectangle cut back so that it no longer
 overlaps CH2's. Every board-level F.SilkS gr_line that lies on an edge of the old table's rectangles is removed (the old drawing was dashed: a break is a missing
 dash) and each rectangle of the new table is drawn as four solid 0.15 mm lines. RECTS.json receives the new table. Nothing but silk lines changes."""
-import sys, re, json, uuid, importlib.util
+import sys, re, json, uuid, math, importlib.util
 
 inp, out, rects_out = sys.argv[1:4]
 spec = importlib.util.spec_from_file_location('outlines', '/work/_work/outlines_main.py')   # the branch's own table
@@ -39,15 +39,61 @@ def drop(m):
 
 
 txt = re.sub(r'\n\t\(gr_line(?:(?!\n\t\)).)*\n\t\)', drop, txt, flags=re.S)
-add = ''
+import numpy as np
+sys.path.insert(0, '/work/hardware/afe-proto'); sys.path.append('/usr/lib/python3/dist-packages')
+import pcbnew
+pb = pcbnew.LoadBoard(inp); mmf = pcbnew.ToMM
+due = lambda v: (mmf(v.x) - 50.0, 150.0 - mmf(v.y))
+pad_boxes, silk_segs = [], []
+for f in pb.GetFootprints():
+    for p in f.Pads():
+        bb = p.GetBoundingBox(); pad_boxes.append((mmf(bb.GetX()) - 50.0, 150.0 - mmf(bb.GetBottom()), mmf(bb.GetRight()) - 50.0, 150.0 - mmf(bb.GetY())))
+    for g in f.GraphicalItems():
+        if g.GetLayer() != pcbnew.F_SilkS or not hasattr(g, 'GetShape'): continue
+        w = mmf(g.GetWidth())
+        if g.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+            (x0, y0), (x1, y1) = due(g.GetStart()), due(g.GetEnd()); silk_segs.append((x0, y0, x1, y1, w))
+        else:
+            bx = g.GetBoundingBox(); x0, y1 = due(bx.GetOrigin()); x1, y0 = due(pcbnew.VECTOR2I(bx.GetRight(), bx.GetBottom()))
+            for a_, c_ in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): silk_segs.append((*a_, *c_, w))
+CLEAR = 0.2
+
+
+def seg_dist(px, py, x0, y0, x1, y1):
+    dx, dy = x1 - x0, y1 - y0; L = dx * dx + dy * dy
+    t = 0.0 if L == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L))
+    return ((px - x0 - t * dx) ** 2 + (py - y0 - t * dy) ** 2) ** 0.5
+
+
+def blocked(px, py):
+    for x0, y0, x1, y1 in pad_boxes:                                        # 0.2 mm clear of a pad, and half the 0.15 mm line
+        if x0 - CLEAR - 0.075 <= px <= x1 + CLEAR + 0.075 and y0 - CLEAR - 0.075 <= py <= y1 + CLEAR + 0.075: return True
+    for x0, y0, x1, y1, w in silk_segs:
+        if seg_dist(px, py, x0, y0, x1, y1) < CLEAR + 0.075 + w / 2: return True
+    return False
+
+
+add = ''; reopened = 0
 for blk, rs in new.items():
     for ri, (x0, y0, x1, y1) in enumerate(rs):
         for ei, (p, q) in enumerate((((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)))):
-            (px, py), (qx, qy) = B(*p), B(*q)
-            add += '\n\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)' % (
-                round(px, 4), round(py, 4), round(qx, 4), round(qy, 4), uuid.uuid5(uuid.NAMESPACE_URL, 'outline/%s/%d/%d' % (blk, ri, ei)))
+            n = max(2, int(round(math.hypot(q[0] - p[0], q[1] - p[1]) / 0.05)) + 1)
+            pts = [(p[0] + (q[0] - p[0]) * k / (n - 1), p[1] + (q[1] - p[1]) * k / (n - 1)) for k in range(n)]
+            free = [not blocked(*pt) for pt in pts]
+            k = 0; piece = 0
+            while k < n:
+                if not free[k]: k += 1; continue
+                j = k
+                while j + 1 < n and free[j + 1]: j += 1
+                if math.hypot(pts[j][0] - pts[k][0], pts[j][1] - pts[k][1]) >= 0.3:
+                    (px, py), (qx, qy) = B(*pts[k]), B(*pts[j])
+                    add += '\n\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)' % (
+                        round(px, 4), round(py, 4), round(qx, 4), round(qy, 4), uuid.uuid5(uuid.NAMESPACE_URL, 'outline/%s/%d/%d/%d' % (blk, ri, ei, piece)))
+                    piece += 1
+                k = j + 1
+            if piece != 1 or not all(free): reopened += 1
 i = txt.rindex('\n)')
 txt = txt[:i] + add + txt[i:]
 open(out, 'w').write(txt)
 json.dump({k: [list(r) for r in v] for k, v in new.items()}, open(rects_out, 'w'), indent=1)
-print('removed', removed, 'old outline segments; drew', sum(len(v) for v in new.values()), 'closed rectangles; REFCAL', new['REFCAL'])
+print('removed', removed, 'old outline segments; rectangles', sum(len(v) for v in new.values()), '; edges reopened at a pad or footprint silk:', reopened, '; REFCAL', new['REFCAL'])

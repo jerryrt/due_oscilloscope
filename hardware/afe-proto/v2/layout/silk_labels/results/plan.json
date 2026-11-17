@@ -1,9 +1,9 @@
 {
  "placed": {
   "J501": [
-   "east90",
-   63.305,
-   10.9,
+   "above",
+   60.864999999999995,
+   13.344999999999999,
    "relaxed"
   ],
   "J601": [
@@ -97,21 +97,63 @@
    "strict"
   ],
   "U101": [
-   "east0",
-   87.175,
-   32.8,
+   "above",
+   84.455,
+   37.295001,
    "relaxed"
+  ],
+  "U301": [
+   "west0",
+   78.44,
+   11.455,
+   "relaxed"
+  ],
+  "U401": [
+   "east0",
+   34.824999999999996,
+   13.105,
+   "relaxed"
+  ],
+  "U501": [
+   "west0",
+   47.8575,
+   11.905000000000001,
+   "relaxed"
+  ],
+  "U502": [
+   "east0",
+   58.675,
+   21.155001,
+   "relaxed"
+  ],
+  "J101": [
+   "bnc",
+   102.0,
+   36.730000000000004,
+   "strict"
+  ],
+  "J201": [
+   "bnc",
+   102.0,
+   18.950000000000003,
+   "strict"
+  ],
+  "J301": [
+   "bnc",
+   102.0,
+   0.02000000000000135,
+   "strict"
+  ],
+  "R404": [
+   "east0",
+   35.55,
+   9.2,
+   "strict"
   ],
   "C202": [
    "west0",
    80.58000000000001,
    24.0,
-   "strict"
-  ],
-  "R309": [
-   "west90",
-   81.245,
-   16.8,
    "strict"
   ],
   "D201": [
@@ -120,28 +162,10 @@
    32.1,
    "strict"
   ],
-  "R201": [
-   "above",
-   90.285,
-   27.1,
-   "strict"
-  ],
-  "C203": [
-   "above",
-   84.625,
-   28.6,
-   "strict"
-  ],
-  "C102": [
-   "west0",
-   80.58000000000001,
-   43.3,
-   "strict"
-  ],
-  "R104": [
-   "above",
-   90.285,
-   46.4,
+  "R309": [
+   "west90",
+   81.245,
+   16.8,
    "strict"
   ],
   "R204": [
@@ -150,64 +174,82 @@
    20.6,
    "strict"
   ],
+  "R511": [
+   "above",
+   58.675,
+   23.8,
+   "strict"
+  ],
+  "C102": [
+   "west0",
+   80.58000000000001,
+   43.3,
+   "strict"
+  ],
+  "C103": [
+   "east0",
+   88.27,
+   40.3,
+   "strict"
+  ],
   "R205": [
    "below",
-   84.67500000000001,
+   84.54500000000002,
    20.6,
+   "strict"
+  ],
+  "R104": [
+   "above",
+   90.285,
+   46.5,
+   "strict"
+  ],
+  "R201": [
+   "above",
+   90.285,
+   26.8,
+   "strict"
+  ],
+  "C203": [
+   "above",
+   84.625,
+   28.6,
    "strict"
   ],
   "R105": [
    "above",
-   84.42500000000001,
-   46.4,
+   84.67500000000001,
+   46.5,
    "strict"
   ],
-  "R101": [
-   "below",
-   90.285,
-   40.1,
+  "R108": [
+   "west90",
+   80.659999,
+   38.6,
    "strict"
   ],
-  "C103": [
-   "below",
-   84.625,
-   38.5,
+  "R509": [
+   "east90",
+   62.18,
+   16.9,
    "strict"
   ],
-  "BR401": [
-   "east0",
-   38.955,
-   7.7,
-   "strict"
-  ],
-  "BR508": [
-   "east0",
-   61.475,
-   14.4,
-   "strict"
-  ],
-  "R406": [
+  "C303": [
    "west0",
-   33.92,
-   5.8,
+   74.545,
+   9.2,
    "strict"
   ],
   "C104": [
    "west0",
-   76.304999,
-   35.0,
-   "strict"
-  ],
-  "C503": [
-   "east0",
-   58.875,
-   23.8,
+   75.934999,
+   34.7,
    "strict"
   ],
   "BR507": [
    "below",
-   49.0,
-   8.0,
+   48.88,
+   8.1,
    "strict"
   ],
   "C306": [
@@ -216,16 +258,70 @@
    6.9,
    "strict"
   ],
+  "R308": [
+   "west0",
+   74.02499999999999,
+   13.5,
+   "strict"
+  ],
   "R401": [
    "west0",
-   28.525,
-   18.8,
+   28.694999999999997,
+   19.2,
    "strict"
   ],
   "R402": [
    "west0",
    26.069999999999997,
-   16.5,
+   16.4,
+   "strict"
+  ],
+  "BR101": [
+   "east0",
+   70.215,
+   35.8,
+   "strict"
+  ],
+  "R407": [
+   "west90",
+   39.599999999999994,
+   23.2,
+   "strict"
+  ],
+  "R513": [
+   "east90",
+   46.405,
+   21.5,
+   "strict"
+  ],
+  "R514": [
+   "west90",
+   50.195,
+   19.7,
+   "strict"
+  ],
+  "R406": [
+   "east0",
+   40.629999999999995,
+   5.8,
+   "strict"
+  ],
+  "C406": [
+   "east0",
+   38.87499999999999,
+   17.2,
+   "strict"
+  ],
+  "C404": [
+   "west0",
+   20.084999999999997,
+   12.4,
+   "strict"
+  ],
+  "C401": [
+   "west0",
+   20.455,
+   14.6,
    "strict"
   ],
   "R403": [
@@ -234,90 +330,27 @@
    7.1,
    "strict"
   ],
-  "R407": [
-   "west90",
-   39.599999999999994,
-   22.8,
-   "strict"
-  ],
-  "C105": [
-   "west0",
-   76.474999,
-   37.9,
-   "strict"
-  ],
-  "BR101": [
-   "east0",
-   69.845,
-   35.5,
-   "strict"
-  ],
-  "C409": [
-   "east0",
-   38.355,
-   14.0,
-   "strict"
-  ],
-  "C406": [
-   "east0",
-   38.504999999999995,
-   16.9,
-   "strict"
-  ],
-  "R513": [
-   "east90",
-   46.775,
-   21.3,
-   "strict"
-  ],
-  "R514": [
-   "west90",
-   49.825,
-   19.8,
-   "strict"
-  ],
   "C408": [
    "west0",
    20.624999999999996,
-   9.7,
-   "strict"
-  ],
-  "C404": [
-   "west0",
-   20.624999999999996,
-   12.0,
-   "strict"
-  ],
-  "C401": [
-   "west0",
-   20.624999999999996,
-   14.3,
-   "strict"
-  ],
-  "R308": [
-   "west0",
-   74.395,
-   13.5,
-   "strict"
-  ],
-  "C303": [
-   "west0",
-   74.175,
-   9.1,
+   9.8,
    "strict"
   ]
  },
  "dropped": [
   "BR102",
+  "BR401",
   "BR501",
   "BR502",
   "BR503",
   "BR504",
   "BR506",
+  "BR508",
   "BR509",
   "BR510",
   "BR511",
   "C101",
+  "C105",
   "C201",
   "C301",
   "C304",
@@ -326,14 +359,16 @@
   "C403",
   "C405",
   "C407",
+  "C409",
   "C501",
   "C502",
+  "C503",
   "D101",
+  "R101",
   "R102",
   "R103",
   "R106",
   "R107",
-  "R108",
   "R202",
   "R203",
   "R206",
@@ -346,7 +381,6 @@
   "R305",
   "R306",
   "R307",
-  "R404",
   "R405",
   "R501",
   "R502",
@@ -356,18 +390,14 @@
   "R506",
   "R507",
   "R508",
-  "R509",
   "R510",
-  "R511",
   "R512"
  ],
  "beside": [
   "BR101",
-  "BR401",
-  "BR508",
   "C102",
+  "C103",
   "C104",
-  "C105",
   "C202",
   "C303",
   "C306",
@@ -375,22 +405,24 @@
   "C404",
   "C406",
   "C408",
-  "C409",
-  "C503",
   "D201",
   "J601",
   "R308",
   "R401",
   "R402",
   "R403",
+  "R404",
   "R406",
   "TP201",
   "TP404",
-  "U101"
+  "U301",
+  "U401",
+  "U501",
+  "U502"
  ],
  "east_end": [],
  "anchors": {
-  "J501": "relaxed_in east90",
+  "J501": "relaxed_in_clean above",
   "J601": "strict west0",
   "J602": "strict above",
   "J603": "strict west90",
@@ -406,505 +438,50 @@
   "TP403": "strict above",
   "TP404": "strict east0",
   "TP501": "strict west90",
-  "U101": "relaxed_bare east0",
-  "U301": null,
-  "U401": null,
-  "U501": null,
-  "U502": null
+  "U101": "relaxed_in_clean above",
+  "U301": "relaxed_in_clean west0",
+  "U401": "relaxed_in_clean east0",
+  "U501": "relaxed_in_clean west0",
+  "U502": "relaxed_in_clean east0",
+  "J101": "bnc line below its body",
+  "J201": "bnc line below its body",
+  "J301": "bnc line below its body"
  },
- "blocked": {
-  "U301": {
-   "above": [
-    30,
-    [
-     [
-      "pad of R303",
-      30
-     ],
-     [
-      "body of R303",
-      30
-     ],
-     [
-      "nearer to C301 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "body of R309",
-      30
-     ]
-    ]
-   ],
-   "east0": [
-    20,
-    [
-     [
-      "body of R302",
-      20
-     ],
-     [
-      "pad of R302",
-      20
-     ],
-     [
-      "nearer to R301 than 0.25 mm beyond its own body",
-      6
-     ]
-    ]
-   ],
-   "west0": [
-    20,
-    [
-     [
-      "nearer to C303 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "nearer to C304 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "pad of C304",
-      12
-     ],
-     [
-      "pad of C303",
-      12
-     ]
-    ]
-   ],
-   "below": [
-    30,
-    [
-     [
-      "body of R304",
-      30
-     ],
-     [
-      "pad of R304",
-      30
-     ],
-     [
-      "nearer to C304 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to C306 than 0.25 mm beyond its own body",
-      30
-     ]
-    ]
-   ],
-   "east90": [
-    20,
-    [
-     [
-      "nearer to R307 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "nearer to R302 than 0.25 mm beyond its own body",
-      10
-     ],
-     [
-      "nearer to R301 than 0.25 mm beyond its own body",
-      10
-     ],
-     [
-      "pad of R307",
-      4
-     ]
-    ]
-   ],
-   "west90": [
-    20,
-    [
-     [
-      "body of C304",
-      20
-     ],
-     [
-      "pad of C304",
-      20
-     ],
-     [
-      "nearer to C303 than 0.25 mm beyond its own body",
-      5
-     ]
-    ]
-   ]
+ "blocked": {},
+ "bnc": {
+  "found": [
+   0.0,
+   -8.87,
+   5.449999999999999
+  ],
+  "gaps": {
+   "J301-J201 body to body": 4.13,
+   "J201-J101 body to body": 2.98
   },
-  "U401": {
-   "above": [
-    25,
-    [
-     [
-      "pad of R402",
-      25
-     ],
-     [
-      "body of C405",
-      25
-     ],
-     [
-      "body of R402",
-      25
-     ],
-     [
-      "pad of C405",
-      25
-     ]
-    ]
+  "text_height": 1.0,
+  "function_at": {
+   "J101": [
+    107.45,
+    36.73
    ],
-   "east0": [
-    20,
-    [
-     [
-      "pad of C409",
-      20
-     ],
-     [
-      "body of C409",
-      20
-     ],
-     [
-      "nearer to TP402 than 0.25 mm beyond its own body",
-      1
-     ]
-    ]
+   "J201": [
+    107.45,
+    18.95
    ],
-   "west0": [
-    20,
-    [
-     [
-      "body of C402",
-      20
-     ],
-     [
-      "pad of C402",
-      20
-     ],
-     [
-      "nearer to C403 than 0.25 mm beyond its own body",
-      19
-     ],
-     [
-      "nearer to C401 than 0.25 mm beyond its own body",
-      10
-     ]
-    ]
-   ],
-   "below": [
-    25,
-    [
-     [
-      "pad of R405",
-      25
-     ],
-     [
-      "body of R405",
-      25
-     ],
-     [
-      "nearer to C407 than 0.25 mm beyond its own body",
-      19
-     ],
-     [
-      "nearer to C403 than 0.25 mm beyond its own body",
-      16
-     ]
-    ]
-   ],
-   "east90": [
-    20,
-    [
-     [
-      "pad of C409",
-      20
-     ],
-     [
-      "nearer to C406 than 0.25 mm beyond its own body",
-      15
-     ],
-     [
-      "body of C409",
-      15
-     ],
-     [
-      "nearer to C405 than 0.25 mm beyond its own body",
-      9
-     ]
-    ]
-   ],
-   "west90": [
-    20,
-    [
-     [
-      "nearer to R402 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "pad of C402",
-      20
-     ],
-     [
-      "body of C403",
-      20
-     ],
-     [
-      "body of C402",
-      20
-     ]
-    ]
-   ]
-  },
-  "U501": {
-   "above": [
-    25,
-    [
-     [
-      "body of C501",
-      25
-     ],
-     [
-      "pad of C501",
-      25
-     ],
-     [
-      "pad of TP501",
-      25
-     ],
-     [
-      "nearer to TP501 than 0.25 mm beyond its own body",
-      10
-     ]
-    ]
-   ],
-   "east0": [
-    24,
-    [
-     [
-      "nearer to BR508 than 0.25 mm beyond its own body",
-      24
-     ],
-     [
-      "nearer to BR506 than 0.25 mm beyond its own body",
-      24
-     ],
-     [
-      "body of J501",
-      24
-     ],
-     [
-      "pad of J501",
-      16
-     ]
-    ]
-   ],
-   "west0": [
-    24,
-    [
-     [
-      "nearer to BR507 than 0.25 mm beyond its own body",
-      20
-     ]
-    ]
-   ],
-   "below": [
-    25,
-    [
-     [
-      "pad of C502",
-      25
-     ],
-     [
-      "body of C502",
-      25
-     ],
-     [
-      "pad of BR507",
-      25
-     ],
-     [
-      "body of BR507",
-      20
-     ]
-    ]
-   ],
-   "east90": [
-    24,
-    [
-     [
-      "nearer to BR506 than 0.25 mm beyond its own body",
-      24
-     ],
-     [
-      "body of J501",
-      24
-     ],
-     [
-      "nearer to C502 than 0.25 mm beyond its own body",
-      24
-     ],
-     [
-      "pad of J501",
-      12
-     ]
-    ]
-   ],
-   "west90": [
-    24,
-    [
-     [
-      "nearer to BR507 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "nearer to C501 than 0.25 mm beyond its own body",
-      15
-     ],
-     [
-      "body of BR507",
-      4
-     ],
-     [
-      "pad of BR507",
-      4
-     ]
-    ]
-   ]
-  },
-  "U502": {
-   "above": [
-    30,
-    [
-     [
-      "body of C503",
-      30
-     ],
-     [
-      "pad of C503",
-      30
-     ],
-     [
-      "nearer to BR511 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to BR510 than 0.25 mm beyond its own body",
-      30
-     ]
-    ]
-   ],
-   "east0": [
-    20,
-    [
-     [
-      "pad of R510",
-      20
-     ],
-     [
-      "body of R510",
-      20
-     ],
-     [
-      "pad of R508",
-      12
-     ],
-     [
-      "body of R508",
-      12
-     ]
-    ]
-   ],
-   "west0": [
-    20,
-    [
-     [
-      "body of R514",
-      20
-     ],
-     [
-      "pad of R514",
-      20
-     ],
-     [
-      "nearer to TP501 than 0.25 mm beyond its own body",
-      6
-     ]
-    ]
-   ],
-   "below": [
-    30,
-    [
-     [
-      "nearer to U501 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to BR508 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to TP501 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "body of BR506",
-      30
-     ]
-    ]
-   ],
-   "east90": [
-    20,
-    [
-     [
-      "pad of R510",
-      20
-     ],
-     [
-      "body of R510",
-      20
-     ],
-     [
-      "nearer to R511 than 0.25 mm beyond its own body",
-      8
-     ],
-     [
-      "nearer to R508 than 0.25 mm beyond its own body",
-      5
-     ]
-    ]
-   ],
-   "west90": [
-    20,
-    [
-     [
-      "body of R514",
-      15
-     ],
-     [
-      "pad of R514",
-      15
-     ],
-     [
-      "nearer to TP501 than 0.25 mm beyond its own body",
-      10
-     ],
-     [
-      "body of TP501",
-      10
-     ]
-    ]
+   "J301": [
+    107.45,
+    0.02
    ]
   }
  },
  "kinds": {
-  "east90": 3,
+  "above": 15,
   "west0": 14,
-  "above": 12,
-  "west90": 5,
+  "west90": 6,
   "east0": 11,
-  "below": 6
+  "east90": 3,
+  "below": 4,
+  "bnc": 3
  },
- "iterations": 23181
+ "iterations": 28060
 }

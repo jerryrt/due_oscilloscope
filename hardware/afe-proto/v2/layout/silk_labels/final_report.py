@@ -40,7 +40,6 @@ print('ANCHORS (U, J, TP):')
 allok = True
 for r in sorted(anch, key=lambda r: (r[0], int(re.sub(r'\D', '', r)))):
     state = plan['anchors'].get(r)
-    if r in bnc: state = 'BNC rule (outside the body, one frame offset)'
     ok = (r in sn)
     if not state: allok = False
     print('   %-5s visible=%s  %s' % (r, 'yes' if ok else 'NO', state or 'NO PLACE (kept as on main)'))

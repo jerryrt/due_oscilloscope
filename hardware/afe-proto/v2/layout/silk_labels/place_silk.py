@@ -45,6 +45,7 @@ def on_silk(sb, shapes):
     g = (sb[0] - SILK_CLEAR, sb[1] - SILK_CLEAR, sb[2] + SILK_CLEAR, sb[3] + SILK_CLEAR)
     return any(S._on_shape(g, sh) for sh in shapes)
 
+board_silk = list(silk)                                          # the outline lines and other board-level silk, without the footprints' own
 silk = silk + footprint_silk(pb)
 refs = list(b.fp_ref)
 row = {int(k): i for i, k in enumerate(b.fp_idx)}
@@ -98,6 +99,24 @@ def cands(r, kind, c=None):
     return o
 
 
+def slide_cands(r, kind):
+    """anchors: every place along the side of the part, in 0.1 mm steps, the label keeping at least 0.3 mm of its length beside the part; nearest the centre first"""
+    c = cour[r]; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; ang = ang_of(kind); Lt = len(r) * S.CHAR_ADV
+    gs = (0.03, 0.2, 0.4, 0.57); o = []
+    if kind in ('above', 'below'):
+        lo, hi = c[0] + 0.3 - Lt / 2, c[2] - 0.3 + Lt / 2; k = 0
+        for xv in [lo + 0.1 * i for i in range(int((hi - lo) / 0.1) + 1)]:
+            for g in gs:
+                o.append((abs(xv - cx), g, xv, (c[3] + g + H / 2) if kind == 'above' else (c[1] - g - H / 2)))
+    else:
+        w = Lt if ang == 0.0 else H; hh = H if ang == 0.0 else Lt
+        lo, hi = c[1] + 0.3 - hh / 2, c[3] - 0.3 + hh / 2
+        for yv in [lo + 0.1 * i for i in range(int((hi - lo) / 0.1) + 1)]:
+            for g in gs:
+                o.append((abs(yv - cy), g, ((c[2] + g + w / 2) if kind.startswith('east') else (c[0] - g - w / 2)), yv))
+    return [(x, y) for _, _, x, y in sorted(o, key=lambda t: (round(t[0], 3), t[1]))]
+
+
 def in_rects(p, rs): return any(x0 <= p[0] <= x1 and y0 <= p[1] <= y1 for x0, y0, x1, y1 in rs)
 
 
@@ -137,14 +156,18 @@ def strict_static(r, kind, x, y):
 
 
 def relaxed_static(r, kind, x, y, need_inside=True, clean=True):
-    """anchors only (owner): not on another part's body, not on an exposed pad, nearest body its own by 0.25 mm. Tented vias may lie under the text. `clean` also keeps off silk
-    lines and board text, and `need_inside` keeps inside the block's own outline; the later modes drop them in that order"""
+    """anchors only (owner): on no part's body (F.Fab) and no exposed pad (tented vias may lie under the text), across no outline line, and nearer to its own body than to any
+    body of the SAME KIND (U against U, J against J, TP against TP) by 0.25 mm. `need_inside` keeps it inside the block's own outline; `clean` also keeps it off the footprints'
+    silk and board text; the later modes drop them"""
     ang = ang_of(kind); sb = sbox(r, x, y, ang)
     if need_inside and not inside_blk(sb, r): return False
     if any(S._overlap(sb, bd) for k, bd in body.items() if k != r and bd is not None): return False
-    if any(S._overlap(sb, p) for p in pads): return False
+    lb_ = lbox(r, x, y, ang)
+    if any(lgap(lb_, p) < 0.05 for p in pads): return False                                    # an exposed pad: with the LR-11 box (1.2 mm high), 0.05 clear
+    if on_silk(sb, board_silk): return False
+    pre = 'TP' if r.startswith('TP') else r[0]
     own = lgap(sb, body[r]) if body.get(r) else 0.0
-    if any(lgap(sb, bd) < own + 0.25 for k, bd in body.items() if k != r and bd is not None): return False
+    if any(lgap(sb, bd) < own + 0.25 for k, bd in body.items() if k != r and bd is not None and (('TP' if k.startswith('TP') else k[0]) == pre)): return False
     if clean and on_silk(sb, silk): return False
     if clean and any(lgap(sb, t) < 0.2 for t in texts): return False
     return True
@@ -191,11 +214,11 @@ P = {}                                                           # ref -> Cand
 anchor_note = {}
 for r in anchors:
     done = None; how = None
-    for mode in ('strict', 'relaxed_in', 'relaxed_clean', 'relaxed_bare'):
+    for mode in ('strict', 'relaxed_in_clean', 'relaxed_clean', 'relaxed_in', 'relaxed_bare'):
         for kind in ORDER:
-            for x, y in cands(r, kind):
+            for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
                 if mode == 'strict': okp = strict_static(r, kind, x, y)
-                else: okp = relaxed_static(r, kind, x, y, need_inside=(mode == 'relaxed_in'), clean=(mode != 'relaxed_bare'))
+                else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
                 if not okp: continue
                 c = make(r, kind, x, y, mode != 'strict')
                 others = list(P.values()) + list(fixed.values())
@@ -217,18 +240,74 @@ for r in [q for q, v in anchor_note.items() if v is None]:
     why = {}
     for kind in ORDER:
         hit = collections.Counter(); n = 0
-        for x, y in cands(r, kind):
+        for x, y in slide_cands(r, kind):
             n += 1; ang = ang_of(kind); sb = sbox(r, x, y, ang); w = set()
             for k, bd in body.items():
                 if k != r and bd is not None and S._overlap(sb, bd): w.add('body of ' + k)
             for p, o in zip(pads, owner):
                 if S._overlap(sb, p): w.add('pad of ' + o)
+            if on_silk(sb, board_silk): w.add('outline line')
             own = lgap(sb, body[r]) if body.get(r) else 0.0
+            pre = 'TP' if r.startswith('TP') else r[0]
             for k, bd in body.items():
-                if k != r and bd is not None and lgap(sb, bd) < own + 0.25 and ('body of ' + k) not in w: w.add('nearer to ' + k + ' than 0.25 mm beyond its own body')
+                if k != r and bd is not None and (('TP' if k.startswith('TP') else k[0]) == pre) and lgap(sb, bd) < own + 0.25 and ('body of ' + k) not in w: w.add('nearer to ' + k + ' than 0.25 mm beyond its own body')
             for q in w: hit[q] += 1
         why[kind] = (n, hit.most_common(4))
     blocked[r] = why
+
+# ---- BNCs (owner): designator then function label on ONE line, on the SAME side of each own body (below it: above J101 is the board edge), one offset for all three, no text
+# nearer a neighbouring BNC's body than its own
+BNC_FUN = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
+RING = [tuple(p) for p in b.outline]
+def inside_board(px, py):
+    c = False; n = len(RING)
+    for i in range(n):
+        (x0, y0), (x1, y1) = RING[i], RING[(i + 1) % n]
+        if (y0 > py) != (y1 > py) and px < (x1 - x0) * (py - y0) / (y1 - y0) + x0: c = not c
+    return c
+bnc_info = {'found': None, 'gaps': {}}
+bods = {r: body[r] for r in BNC}
+ordered = sorted(BNC, key=lambda r: b.fp_y[fi[r]])
+for lo_, hi_ in zip(ordered, ordered[1:]):
+    bnc_info['gaps']['%s-%s body to body' % (lo_, hi_)] = round(bods[hi_][1] - bods[lo_][3], 2)
+bnc_info['text_height'] = 1.0
+LAB_GAP = 0.2
+def bnc_ok(dx, dy, fx):
+    for r, lab in BNC_FUN.items():
+        ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
+        db = sbox(r, ox + dx, oy + dy); fb = S.text_box(lab, ox + fx, oy + dy, 1.0, H, 0.0)
+        for bx in (db, fb):
+            if bx[3] > bods[r][1] - 0.05: return False                                       # below its own body
+            if not all(inside_board(px, py) for px, py in ((bx[0] - 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[3] + 0.2), (bx[0] - 0.2, bx[3] + 0.2))): return False
+            if any(S._overlap(bx, bd) for bd in body.values() if bd is not None): return False
+            if any(lgap(bx, p) < 0.15 for p in pads): return False
+            gb = (bx[0] - 0.15, bx[1] - 0.15, bx[2] + 0.15, bx[3] + 0.15)                          # silk to silk 0.15 mm here: the gaps between the BNC boxes are 2.0 mm
+            if any(S._on_shape(gb, sh) for sh in silk): return False
+            if any(lgap(bx, t) < 0.4 for t in texts): return False
+            dist_own = lgap(bx, bods[r])
+            if any(dist_own >= lgap(bx, bods[q]) for q in BNC if q != r): return False
+            if any(lgap((bx[0], bx[1], bx[2], bx[3]), oc.lb) < 0.5 for oc in list(P.values()) + list(fixed.values())): return False
+        if any(lgap(lbox(r, ox + dx, oy + dy), oc.lb) < GAP_MIN for oc in list(P.values()) + list(fixed.values())): return False
+        if lgap(db, fb) < 0.4: return False
+    return True
+best_b = None
+for dy in [round(-10.0 + 0.01 * i, 2) for i in range(0, 401)]:
+    for dx in [round(-1.0 + 0.1 * i, 1) for i in range(0, 150)]:
+        fx = dx + len('J000') * S.CHAR_ADV / 2 + 0.5 + len('AWG OUT') * S.CHAR_ADV / 2
+        if bnc_ok(dx, dy, fx):
+            d_own = max(lgap(sbox(r, float(b.fp_x[fi[r]]) + dx, float(b.fp_y[fi[r]]) + dy), bods[r]) for r in BNC)
+            if best_b is None or (d_own, abs(dx)) < best_b[0]: best_b = ((d_own, abs(dx)), dx, dy, fx)
+if best_b:
+    _, dx, dy, fx = best_b
+    bnc_info['found'] = (dx, dy, fx)
+    for r, lab in BNC_FUN.items():
+        ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
+        P[r] = Cand('bnc', ox + dx, oy + dy, lbox(r, ox + dx, oy + dy), frozenset(), 0)
+        fixed['fun:' + r] = Cand('bnc', ox + fx, oy + dy, lbox(lab, ox + fx, oy + dy), frozenset(), 0)
+        bnc_info.setdefault('function_at', {})[r] = (round(ox + fx, 3), round(oy + dy, 3))
+    anchor_note.update({r: 'bnc line below its body' for r in BNC})
+else:
+    for r in BNC: anchor_note[r] = None
 
 # ---- passives: most constrained first, restarts
 base = {}
@@ -259,9 +338,10 @@ dropped = sorted(set(passives) - set(best[1]))
 
 beside = sorted(r for r, c in P.items() if c.kind in ('east0', 'west0'))
 plan = {'placed': {r: [c.kind, c.x, c.y, 'relaxed' if c.relaxed else 'strict'] for r, c in P.items()}, 'dropped': dropped, 'beside': beside, 'east_end': [],
-        'anchors': anchor_note, 'blocked': blocked, 'kinds': dict(collections.Counter(c.kind for c in P.values())), 'iterations': it}
+        'anchors': anchor_note, 'blocked': blocked, 'bnc': bnc_info, 'kinds': dict(collections.Counter(c.kind for c in P.values())), 'iterations': it}
 json.dump(plan, open(plan_out, 'w'), indent=1)
 print('anchors:', anchor_note)
+print('bnc:', bnc_info)
 print('passives labelled', len(best[1]), 'of', len(passives), '; dropped', len(dropped), dropped)
 print('kinds', plan['kinds'])
 
@@ -287,5 +367,10 @@ for r in list(P) + dropped + mh:
         end = t.index('\n\t\t)', i)
         if '(hide yes)' not in t[i:end]:
             j = t.index('(layer "F.SilkS")', i); t = t[:j] + '(layer "F.SilkS")\n\t\t\t(hide yes)' + t[j + len('(layer "F.SilkS")'):]
+if bnc_info['found']:
+    for r, lab in BNC_FUN.items():
+        fx_, fy_ = bnc_info['function_at'][r]
+        g = re.search(r'\(gr_text "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)' % re.escape(lab), t)
+        t = t[:g.start(1)] + '%.3f %.3f 0' % (fx_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
 open(out, 'w').write(t)
 print('wrote', out)
