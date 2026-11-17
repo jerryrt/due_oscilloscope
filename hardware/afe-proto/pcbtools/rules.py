@@ -30,269 +30,47 @@ from scipy.spatial import cKDTree
 from . import geom, shapes
 
 
-@dataclasses.dataclass
-class Result:
-    ok: bool
-    detail: str
-    figures: dict
+# the helpers every rule shares, and the Result type, live in pcbkit (hardware/pcbkit); the names are re-exported here unchanged
+from pcbkit import rules as _kit                                    # noqa: E402
+from pcbkit.rules import (Result, PadTable, pads, nid, net_prefix, segs, length_of, pad_c, pad_net, pad_box, pos, box, has_box,   # noqa: E402,F401
+                          sample_points, pt_box_dist, seg_box_dist, _first_true, _CACHE)
 
 
 # ----------------------------------------------------------------------------------------------------- helpers
-class PadTable:
-    """pads as the old loader saw them: dict keyed (ref, pin), the last pad of a repeated key wins, in first-seen order"""
-
-    def __init__(self, b):
-        refs = [b.fp_ref[i] for i in b.p_fp]
-        last = {}
-        for row, (r, p) in enumerate(zip(refs, b.p_pin)):
-            last[(r, p)] = row
-        self.keys = list(last)
-        self.rows = np.array(list(last.values()), np.int64)
-        self.lookup = last
-        self.net = b.p_net[self.rows] if len(self.rows) else np.zeros(0, np.int32)
-
-    def row(self, ref, pin):
-        return self.lookup[(ref, pin)]
-
-
-_CACHE = weakref.WeakKeyDictionary()
-
-
-def pads(b):
-    t = _CACHE.get(b)
-    if t is None:
-        t = _CACHE[b] = PadTable(b)
-    return t
-
-
-def nid(b, name):
-    """net id of `name`, or -1 when the board has no such net (it then matches nothing)"""
-    try:
-        return b.net_id(name)
-    except KeyError:
-        return -1
-
-
-def net_prefix(b, prefixes):
-    """bool over net ids: the net name starts with one of `prefixes`"""
-    return np.array([n.startswith(tuple(prefixes)) for n in b.nets], bool)
-
-
-def segs(b, mask=None):
-    S = np.column_stack([b.s_x0, b.s_y0, b.s_x1, b.s_y1]) if len(b.s_idx) else np.zeros((0, 4))
-    return S if mask is None else S[mask]
-
-
-def length_of(b, net, top_only=True):
-    m = (b.s_net == nid(b, net)) & ((b.s_layer == 0) if top_only else True)
-    return float(geom.seg_len(segs(b, m)).sum())
-
-
-def pad_c(b, ref, pin):
-    r = pads(b).row(ref, pin)
-    return np.array([b.p_x[r], b.p_y[r]])
-
-
-def pad_net(b, ref, pin):
-    return b.nets[b.p_net[pads(b).row(ref, pin)]]
-
-
-def pad_box(b, rows):
-    return np.column_stack([b.p_bx0[rows], b.p_by0[rows], b.p_bx1[rows], b.p_by1[rows]])
-
-
-def pos(b, ref):
-    i = b.ref_index(ref)
-    return np.array([b.fp_x[i], b.fp_y[i]])
-
-
-def box(b, ref):
-    i = b.ref_index(ref)
-    v = np.array([b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]])
-    if np.isnan(v).any():
-        raise KeyError(f'{ref} has no courtyard')
-    return v
-
-
-def has_box(b, ref):
-    try:
-        i = b.ref_index(ref)
-    except KeyError:
-        return False
-    return not np.isnan(b.fp_cx0[i])
-
-
 def analog_refs(b, cfg):
     """the analog parts that exist on this board and have a courtyard, sorted"""
     return sorted(r for r in cfg.ANALOG_REFS if has_box(b, r))
 
 
-def sample_points(S, step):
-    """points along each segment every `step` mm exactly as the old seg_pts: n = max(1, int(len/step)), n+1 points k/n.
-    Returns (points (M,2), segment index (M,))."""
-    S = np.asarray(S, np.float64).reshape(-1, 4)
-    n = np.maximum(1, (geom.seg_len(S) / step).astype(np.int64))
-    sid = np.repeat(np.arange(len(S)), n + 1)
-    start = np.concatenate([[0], np.cumsum(n + 1)[:-1]])
-    k = np.arange(len(sid)) - np.repeat(start, n + 1)
-    t = (k / np.repeat(n, n + 1))[:, None]
-    return S[sid, :2] + (S[sid, 2:] - S[sid, :2]) * t, sid
-
-
-def pt_box_dist(P, bx):
-    """distance of points (N,2) to one box (4,)"""
-    return np.hypot(np.maximum.reduce([bx[0] - P[:, 0], np.zeros(len(P)), P[:, 0] - bx[2]]),
-                    np.maximum.reduce([bx[1] - P[:, 1], np.zeros(len(P)), P[:, 1] - bx[3]]))
-
-
-def seg_box_dist(S, bx):
-    """exact distance of each segment (N,4) to a box (4,): 0 when it touches the box, else the nearest box edge"""
-    S = np.asarray(S, np.float64).reshape(-1, 4)
-    if not len(S):
-        return np.zeros(0)
-    edges = np.array([[bx[0], bx[1], bx[2], bx[1]], [bx[2], bx[1], bx[2], bx[3]], [bx[2], bx[3], bx[0], bx[3]],
-                      [bx[0], bx[3], bx[0], bx[1]]])
-    d = geom.seg_seg_dist(S, edges).min(axis=1)
-    return np.where(geom.seg_in_box(S, np.asarray(bx, float)), 0.0, d)
-
-
-def _first_true(M):
-    """for each row of a bool matrix: (any, index of the first True)"""
-    return M.any(axis=1), M.argmax(axis=1)
-
-
 # ----------------------------------------------------------------------------------------------------- LR-1
+def kit_cfg_lr1(cfg):
+    """this board configuration's names for pcbkit's ground_plane and bottom_hops: the project names are the AFE's own tables, the
+    tunables the AFE sets (HOP_MAX, HOP_MAX_VIAS, ZONE_PAD) are passed, and every other tunable keeps the kit's default (which is the
+    value LR-1 always used)"""
+    return dict(GND=cfg.GND, PLANE_LAYER='B',
+                HOP_FENCES=[rc for blk in cfg.ANALOG_FENCE for rc in cfg.OUTLINE.get(blk, [])], HOP_SENSITIVE=cfg.XSENS,
+                HOP_KEEPOUT_PARTS=cfg.ANALOG_REFS, HOP_KEEPOUT_PAD=cfg.ZONE_PAD, HOP_MAX=cfg.HOP_MAX, HOP_MAX_VIAS=cfg.HOP_MAX_VIAS)
+
+
 def bottom_runs(b, cfg):
-    """connected runs of non-GND bottom segments (same net, touching within 0.01 mm: end to end, end on a segment's interior, crossing): list of
-    (net name, length, vias at its ends, [analog refs it lies under]) plus the segment rows and their labels"""
-    gnd = nid(b, cfg.GND)
-    rows = np.flatnonzero((b.s_layer == 1) & (b.s_net != gnd))
-    n = len(rows)
-    if not n:
-        return [], rows, np.zeros(0, np.int32)
-    S = segs(b)[rows]
-    net = b.s_net[rows]
-    E = np.vstack([S[:, :2], S[:, 2:]])
-    tree = cKDTree(E)
-    # two segments of one net are one run when they touch: end to end, an end on the INTERIOR of the other (a T), or crossing -
-    # exact segment-to-segment distance under the 0.01 mm tolerance of an end-to-end join (it was end to end only: a hop built
-    # as two segments meeting at a T was two short runs and passed)
-    i, j = geom.within(S, S, 0.01)
-    keep = (i < j) & (net[i] == net[j])
-    joins = np.column_stack([i[keep], j[keep]]) if keep.any() else np.zeros((0, 2), np.int64)
-    k, lab = geom.connected_components(n, joins)
-    L = np.bincount(lab, weights=geom.seg_len(S), minlength=k)
-    # vias at the ends of the run: same net, within 0.05 of any end of any segment of the run
-    nv = np.zeros(k, np.int64)
-    if len(b.v_idx):
-        V = np.column_stack([b.v_x, b.v_y])
-        d = cKDTree(V).sparse_distance_matrix(tree, 0.05, output_type='ndarray')
-        if len(d):
-            vi, ei = d['i'], d['j']
-            m = (d['v'] < 0.05) & (b.v_net[vi] == net[ei % n])
-            key = np.unique(lab[ei[m] % n].astype(np.int64) * len(V) + vi[m])
-            nv = np.bincount(key // len(V), minlength=k)
-    under = np.zeros((k, 0), bool)
-    refs = analog_refs(b, cfg)
-    if refs:
-        boxes = np.array([box(b, r) for r in refs])
-        hit = geom.seg_in_box(S, boxes, pad=cfg.ZONE_PAD + b.s_w[rows] / 2)
-        under = np.zeros((k, len(refs)), bool)
-        np.logical_or.at(under, lab, hit)
-    runs = [(b.nets[net[np.flatnonzero(lab == r)[0]]], float(L[r]), int(nv[r]), [refs[j] for j in np.flatnonzero(under[r])])
-            for r in range(k)]
-    return runs, rows, lab
+    return _kit.bottom_runs(b, kit_cfg_lr1(cfg))
 
 
 def bottom_crossings(b, cfg):
-    gnd = nid(b, cfg.GND)
-    rows = np.flatnonzero((b.s_layer == 1) & (b.s_net != gnd))
-    if not len(rows):
-        return []
-    S = segs(b)[rows]
-    w = b.s_w[rows]
-    bad = [[] for _ in rows]
-    fz = np.array([rc for blk in cfg.ANALOG_FENCE for rc in cfg.OUTLINE.get(blk, [])], float).reshape(-1, 4)
-    if len(fz):
-        hit = geom.seg_in_box(S, fz, pad=w / 2)
-        any_, first = _first_true(hit)
-        for i in np.flatnonzero(any_):
-            bad[i].append(f'{b.nets[b.s_net[rows[i]]]}: bottom segment inside an analog fence '
-                          f'{tuple(round(float(v), 1) for v in fz[first[i]])}')
-    sens = net_prefix(b, cfg.XSENS)
-    trows = np.flatnonzero((b.s_layer == 0) & sens[b.s_net])
-    if len(trows):
-        T = segs(b)[trows]
-        D = geom.seg_seg_dist(S, T)
-        close = D < (w[:, None] + b.s_w[trows][None, :]) / 2 + 0.1
-        any_, first = _first_true(close)
-        for i in np.flatnonzero(any_):
-            bad[i].append(f'{b.nets[b.s_net[rows[i]]]}: bottom segment under {b.nets[b.s_net[trows[first[i]]]]} '
-                          '(a hop under a sensitive net; bridge it on top)')
-    pt = pads(b)
-    prow = pt.rows[sens[pt.net]]
-    pkeys = [pt.keys[j] for j in np.flatnonzero(sens[pt.net])]
-    if len(prow):
-        hit = geom.seg_in_box(S, pad_box(b, prow), pad=0.1 + w / 2)
-        any_, first = _first_true(hit)
-        for i in np.flatnonzero(any_):
-            k = pkeys[first[i]]
-            bad[i].append(f'{b.nets[b.s_net[rows[i]]]}: bottom segment under pad {k[0]}.{k[1]} of {b.nets[b.p_net[prow[first[i]]]]}')
-    return [m for per in bad for m in per]
+    return _kit.bottom_crossings(b, kit_cfg_lr1(cfg))
 
 
-def lr1(b, cfg):
-    bad = []
-    if b.copper_layers != 2:
-        bad.append(f'{b.copper_layers} copper layers')
-    gnd = nid(b, cfg.GND)
-    # EVERY bottom zone: exactly one, it is GND, it is filled and one piece; a bottom zone of another net is a split plane
-    bot = np.flatnonzero((b.z_layer == 1) & ~b.z_keepout)       # a rule area (keepout) is not copper: it never counts as a plane or a split
-    for zi in bot[b.z_net[bot] != gnd]:
-        bad.append(f'bottom zone of {b.nets[b.z_net[zi]] or "no net"}: the bottom layer carries the ground plane only')
-    bz = bot[b.z_net[bot] == gnd]
-    pieces_n = None
-    if not len(bz):
-        bad.append('no bottom GND zone')
-    else:
-        if len(bz) > 1:
-            bad.append(f'{len(bz)} bottom GND zones, not 1')
-        for z in bz:
-            if not b.z_filled[z]:
-                bad.append('bottom zone not filled')
-        pieces_n = int(sum((b.z_ring_hole[b.z_ring_off[z]:b.z_ring_off[z + 1]] == 0).sum() for z in bz if b.z_filled[z]))
-        if pieces_n != 1:
-            bad.append(f'bottom plane is {pieces_n} pieces, not 1')
-    runs, _, _ = bottom_runs(b, cfg)
-    for net, L, nv, under in runs:
-        if under:
-            bad.append(f'{net}: bottom copper under {under}')
-        if L > cfg.HOP_MAX or nv > cfg.HOP_MAX_VIAS:
-            bad.append(f'{net}: bottom run {L:.1f} mm, {nv} vias (limit {cfg.HOP_MAX} mm, {cfg.HOP_MAX_VIAS})')
-    bad += bottom_crossings(b, cfg)
-    # every SMD GND pad has a via of its own within 3 mm: greedy in (ref, pin) order, each via used once
-    pt = pads(b)
-    sel = [j for j in range(len(pt.keys)) if pt.net[j] == gnd and b.p_smd[pt.rows[j]]]
-    sel.sort(key=lambda j: pt.keys[j])
-    gv = np.column_stack([b.v_x, b.v_y])[b.v_net == gnd]
-    used = np.zeros(len(gv), bool)
-    nov = []
-    for j in sel:
-        r = pt.rows[j]
-        d = np.hypot(gv[:, 0] - b.p_x[r], gv[:, 1] - b.p_y[r]) if len(gv) else np.zeros(0)
-        d = np.where(used, np.inf, d)
-        i = int(np.argmin(d)) if len(d) else -1
-        if i >= 0 and d[i] <= 3.0:
-            used[i] = True
-        else:
-            nov.append(f'{pt.keys[j][0]}.{pt.keys[j][1]}')
-    if nov:
-        bad.append(f'{len(nov)} SMD ground pads without a via of their own: {nov[:6]}')
-    fig = dict(layers=float(b.copper_layers), bottom_pieces=float(pieces_n if pieces_n is not None else -1),
-               bottom_runs=float(len(runs)), max_run_mm=max([r[1] for r in runs], default=0.0),
-               max_run_vias=float(max([r[2] for r in runs], default=0)), gnd_pads=float(len(sel)), pads_without_via=float(len(nov)),
+def lr1(b, cfg, report=None):
+    """LR-1 = pcbkit.rules.ground_plane + bottom_hops on this board's configuration, in the printed order the goldens fix: layers and
+    zones, the hops, then the ground vias. `report`, a list, receives the effective configuration of both rules"""
+    kc = kit_cfg_lr1(cfg)
+    plane, vias, gfig = _kit.ground_plane_parts(b, kc, report)
+    hops, hfig = _kit.bottom_hops_parts(b, kc, report)
+    bad = plane + hops + vias
+    fig = dict(layers=gfig['layers'], bottom_pieces=gfig['plane_pieces'], bottom_runs=hfig['runs'], max_run_mm=hfig['max_run_mm'],
+               max_run_vias=hfig['max_run_vias'], gnd_pads=gfig['gnd_pads'], pads_without_via=gfig['pads_without_via'],
                violations=float(len(bad)))
-    return Result(not bad, '; '.join(bad[:6]) or f'2 layers, one bottom plane, {len(runs)} bottom runs, {len(sel)} GND pads each with its own via', fig)
+    return Result(not bad, '; '.join(bad[:6]) or f'2 layers, one bottom plane, {int(hfig["runs"])} bottom runs, {int(gfig["gnd_pads"])} GND pads each with its own via', fig)
 
 
 # ----------------------------------------------------------------------------------------------------- LR-2

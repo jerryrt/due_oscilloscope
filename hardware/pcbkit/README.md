@@ -27,8 +27,8 @@ installed into another repository as it stands.
 
 | rule | what it checks | configuration it reads |
 |---|---|---|
-| `ground_plane` | one plane on the given layer; every SMD ground pad has its own via | `GND`, `PLANE_LAYER` |
-| `bottom_hops` | signal copper on the plane layer is short hops only, outside the fenced areas, never under a sensitive net | `HOP_MAX`, `HOP_MAX_VIAS`, `FENCES`, `SENSITIVE` |
+| `ground_plane` | one plane on the given layer; every SMD ground pad has its own via | `GND`, `PLANE_LAYER`, `COPPER_LAYERS`, `GND_VIA_REACH` |
+| `bottom_hops` | signal copper on the plane layer is short hops only, outside the fenced areas, never under a keep-out part or a sensitive net | `GND`, `PLANE_LAYER`, `HOP_FENCES`, `HOP_SENSITIVE`, `HOP_KEEPOUT_PARTS`, `HOP_MAX`, `HOP_MAX_VIAS`, and the tolerances in `CONFIG.md` |
 | `sensitive_nets` | the listed nets: no via, length limit, no foreign track beside them within a gap | `SENSITIVE` (net, max length, gap) |
 | `pour_gap` | no copper pour within a distance of the listed nodes | `POUR_NODES`, `POUR_KEEP_BACK` |
 | `keepout_ring` | listed nets stay a distance from listed parts | `KEEPOUT_RINGS` |

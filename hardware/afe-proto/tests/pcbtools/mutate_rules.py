@@ -23,24 +23,24 @@ R, F, M, S, K, D = 'rules.py', 'fence.py', 'mutate.py', 'shapes.py', 'check.py',
 RESULT = os.path.join(HERE, 'rules_mutation_result_stage4.txt')
 MUTANTS = [
     # LR-1
-    (R, 'LR-1 a rule area counts as a bottom zone (z_keepout)', "    bot = np.flatnonzero((b.z_layer == 1) & ~b.z_keepout)", "    bot = np.flatnonzero((b.z_layer == 1))"),
-    (R, 'LR-1 hop length: > becomes >=', "if L > cfg.HOP_MAX or nv > cfg.HOP_MAX_VIAS:", "if L >= cfg.HOP_MAX or nv > cfg.HOP_MAX_VIAS:"),
-    (R, 'LR-1 hop vias: > becomes >=', "or nv > cfg.HOP_MAX_VIAS:", "or nv >= cfg.HOP_MAX_VIAS:"),
-    (R, 'LR-1 layer count test changed', "if b.copper_layers != 2:", "if b.copper_layers != 4:"),
-    (R, 'LR-1 plane pieces: != becomes >', "if pieces_n != 1:", "if pieces_n > 1:"),
-    (R, 'LR-1 unfilled plane not reported', "            if not b.z_filled[z]:\n", "            if False:\n"),
-    (R, 'LR-1 run join ignores the net', "keep = (i < j) & (net[i] == net[j])", "keep = (i < j)"),
+    ('K:rules.py', 'LR-1 a rule area counts as a bottom zone (z_keepout)', '    bot = np.flatnonzero((b.z_layer == L) & ~b.z_keepout)', '    bot = np.flatnonzero((b.z_layer == L))'),
+    ('K:rules.py', 'LR-1 hop length: > becomes >=', 'if Ln > c.HOP_MAX or nv > c.HOP_MAX_VIAS:', 'if Ln >= c.HOP_MAX or nv > c.HOP_MAX_VIAS:'),
+    ('K:rules.py', 'LR-1 hop vias: > becomes >=', 'or nv > c.HOP_MAX_VIAS:', 'or nv >= c.HOP_MAX_VIAS:'),
+    ('K:rules.py', 'LR-1 layer count test changed', 'if b.copper_layers != c.COPPER_LAYERS:', 'if b.copper_layers != 4:'),
+    ('K:rules.py', 'LR-1 plane pieces: != becomes >', 'if pieces_n != 1:', 'if pieces_n > 1:'),
+    ('K:rules.py', 'LR-1 unfilled plane not reported', '            if not b.z_filled[z]:\n', '            if False:\n'),
+    ('K:rules.py', 'LR-1 run join ignores the net', 'keep = (i < j) & (net[i] == net[j])', 'keep = (i < j)'),
     # review finding 5: a run joins end to end only (a T or a crossing is no join)
-    (R, 'LR-1 runs join end to end only (finding 5)', "i, j = geom.within(S, S, 0.01)", "pr = tree.query_pairs(0.01, output_type='ndarray'); i, j = pr[:, 0] % n, pr[:, 1] % n"),
+    ('K:rules.py', 'LR-1 runs join end to end only (finding 5)', 'i, j = geom.within(S, S, c.HOP_JOIN_TOL)', "pr = tree.query_pairs(c.HOP_JOIN_TOL, output_type='ndarray'); i, j = pr[:, 0] % n, pr[:, 1] % n"),
     # review finding 4: every bottom zone
-    (R, 'LR-1 other-net bottom zones not reported (finding 4)', "    for zi in bot[b.z_net[bot] != gnd]:", "    for zi in []:"),
-    (R, 'LR-1 a second bottom GND zone not reported (finding 4)', "        if len(bz) > 1:\n", "        if False:\n"),
-    (R, 'LR-1 via of another net counted', "(b.v_net[vi] == net[ei % n])", "True"),
-    (R, 'LR-1 under-part margin dropped', "hit = geom.seg_in_box(S, boxes, pad=cfg.ZONE_PAD + b.s_w[rows] / 2)", "hit = geom.seg_in_box(S, boxes, pad=b.s_w[rows] / 2)"),
-    (R, 'LR-1 top-net crossing margin dropped', "close = D < (w[:, None] + b.s_w[trows][None, :]) / 2 + 0.1", "close = D < (w[:, None] + b.s_w[trows][None, :]) / 2"),
-    (R, 'LR-1 pad crossing margin dropped', "pad=0.1 + w / 2)", "pad=0.1)"),
-    (R, 'LR-1 GND via reach: <= becomes <', "d[i] <= 3.0", "d[i] < 3.0"),
-    (R, 'LR-1 a ground via may serve many pads', "            used[i] = True\n", "            pass\n"),
+    ('K:rules.py', 'LR-1 other-net bottom zones not reported (finding 4)', '    for zi in bot[b.z_net[bot] != gnd]:', '    for zi in []:'),
+    ('K:rules.py', 'LR-1 a second bottom GND zone not reported (finding 4)', '        if len(bz) > 1:\n', '        if False:\n'),
+    ('K:rules.py', 'LR-1 via of another net counted', '(b.v_net[vi] == net[ei % n])', 'True'),
+    ('K:rules.py', 'LR-1 under-part margin dropped', 'pad=c.HOP_KEEPOUT_PAD + b.s_w[rows] / 2)', 'pad=b.s_w[rows] / 2)'),
+    ('K:rules.py', 'LR-1 top-net crossing margin dropped', 'close = D < (w[:, None] + b.s_w[trows][None, :]) / 2 + c.HOP_SENSITIVE_CLEAR', 'close = D < (w[:, None] + b.s_w[trows][None, :]) / 2'),
+    ('K:rules.py', 'LR-1 pad crossing margin dropped', 'pad=c.HOP_SENSITIVE_CLEAR + w / 2)', 'pad=c.HOP_SENSITIVE_CLEAR)'),
+    ('K:rules.py', 'LR-1 GND via reach: <= becomes <', 'd[i] <= c.GND_VIA_REACH', 'd[i] < c.GND_VIA_REACH'),
+    ('K:rules.py', 'LR-1 a ground via may serve many pads', '            used[i] = True\n', '            pass\n'),
     # LR-2
     (R, 'LR-2 x must fall strictly: > becomes >=', "all(x > y for x, y in", "all(x >= y for x, y in"),
     (R, 'LR-2 output run: <= becomes <', "if outl <= hiz:", "if outl < hiz:"),
@@ -65,7 +65,7 @@ MUTANTS = [
     ('boards/v2.py', 'LR-4 divider nodes judged by the pour rule too (stage 4b)', "POUR_NODES = ('/AWG_FB',)", "POUR_NODES = ('/AWG_FB', '/CH1_N', '/CH2_N')"),
     ('boards/v2.py', 'LR-4 no node judged by the pour rule (stage 4b)', "POUR_NODES = ('/AWG_FB',)", "POUR_NODES = ()"),
     (R, 'LR-4 reported nodes judged too (finding 9)', "if net not in cfg.POUR_NODES:\n            continue", "if False:\n            continue"),
-    (S, 'shapes: pour holes ignored (finding 9)', "inside = geom.points_in_polys(P, xy, off, hole=hole).any(axis=1)", "inside = geom.points_in_polys(P, xy, off, hole=None).any(axis=1)"),
+    ('K:geom.py', 'shapes: pour holes ignored (finding 9)', 'inside = points_in_polys(P, xy, off, hole=hole).any(axis=1)', 'inside = points_in_polys(P, xy, off, hole=None).any(axis=1)'),
     (S, 'shapes: copper on the fill is not distance 0 (finding 9)', "        d[np.unique(own[inside])] = 0.0\n", "        pass\n"),
     (S, 'shapes: pad rotation ignored (finding 9, 10)', "    a = np.radians(rot)[:, None]\n", "    a = np.radians(0 * rot)[:, None]\n"),
     (S, 'shapes: oval axis ignores rotation (finding 9, 10)', "    a = np.radians(rot)\n    ux", "    a = np.radians(0 * rot)\n    ux"),
@@ -151,9 +151,11 @@ def run(tag, edit):
     shutil.copytree(os.path.join(ROOT, 'pcbtools'), os.path.join(d, 'pcbtools'), ignore=shutil.ignore_patterns('.scratch', '__pycache__'))
     os.symlink(os.path.join(ROOT, 'tests'), os.path.join(d, 'tests'))            # boards/v2.py finds its fixtures relative to the package
     os.symlink(os.path.join(ROOT, 'v2'), os.path.join(d, 'v2'))                  # boards/v2_layout.py reads v2/layout/outlines.py relative to the package
+    kit = os.path.join(d, 'kit')                                                 # a copy of pcbkit too: LR-1 and the copper shapes live there now
+    shutil.copytree(os.path.join(os.path.dirname(ROOT), 'pcbkit'), kit, ignore=shutil.ignore_patterns('.scratch', '__pycache__', 'tests'))
     if edit:
         f, old, new = edit
-        p = os.path.join(d, 'pcbtools', f)
+        p = os.path.join(kit, 'pcbkit', f[2:]) if f.startswith('K:') else os.path.join(d, 'pcbtools', f)
         s = open(p).read()
         if s.count(old) != 1:
             return 'BAD-MUTANT (pattern found %d times)' % s.count(old)
@@ -164,7 +166,7 @@ def run(tag, edit):
         resource.setrlimit(resource.RLIMIT_AS, (2 << 30, 2 << 30))
     p = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-x', '-p', 'no:cacheprovider', '-c', os.path.join(ROOT, 'tests', 'pytest.ini'),
                         *[os.path.join(HERE, t) for t in TESTS]], capture_output=True, text=True, cwd=ROOT, timeout=300, preexec_fn=limit,
-                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d))
+                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d, PCBKIT_ROOT=kit))
     tail = p.stdout.strip().splitlines()[-1] if p.stdout.strip() else p.stderr[-200:]
     return ('PASSED' if p.returncode == 0 else 'FAILED') + ' | ' + tail
 

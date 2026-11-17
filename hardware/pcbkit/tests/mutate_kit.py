@@ -91,7 +91,43 @@ REQUIRE = [
     ('the npz cache forgets read_fields', "'__read_fields': np.array(sorted(b.read_fields), dtype=str)}", "'__read_fields': np.array([], dtype=str)}"),
     ('an unknown field name is accepted', "if f not in KIND:", "if False:"),
 ]
-RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']), ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py'])]
+GROUND_PLANE = [
+    ('ground_plane: layer count not checked', "if b.copper_layers != c.COPPER_LAYERS:", "if False:"),
+    ('ground_plane: another net\'s zone not reported', "for zi in bot[b.z_net[bot] != gnd]:", "for zi in []:"),
+    ('ground_plane: a second GND zone not reported', "if len(bz) > 1:", "if False:"),
+    ('ground_plane: an unfilled zone passes', "if not b.z_filled[z]:", "if False:"),
+    ('ground_plane: pieces not counted', "if pieces_n != 1:", "if False:"),
+    ('ground_plane: a keep-out area counts as a zone', "(b.z_layer == L) & ~b.z_keepout)", "(b.z_layer == L))"),
+    ('ground_plane: no zone at all passes', "bad.append(f'no {side} GND zone')", "pass"),
+    ('ground_plane: the plane layer is always the bottom', "L = _layer_code(c.PLANE_LAYER)\n    side = 'bottom' if L == 1 else 'top'\n    bad = []", "L = 1\n    side = 'bottom' if L == 1 else 'top'\n    bad = []"),
+    ('ground_plane: a hole counts as a piece', "(b.z_ring_hole[b.z_ring_off[z]:b.z_ring_off[z + 1]] == 0).sum()", "(b.z_ring_hole[b.z_ring_off[z]:b.z_ring_off[z + 1]] >= 0).sum()"),
+    ('ground_plane: via reach <= becomes <', "if i >= 0 and d[i] <= c.GND_VIA_REACH:", "if i >= 0 and d[i] < c.GND_VIA_REACH:"),
+    ('ground_plane: one via serves several pads', "d = np.where(used, np.inf, d)", "d = d"),
+    ('ground_plane: a through-hole pad needs a via', "pt.net[j] == gnd and b.p_smd[pt.rows[j]]", "pt.net[j] == gnd"),
+    ('ground_plane: a via of another net serves', "gv = np.column_stack([b.v_x, b.v_y])[b.v_net == gnd]", "gv = np.column_stack([b.v_x, b.v_y])"),
+]
+BOTTOM_HOPS = [
+    ('bottom_hops: length > becomes >=', "if Ln > c.HOP_MAX or nv > c.HOP_MAX_VIAS:", "if Ln >= c.HOP_MAX or nv > c.HOP_MAX_VIAS:"),
+    ('bottom_hops: vias > becomes >=', "or nv > c.HOP_MAX_VIAS:", "or nv >= c.HOP_MAX_VIAS:"),
+    ('bottom_hops: ground copper counts as a hop', "    rows = np.flatnonzero((b.s_layer == L) & (b.s_net != gnd))\n    n = len(rows)", "    rows = np.flatnonzero((b.s_layer == L))\n    n = len(rows)"),
+    ('bottom_hops: segments never join', "i, j = geom.within(S, S, c.HOP_JOIN_TOL)", "i, j = geom.within(S, S, 0.0)"),
+    ('bottom_hops: segments of different nets join', "keep = (i < j) & (net[i] == net[j])", "keep = (i < j)"),
+    ('bottom_hops: a via of another net counts', "m = (d['v'] < c.HOP_VIA_TOL) & (b.v_net[vi] == net[ei % n])", "m = (d['v'] < c.HOP_VIA_TOL)"),
+    ('bottom_hops: keep-out margin drops the track width', "pad=c.HOP_KEEPOUT_PAD + b.s_w[rows] / 2)", "pad=c.HOP_KEEPOUT_PAD)"),
+    ('bottom_hops: a part without courtyard is not skipped', "refs = sorted(r for r in c.HOP_KEEPOUT_PARTS if has_box(b, r))", "refs = sorted(r for r in c.HOP_KEEPOUT_PARTS)"),
+    ('bottom_hops: fence test ignores the track width', "hit = geom.seg_in_box(S, fz, pad=w / 2)", "hit = geom.seg_in_box(S, fz, pad=0.0)"),
+    ('bottom_hops: sensitive tracks taken from the plane layer', "trows = np.flatnonzero((b.s_layer == 1 - L) & sens[b.s_net])", "trows = np.flatnonzero((b.s_layer == L) & sens[b.s_net])"),
+    ('bottom_hops: sensitive clearance dropped', "close = D < (w[:, None] + b.s_w[trows][None, :]) / 2 + c.HOP_SENSITIVE_CLEAR", "close = D < (w[:, None] + b.s_w[trows][None, :]) / 2"),
+    ('bottom_hops: sensitive pad clearance dropped', "pad=c.HOP_SENSITIVE_CLEAR + w / 2)", "pad=w / 2)"),
+]
+CONFIG = [
+    ('config: a missing project name does not raise', "if n.kind == 'project':", "if False:"),
+    ('config: a default is reported as the project\'s', "v, src = n.default, 'default'", "v, src = n.default, 'project'"),
+]
+RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']),
+        ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py']),
+        ('rules.py', GROUND_PLANE, ['test_ground_plane.py']), ('rules.py', BOTTOM_HOPS, ['test_bottom_hops.py']),
+        ('config.py', CONFIG, ['test_ground_plane.py', 'test_bottom_hops.py'])]
 
 
 def _limit():
