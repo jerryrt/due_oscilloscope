@@ -1,7 +1,7 @@
 """fr_run.py BOARD OUTBOARD [PASSES] [TIMEOUT]: Freerouting on the board with the project's rules encoded in the DSN (run in the pcb image, cwd = hardware/afe-proto).
 B.Cu keep-outs over every analog fence and every analog part's courtyard (LR-1), the hi-Z nets + A0/A1 + AWG_INV in a class with 0.6 mm clearance and
 F.Cu only (LR-3 / LR-4: no via), the quiet-zone nets F.Cu only. Output: the imported board."""
-import sys, os, re, subprocess
+import sys, os, re, subprocess, math
 sys.path.append('/usr/lib/python3/dist-packages')
 sys.path.insert(0, '.')
 import pcbnew
@@ -82,6 +82,50 @@ if os.path.exists(W + '/out.ses'):
             else: seen[k_] = t_
         for t_ in dup: b.RemoveNative(t_)
         print('DEDUP removed', len(dup))
+
+    if os.environ.get('POST'):
+        b0 = pcbnew.LoadBoard(board)
+        mm = pcbnew.ToMM
+        def geo(t):
+            if t.GetClass() == 'PCB_VIA':
+                return ('V', t.GetNetname(), round(mm(t.GetPosition().x), 3), round(mm(t.GetPosition().y), 3), round(mm(t.GetWidth(pcbnew.F_Cu)), 3))
+            a_ = (round(mm(t.GetStart().x), 3), round(mm(t.GetStart().y), 3)); c_ = (round(mm(t.GetEnd().x), 3), round(mm(t.GetEnd().y), 3))
+            return ('T', t.GetLayer(), t.GetNetname(), round(mm(t.GetWidth()), 3)) + tuple(sorted((a_, c_)))
+        keep = list(b0.GetTracks()); lockednets = {t.GetNetname() for t in keep}
+        removed = [t for t in list(b.GetTracks()) if t.GetNetname() in lockednets]
+        for t in removed: b.RemoveNative(t)
+        for t in keep:
+            d_ = t.Duplicate(); d_.SetNet(b.FindNet(t.GetNetname())); b.Add(d_)
+        # assertion: the locked set is exactly the pre-route copper
+        want = sorted(map(repr, (geo(t) for t in keep))); got = sorted(map(repr, (geo(t) for t in b.GetTracks() if t.GetNetname() in lockednets)))
+        print('LOCKS', 'EXACT' if want == got else 'DIFFERENT', len(want), len(got), 'freerouting copper dropped on locked nets:', len(removed))
+        # width floor and pad stubs (unlocked copper only)
+        padbox = []
+        for fp in b.GetFootprints():
+            for pd in fp.Pads():
+                bb = pd.GetBoundingBox(); padbox.append((pd.GetNetname(), mm(bb.GetX()) - 0.02, mm(bb.GetY()) - 0.02, mm(bb.GetRight()) + 0.02, mm(bb.GetBottom()) + 0.02))
+        def on_pad(n, p): return any(n == q[0] and q[1] <= p[0] <= q[3] and q[2] <= p[1] <= q[4] for q in padbox)
+        trks = [t for t in b.GetTracks() if t.GetClass() != 'PCB_VIA']
+        ends = {}
+        for t in trks:
+            for pt in (t.GetStart(), t.GetEnd()):
+                ends.setdefault((t.GetNetname(), round(mm(pt.x), 2), round(mm(pt.y), 2)), []).append(t)
+        vias_ = {(t.GetNetname(), round(mm(t.GetPosition().x), 2), round(mm(t.GetPosition().y), 2)) for t in b.GetTracks() if t.GetClass() == 'PCB_VIA'}
+        def joined(t, pt):
+            n = t.GetNetname(); x, y = round(mm(pt.x), 2), round(mm(pt.y), 2)
+            if on_pad(n, (mm(pt.x), mm(pt.y))): return True
+            if (n, x, y) in vias_: return True
+            return any(o is not t for o in ends.get((n, x, y), []))
+        narrow = [t for t in trks if t.GetNetname() not in lockednets and mm(t.GetWidth()) < 0.199]
+        for t in narrow: b.RemoveNative(t)
+        gone = set(map(id, narrow))
+        stubs = []
+        for t in trks:
+            if id(t) in gone or t.GetNetname() in lockednets: continue
+            L = math.hypot(mm(t.GetEnd().x - t.GetStart().x), mm(t.GetEnd().y - t.GetStart().y))
+            if L < 3.0 and (not joined(t, t.GetStart()) or not joined(t, t.GetEnd())): stubs.append(t)
+        for t in stubs: b.RemoveNative(t)
+        print('POST narrow removed', len(narrow), 'stubs removed', len(stubs))
     from collections import Counter
     nar = Counter(t_.GetNetname() for t_ in b.GetTracks() if t_.GetClass() != 'PCB_VIA' and pcbnew.ToMM(t_.GetWidth()) < 0.199)
     print('NARROW', dict(nar))
