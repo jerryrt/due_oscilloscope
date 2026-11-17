@@ -21,7 +21,11 @@ tasks = {}
 for n in ('/A1', '/A0', '/AWG_INV'): tasks[n] = (n, dict(width=0.2))
 for n in HORD: tasks[n] = (n, dict(width=0.2))
 vp = net_pads('/VREF'); src_rows = {row[k] for k in C.VREF_SOURCE}
-brs = [{row[tuple(k)] for k in br} for br in C.VREF_BRANCHES]
+brs = []
+for br in C.VREF_BRANCHES:
+    st = {row[tuple(k)] for k in br}
+    if any(b.nets[int(b.p_net[j])] != '/VREF' for j in st) and ('R515', '1') in row: st = {j for j in st if b.nets[int(b.p_net[j])] == '/VREF'} | {row[('R515', '1')]}
+    brs.append(st)
 for j in [j for j in vp if j not in src_rows and not any(j in br for br in brs)]:
     k = min(range(len(brs)), key=lambda q: min(math.hypot(b.p_x[j] - b.p_x[m], b.p_y[j] - b.p_y[m]) for m in brs[q])); brs[k].add(j)
 tasks['vsrc'] = ('/VREF', dict(width=0.3, bottom=True, vias=True, pads_subset=src_rows, tag='vsrc'))
@@ -113,5 +117,20 @@ for it in range(MAXIT):
     front = [k for k in fails_by if k not in critical]
     order = critical + front + [k for k in order if k not in critical and k not in front]
 nf, B, order = best
+# fine-grid completion of whatever is left: each failing pad to the nearest pad of its own group, 0.05 mm grid, no rule relaxed
+_, fb = run(order)
+for key, fl in fb.items():
+    net, kw = tasks[key]
+    grp = kw.get('pads_subset') or set(net_pads(net))
+    for f_ in fl:
+        ref, pin = f_.split('.'); j = row[(ref, pin)]
+        cand = [k for k in grp if k != j and not any(f2 == '%s.%s' % (b.fp_ref[int(b.p_fp[k])], b.p_pin[k]) for f2 in fl)]
+        if not cand: continue
+        k2 = min(cand, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
+        fine_window((b.p_x[j] + b.p_x[k2]) / 2, (b.p_y[j] + b.p_y[k2]) / 2, max(5.0, math.hypot(b.p_x[j] - b.p_x[k2], b.p_y[j] - b.p_y[k2]) / 2 + 2.5))
+        segs, vs, fl2 = B.route(net, width=0.2, pads_subset={j, k2}, tag='fine')
+        coarse()
+        if not fl2: B.add(segs, vs)
+        print('COMPLETE', f_, '->', 'ok len %.1f' % L_of(segs) if not fl2 else 'FAIL', flush=True)
 B.save('whatif/_scratch/route2/signals3.kicad_pcb')
 print('BEST failing pads', nf, 'done', round(time.time() - t0), 's')

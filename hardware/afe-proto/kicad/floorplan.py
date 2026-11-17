@@ -75,7 +75,12 @@ row('AWG_BNC (sense node)', 'AWG', 'REFCAL', (69.8, 19.0), 'F 0.2 guard', '', 'A
 row('AWG supply decoupling parts', 'AWG', 'AWG', ('inside', ), '', '', 'AWG', 'V+ and V- decoupling at pins 8 and 4; INV is a short top trace, Rg2 (R302) straddles the BIN stub as a bridge; no net leaves the pocket except those listed')
 row('SCOPE dual (U101)', 'SCOPE', 'SCOPE', ('inside', ), '', '', 'SCOPE (one agent for both channels)', 'U101 is shared; CH1 and CH2 are labelled on the silk beside its halves, CH2 laid out in CH1\'s pattern, mirrored')
 
-BRIDGES = []  # ref, nets, at (x, y), crosses: none on the first routing; a bridge is added only where a net must cross an A0/A1/ref wall (afe.md D24)
+BRIDGES = [  # ref, nets, at (x, y), crosses: only where the routing needs a crossing (afe.md D24)
+    ('BR1 (R515)', 'VREF / VREF_M', (66.05, 21.75), 'the A1 line (x 66.04)'),
+    ('BR2 (R516)', 'VREF_M / VREF_P', (68.6, 24.7), 'the A0 line (x 68.58)'),
+    ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.6, 15.55), 'the A0 line (x 68.58)'),
+    ('BR4 (R309)', 'AWG_S / AWG_I', (66.05, 18.85), 'the A1 line (x 66.04)'),
+]
 
 COL = {'POWER': '#d9822b', 'REFCAL': '#2a9d8f', 'SCOPE': '#3a6ea5', 'AWG': '#8a4fa8'}
 S = 12.0   # px per mm

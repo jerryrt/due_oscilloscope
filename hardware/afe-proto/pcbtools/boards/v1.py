@@ -324,7 +324,7 @@ RAILS = ('/+3V3A', '/VNEG')
 _CONSUMER = {'AWG': 'AWG', 'SCOPE': 'SCOPE', 'REFCAL': 'REF/ADS'}
 # the 0 ohm bridges that split a rail: (ref, net on pad 1, net on pad 2) from the design; none unless the routing adds one
 _RAIL_BRIDGES = [(q['ref'], '/' + q['pins']['1'], '/' + q['pins']['2']) for q in PARTS
-                 if q['ref'] in ('R410', 'R411', 'R412', 'R413') and q['pins']['1'] != q['pins']['2']]
+                 if q['value'] == '0R 1%' and not q.get('dnp') and q['pins']['1'] != q['pins']['2']]
 _FAMILY = {_r: {_r[1:]} | {n[1:] for _, a_, b_ in _RAIL_BRIDGES for n in (a_, b_) if _r in (a_, b_)} for _r in RAILS}
 GROUPS = {}
 for _rail in RAILS:
@@ -338,7 +338,25 @@ BRIDGE_PADS = []
 RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'
 VREF_SOURCE = [('U501', '2'), ('C504', '1')]
-VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512',), ('R104', 'R204'))]
+def _pad_in_family(ref, net):
+    fam = {n[1:] for n in _fam_nets(net)}
+    p = next(q for q in PARTS if q['ref'] == ref)
+    return [(ref, k) for k, v in p['pins'].items() if v in fam]
+
+
+def _fam_nets(net):
+    fam = {net}
+    grow = True
+    while grow:
+        grow = False
+        for _, a_, b_ in _RAIL_BRIDGES:
+            if (a_ in fam) != (b_ in fam):
+                fam |= {a_, b_}
+                grow = True
+    return fam
+
+
+VREF_BRANCHES = [sum((_pad_in_family(r, '/VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512',), ('R104', 'R204'))]
 CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
 CAP_SELF = (('/AWG_INV', 3.0, 0.1), ('/AWG_BIN', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))
 DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')

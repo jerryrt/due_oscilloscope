@@ -136,7 +136,7 @@ for ch, (r1, r2, r3, c1, c2, rnp, cnp, riso, dk, j) in SC.items():
     two(r1[0], '470k', n('IN'), n('R1A'), B, 'R101 (770k), part 1'); two(r1[1], '300k', n('R1A'), n('N'), B, 'R101, part 2')
     two(c1, '12p', n('IN'), n('N'), B, 'C101 across R101')
     two(r2[0], '470k', n('N'), n('R2A'), B, 'R201 (800k) to GND, part 1'); two(r2[1], '330k', n('R2A'), G, B, 'R201, part 2')
-    two(r3, '330k', n('N'), 'VREF', B, 'R3 to the REF3030E: the centre')
+    two(r3, '330k', n('N'), 'VREF' if ch == 'CH1' else 'VREF_P', B, 'R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)')
     two(c2, '30p', n('N'), G, B, 'C201')
     two(rnp, '680', n('N'), n('NP'), B, 'Rnp, clamp-current limit')
     two(cnp, '10p', n('NP'), G, B, 'Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz')
@@ -181,6 +181,8 @@ PARTS[-1].update(lcsc='C2837587', mpn='Kinghelm KH-BNC50-3511')
 B = 'cal'
 part('U501', 'REF3030', {'1': P33A, '2': VREF, '3': G}, B, 'drives the ladder and REFP0 directly')
 two('C501', '100n', P33A, G, B, 'REF3030 VIN'); two('C505', '1u', P33A, G, B, 'REF3030 VIN bulk')
+two('R515', '0Rb', VREF, 'VREF_M', 'cal', 'wall bridge over A1 (the CH2 leg of VREF), part 1 of 2')
+two('R516', '0Rb', 'VREF_M', 'VREF_P', 'cal', 'wall bridge over A0 (the CH2 leg of VREF), part 2 of 2')
 two('C503', '100n', VREF, G, B, 'reference output, at the ADS1115 AIN0')
 two('C504', '1u', VREF, G, B, 'reference output: the REF3030E asks for 0.1-22 uF (SBVS032), a 100 nF part alone is 0.09 uF at -10 %')
 # ladder: 100 ohm at the bottom (one part: the 3 x 270 || it replaces was 90 ohm), 5 x 270 in series; taps about 0.207 / 0.766 /
@@ -194,7 +196,9 @@ two('R510', '0R', VREF, 'AREF', B, 'PA-7: reference to the Due AREF pin, unfitte
 # BNC node - R501 - tap T0 - R502 - bottom end B - Rd - VREF (the default tie, wire off); k = R502 / (R501 + R502) = 0.405.  The wire (a
 # shunt on J501) joins B to TAP3.  T0 and B each reach the ADS1115 through a series resistor (Rs 3.9k, Rm 13k = Rt||Rb + Rs
 # matched) and a BAV99 clamp, and are read as the differential pair AIN2-AIN3.
-two('R501', '22k', 'AWG_BNC', 'SNS_TAP', B, 'sense divider, BNC node to the tap T0')
+two('R309', '0Rb', 'AWG_S', 'AWG_I', 'awg', 'wall bridge over A1 (AWG_BNC sense tap, west-bound), part 1 of 2')
+two('R310', '0Rb', 'AWG_I', 'AWG_BNC', 'awg', 'wall bridge over A0 (AWG_BNC sense tap, west-bound), part 2 of 2')
+two('R501', '22k', 'AWG_S', 'SNS_TAP', B, 'sense divider, BNC node to the tap T0')
 two('R502', '15k', 'SNS_TAP', 'SNS_B', B, 'sense divider, tap to the bottom end B')
 two('R512', '1k', 'SNS_B', VREF, B, 'Rd: the default tie of B to VREF (wire off)')
 two('R513', '3.9k', 'SNS_TAP', 'SNS_TI', B, 'Rs: T0 to AIN2')
