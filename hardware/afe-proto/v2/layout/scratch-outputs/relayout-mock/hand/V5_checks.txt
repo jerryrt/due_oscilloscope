@@ -1,0 +1,20 @@
+courtyards overlap: J605 MH602
+courtyards overlap: J607 MH602
+findings: 23
+99 2 113
+LABEL ZONE in lane 1 TP301
+lane check: FAIL 1
+silkread 37
+align 42 {'1': 7, '4': 12, '3': 5, '5': 13, '2': 5}
+silkread findings (beside set 31 + 0 extra): 20
+   R307: designator lies on the courtyard of R305
+   R307: designator lies on a pad
+   R303: designator lies on the courtyard of C303
+   R303: designator lies on a pad
+   R513: designator lies on a silk line
+   TP301: designator not centred above it (off centre 0.30 mm, gap 0.30 mm)
+   C305: designator lies on the courtyard of TP301
+   C305: designator lies on a pad
+   U501: designator lies on the courtyard of C501
+   U501: designator lies on a pad
+   U301: designator lies on the courtyard of C304

@@ -1,0 +1,10 @@
+SEED 31
+seed 31: no CH1 fit
+SEED 32
+seed 32: no CH1 fit
+SEED 33
+seed 33: no CH1 fit
+SEED 34
+seed 34: no CH1 fit
+SEED 35
+cp: target 'other_CH1.json': Not a directory

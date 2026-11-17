@@ -1,0 +1,37 @@
+10:23:34: Debug: Adding duplicate image handler for 'PNG file'
+10:23:34: Debug: Adding duplicate image handler for 'JPEG file'
+10:23:34: Debug: Adding duplicate image handler for 'TIFF file'
+10:23:34: Debug: Adding duplicate image handler for 'GIF file'
+10:23:34: Debug: Adding duplicate image handler for 'PNM file'
+10:23:34: Debug: Adding duplicate image handler for 'PCX file'
+10:23:34: Debug: Adding duplicate image handler for 'IFF file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows icon file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows cursor file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+10:23:34: Debug: Adding duplicate image handler for 'TGA file'
+10:23:34: Debug: Adding duplicate image handler for 'XPM file'
+10:23:34: Debug: Adding duplicate image handler for 'PNG file'
+10:23:34: Debug: Adding duplicate image handler for 'JPEG file'
+10:23:34: Debug: Adding duplicate image handler for 'TIFF file'
+10:23:34: Debug: Adding duplicate image handler for 'GIF file'
+10:23:34: Debug: Adding duplicate image handler for 'PNM file'
+10:23:34: Debug: Adding duplicate image handler for 'PCX file'
+10:23:34: Debug: Adding duplicate image handler for 'IFF file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows icon file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows cursor file'
+10:23:34: Debug: Adding duplicate image handler for 'Windows animated cursor file'
+10:23:34: Debug: Adding duplicate image handler for 'TGA file'
+10:23:34: Debug: Adding duplicate image handler for 'XPM file'
+METRIC conflict_segments 1 distinct_clusters 1
+DSN export True
+locked nets 18 keep-out shapes 311 top-only nets 93
+last pass: 
+SES import True
+  lost [(('v', '/GND', 98900000, 132800000), 1)] extra []
+LOCKS EXACT: NO (1 locked items changed or missing, 0 new on locked nets)
+bottom runs kept: 0 (0.0 mm); in fences: {}
+bottom runs ripped (counted as gaps): 3 Counter({'run 10.8 mm 2 vias': 1, 'run 11.9 mm 2 vias': 1, 'run 26.9 mm 4 vias': 1})
+DRC by type {'track_width': 1, 'courtyards_overlap': 2, 'clearance': 16, 'lib_footprint_issues': 4, 'hole_to_hole': 1, 'via_dangling': 3, 'track_dangling': 7} unconnected 52
+UNROUTED by net {'/GND': 1, '/VNEG': 1, '/+3V3A': 10, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 1, '/SNS_B': 1, '/VREF': 4, '/AWG_BIN': 1, '/AWG_VO': 3, '/SCL': 1, '/SNS_T0': 1, '/SDA': 1, '/TAP4': 4, '/TAP5': 1, '/TAP1': 1, '/TAP2': 2, '/TAP3': 2, '/AWG_BNC': 1, '/LM_CP': 1, '/CH1_IN': 1, '/LM_FBP': 2, '/AWG_OB': 1, '/ADS_TAP': 1, '/ADS_B': 1, '/AREF': 1}
+GAPS by block {'other': 7, 'AWG': 7, 'REFCAL': 20, 'CH1': 4, 'CH2': 2, 'POWER': 12}
+RIPPED [('/SDA', 'run 10.8 mm 2 vias', 10.8, 2, (89.47, 125.58)), ('/SCL', 'run 11.9 mm 2 vias', 11.9, 2, (88.91, 134.95)), ('/+5V_F', 'run 26.9 mm 4 vias', 26.9, 4, (76.15, 136.05))]

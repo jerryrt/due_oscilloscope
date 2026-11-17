@@ -1,0 +1,8 @@
+labels solved for 46 parts ( 21 neighbours) ['C201', 'C202', 'C203', 'C301', 'C305', 'C306', 'D201', 'J602', 'R202', 'R203', 'R205', 'R206', 'R207', 'R208', 'R303', 'R304', 'R308', 'R309', 'TP201', 'U301', 'U501']
+start violations 16 ['label U301', 'label C303', 'label C501', 'label C503', 'label J602', 'label R303', 'label R305', 'label R307', 'label R309', 'label R501', 'label R504', 'label R508', 'label R512', 'label R514', 'label U501', 'label U502']
+n 4000 best 7 ['region R512', 'label C303', 'label J602', 'label R305', 'label R309', 'label U501', 'label U502'] disp 110.2 54
+n 8000 best 7 ['court C303/R309', 'label R305', 'label R309', 'label R502', 'label R512', 'label U501', 'label U502'] disp 107.7 107
+n 12000 best 6 ['court C503/U502', 'label C303', 'label C304', 'label R309', 'label U501', 'label U502'] disp 108.4 172
+n 16000 best 6 ['court C503/U502', 'label C306', 'label C304', 'label R309', 'label U501', 'label U502'] disp 106.5 233
+n 20000 best 6 ['court C503/U502', 'label C303', 'label C304', 'label R309', 'label U501', 'label U502'] disp 102.8 296
+done 27589 moves; violations 6 ['court C503/U502', 'label C306', 'label C304', 'label C503', 'label R309', 'label U501'] displacement 113.8

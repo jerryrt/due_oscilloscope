@@ -1,0 +1,13 @@
+courtyards overlap: J605 MH602
+courtyards overlap: J607 MH602
+findings: 19
+99 2 113
+LABEL ZONE in lane 1 C305
+lane check: FAIL 2
+silkread 21
+align 44 {'1': 7, '4': 12, '3': 6, '5': 14, '2': 5}
+silkread findings (beside set 31 + 0 extra): 4
+   U301: designator not centred beside its east end (off centre 0.00 mm, gap -9.39 mm)
+   J602: designator lies on the courtyard of R502, R503
+   J602: designator lies on a pad
+   J602: designator lies on a silk line

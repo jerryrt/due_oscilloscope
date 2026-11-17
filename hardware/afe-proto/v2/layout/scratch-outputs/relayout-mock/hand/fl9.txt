@@ -1,0 +1,13 @@
+start violations 0 []
+n 4000 best 0 [] disp 67.4 31
+n 12000 best 0 [] disp 67.2 97
+n 16000 best 0 [] disp 67.2 131
+n 20000 best 0 [] disp 67.2 164
+n 24000 best 0 [] disp 67.2 198
+n 28000 best 0 [] disp 67.2 231
+n 32000 best 0 [] disp 67.2 264
+n 36000 best 0 [] disp 67.2 297
+n 40000 best 0 [] disp 67.2 330
+n 44000 best 0 [] disp 67.2 363
+n 48000 best 0 [] disp 67.2 396
+done 50962 moves; violations 0 [] displacement 67.2

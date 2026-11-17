@@ -1,0 +1,224 @@
+start 1011000.0 ['court C304/R507', 'court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R507/C304', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject R503 shift +0,+0.5 ['court C304/R507', 'court C304/R508', 'court C304/R509', 'court J501/R503', 'court R501/TP301', 'court R502/TP301', 'court R503/J501', 'court R507/C304', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept C304 shift +0,-0.5 1009000.0 ['court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject C501 turn 270 ['court C304/R508', 'court C304/R509', 'court C501/TP501', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'court TP501/C501', 'region R513']
+reject J501 shift -1,+0 ['court C304/R508', 'court C304/R509', 'court C502/J501', 'court J501/C502', 'court J501/U501', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject swap R507 R501 ['court C304/R508', 'court C304/R509', 'court R502/TP301', 'court R507/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R502', 'court TP301/R507', 'region R513']
+reject R508 turn 270 ['court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R508/R509', 'court R508/R510', 'court R509/C304', 'court R509/R508', 'court R510/R508', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject R514 shift +0,+0.5 ['court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject R305 turn 90 ['court C304/R508', 'court C304/R509', 'court J501/R305', 'court R305/J501', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept R503 shift +0,-1 1009000.0 ['court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject C502 shift +2,+0 ['court C304/R508', 'court C304/R509', 'court C502/J501', 'court J501/C502', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept R305 shift +0,+0.5 1009000.0 ['court C304/R508', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject C502 turn 90 ['court C304/R508', 'court C304/R509', 'court C502/R506', 'court C502/U501', 'court R501/TP301', 'court R502/TP301', 'court R506/C502', 'court R508/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept swap R508 R504 1009000.0 ['court C304/R504', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+accept R305 shift +0,-1 1009000.0 ['court C304/R504', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+accept R506 shift -2,+0 1009000.0 ['court C304/R504', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject TP501 shift +1,+0 ['court C304/R504', 'court C304/R509', 'court C501/TP501', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'court TP501/C501', 'region R513']
+accept R506 shift -1,+0 1009000.0 ['court C304/R504', 'court C304/R509', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R509/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+accept R509 jump to 50.9,29.9 1007000.0 ['court C304/R504', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject C501 turn 90 ['court C304/R504', 'court C501/TP501', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'court TP501/C501', 'region R513']
+reject R502 turn 270 ['court C304/R504', 'court R501/R502', 'court R501/TP301', 'court R502/R501', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject C502 shift +0,+0.5 ['court C304/R504', 'court C502/U501', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept R505 shift +1,+0 1007000.0 ['court C304/R504', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R513'] 0
+reject R503 shift -2,+0 ['court C304/R504', 'court R501/TP301', 'court R502/TP301', 'court R503/R508', 'court R504/C304', 'court R508/R503', 'court TP301/R501', 'court TP301/R502', 'region R513']
+reject R512 shift +0.5,+0 ['court C304/R504', 'court C503/R512', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R512/C503', 'court TP301/R501', 'court TP301/R502', 'region R513']
+accept swap R513 R512 1007000.0 ['court C304/R504', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R512'] 1
+reject R512 shift +0,-1 ['court C304/R504', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court TP301/R501', 'court TP301/R502', 'region R512']
+reject U502 shift -1,+0 ['court C304/R504', 'court C501/U502', 'court R501/TP301', 'court R502/TP301', 'court R504/C304', 'court R514/U502', 'court TP301/R501', 'court TP301/R502', 'court U502/C501', 'court U502/R514', 'region R512']
+accept swap R504 R505 1007000.0 ['court C304/R505', 'court R501/TP301', 'court R502/TP301', 'court R505/C304', 'court TP301/R501', 'court TP301/R502', 'region R512'] 1
+reject R503 shift +2,+0 ['court C304/R505', 'court R501/TP301', 'court R502/R503', 'court R502/TP301', 'court R503/R502', 'court R503/TP301', 'court R505/C304', 'court TP301/R501', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject U502 shift +0,+2 ['court C304/R505', 'court C503/U502', 'court R501/TP301', 'court R502/TP301', 'court R505/C304', 'court TP301/R501', 'court TP301/R502', 'court U502/C503', 'region R512']
+accept TP301 shift -1,+0 1007000.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+reject C501 shift +0,-1 ['court C304/R505', 'court C501/U501', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject J501 shift +0.5,+0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R507 shift +0,+1 ['court C303/R507', 'court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court R507/C303', 'court TP301/R502', 'court TP301/R503', 'region R512']
+accept R511 shift +0,+1 1007000.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+reject R510 shift +0,+0.5 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject C503 shift +0,-2 ['court C304/R505', 'court C503/U502', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'court U502/C503', 'region R512']
+reject swap R503 R504 ['court C304/R505', 'court R502/TP301', 'court R504/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R504', 'region R512']
+reject swap R505 R509 ['court C304/R509', 'court R502/TP301', 'court R503/TP301', 'court R509/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R509 shift -0.5,+0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject U502 shift +0,+0.5 ['court C304/R505', 'court C503/U502', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'court U502/C503', 'region R512']
+reject C502 shift -2,+0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R513 jump to 52.5,8.6 ['court C304/R505', 'court C502/R513', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court R513/C502', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R503 shift +0,+2 ['court C304/R505', 'court J501/R503', 'court R502/TP301', 'court R503/J501', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+accept R504 shift -2,+0 1007000.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+accept C303 turn 90 1007000.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+reject C501 shift +2,+0 ['court C304/R505', 'court C501/U502', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'court U502/C501', 'region R512']
+reject R501 shift -1,+0 ['court C304/R505', 'court R501/R502', 'court R501/TP301', 'court R502/R501', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R501', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R305 shift -0.5,+0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R507 jump to 47.0,26.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject swap C503 C501 ['LR-12 C501 10.6', 'LR-12 C503 6.1', 'court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+accept C501 shift +0.5,+0 1007000.0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+reject R508 shift +0,-2 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court R508/J602', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R513 shift -2,+0 ['court C304/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C304', 'court TP301/R502', 'court TP301/R503', 'region R512']
+accept swap C304 C303 1007000.0 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+reject swap R513 R501 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject J501 shift -0.5,+0 ['court C303/R505', 'court C502/J501', 'court J501/C502', 'court J501/U501', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject R305 jump to 74.6,8.8 ['court C303/R505', 'court R305/U301', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512']
+reject swap R512 R501 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R501']
+accept swap R501 R509 1007000.0 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+accept R503 shift +1,+0 1007000.0 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+accept R504 turn 90 1007000.0 ['court C303/R505', 'court R502/TP301', 'court R503/TP301', 'court R505/C303', 'court TP301/R502', 'court TP301/R503', 'region R512'] 1
+accept swap R505 R512 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R503/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R503', 'region R505'] 1
+accept swap R503 R509 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505'] 1
+reject C501 shift +2,+0 ['court C303/R512', 'court C501/U502', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'court U502/C501', 'region R505']
+accept R511 shift +0,+0.5 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505'] 1
+reject R506 shift +0,-2 ['court C303/R512', 'court R502/TP301', 'court R506/J602', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505']
+accept R504 shift +0,-1 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505'] 1
+accept R504 shift +0,+1 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505'] 1
+reject swap C501 C502 ['LR-12 C501 3.5', 'LR-12 C502 3.6', 'court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505']
+accept R501 shift +1,+0 1007000.0 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505'] 2
+reject R508 turn 180 ['court C303/R512', 'court R502/TP301', 'court R509/TP301', 'court R512/C303', 'court TP301/R502', 'court TP301/R509', 'region R505']
+accept swap R512 R507 1007000.0 ['court C303/R507', 'court R502/TP301', 'court R507/C303', 'court R509/TP301', 'court TP301/R502', 'court TP301/R509', 'region R505'] 2
+reject R305 jump to 52.3,11.2 ['court C303/R507', 'court C502/R305', 'court R305/C502', 'court R305/U501', 'court R502/TP301', 'court R507/C303', 'court R509/TP301', 'court TP301/R502', 'court TP301/R509', 'region R505']
+accept R509 shift -2,+0 1005000.0 ['court C303/R507', 'court R502/TP301', 'court R507/C303', 'court TP301/R502', 'region R505'] 2
+accept C303 shift +0,-2 1003000.0 ['court R502/TP301', 'court TP301/R502', 'region R505'] 2
+accept TP301 shift -2,+0 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+accept TP501 shift -2,+0 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+accept R505 shift -0.5,+0 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+reject R506 turn 180 ['court R509/TP301', 'court TP301/R509', 'region R505']
+reject J501 jump to 61.6,29.9 ['court R509/TP301', 'court TP301/R509', 'region J501', 'region R505']
+accept R514 shift -2,+0 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+reject R503 turn 270 ['court R502/R503', 'court R503/R502', 'court R509/TP301', 'court TP301/R509', 'lane R503', 'region R503', 'region R505']
+reject R502 shift +0,-2 ['court R502/J602', 'court R509/TP301', 'court TP301/R509', 'region R505']
+accept R514 shift +0,-2 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+reject R305 shift +0,+0.5 ['court C303/R305', 'court R305/C303', 'court R509/TP301', 'court TP301/R509', 'region R505']
+reject R502 shift +0,+1 ['court J501/R502', 'court R502/J501', 'court R509/TP301', 'court TP301/R509', 'region R505']
+accept R514 turn 270 1003000.0 ['court R509/TP301', 'court TP301/R509', 'region R505'] 2
+reject R502 shift +1,+0 ['court R502/R503', 'court R503/R502', 'court R509/TP301', 'court TP301/R509', 'region R505']
+reject R501 shift +2,+0 ['court R509/TP301', 'court TP301/R509', 'region R505']
+reject J501 shift +0,+0.5 ['court J501/R305', 'court R305/J501', 'court R509/TP301', 'court TP301/R509', 'region R505']
+accept R505 shift +2,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+reject R501 shift +0,+0.5 ['court R509/TP301', 'court TP301/R509']
+reject C303 turn 90 ['court C303/R305', 'court R305/C303', 'court R509/TP301', 'court TP301/R509']
+reject R510 shift +0,-2 ['court R507/R510', 'court R509/TP301', 'court R510/R507', 'court TP301/R509']
+accept R504 shift +0,+0.5 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+accept R511 shift +0,-0.5 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+accept R507 shift +0,-0.5 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+reject R504 shift +0,+1 ['court C502/R504', 'court J501/R504', 'court R504/C502', 'court R504/J501', 'court R509/TP301', 'court TP301/R509']
+reject swap R507 R502 ['court R509/TP301', 'court TP301/R509']
+accept C304 turn 90 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+reject C503 shift +0.5,+0 ['court C503/R511', 'court R509/TP301', 'court R511/C503', 'court TP301/R509']
+reject R508 shift +0,+1 ['court J501/R508', 'court R508/J501', 'court R509/TP301', 'court TP301/R509']
+reject R510 shift +2,+0 ['court R509/TP301', 'court R510/R512', 'court R512/R510', 'court TP301/R509']
+reject C503 shift +0,-1 ['court C503/U502', 'court R509/TP301', 'court TP301/R509', 'court U502/C503']
+reject C502 jump to 53.9,34.9 ['LR-12 C502 23.6', 'court R509/TP301', 'court TP301/R509']
+reject R503 shift +0,-2 ['court R503/J602', 'court R509/TP301', 'court TP301/R509']
+reject R502 shift -2,+0 ['court R502/TP301', 'court R509/TP301', 'court TP301/R502', 'court TP301/R509']
+reject R511 shift +0,+0.5 ['court R509/TP301', 'court TP301/R509']
+reject C304 turn 180 ['court R509/TP301', 'court TP301/R509']
+reject R506 shift +0.5,+0 ['court R509/TP301', 'court TP301/R509']
+accept C502 shift -0.5,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+accept TP301 shift +0.5,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+reject R508 turn 90 ['court R508/R509', 'court R508/TP301', 'court R509/R508', 'court R509/TP301', 'court TP301/R508', 'court TP301/R509']
+reject C503 shift +0,+2 ['LR-12 C503 4.0', 'court R509/TP301', 'court TP301/R509']
+accept R503 shift +0,-0.5 1002000.0 ['court R509/TP301', 'court TP301/R509'] 2
+reject R505 shift -0.5,+0 ['court R509/TP301', 'court TP301/R509']
+reject R503 turn 90 ['court R502/R503', 'court R503/R502', 'court R509/TP301', 'court TP301/R509', 'lane R503', 'region R503']
+reject R508 turn 90 ['court R508/R509', 'court R508/TP301', 'court R509/R508', 'court R509/TP301', 'court TP301/R508', 'court TP301/R509']
+reject C501 jump to 60.4,21.1 ['LR-12 C501 10.6', 'court C304/C501', 'court C501/C304', 'court C501/R510', 'court R509/TP301', 'court R510/C501', 'court TP301/R509']
+accept C304 shift +0.5,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+reject R503 shift +0,-0.5 ['court R509/TP301', 'court TP301/R509']
+reject R510 turn 270 ['court R507/R510', 'court R509/TP301', 'court R510/R507', 'court TP301/R509']
+reject R503 turn 270 ['court R502/R503', 'court R503/R502', 'court R509/TP301', 'court TP301/R509', 'lane R503', 'region R503']
+reject R305 jump to 78.8,17.3 ['court R305/R308', 'court R509/TP301', 'court TP301/R509']
+accept swap C303 C304 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+accept R513 shift -2,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+reject R503 shift -2,+0 ['court R502/R503', 'court R503/R502', 'court R509/TP301', 'court TP301/R509']
+accept R506 shift -2,+0 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+reject swap C503 C501 ['LR-12 C501 10.6', 'LR-12 C503 5.8', 'court R509/TP301', 'court TP301/R509']
+accept swap R504 R503 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+accept R511 shift +0,+2 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+reject R508 shift +0,-1 ['court R509/TP301', 'court TP301/R509']
+accept R509 shift +0,-0.5 1002000.0 ['court R509/TP301', 'court TP301/R509'] 3
+accept swap R511 R509 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+reject swap R506 R511 ['court R506/TP301', 'court TP301/R506']
+accept swap R504 R510 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+accept R511 shift +0.5,+0 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+accept R510 shift +0,-0.5 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+reject R509 shift -0.5,+0 ['court C503/R509', 'court R509/C503', 'court R511/TP301', 'court TP301/R511']
+accept R507 shift +1,+0 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+reject R509 shift -0.5,+0 ['court C503/R509', 'court R509/C503', 'court R511/TP301', 'court TP301/R511']
+reject R514 shift +0,-1 ['court R511/TP301', 'court R514/TP501', 'court TP301/R511', 'court TP501/R514']
+reject R512 shift +2,+0 ['court R511/TP301', 'court TP301/R511', 'region R512']
+reject R512 turn 90 ['court C303/R512', 'court R507/R512', 'court R511/TP301', 'court R512/C303', 'court R512/R507', 'court TP301/R511']
+reject U502 shift +0,-1 ['LR-12 C503 3.1', 'court R511/TP301', 'court TP301/R511']
+reject C303 shift +1,+0 ['court R511/TP301', 'court TP301/R511']
+accept R513 shift -2,+0 1002000.0 ['court R511/TP301', 'court TP301/R511'] 3
+accept R511 shift +0,-2 1002000.0 ['court R511/J602', 'region R511'] 3
+reject R305 jump to 55.0,19.0 ['court R305/U502', 'court R511/J602', 'court U502/R305', 'region R511']
+accept R505 shift +0,+2 1002000.0 ['court R511/J602', 'region R511'] 3
+reject C304 shift +0,+0.5 ['court C304/R507', 'court R507/C304', 'court R511/J602', 'region R511']
+reject R514 jump to 57.9,25.3 ['court C503/R514', 'court R509/R514', 'court R511/J602', 'court R514/C503', 'court R514/R509', 'region R511']
+reject C502 shift +0,+1 ['court C502/U501', 'court R511/J602', 'region R511']
+reject C304 shift +0.5,+0 ['court R511/J602', 'region R511']
+reject swap R513 R505 ['court R511/J602', 'region R511']
+reject U502 turn 180 ['LR-12 C503 6.1', 'court R511/J602', 'region R511']
+reject R511 shift +1,+0 ['court R511/J602', 'region R511']
+reject R305 turn 270 ['court C304/R305', 'court J501/R305', 'court R305/C304', 'court R305/J501', 'court R511/J602', 'region R511']
+reject R501 shift -2,+0 ['court R511/J602', 'region R511']
+accept R504 turn 180 1002000.0 ['court R511/J602', 'region R511'] 3
+reject R507 shift +0,-1 ['court C304/R507', 'court R507/C304', 'court R511/J602', 'region R511']
+reject TP301 shift +0,+2 ['court J501/TP301', 'court R511/J602', 'court TP301/J501', 'region R511']
+accept R513 shift -1,+0 1002000.0 ['court R511/J602', 'region R511'] 3
+reject R503 turn 180 ['court R511/J602', 'region R511']
+reject C304 shift +2,+0 ['court R511/J602', 'lane C304', 'region R511']
+reject R501 shift +0.5,+0 ['court R511/J602', 'region R511']
+reject J501 turn 270 ['court J501/J602', 'court J501/R503', 'court J501/R508', 'court R503/J501', 'court R508/J501', 'court R511/J602', 'region R511']
+reject C303 jump to 86.8,17.1 ['court C303/R302', 'court C303/R309', 'court R511/J602', 'region R511']
+reject R511 shift +1,+0 ['court R511/J602', 'region R511']
+accept R511 shift +0,-2 1002000.0 ['court R511/J602', 'region R511'] 4
+reject C503 shift +1,+0 ['court C503/R509', 'court R509/C503', 'court R511/J602', 'region R511']
+accept TP301 shift +0,-2 1002000.0 ['court R511/J602', 'region R511'] 4
+accept R507 jump to 57.2,29.5 1002000.0 ['court R511/J602', 'region R511'] 4
+reject R503 jump to 58.9,24.2 ['court R503/R509', 'court R509/R503', 'court R511/J602', 'region R511']
+reject C502 shift +0,+0.5 ['court C502/U501', 'court R511/J602', 'region R511']
+reject C502 shift +0,-2 ['LR-12 C502 3.6', 'court C502/R503', 'court R503/C502', 'court R511/J602', 'region R511']
+accept R512 turn 180 1002000.0 ['court R511/J602', 'region R511'] 4
+reject R507 turn 180 ['court R511/J602', 'region R511']
+reject U502 jump to 49.1,39.6 ['LR-12 C503 18.3', 'court R511/J602', 'region R511', 'region U502']
+reject R305 shift +0,-0.5 ['court J501/R305', 'court R305/J501', 'court R511/J602', 'region R511']
+reject R504 jump to 58.0,39.9 ['court R511/J602', 'region R511']
+reject R504 turn 270 ['court R511/J602', 'region R511']
+accept R513 turn 90 1002000.0 ['court R511/J602', 'region R511'] 4
+reject C304 jump to 85.6,18.7 ['court R511/J602', 'region R511']
+accept C501 shift +0,+1 1002000.0 ['court R511/J602', 'region R511'] 4
+accept C303 shift -2,+0 1002000.0 ['court R511/J602', 'region R511'] 4
+reject TP301 shift -0.5,+0 ['court R511/J602', 'region R511']
+accept C502 shift +0.5,+0 1002000.0 ['court R511/J602', 'region R511'] 4
+reject R510 turn 90 ['court R502/R510', 'court R510/R502', 'court R511/J602', 'lane R510', 'region R510', 'region R511']
+reject R513 shift +0.5,+0 ['court R511/J602', 'region R511']
+reject R503 shift +2,+0 ['court R503/R508', 'court R508/R503', 'court R511/J602', 'region R511']
+reject R508 shift +0.5,+0 ['court R511/J602', 'region R511']
+reject R503 shift +0,-2 ['court R511/J602', 'region R511']
+reject J501 shift +0,+0.5 ['court J501/R305', 'court R305/J501', 'court R511/J602', 'region R511']
+reject swap R501 R512 ['court R511/J602', 'region R511']
+accept R514 shift -2,+0 1002000.0 ['court R511/J602', 'region R511'] 4
+reject J501 shift +0,-0.5 ['court J501/R502', 'court J501/R508', 'court R502/J501', 'court R508/J501', 'court R511/J602', 'region R511']
+accept R501 shift +1,+0 1002000.0 ['court R511/J602', 'region R511'] 4
+reject U502 shift +0,+1 ['court C503/U502', 'court R511/J602', 'court U502/C503', 'region R511']
+accept swap R509 R504 1002000.0 ['court R511/J602', 'region R511'] 4
+reject swap R513 R512 ['court R511/J602', 'region R511']
+accept R511 jump to 51.3,22.5 164.1 (41, 16) 72
+accept R503 shift -0.5,+0 123.2 (32, 12) 135
+reject TP301 jump to 80.9,15.5 ['court TP301/C301', 'court TP301/R308']
+reject R513 turn 180 143.6
+reject C502 shift -1,+0 123.2
+reject R507 shift +0,-2 157.5
+accept R505 turn 90 112.9 (29, 11) 384
+reject R509 shift -0.5,+0 ['court R509/U502', 'court U502/R509']
+reject R502 turn 270 ['court R502/R510', 'court R502/TP301', 'court R510/R502', 'court TP301/R502']
+reject R508 shift +0,-2 ['court R508/J602']
+accept swap R508 R510 102.7 (27, 10) 442
+reject R514 shift +0,+2 102.7
+reject R504 shift +0,-0.5 102.7
+reject R510 shift +0,-1 104.8
+reject R507 shift -0.5,+0 113.1
+reject C502 shift +0,+1 ['court C502/U501']
+reject U502 shift +0,-0.5 124.7
+reject R506 jump to 60.9,38.4 125.6
+reject TP501 shift +0,-2 102.7
+reject R514 shift -2,+0 ['region R514']
+reject J501 shift -2,+0 ['court C502/J501', 'court J501/C502', 'court J501/U501']

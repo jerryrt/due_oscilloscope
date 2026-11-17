@@ -1,0 +1,4 @@
+swap0_flip0 row 0 west True legal 26842 with NP base 6-9: 3790 picked [(6.03, 81.65, 37.85), (6.03, 82.65, 38.85), (6.38, 83.15, 39.7), (6.93, 81.6, 38.7)]
+swap0_flip1 row 2 west True legal 26842 with NP base 6-9: 210 picked [(8.03, 83.15, 37.75), (8.88, 83.15, 38.6)]
+swap1_flip0 row 0 west False legal 26842 with NP base 6-9: 7891 picked [(6.02, 80.85, 41.3), (6.02, 81.85, 40.3), (6.02, 82.85, 39.3), (6.03, 76.9, 37.8)]
+swap1_flip1 row 2 west False legal 26842 with NP base 6-9: 3972 picked [(6.02, 80.75, 37.8), (6.72, 80.65, 38.6), (6.78, 79.7, 37.75), (7.02, 81.8, 37.75)]

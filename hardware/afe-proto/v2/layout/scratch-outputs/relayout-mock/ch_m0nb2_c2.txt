@@ -1,0 +1,18 @@
+domains {'C201': 201, 'C202': 188, 'C203': 98, 'D201': 165, 'R201': 141, 'R202': 194, 'R203': 207, 'R204': 132, 'R205': 195, 'R206': 187, 'R207': 187, 'R208': 35, 'TP201': 190}
+conflict rows 578384
+POSITIVE CONTROL: current placement of R208 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL /CH2_N HPWL now 25.38
+POSITIVE CONTROL /CH2_M1 HPWL now 7.26
+POSITIVE CONTROL /CH2_M2 HPWL now 14.59
+POSITIVE CONTROL /CH2_M3 HPWL now 6.57
+POSITIVE CONTROL /CH2_NP HPWL now 17.16
+POSITIVE CONTROL: conflict max 2.0 rest rows violated 2 (the HPWL rows are expected)
+MILP status 0 Optimization terminated successfully. (HiGHS Status 7: Optimal) gap 0.0 bound 2187.9286409199167 obj 2187.9286409199167
+max conflict-row sum 1.000000000000341
+MILP feasible; beside [] aligned None
+SOLUTION /CH2_N HPWL 21.86
+SOLUTION /CH2_M1 HPWL 100.0
+SOLUTION /CH2_M2 HPWL 100.0
+SOLUTION /CH2_M3 HPWL 100.0
+SOLUTION /CH2_NP HPWL 100.0
+{'C201': [85.88, 20.82, 0, 2], 'C202': [76.13, 20.82, -180, 2], 'C203': [71.86, 28.05, 0, 2], 'D201': [76.12, 25.77, -180, 0], 'R201': [89.68, 20.82, -180, 4], 'R202': [84.35, 24.4, -180, 2], 'R203': [88.15, 24.4, 0, 4], 'R204': [71.91, 24.4, 0, 2], 'R205': [71.77, 20.9, -180, 2], 'R206': [79.965, 20.81, 0, 4], 'R207': [88.12, 27.95, 0, 4], 'R208': [77.05, 29.845, -180, 2], 'TP201': [80.67, 25.96, 0, 4]}

@@ -1,0 +1,4 @@
+domains {'BR501': 110, 'BR502': 110, 'BR503': 110, 'BR504': 110, 'BR506': 110, 'BR507': 110, 'BR508': 110, 'BR509': 110, 'BR510': 110, 'BR511': 110, 'C501': 110, 'C502': 110, 'C503': 110, 'J501': 96, 'R501': 110, 'R502': 110, 'R503': 110, 'R504': 110, 'R505': 110, 'R506': 110, 'R507': 110, 'R508': 110, 'R509': 110, 'R510': 110, 'R511': 110, 'R512': 110, 'R513': 110, 'R514': 110, 'TP501': 110}
+conflict rows 1250643
+MILP status 2 The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None) gap None bound None obj None
+capped: peak_rss_kb=1105028 wall_s=295.48 exit=0 cap=14G limit_s=4500 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

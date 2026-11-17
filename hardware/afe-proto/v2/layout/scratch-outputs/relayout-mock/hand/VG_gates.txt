@@ -1,0 +1,18 @@
+AWG_FB keep-back: Due x 74.68-79.71, y 4.12-15.32
+--- rows (zones refilled)
+[PASS] LR-1: 2 layers, one bottom plane, 0 bottom runs, 37 GND pads each with its own via
+[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)
+[PASS] LR-3: 10 divider nets: no via, short, no track beside
+[PASS] LR-4: A0/A1 top only, no via (43/56 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it
+[PASS] LR-4 INV_MAX: AWG_FB 4.9 mm, CH1_OUT 4.9 mm, CH2_OUT 1.6 mm (<= 5.0)
+[PASS] LR-12 DECOUP_MAX: 7 caps within 3.0 mm: C104>U101.8 2.0, C105>U101.8 2.7, C305>U301.8 2.6, C306>U301.4 1.6, C502>U501.1 2.3, C501>U501.2 1.8, C503>U502.8 2.2
+[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409
+[FAIL] LR-6: /+3V3A: consumer group scope is not connected to the star: C104.1, C105.1, D201.2, U101.8 unreachable by copper; /+3V3A: consumer group awg is not connected to the star: U301.8 unreachable by copper; /+3V3A: consumer group adc is not connected to the star: C502.1, C503.1, R512.1, R513.1
+[PASS] LR-7: DAC0 7.3 mm; back-termination at the BNC; shell pads on ground
+[FAIL] LR-8: VREF: branch 0 (J602.1) is not connected to the source C501.1, U501.2 by copper; VREF: branch 5 (R106.2, R206.2) is not connected to the source C501.1, U501.2 by copper; VREF: branches [2, 3, 5] share copper (['R509', 'R514', 'TP501'])
+[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts
+[FAIL] LR-11: REFCAL: outline holds [] extra, lacks ['R502', 'R503', 'R507', 'R508', 'R509']; AWG: outline holds ['R502', 'R503', 'R507', 'R508', 'R509'] extra, lacks []; 4 designator pairs read as one label (same baseline, under 0.5 mm, no waiver): C501/TP501 0.0, C502/R506 0.33, R503/R504 0.0, R50
+[SKIP] LR-10: skipped by request (--no-drc)
+FAIL: LR-6, LR-8, LR-11
+--- DRC
+{'diff_pair_gap_out_of_range': 1, 'silk_overlap': 21, 'silk_over_copper': 24, 'courtyards_overlap': 2, 'clearance': 21, 'tracks_crossing': 9, 'shorting_items': 5, 'items_not_allowed': 5, 'lib_footprint_issues': 4, 'hole_to_hole': 1, 'holes_co_located': 1, 'track_dangling': 2} unconnected 17

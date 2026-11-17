@@ -1,0 +1,17 @@
+domains {'BR101': 202, 'BR102': 97, 'C101': 207, 'C102': 192, 'C103': 184, 'C104': 186, 'C105': 189, 'D101': 213, 'R101': 112, 'R102': 234, 'R103': 141, 'R104': 93, 'R105': 179, 'R106': 65, 'R107': 180, 'R108': 188, 'TP101': 185}
+conflict rows 669186
+POSITIVE CONTROL /CH1_N HPWL now 25.16
+POSITIVE CONTROL /CH1_M1 HPWL now 3.58
+POSITIVE CONTROL /CH1_M2 HPWL now 2.15
+POSITIVE CONTROL /CH1_M3 HPWL now 5.73
+POSITIVE CONTROL /CH1_NP HPWL now 20.83
+POSITIVE CONTROL: conflict max 2.0 rest rows violated 0 (the HPWL rows are expected)
+MILP status 0 Optimization terminated successfully. (HiGHS Status 7: Optimal) gap 0.0 bound 1670.326913586163 obj 1670.326913586163
+max conflict-row sum 1.0000000000008449
+MILP feasible; beside [] aligned None
+SOLUTION /CH1_N HPWL 16.16
+SOLUTION /CH1_M1 HPWL 100.0
+SOLUTION /CH1_M2 HPWL 100.0
+SOLUTION /CH1_M3 HPWL 100.0
+SOLUTION /CH1_NP HPWL 100.0
+{'BR101': [68.12, 44.97, -180, 2], 'BR102': [72.0, 37.375, -90, 2], 'C101': [79.0, 43.875, 0, 0], 'C102': [83.475, 44.72, -180, 0], 'C103': [69.0, 34.98, -180, 4], 'C104': [83.235, 37.6, 0, 4], 'C105': [80.75, 39.0, 90, 4], 'D101': [64.67, 35.88, -180, 4], 'R101': [89.19, 41.18, -180, 4], 'R102': [87.54, 37.7, -180, 4], 'R103': [87.6, 44.86, 0, 4], 'R104': [68.5, 40.875, -90, 2], 'R105': [76.95, 38.74, -180, 2], 'R106': [72.9, 44.97, 90, 2], 'R107': [84.71, 41.28, -180, 0], 'R108': [77.7, 35.395, -180, 2], 'TP101': [61.5, 40.375, 0, 2]}

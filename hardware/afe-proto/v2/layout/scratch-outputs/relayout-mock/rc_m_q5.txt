@@ -1,0 +1,3 @@
+domains {'BR501': 192, 'BR502': 196, 'BR503': 180, 'BR504': 180, 'BR506': 190, 'BR507': 198, 'BR508': 188, 'BR509': 200, 'BR510': 200, 'BR511': 198, 'C501': 85, 'C502': 152, 'C503': 132, 'J501': 98, 'R501': 166, 'R502': 153, 'R503': 159, 'R504': 165, 'R505': 184, 'R506': 200, 'R507': 192, 'R508': 186, 'R509': 184, 'R510': 134, 'R511': 136, 'R512': 202, 'R513': 200, 'R514': 128, 'TP501': 110, 'U501': 4, 'U502': 4}
+conflict rows 2294748
+MILP status 2 The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None) gap None bound None obj None

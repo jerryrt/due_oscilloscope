@@ -1,0 +1,23 @@
+domains {'C201': 1, 'C202': 1, 'C203': 740, 'D201': 724, 'R201': 736, 'R202': 1, 'R203': 1, 'R204': 738, 'R205': 1, 'R206': 739, 'R207': 1, 'R208': 739, 'TP201': 720}
+conflict rows 4179110
+POSITIVE CONTROL: current placement of C201 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of C202 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R202 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R203 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R205 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R207 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL /CH2_N HPWL now 23.7
+POSITIVE CONTROL /CH2_M1 HPWL now 7.26
+POSITIVE CONTROL /CH2_M2 HPWL now 16.24
+POSITIVE CONTROL /CH2_M3 HPWL now 8.22
+POSITIVE CONTROL /CH2_NP HPWL now 17.16
+POSITIVE CONTROL: conflict max 1.0 rest rows violated 26 (the HPWL rows are expected)
+MILP status 0 Optimization terminated successfully. (HiGHS Status 7: Optimal) gap 0.0 bound 760.3231503746605 obj 760.3231503746605
+max conflict-row sum 1.0
+MILP feasible; beside ['C201', 'C202', 'R202', 'R203', 'R205', 'R207', 'TP201'] aligned None
+SOLUTION /CH2_N HPWL 111.98
+SOLUTION /CH2_M1 HPWL 400.0
+SOLUTION /CH2_M2 HPWL 400.0
+SOLUTION /CH2_M3 HPWL 400.0
+SOLUTION /CH2_NP HPWL 400.0
+{'C201': [86.15, 23.0, -180, 10], 'C202': [83.1, 23.0, -180, 11], 'C203': [71.86, 28.05, 0, 0], 'D201': [88.125, 29.3, -180, 2], 'R201': [85.375, 19.55, 0, 4], 'R202': [86.15, 24.8, -180, 10], 'R203': [86.15, 26.6, 0, 10], 'R204': [71.91, 24.4, 0, 4], 'R205': [83.1, 24.8, -180, 11], 'R206': [76.375, 26.55, 90, 2], 'R207': [83.1, 26.6, -180, 11], 'R208': [77.55, 30.545, -180, 2], 'TP201': [80.375, 20.8, 0, 11]}

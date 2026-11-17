@@ -1,0 +1,4 @@
+added rectangles [(45.5, 4.6, 65.0, 27.8), (69.5, 4.55, 92.25, 19.25), (98.55, 0.75, 116.4, 16.5)]
+silkread findings after placement: 4
+beside set grew by [] and lost []
+METRIC conflict_segments 95 distinct_clusters 17

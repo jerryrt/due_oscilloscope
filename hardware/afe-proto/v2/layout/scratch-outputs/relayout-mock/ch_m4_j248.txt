@@ -1,0 +1,16 @@
+domains {'C201': 1, 'C202': 1, 'C203': 980, 'D201': 205, 'R201': 980, 'R202': 1, 'R203': 1, 'R204': 980, 'R205': 1, 'R206': 980, 'R207': 1, 'R208': 205, 'TP201': 205}
+conflict rows 4998273
+POSITIVE CONTROL: current placement of C201 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of C202 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R202 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R203 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R205 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R207 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R208 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL /CH2_N HPWL now 23.7
+POSITIVE CONTROL /CH2_M1 HPWL now 7.26
+POSITIVE CONTROL /CH2_M2 HPWL now 16.24
+POSITIVE CONTROL /CH2_M3 HPWL now 8.22
+POSITIVE CONTROL /CH2_NP HPWL now 17.16
+POSITIVE CONTROL: conflict max 1.0 rest rows violated 29 (the HPWL rows are expected)
+MILP status 2 The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None) gap None bound None obj None

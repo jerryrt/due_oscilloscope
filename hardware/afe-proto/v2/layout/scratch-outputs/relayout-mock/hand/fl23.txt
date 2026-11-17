@@ -1,0 +1,7 @@
+labels solved for 45 parts ( 20 neighbours) ['C201', 'C202', 'C203', 'C301', 'C305', 'C306', 'D201', 'J602', 'R202', 'R203', 'R205', 'R206', 'R207', 'R208', 'R303', 'R304', 'R308', 'R309', 'U301', 'U501']
+start violations 12 ['label C303', 'label C501', 'label J501', 'label R303', 'label R305', 'label R309', 'label R503', 'label R505', 'label R508', 'label TP301', 'label U501', 'label U502']
+n 4000 best 6 ['label C304', 'label R305', 'label R309', 'label R505', 'label U501', 'label U502'] disp 107.0 64
+n 8000 best 5 ['label C304', 'label R305', 'label R309', 'label U501', 'label U502'] disp 109.8 124
+n 20000 best 4 ['label C303', 'label C304', 'label R309', 'label U502'] disp 102.9 307
+n 24000 best 4 ['label C303', 'label C304', 'label R309', 'label U502'] disp 96.0 376
+done 26418 moves; violations 4 ['label C303', 'label C304', 'label R309', 'label U502'] displacement 97.6

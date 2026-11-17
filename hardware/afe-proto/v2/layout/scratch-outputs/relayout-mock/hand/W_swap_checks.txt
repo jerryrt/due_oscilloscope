@@ -1,0 +1,15 @@
+courtyards overlap: J605 MH602
+courtyards overlap: J607 MH602
+findings: 21
+99 2 113
+LABEL ZONE in lane 1 C305
+lane check: FAIL 2
+silkread 23
+align 42 {'1': 7, '4': 12, '3': 5, '5': 13, '2': 5}
+silkread findings (beside set 31 + 0 extra): 6
+   R307: designator not centred above it (off centre 0.30 mm, gap 0.30 mm)
+   TP301: designator not centred above it (off centre 0.30 mm, gap 0.30 mm)
+   R308: designator not centred above it (off centre 4.00 mm, gap 0.30 mm)
+   U301: designator not centred beside its east end (off centre 0.00 mm, gap -9.39 mm)
+   R309: designator not centred above it (off centre 4.15 mm, gap 0.30 mm)
+   C502: R505's designator lies east of it, where its own would be read

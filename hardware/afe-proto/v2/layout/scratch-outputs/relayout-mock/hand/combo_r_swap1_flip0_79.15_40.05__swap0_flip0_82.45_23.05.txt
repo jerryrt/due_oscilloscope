@@ -1,0 +1,2 @@
+[    0.4s] first pass: 0 connections not routed
+saved: 72 track segments, 0 vias, 0 connections not routed

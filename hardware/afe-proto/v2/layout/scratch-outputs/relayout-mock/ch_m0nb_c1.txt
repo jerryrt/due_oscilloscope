@@ -1,0 +1,9 @@
+domains {'BR101': 202, 'BR102': 97, 'C101': 207, 'C102': 192, 'C103': 184, 'C104': 186, 'C105': 189, 'D101': 213, 'R101': 112, 'R102': 234, 'R103': 141, 'R104': 93, 'R105': 179, 'R106': 65, 'R107': 180, 'R108': 188, 'TP101': 185}
+conflict rows 669186
+POSITIVE CONTROL /CH1_N HPWL now 25.16
+POSITIVE CONTROL /CH1_M1 HPWL now 3.58
+POSITIVE CONTROL /CH1_M2 HPWL now 2.15
+POSITIVE CONTROL /CH1_M3 HPWL now 5.73
+POSITIVE CONTROL /CH1_NP HPWL now 20.83
+POSITIVE CONTROL: conflict max 2.0 rest rows violated 1 (the HPWL rows are expected)
+MILP status 2 The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None) gap None bound None obj None

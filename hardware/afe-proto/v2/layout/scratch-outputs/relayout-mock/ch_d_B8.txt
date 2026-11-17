@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/ch_milp.py", line 11, in <module>
+    C = pickle.load(open(R + 'ch_sel_%s.pkl' % os.environ.get('TAGX', sys.argv[6] if len(sys.argv) > 6 else 'a'), 'rb'))
+                    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/ch_sel_q7.pkl'

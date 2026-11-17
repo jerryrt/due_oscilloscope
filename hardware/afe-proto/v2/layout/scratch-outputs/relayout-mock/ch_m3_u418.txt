@@ -1,0 +1,23 @@
+domains {'BR101': 205, 'BR102': 205, 'C101': 1, 'C102': 1, 'C103': 980, 'C104': 205, 'C105': 200, 'D101': 205, 'R101': 980, 'R102': 1, 'R103': 1, 'R104': 980, 'R105': 1, 'R106': 980, 'R107': 1, 'R108': 205, 'TP101': 205}
+conflict rows 6199380
+POSITIVE CONTROL: current placement of C101 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of C102 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R102 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R103 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R105 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R107 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL /CH1_N HPWL now 25.16
+POSITIVE CONTROL /CH1_M1 HPWL now 3.58
+POSITIVE CONTROL /CH1_M2 HPWL now 2.15
+POSITIVE CONTROL /CH1_M3 HPWL now 5.73
+POSITIVE CONTROL /CH1_NP HPWL now 20.83
+POSITIVE CONTROL: conflict max 2.0 rest rows violated 27 (the HPWL rows are expected)
+MILP status 0 Optimization terminated successfully. (HiGHS Status 7: Optimal) gap 0.0 bound 4513.537952161625 obj 4513.537952161626
+max conflict-row sum 1.0
+MILP feasible; beside ['BR101', 'BR102', 'C101', 'C102', 'C104', 'C105', 'R102', 'R103', 'R104', 'R105', 'R106', 'R107', 'R108', 'TP101'] aligned None
+SOLUTION /CH1_N HPWL 8.0
+SOLUTION /CH1_M1 HPWL 9.07
+SOLUTION /CH1_M2 HPWL 6.73
+SOLUTION /CH1_M3 HPWL 8.42
+SOLUTION /CH1_NP HPWL 19.96
+{'BR101': [66.62, 44.47, 0, 11], 'BR102': [66.3, 40.95, 0, 10], 'C101': [86.15, 45.4, -180, 10], 'C102': [83.1, 45.4, -180, 11], 'C103': [70.85, 36.73, 90, 0], 'C104': [77.58, 36.425, -180, 11], 'C105': [77.58, 34.325, -180, 11], 'D101': [64.67, 35.88, -180, 0], 'R101': [88.625, 35.35, -180, 2], 'R102': [86.15, 43.6, -180, 10], 'R103': [86.15, 41.8, 0, 10], 'R104': [81.625, 39.6, -180, 10], 'R105': [83.1, 43.6, -180, 11], 'R106': [74.15, 44.72, 90, 11], 'R107': [83.1, 41.8, -180, 11], 'R108': [78.375, 38.85, 90, 11], 'TP101': [64.75, 47.2, 0, 11]}

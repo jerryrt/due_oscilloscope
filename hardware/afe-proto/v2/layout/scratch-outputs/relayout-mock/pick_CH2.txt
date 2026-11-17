@@ -1,0 +1,4 @@
+swap0_flip0 row 0 west True legal 16402 with NP base 6-9: 1072 picked [(6.76, 83.15, 24.7), (7.56, 83.15, 23.9), (7.81, 82.1, 24.7), (8.41, 83.15, 23.05)]
+swap0_flip1 row 2 west True legal 16402 with NP base 6-9: 4584 picked [(6.01, 80.4, 24.6), (6.01, 81.4, 23.6), (6.01, 82.4, 22.6), (6.06, 83.15, 21.8)]
+swap1_flip0 row 0 west False legal 16402 with NP base 6-9: 4060 picked [(6.01, 79.2, 24.7), (6.66, 79.35, 23.9), (6.74, 80.25, 24.7), (7.06, 78.15, 24.7)]
+swap1_flip1 row 2 west False legal 16402 with NP base 6-9: 7875 picked [(6.01, 75.65, 24.65), (6.01, 76.65, 23.65), (6.01, 77.65, 22.65), (6.01, 78.65, 21.65)]

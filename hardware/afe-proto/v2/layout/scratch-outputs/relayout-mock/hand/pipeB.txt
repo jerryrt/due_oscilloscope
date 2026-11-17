@@ -1,0 +1,15 @@
+SEED 7
+saved: 87 track segments, 0 vias, 0 connections not routed 
+CH1_N=3.7 CH1_M1=18.3 CH1_M2=4.5 CH1_M3=4.9 CH1_NP=4.8 CH2_N=3.7 CH2_M1=5.0 CH2_M2=3.4 CH2_M3=4.7 CH2_NP=10.0 MAX=18.3 OUT: 0.0 0.0
+SEED 8
+saved: 87 track segments, 0 vias, 0 connections not routed 
+CH1_N=3.7 CH1_M1=4.5 CH1_M2=4.6 CH1_M3=5.7 CH1_NP=5.0 CH2_N=3.7 CH2_M1=5.8 CH2_M2=2.9 CH2_M3=5.3 CH2_NP=13.1 MAX=13.1 OUT: 0.0 0.0
+SEED 9
+saved: 93 track segments, 0 vias, 0 connections not routed 
+CH1_N=3.7 CH1_M1=4.3 CH1_M2=4.7 CH1_M3=4.9 CH1_NP=9.1 CH2_N=3.7 CH2_M1=4.8 CH2_M2=7.7 CH2_M3=5.1 CH2_NP=13.0 MAX=13.0 OUT: 0.0 0.0
+SEED 10
+saved: 85 track segments, 0 vias, 1 connections not routed   unrouted: /CH2_NP U101 3 
+CH1_N=3.7 CH1_M1=7.8 CH1_M2=4.5 CH1_M3=6.1 CH1_NP=9.1 CH2_N=3.7 CH2_M1=3.4 CH2_M2=6.6 CH2_M3=9.5 CH2_NP=2.9 MAX=9.5 OUT: 0.0 0.0
+SEED 11
+saved: 83 track segments, 0 vias, 0 connections not routed 
+CH1_N=3.7 CH1_M1=4.3 CH1_M2=4.6 CH1_M3=5.7 CH1_NP=8.4 CH2_N=3.7 CH2_M1=5.1 CH2_M2=3.6 CH2_M3=4.5 CH2_NP=11.0 MAX=11.0 OUT: 0.0 0.0

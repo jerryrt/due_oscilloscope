@@ -1,0 +1,2 @@
+swap0_flip0 83.15 24.7 NPbase 6.76 -> FIT
+FOUND

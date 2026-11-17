@@ -1,0 +1,13 @@
+jobs 45 ['/+5V_DUE', '/+5V_F', '/LM_C1P', '/LM_C1N', '/AWG_VREF', '/SNS_B', '/A0', '/AWG_BIN', '/AWG_VO', '/A1', '/SCL', '/SNS_T0', '/CH2_IN', '/SDA', '/TAP4', '/TAP5', '/TAP1', '/TAP2', '/TAP3', '/AWG_BNC', '/LM_CP', '/AWG_OA', '/CH1_IN', '/DAC0', '/LM_FBP', '/LM_FB3M', '/AWG_OB', '/ADS_TAP', '/ADS_B', '/AREF', '/LM_FBN', '/+3V3A#star', '/+3V3A#scope', '/+3V3A#awg', '/+3V3A#adc', '/VNEG#star', '/VNEG#awg', '/VNEG#tp', '/VREF#src', '/VREF#0', '/VREF#1', '/VREF#2', '/VREF#3', '/VREF#4', '/VREF#5']
+iter 0: 9s  routed 45/45  failed []  conflicting 43
+iter 1: 20s  routed 45/45  failed []  conflicting 43
+iter 2: 32s  routed 45/45  failed []  conflicting 41
+iter 3: 43s  routed 45/45  failed []  conflicting 41
+iter 4: 55s  routed 45/45  failed []  conflicting 41
+iter 5: 68s  routed 45/45  failed []  conflicting 39
+iter 6: 81s  routed 45/45  failed []  conflicting 37
+iter 7: 96s  routed 45/45  failed []  conflicting 34
+iter 8: 111s  routed 45/45  failed []  conflicting 32
+iter 9: 126s  routed 45/45  failed []  conflicting 32
+iter 10: 141s  routed 45/45  failed []  conflicting 32
+iter 11: 155s  routed 45/45  failed []  conflicting 32

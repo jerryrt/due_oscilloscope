@@ -131,3 +131,10 @@ reject TP301 shift +0,-1 32.5
 reject R305 shift +1,+0 ['lane R305']
 reject C502 shift +0,-1 ['court C502/R506', 'court R506/C502']
 reject TP301 turn 90 32.5
+reject swap C304 C303 32.5
+reject R502 shift +0,+0.5 60.9
+reject R501 turn 270 34.1
+reject R305 shift -2,+0 51.3
+reject R305 shift -1,+0 61.7
+reject swap R501 R513 40.8
+done 138 moves tried; best 32.5

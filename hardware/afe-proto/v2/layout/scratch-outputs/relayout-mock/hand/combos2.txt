@@ -1,0 +1,80 @@
+COMBO swap1_flip0_79.15_40.05__swap0_flip0_82.45_24.7_ab2
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3018), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=6.8 CH1_M2=6.2 CH1_M3=4.9 CH1_NP=5.0 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.15_40.05__swap0_flip0_82.45_24.7_ab2 beside: 15 silkread 0 align 40 {'4': 11, '3': 2, '5': 15, '1': 7, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.15_40.05__swap0_flip0_82.45_24.7_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3018), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=6.8 CH1_M2=6.2 CH1_M3=4.9 CH1_NP=5.0 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.15_40.05__swap0_flip0_82.45_24.7_ab4 beside: 15 silkread 0 align 40 {'4': 11, '3': 2, '5': 15, '1': 7, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.15_40.05__swap0_flip0_83.15_24.7_ab4
+gap: [(np.float64(4.603), 'C103.1', 'R201.1'), (np.float64(5.1103), 'U101.5', 'U101.3'), (np.fl
+CH1_N=3.8 CH1_M1=6.8 CH1_M2=6.2 CH1_M3=4.9 CH1_NP=5.0 CH2_N=3.8 CH2_M1=5.1 CH2_M2=5.4 CH2_M3=5.4 CH2_NP=22.2 MAX=22.2 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.15_40.05__swap0_flip0_83.15_24.7_ab4 beside: 18 silkread 0 align 40 {'4': 11, '3': 2, '5': 15, '1': 7, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.15_40.05__swap0_flip1_81.9_23.1_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3018), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=6.8 CH1_M2=6.2 CH1_M3=4.9 CH1_NP=5.0 CH2_N=3.8 CH2_M1=3.4 CH2_M2=10.6 CH2_M3=6.5 CH2_NP=9.1 MAX=10.6 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.15_40.05__swap0_flip1_81.9_23.1_ab4 beside: 18 silkread 0 align 40 {'4': 11, '3': 2, '5': 15, '1': 7, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.15_40.05__swap0_flip1_83.15_21.8_ab4
+gap: [(np.float64(4.7707), 'C103.1', 'R201.1'), (np.float64(5.1103), 'U101.5', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=6.8 CH1_M2=6.2 CH1_M3=4.9 CH1_NP=5.0 CH2_N=3.8 CH2_M1=7.7 CH2_M2=1.3 CH2_M3=5.4 CH2_NP=9.0 MAX=9.0 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.15_40.05__swap0_flip1_83.15_21.8_ab4 beside: 17 silkread 0 align 40 {'4': 11, '3': 2, '5': 15, '1': 7, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.9_40.8__swap0_flip0_82.45_24.7_ab2
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3159), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.9_40.8__swap0_flip0_82.45_24.7_ab2 beside: 15 silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.9_40.8__swap0_flip0_82.45_24.7_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3159), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.9_40.8__swap0_flip0_82.45_24.7_ab4 beside: 15 silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.9_40.8__swap0_flip0_83.15_24.7_ab4
+gap: [(np.float64(4.7239), 'C103.1', 'R201.1'), (np.float64(5.1103), 'U101.5', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=5.1 CH2_M2=5.4 CH2_M3=5.4 CH2_NP=22.2 MAX=22.2 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.9_40.8__swap0_flip0_83.15_24.7_ab4 beside: 18 silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.9_40.8__swap0_flip1_81.9_23.1_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.3159), 'C103.1', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=3.4 CH2_M2=10.6 CH2_M3=6.5 CH2_NP=9.1 MAX=10.6 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.9_40.8__swap0_flip1_81.9_23.1_ab4 beside: 18 silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_79.9_40.8__swap0_flip1_83.15_21.8_ab4
+gap: [(np.float64(4.8848), 'C103.1', 'R201.1'), (np.float64(5.1103), 'U101.5', 'U101.3'), (np.f
+CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=7.7 CH2_M2=1.3 CH2_M3=5.4 CH2_NP=9.0 MAX=9.0 OUT: 0.0 0.0
+SUMMARY swap1_flip0_79.9_40.8__swap0_flip1_83.15_21.8_ab4 beside: 17 silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_80.65_41.85__swap0_flip0_82.45_24.7_ab2
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(6.5264), 'C103.1', 'U101.3'), (np.f
+  unrouted: /CH1_NP R107 2 
+CH1_N=3.8 CH1_M1=13.5 CH1_M2=6.1 CH1_M3=6.0 CH1_NP=3.2 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_80.65_41.85__swap0_flip0_82.45_24.7_ab2 beside: 15 silkread 0 align 40 {'1': 7, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_80.65_41.85__swap0_flip0_82.45_24.7_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(6.5264), 'C103.1', 'U101.3'), (np.f
+  unrouted: /CH1_NP R107 2 
+CH1_N=3.8 CH1_M1=13.5 CH1_M2=6.1 CH1_M3=6.0 CH1_NP=3.2 CH2_N=3.8 CH2_M1=4.9 CH2_M2=6.4 CH2_M3=5.1 CH2_NP=18.4 MAX=18.4 OUT: 0.0 0.0
+SUMMARY swap1_flip0_80.65_41.85__swap0_flip0_82.45_24.7_ab4 beside: 15 silkread 0 align 40 {'1': 7, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_80.65_41.85__swap0_flip0_83.15_24.7_ab4
+gap: [(np.float64(5.0654), 'C103.1', 'R201.1'), (np.float64(5.1103), 'U101.5', 'U101.3'), (np.f
+  unrouted: /CH1_NP R107 2 
+CH1_N=3.8 CH1_M1=13.5 CH1_M2=6.1 CH1_M3=6.0 CH1_NP=3.2 CH2_N=3.8 CH2_M1=5.1 CH2_M2=5.4 CH2_M3=5.4 CH2_NP=22.2 MAX=22.2 OUT: 0.0 0.0
+SUMMARY swap1_flip0_80.65_41.85__swap0_flip0_83.15_24.7_ab4 beside: 18 silkread 0 align 40 {'1': 7, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_80.65_41.85__swap0_flip1_81.9_23.1_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(6.5264), 'C103.1', 'U101.3'), (np.f
+  unrouted: /CH1_NP R107 2 
+CH1_N=3.8 CH1_M1=13.5 CH1_M2=6.1 CH1_M3=6.0 CH1_NP=3.2 CH2_N=3.8 CH2_M1=3.4 CH2_M2=10.6 CH2_M3=6.5 CH2_NP=9.1 MAX=13.5 OUT: 0.0 0.0
+SUMMARY swap1_flip0_80.65_41.85__swap0_flip1_81.9_23.1_ab4 beside: 18 silkread 0 align 40 {'1': 7, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6
+COMBO swap1_flip0_80.65_41.85__swap0_flip1_83.15_21.8_ab4
+gap: [(np.float64(5.1103), 'U101.5', 'U101.3'), (np.float64(5.2963), 'C103.1', 'R201.1'), (np.f
+  unrouted: /CH1_NP R107 2 
+CH1_N=3.8 CH1_M1=13.5 CH1_M2=6.1 CH1_M3=6.0 CH1_NP=3.2 CH2_N=3.8 CH2_M1=7.7 CH2_M2=1.3 CH2_M3=5.4 CH2_NP=9.0 MAX=13.5 OUT: 0.0 0.0
+SUMMARY swap1_flip0_80.65_41.85__swap0_flip1_83.15_21.8_ab4 beside: 17 silkread 0 align 40 {'1': 7, '4': 11, '3': 2, '5': 15, '2': 5} 
+findings: 6

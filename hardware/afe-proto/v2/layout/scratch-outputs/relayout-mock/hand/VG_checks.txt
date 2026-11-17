@@ -1,0 +1,20 @@
+courtyards overlap: J605 MH602
+courtyards overlap: J607 MH602
+findings: 46
+99 2 113
+LABEL ZONE in lane 0 R513
+lane check: FAIL 1
+silkread 66
+align 40 {'1': 7, '4': 12, '3': 5, '5': 11, '2': 5}
+silkread findings (beside set 31 + 0 extra): 49
+   R509: designator lies on the courtyard of R508
+   R509: designator lies on a pad
+   R513: designator lies on the courtyard of J501
+   R513: designator lies on a silk line
+   R508: designator lies on the courtyard of R507, R510
+   R508: designator lies on a pad
+   R512: designator lies on a silk line
+   R505: designator lies on the courtyard of J501
+   C502: designator not centred beside it (off centre 2.17 mm, gap -2.58 mm)
+   C502: designator lies on the courtyard of U501
+   R503: designator lies on the courtyard of J501

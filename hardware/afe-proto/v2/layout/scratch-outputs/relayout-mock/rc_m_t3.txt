@@ -1,0 +1,3 @@
+domains {'BR501': 184, 'BR502': 188, 'BR503': 170, 'BR504': 170, 'BR506': 194, 'BR507': 198, 'BR508': 192, 'BR509': 198, 'BR510': 194, 'BR511': 196, 'C501': 152, 'C502': 145, 'C503': 133, 'J501': 94, 'R501': 162, 'R502': 142, 'R503': 148, 'R504': 160, 'R505': 179, 'R506': 198, 'R507': 188, 'R508': 176, 'R509': 174, 'R510': 135, 'R511': 144, 'R512': 200, 'R513': 196, 'R514': 174, 'TP501': 102, 'U501': 4, 'U502': 4}
+conflict rows 2356050
+MILP status 1 Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None) gap None bound None obj None

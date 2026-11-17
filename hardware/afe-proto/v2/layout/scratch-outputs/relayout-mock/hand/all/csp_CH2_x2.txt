@@ -1,0 +1,5 @@
+swap0_flip0 83.15 24.7 NPbase 6.76 -> ('template label reads as another part', 'C202')
+swap0_flip0 83.15 24.15 NPbase 7.31 -> ('timeout', 629991, {'C203': 664, 'D201': 305, 'R201': 565, 'R204': 745, 'R206': 1838, 'R208': 480, 'TP201': 368})
+swap0_flip0 82.45 24.7 NPbase 7.46 -> ('template label reads as another part', 'C202')
+swap0_flip1 80.4 24.6 NPbase 6.01 -> ('template label reads as another part', 'R203')
+swap0_flip1 81.15 23.85 NPbase 6.01 -> ('timeout', 649626, {'C203': 388, 'D201': 127, 'R201': 475, 'R204': 543, 'R206': 1259, 'R208': 276, 'TP201': 164})

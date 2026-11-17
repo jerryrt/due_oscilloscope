@@ -1,0 +1,2529 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-11-17T10:10:12",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        },
+        {
+            "description": "Footprint doesn't match copy in library",
+            "key": "lib_footprint_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.8",
+    "schematic_parity": [],
+    "source": "g_W_br401.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Zone [/GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 66.95,
+                        "y": 92.11
+                    },
+                    "uuid": "ace78813-8490-40ee-b6ed-8ea22501b1d2"
+                },
+                {
+                    "description": "Zone [/GND] on F.Cu, priority 0",
+                    "pos": {
+                        "x": 66.95,
+                        "y": 96.61
+                    },
+                    "uuid": "a564f369-5b23-47f4-a012-9d5b850d33ff"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Zone [/GND] on F.Cu, priority 0",
+                    "pos": {
+                        "x": 66.95,
+                        "y": 96.61
+                    },
+                    "uuid": "a564f369-5b23-47f4-a012-9d5b850d33ff"
+                },
+                {
+                    "description": "Zone [/GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 66.95,
+                        "y": 92.11
+                    },
+                    "uuid": "ace78813-8490-40ee-b6ed-8ea22501b1d2"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [/GND] of U502 on F.Cu",
+                    "pos": {
+                        "x": 107.48,
+                        "y": 132.45
+                    },
+                    "uuid": "d1009eda-2a32-563a-9e02-cd4107cb8633"
+                },
+                {
+                    "description": "Pad 1 [/GND] of U502 on F.Cu",
+                    "pos": {
+                        "x": 106.48,
+                        "y": 132.45
+                    },
+                    "uuid": "77d1a0c9-1139-53f2-8112-44571b115487"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/VNEG] of C306 on F.Cu",
+                    "pos": {
+                        "x": 130.075,
+                        "y": 142.765
+                    },
+                    "uuid": "1302883d-9617-57e3-9706-23e5aa843053"
+                },
+                {
+                    "description": "Pad 4 [/VNEG] of U301 on F.Cu",
+                    "pos": {
+                        "x": 128.465,
+                        "y": 142.765
+                    },
+                    "uuid": "65e24b56-8d94-5558-bb10-4f1f00ddf490"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of U501 on F.Cu",
+                    "pos": {
+                        "x": 102.5995,
+                        "y": 138.7
+                    },
+                    "uuid": "20cda3c5-8895-538f-818c-61281852a8a9"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.2850 mm",
+                    "pos": {
+                        "x": 101.025,
+                        "y": 140.075
+                    },
+                    "uuid": "b4decea4-d33d-56c0-a0c5-b40d763db553"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of U501 on F.Cu",
+                    "pos": {
+                        "x": 102.5995,
+                        "y": 138.7
+                    },
+                    "uuid": "20cda3c5-8895-538f-818c-61281852a8a9"
+                },
+                {
+                    "description": "Pad 1 [/+3V3A] of R513 on F.Cu",
+                    "pos": {
+                        "x": 111.025,
+                        "y": 140.225
+                    },
+                    "uuid": "a528ad22-5ce6-5e56-a6e0-7ac8f4febebc"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 103.0,
+                        "y": 118.3
+                    },
+                    "uuid": "128c8067-fe93-5b40-acfa-e7eadc9c1d16"
+                },
+                {
+                    "description": "Pad 1 [/+3V3A] of R512 on F.Cu",
+                    "pos": {
+                        "x": 104.625,
+                        "y": 125.025
+                    },
+                    "uuid": "357b1f92-81c7-5b03-a190-ea6592fd17f7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C503 on F.Cu",
+                    "pos": {
+                        "x": 107.125,
+                        "y": 125.425
+                    },
+                    "uuid": "78d2cf7d-5893-5dc9-84c8-cbba6d32cceb"
+                },
+                {
+                    "description": "Pad 1 [/+3V3A] of R512 on F.Cu",
+                    "pos": {
+                        "x": 104.625,
+                        "y": 125.025
+                    },
+                    "uuid": "357b1f92-81c7-5b03-a190-ea6592fd17f7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 8 [/+3V3A] of U502 on F.Cu",
+                    "pos": {
+                        "x": 107.48,
+                        "y": 128.25
+                    },
+                    "uuid": "e055ad53-1d2f-5587-80dc-7af2da64e209"
+                },
+                {
+                    "description": "Pad 1 [/+3V3A] of C503 on F.Cu",
+                    "pos": {
+                        "x": 107.125,
+                        "y": 125.425
+                    },
+                    "uuid": "78d2cf7d-5893-5dc9-84c8-cbba6d32cceb"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C305 on F.Cu",
+                    "pos": {
+                        "x": 122.025,
+                        "y": 137.815
+                    },
+                    "uuid": "35df5788-ae06-5ca8-8188-f96ee044fb10"
+                },
+                {
+                    "description": "Pad 8 [/+3V3A] of U301 on F.Cu",
+                    "pos": {
+                        "x": 124.655,
+                        "y": 137.815
+                    },
+                    "uuid": "85ac7afb-0296-5da3-8272-9273664ce84b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C104 on F.Cu",
+                    "pos": {
+                        "x": 128.945,
+                        "y": 113.48
+                    },
+                    "uuid": "287974ce-e637-574a-9cdb-82f118c63fad"
+                },
+                {
+                    "description": "Pad 8 [/+3V3A] of U101 on F.Cu",
+                    "pos": {
+                        "x": 130.695,
+                        "y": 114.504999
+                    },
+                    "uuid": "cefeb763-b373-5074-8888-93da52eb41c5"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C104 on F.Cu",
+                    "pos": {
+                        "x": 128.945,
+                        "y": 113.48
+                    },
+                    "uuid": "287974ce-e637-574a-9cdb-82f118c63fad"
+                },
+                {
+                    "description": "Pad 2 [/+3V3A] of D201 on F.Cu",
+                    "pos": {
+                        "x": 122.4375,
+                        "y": 124.35
+                    },
+                    "uuid": "1b283f54-89f8-530c-aef3-a7ee385206f8"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C104 on F.Cu",
+                    "pos": {
+                        "x": 128.945,
+                        "y": 113.48
+                    },
+                    "uuid": "287974ce-e637-574a-9cdb-82f118c63fad"
+                },
+                {
+                    "description": "Pad 2 [/+3V3A] of D101 on F.Cu",
+                    "pos": {
+                        "x": 115.9375,
+                        "y": 110.175
+                    },
+                    "uuid": "dd003a5c-7a06-55dd-a5d5-0849d154ea58"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/+3V3A] of C105 on F.Cu",
+                    "pos": {
+                        "x": 132.195,
+                        "y": 112.28
+                    },
+                    "uuid": "9b2ddd30-ab90-59ac-a0ee-acc35c6351eb"
+                },
+                {
+                    "description": "Pad 8 [/+3V3A] of U101 on F.Cu",
+                    "pos": {
+                        "x": 130.695,
+                        "y": 114.504999
+                    },
+                    "uuid": "cefeb763-b373-5074-8888-93da52eb41c5"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/VREF] of TP501 on F.Cu",
+                    "pos": {
+                        "x": 97.85,
+                        "y": 127.9
+                    },
+                    "uuid": "720ff5b8-aa06-5fd3-8f5e-fdef158b3bd5"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 128.6
+                    },
+                    "uuid": "286ade91-f248-579b-ab45-bc9e2ba806d9"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 2.8000 mm",
+                    "pos": {
+                        "x": 105.7,
+                        "y": 143.8
+                    },
+                    "uuid": "b523fa60-c629-5bc5-a8fb-76f4a3559706"
+                },
+                {
+                    "description": "PTH pad 1 [/VREF] of J602",
+                    "pos": {
+                        "x": 100.8,
+                        "y": 147.46
+                    },
+                    "uuid": "0378af8c-16f6-56dc-90e7-93df8e51d992"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/VREF] of R206 on F.Cu",
+                    "pos": {
+                        "x": 125.075,
+                        "y": 128.975
+                    },
+                    "uuid": "9720162a-96bc-55af-9cb9-9c9784df0075"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 1.8385 mm",
+                    "pos": {
+                        "x": 131.2,
+                        "y": 139.3
+                    },
+                    "uuid": "170a4b50-4742-5555-aa27-c94c1ae84566"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/VREF] of R206 on F.Cu",
+                    "pos": {
+                        "x": 125.075,
+                        "y": 128.975
+                    },
+                    "uuid": "9720162a-96bc-55af-9cb9-9c9784df0075"
+                },
+                {
+                    "description": "Pad 2 [/VREF] of R106 on F.Cu",
+                    "pos": {
+                        "x": 139.525,
+                        "y": 106.725
+                    },
+                    "uuid": "7d7b1736-3e50-502c-a9f9-40d65b369571"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 3 [/TAP3] of J501",
+                    "pos": {
+                        "x": 111.96,
+                        "y": 136.35
+                    },
+                    "uuid": "b4af77fc-eec6-5024-aaaa-4000786c47d3"
+                },
+                {
+                    "description": "Track [/TAP3] on F.Cu, length 0.2000 mm",
+                    "pos": {
+                        "x": 111.3,
+                        "y": 137.4
+                    },
+                    "uuid": "c920e3b9-cdcb-5897-a9df-5ec633cc88c0"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 95.5,
+                        "y": 122.2
+                    },
+                    "uuid": "54434695-2885-4c66-a404-37d3e0d57fae"
+                },
+                {
+                    "description": "Reference field of R501",
+                    "pos": {
+                        "x": 98.375,
+                        "y": 122.825
+                    },
+                    "uuid": "e9f2d732-491e-5051-bb49-e8ff01e05e18"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "PCB text 'AWG' on F.Silkscreen",
+                    "pos": {
+                        "x": 111.075,
+                        "y": 123.65
+                    },
+                    "uuid": "0ca52c9b-8cf4-44f9-bc30-1584b4ec8dea"
+                },
+                {
+                    "description": "Reference field of R508",
+                    "pos": {
+                        "x": 112.9,
+                        "y": 123.025
+                    },
+                    "uuid": "0d479ea3-50d7-5008-9dd2-d2fec59a5303"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Reference field of C303",
+                    "pos": {
+                        "x": 126.75,
+                        "y": 131.375
+                    },
+                    "uuid": "ad0a10a3-13eb-5121-9e40-1bcabfe98f24"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 119.5,
+                        "y": 130.75
+                    },
+                    "uuid": "b1e26bbe-2a12-4e6d-a95a-a6692a0ba4ca"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 95.5,
+                        "y": 122.2
+                    },
+                    "uuid": "3217ca7e-d4aa-4365-b684-11fe622382a8"
+                },
+                {
+                    "description": "Reference field of TP501",
+                    "pos": {
+                        "x": 97.849,
+                        "y": 125.804
+                    },
+                    "uuid": "fec0921b-edd1-59a2-9f16-813030c37122"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of BR401",
+                    "pos": {
+                        "x": 85.655827,
+                        "y": 134.437017
+                    },
+                    "uuid": "84bc1870-78c5-52e4-afbe-b9805cc6f055"
+                },
+                {
+                    "description": "Pad 1 [/+3V3A] of C406 on F.Cu",
+                    "pos": {
+                        "x": 85.8,
+                        "y": 133.85
+                    },
+                    "uuid": "4e4691b2-cf68-58df-948e-1405b6ffccaa"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "PCB text 'AWG' on F.Silkscreen",
+                    "pos": {
+                        "x": 111.075,
+                        "y": 123.65
+                    },
+                    "uuid": "0ca52c9b-8cf4-44f9-bc30-1584b4ec8dea"
+                },
+                {
+                    "description": "Pad 1 [/SNS_T0] of R508 on F.Cu",
+                    "pos": {
+                        "x": 112.075,
+                        "y": 124.3
+                    },
+                    "uuid": "ad83d777-0009-51cb-b4f1-ee5b589f4aa4"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "PCB text 'AWG' on F.Silkscreen",
+                    "pos": {
+                        "x": 111.075,
+                        "y": 123.65
+                    },
+                    "uuid": "0ca52c9b-8cf4-44f9-bc30-1584b4ec8dea"
+                },
+                {
+                    "description": "Pad 2 [/SNS_B] of R508 on F.Cu",
+                    "pos": {
+                        "x": 113.725,
+                        "y": 124.3
+                    },
+                    "uuid": "3b9c8b95-3292-5da2-b04b-9cb6aab631a5"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.9310 mm",
+                    "pos": {
+                        "x": 83.5,
+                        "y": 133.4
+                    },
+                    "uuid": "9f2d3f28-e1b9-5204-a9d0-90d9cc7533cf"
+                },
+                {
+                    "description": "Pad 1 [/LM_C1P] of C409 on F.Cu",
+                    "pos": {
+                        "x": 82.075,
+                        "y": 133.2
+                    },
+                    "uuid": "d3274401-6ccf-51a4-8415-23afb234a92e"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Pad 1 [/LM_C1P] of C409 on F.Cu",
+                    "pos": {
+                        "x": 82.075,
+                        "y": 133.2
+                    },
+                    "uuid": "d3274401-6ccf-51a4-8415-23afb234a92e"
+                },
+                {
+                    "description": "Pad 1 [/+5V_F] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 82.369401,
+                        "y": 133.462323
+                    },
+                    "uuid": "babd97d0-4695-5b90-aba9-88ae2e8c7b7d"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.2500 mm",
+                    "pos": {
+                        "x": 82.3,
+                        "y": 132.95
+                    },
+                    "uuid": "4778e335-d55b-52ce-a544-b44038ac6711"
+                },
+                {
+                    "description": "Pad 1 [/+5V_F] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 82.369401,
+                        "y": 133.462323
+                    },
+                    "uuid": "babd97d0-4695-5b90-aba9-88ae2e8c7b7d"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Pad 2 [/+5V_F_BR401] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 81.630599,
+                        "y": 134.937677
+                    },
+                    "uuid": "1835c389-0fe3-55b0-aedb-925fe95ee3c0"
+                },
+                {
+                    "description": "Pad 13 [/GND] of U401 on F.Cu",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 136.0
+                    },
+                    "uuid": "58d5a0b1-323c-59cb-9e95-f9f128740d0c"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 13 [/GND] of U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 135.0
+                    },
+                    "uuid": "cc793df1-0fa9-5bb0-a4a0-d176ffb21864"
+                },
+                {
+                    "description": "Pad 2 [/+5V_F_BR401] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 81.630599,
+                        "y": 134.937677
+                    },
+                    "uuid": "1835c389-0fe3-55b0-aedb-925fe95ee3c0"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [/+5V_F_BR401] on F.Cu, length 0.2091 mm",
+                    "pos": {
+                        "x": 81.3,
+                        "y": 134.5
+                    },
+                    "uuid": "6eceb2a9-9ec0-5650-a8b5-2d8d571fd255"
+                },
+                {
+                    "description": "Pad 13 [/GND] of U401 on F.Cu",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 136.0
+                    },
+                    "uuid": "58d5a0b1-323c-59cb-9e95-f9f128740d0c"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint C409",
+                    "pos": {
+                        "x": 81.3,
+                        "y": 133.2
+                    },
+                    "uuid": "13cb68c9-8d6c-5388-862a-ca2527b40612"
+                },
+                {
+                    "description": "Footprint BR401",
+                    "pos": {
+                        "x": 82.0,
+                        "y": 134.2
+                    },
+                    "uuid": "69839998-80fc-54e2-abdd-bf757d7012f7"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint BR401",
+                    "pos": {
+                        "x": 82.0,
+                        "y": 134.2
+                    },
+                    "uuid": "69839998-80fc-54e2-abdd-bf757d7012f7"
+                },
+                {
+                    "description": "Footprint R401",
+                    "pos": {
+                        "x": 83.9,
+                        "y": 131.8
+                    },
+                    "uuid": "9b7e059e-6fb6-545c-aa76-8a3cc3049da4"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint BR401",
+                    "pos": {
+                        "x": 82.0,
+                        "y": 134.2
+                    },
+                    "uuid": "69839998-80fc-54e2-abdd-bf757d7012f7"
+                },
+                {
+                    "description": "Footprint U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 136.0
+                    },
+                    "uuid": "f4da38cb-6e28-58d6-87bd-6edeecbe7d11"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 13 [/GND] of U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 135.0
+                    },
+                    "uuid": "cc793df1-0fa9-5bb0-a4a0-d176ffb21864"
+                },
+                {
+                    "description": "Footprint BR401",
+                    "pos": {
+                        "x": 82.0,
+                        "y": 134.2
+                    },
+                    "uuid": "69839998-80fc-54e2-abdd-bf757d7012f7"
+                }
+            ],
+            "severity": "error",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint MH602",
+                    "pos": {
+                        "x": 140.17,
+                        "y": 99.2
+                    },
+                    "uuid": "baf25620-b4e2-5257-a98f-27c2d64021b7"
+                },
+                {
+                    "description": "Footprint J607",
+                    "pos": {
+                        "x": 118.58,
+                        "y": 99.2
+                    },
+                    "uuid": "c5412a66-9500-5a33-b37f-f3d6be6a1a51"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint MH602",
+                    "pos": {
+                        "x": 140.17,
+                        "y": 99.2
+                    },
+                    "uuid": "baf25620-b4e2-5257-a98f-27c2d64021b7"
+                },
+                {
+                    "description": "Footprint J605",
+                    "pos": {
+                        "x": 146.519999,
+                        "y": 99.2
+                    },
+                    "uuid": "dd3369a2-d2ce-5ee3-852c-07ac74b0aaef"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/VNEG] on F.Cu, length 19.2000 mm",
+                    "pos": {
+                        "x": 106.9,
+                        "y": 149.2
+                    },
+                    "uuid": "25dea75f-88f2-5311-acfb-9459c2fe92a7"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 4.1000 mm",
+                    "pos": {
+                        "x": 107.2,
+                        "y": 149.5
+                    },
+                    "uuid": "38ff873b-04ed-5fbd-a7ec-d49ef90dd92b"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 5.3000 mm",
+                    "pos": {
+                        "x": 114.8,
+                        "y": 149.0
+                    },
+                    "uuid": "28c46892-00e1-5902-a846-3fcef9da078f"
+                },
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 1.6000 mm",
+                    "pos": {
+                        "x": 113.9,
+                        "y": 148.6
+                    },
+                    "uuid": "408fbb06-135a-5708-a0f5-3441136d5aa5"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Items shorting two nets (nets /+3V3A and /VREF)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 8.3439 mm",
+                    "pos": {
+                        "x": 99.0,
+                        "y": 136.6
+                    },
+                    "uuid": "1e917ee8-a20f-5871-a645-5e4b6eb5fcef"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 136.8
+                    },
+                    "uuid": "94cfba53-6be4-5e86-a9fa-92350124706d"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets /+3V3A and /+5V_F)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.2000 mm",
+                    "pos": {
+                        "x": 85.1,
+                        "y": 133.4
+                    },
+                    "uuid": "21e41bb2-0087-5d56-a7a6-61da1820f570"
+                },
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 2.0000 mm",
+                    "pos": {
+                        "x": 86.8,
+                        "y": 133.0
+                    },
+                    "uuid": "28c7c226-467e-58ab-a0cf-c5645a449e6d"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.9899 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.3
+                    },
+                    "uuid": "dacdcc3d-50bb-5d99-a2f5-7e91ea3b480e"
+                },
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 83.8,
+                        "y": 135.1
+                    },
+                    "uuid": "ddebb17c-2608-5e97-aedf-f8d820a0820d"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0121 mm)",
+            "items": [
+                {
+                    "description": "Track [/TAP1] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 106.5,
+                        "y": 131.3
+                    },
+                    "uuid": "de4a7bdf-8967-5942-aae4-18d43f5672ca"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 130.9
+                    },
+                    "uuid": "f03d3d31-52b0-58a7-a390-f5ec20e80df2"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 1.6000 mm",
+                    "pos": {
+                        "x": 113.9,
+                        "y": 148.6
+                    },
+                    "uuid": "408fbb06-135a-5708-a0f5-3441136d5aa5"
+                },
+                {
+                    "description": "Track [/VNEG] on F.Cu, length 5.6000 mm",
+                    "pos": {
+                        "x": 114.9,
+                        "y": 149.4
+                    },
+                    "uuid": "5d0db7be-2c9a-5f54-af24-ffa9767146fa"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Items shorting two nets (nets /+5V_F_BR401 and /GND)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F_BR401] on F.Cu, length 0.2091 mm",
+                    "pos": {
+                        "x": 81.3,
+                        "y": 134.5
+                    },
+                    "uuid": "6eceb2a9-9ec0-5650-a8b5-2d8d571fd255"
+                },
+                {
+                    "description": "PTH pad 13 [/GND] of U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 135.0
+                    },
+                    "uuid": "cc793df1-0fa9-5bb0-a4a0-d176ffb21864"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets /TAP1 and /VREF)",
+            "items": [
+                {
+                    "description": "Track [/TAP1] on F.Cu, length 0.3000 mm",
+                    "pos": {
+                        "x": 106.0,
+                        "y": 131.1
+                    },
+                    "uuid": "416da6b0-2970-5cb5-a23d-f511e1595895"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 130.9
+                    },
+                    "uuid": "f03d3d31-52b0-58a7-a390-f5ec20e80df2"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1385 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F_BR401] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 81.2,
+                        "y": 134.4
+                    },
+                    "uuid": "1c3c8be0-9d86-5c41-a508-3fe0f86bd247"
+                },
+                {
+                    "description": "PTH pad 13 [/GND] of U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 135.0
+                    },
+                    "uuid": "cc793df1-0fa9-5bb0-a4a0-d176ffb21864"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0236 mm)",
+            "items": [
+                {
+                    "description": "Track [/AREF] on F.Cu, length 0.3000 mm",
+                    "pos": {
+                        "x": 96.4,
+                        "y": 122.8
+                    },
+                    "uuid": "5ecbb11b-94cc-5f77-ab81-613a0c151005"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 96.7,
+                        "y": 122.6
+                    },
+                    "uuid": "a28ead7a-ee0a-56b8-a7ba-233e51c80a79"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /AREF and /+3V3A)",
+            "items": [
+                {
+                    "description": "Track [/AREF] on F.Cu, length 0.4243 mm",
+                    "pos": {
+                        "x": 96.1,
+                        "y": 122.5
+                    },
+                    "uuid": "0a34ed70-9ef6-5ea2-afd5-1308cdda6ca0"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 96.6,
+                        "y": 122.7
+                    },
+                    "uuid": "35e5834e-d37c-5550-abd3-267402db6d64"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0828 mm)",
+            "items": [
+                {
+                    "description": "Track [/TAP1] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 131.3
+                    },
+                    "uuid": "d41f4765-ac8a-5b58-a7d8-b565c2efac68"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 130.9
+                    },
+                    "uuid": "f03d3d31-52b0-58a7-a390-f5ec20e80df2"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+5V_F_BR401] on F.Cu, length 1.6000 mm",
+                    "pos": {
+                        "x": 79.4,
+                        "y": 134.3
+                    },
+                    "uuid": "0e0d75d7-2a28-5700-aca5-a587090eb046"
+                },
+                {
+                    "description": "Track [/LM_FBP] on F.Cu, length 0.9000 mm",
+                    "pos": {
+                        "x": 79.9,
+                        "y": 133.9
+                    },
+                    "uuid": "af1f8edd-dfdd-505d-a1e4-99ec341cf410"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/TAP1] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 106.3,
+                        "y": 131.1
+                    },
+                    "uuid": "b830f5e4-595c-544b-a468-fe1b8fe39e9b"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 130.9
+                    },
+                    "uuid": "f03d3d31-52b0-58a7-a390-f5ec20e80df2"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/TAP4] on F.Cu, length 1.6000 mm",
+                    "pos": {
+                        "x": 104.6,
+                        "y": 139.6
+                    },
+                    "uuid": "0f0a5745-25c9-5757-a79a-94efe17c8e66"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 1.4000 mm",
+                    "pos": {
+                        "x": 104.8,
+                        "y": 140.0
+                    },
+                    "uuid": "2d046623-b07a-54ff-a5ad-155cafdad0db"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Items shorting two nets (nets /TAP4 and /VREF)",
+            "items": [
+                {
+                    "description": "Track [/TAP4] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 104.4,
+                        "y": 139.8
+                    },
+                    "uuid": "283a4ac9-c5e5-57b8-a726-aa6a500992a5"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 1.4000 mm",
+                    "pos": {
+                        "x": 104.8,
+                        "y": 140.0
+                    },
+                    "uuid": "2d046623-b07a-54ff-a5ad-155cafdad0db"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets /TAP4 and /TAP5)",
+            "items": [
+                {
+                    "description": "Track [/TAP4] on F.Cu, length 0.7071 mm",
+                    "pos": {
+                        "x": 104.5,
+                        "y": 145.6
+                    },
+                    "uuid": "1a553038-09ad-5218-ab43-454273db83f3"
+                },
+                {
+                    "description": "Track [/TAP5] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 104.9,
+                        "y": 145.4
+                    },
+                    "uuid": "bb774e95-fa27-5c1f-a3d7-d024bf8f722f"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/TAP4] on F.Cu, length 0.8000 mm",
+                    "pos": {
+                        "x": 104.5,
+                        "y": 144.8
+                    },
+                    "uuid": "6444e4d7-74ed-55cf-a32e-249f207145f5"
+                },
+                {
+                    "description": "Track [/TAP5] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 104.2,
+                        "y": 145.4
+                    },
+                    "uuid": "90b678a5-ccd1-52ce-aa5c-511a5288e922"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /SDA and /+3V3A)",
+            "items": [
+                {
+                    "description": "Track [/SDA] on F.Cu, length 5.3000 mm",
+                    "pos": {
+                        "x": 100.4,
+                        "y": 123.0
+                    },
+                    "uuid": "2bb0bfa9-b104-5f03-ab88-dc99f3b88e31"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 96.6,
+                        "y": 122.7
+                    },
+                    "uuid": "35e5834e-d37c-5550-abd3-267402db6d64"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/SCL] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 114.3,
+                        "y": 135.8
+                    },
+                    "uuid": "244cf688-ef9e-5e85-ae87-9938bdef2549"
+                },
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 12.9000 mm",
+                    "pos": {
+                        "x": 114.7,
+                        "y": 135.4
+                    },
+                    "uuid": "8b45965c-6694-5da8-a7cb-9573116c3eaf"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/SCL] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 115.0,
+                        "y": 135.8
+                    },
+                    "uuid": "472fd333-71f7-58d2-a551-a1fb11081ca9"
+                },
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 12.9000 mm",
+                    "pos": {
+                        "x": 114.7,
+                        "y": 135.4
+                    },
+                    "uuid": "8b45965c-6694-5da8-a7cb-9573116c3eaf"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/SCL] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 101.7,
+                        "y": 118.2
+                    },
+                    "uuid": "0729068d-0f3e-5c6b-a260-79e94fc14993"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 102.1,
+                        "y": 118.5
+                    },
+                    "uuid": "9ae932e4-b277-52c8-af1e-73102ffe4d27"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0828 mm)",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 106.6,
+                        "y": 130.9
+                    },
+                    "uuid": "f03d3d31-52b0-58a7-a390-f5ec20e80df2"
+                },
+                {
+                    "description": "Track [/TAP1] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 105.9,
+                        "y": 131.0
+                    },
+                    "uuid": "f9e75ca6-0196-5b41-a35f-9944092485a2"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 4.1000 mm",
+                    "pos": {
+                        "x": 107.2,
+                        "y": 149.5
+                    },
+                    "uuid": "38ff873b-04ed-5fbd-a7ec-d49ef90dd92b"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 4.0000 mm",
+                    "pos": {
+                        "x": 106.9,
+                        "y": 148.7
+                    },
+                    "uuid": "b2df111b-0011-5c12-a62b-a8b3618ff80b"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.5000 mm",
+                    "pos": {
+                        "x": 112.4,
+                        "y": 133.9
+                    },
+                    "uuid": "03f33cf3-637d-51fa-af2b-23d79508b364"
+                },
+                {
+                    "description": "Track [/SNS_B] on F.Cu, length 0.1820 mm",
+                    "pos": {
+                        "x": 112.05,
+                        "y": 133.425
+                    },
+                    "uuid": "2f79e882-794d-5bcf-a892-f1e418d421b2"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/SNS_B] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 112.1,
+                        "y": 133.6
+                    },
+                    "uuid": "bea2bacd-5cac-5503-a7a3-a11e52fc9797"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 111.8,
+                        "y": 134.0
+                    },
+                    "uuid": "d13dc529-8dd5-56cc-acef-8ae99a5a37d0"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/LM_C1N] on F.Cu, length 0.8000 mm",
+                    "pos": {
+                        "x": 83.1,
+                        "y": 135.2
+                    },
+                    "uuid": "a531b37f-7b05-5c89-af43-262ef6b9d292"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.9899 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.3
+                    },
+                    "uuid": "dacdcc3d-50bb-5d99-a2f5-7e91ea3b480e"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0828 mm)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1N] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 83.2,
+                        "y": 135.1
+                    },
+                    "uuid": "34c00dfa-0d01-5cc8-ae7b-aadadf50c506"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.9899 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.3
+                    },
+                    "uuid": "dacdcc3d-50bb-5d99-a2f5-7e91ea3b480e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1162 mm)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 83.8,
+                        "y": 135.1
+                    },
+                    "uuid": "ddebb17c-2608-5e97-aedf-f8d820a0820d"
+                },
+                {
+                    "description": "Track [/LM_C1N] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 83.1,
+                        "y": 136.0
+                    },
+                    "uuid": "fb1153ee-4406-559a-add6-a32e0ccde7a1"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.4000 mm",
+                    "pos": {
+                        "x": 83.2,
+                        "y": 135.7
+                    },
+                    "uuid": "66cc8fe2-b35e-532f-aba3-950eb16c1b67"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.9899 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.3
+                    },
+                    "uuid": "dacdcc3d-50bb-5d99-a2f5-7e91ea3b480e"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0873 mm)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 82.5,
+                        "y": 132.8
+                    },
+                    "uuid": "8ecd931f-52a2-5918-af19-702cff7d85ae"
+                },
+                {
+                    "description": "Pad 1 [/+5V_F] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 82.369401,
+                        "y": 133.462323
+                    },
+                    "uuid": "babd97d0-4695-5b90-aba9-88ae2e8c7b7d"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /LM_C1P and /+5V_F)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.2500 mm",
+                    "pos": {
+                        "x": 82.3,
+                        "y": 132.95
+                    },
+                    "uuid": "4778e335-d55b-52ce-a544-b44038ac6711"
+                },
+                {
+                    "description": "Pad 1 [/+5V_F] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 82.369401,
+                        "y": 133.462323
+                    },
+                    "uuid": "babd97d0-4695-5b90-aba9-88ae2e8c7b7d"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1162 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.7,
+                        "y": 133.2
+                    },
+                    "uuid": "d1db233d-a2d9-570f-a76d-6473584f6d8b"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 85.1,
+                        "y": 133.2
+                    },
+                    "uuid": "e4c88ff4-04a6-53d7-a0e4-04992fe52f6f"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0828 mm)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.7
+                    },
+                    "uuid": "2bdde5f6-4c42-50c7-a87b-c760d9ea17d9"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.9899 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 135.3
+                    },
+                    "uuid": "dacdcc3d-50bb-5d99-a2f5-7e91ea3b480e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /LM_C1N and /+5V_F)",
+            "items": [
+                {
+                    "description": "Track [/LM_C1N] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 82.2,
+                        "y": 134.2
+                    },
+                    "uuid": "019b0eac-0507-5537-a5bb-9f8b4b6abdce"
+                },
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 1.0380 mm",
+                    "pos": {
+                        "x": 82.5,
+                        "y": 133.737
+                    },
+                    "uuid": "084a4409-ba3b-55ea-a4d2-895eeefa578a"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.9310 mm",
+                    "pos": {
+                        "x": 83.5,
+                        "y": 133.4
+                    },
+                    "uuid": "9f2d3f28-e1b9-5204-a9d0-90d9cc7533cf"
+                },
+                {
+                    "description": "Track [/LM_C1P] on F.Cu, length 1.3000 mm",
+                    "pos": {
+                        "x": 83.1,
+                        "y": 132.7
+                    },
+                    "uuid": "fc989e55-8550-5996-affc-08afa7008695"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.9000 mm",
+                    "pos": {
+                        "x": 84.6,
+                        "y": 130.2
+                    },
+                    "uuid": "5f0a3fc2-c3a7-5d2b-a07c-ec7fc3cb9147"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 84.4,
+                        "y": 130.6
+                    },
+                    "uuid": "93e0efe3-5b86-5c26-a80a-a28df95ed450"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1162 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.8,
+                        "y": 133.0
+                    },
+                    "uuid": "591b8019-b15d-553e-ab5c-378afadf796f"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.9,
+                        "y": 132.7
+                    },
+                    "uuid": "8d8f6507-5acc-55a4-afd4-301807291e78"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.8,
+                        "y": 130.2
+                    },
+                    "uuid": "2e32ec55-c4c8-56be-a6c3-2241ceaad0d8"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 84.4,
+                        "y": 130.6
+                    },
+                    "uuid": "93e0efe3-5b86-5c26-a80a-a28df95ed450"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 84.7,
+                        "y": 133.1
+                    },
+                    "uuid": "4ae9bd23-1ff7-55e7-a6c9-ec2adb6895a3"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.2000 mm",
+                    "pos": {
+                        "x": 85.0,
+                        "y": 133.1
+                    },
+                    "uuid": "99444828-86f0-5d5c-aa2d-40659163812d"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 2.0000 mm",
+                    "pos": {
+                        "x": 86.8,
+                        "y": 133.0
+                    },
+                    "uuid": "28c7c226-467e-58ab-a0cf-c5645a449e6d"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.9,
+                        "y": 132.7
+                    },
+                    "uuid": "8d8f6507-5acc-55a4-afd4-301807291e78"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /+5V_F and /+3V3A)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.7,
+                        "y": 130.3
+                    },
+                    "uuid": "0c26baad-848a-5393-a607-c4fdbe14a6b7"
+                },
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 84.4,
+                        "y": 130.6
+                    },
+                    "uuid": "93e0efe3-5b86-5c26-a80a-a28df95ed450"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 1.0380 mm",
+                    "pos": {
+                        "x": 82.5,
+                        "y": 133.737
+                    },
+                    "uuid": "084a4409-ba3b-55ea-a4d2-895eeefa578a"
+                },
+                {
+                    "description": "Track [/LM_C1N] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 82.8,
+                        "y": 134.3
+                    },
+                    "uuid": "a28263d4-8903-5432-a4e1-34f01074b8e9"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 102.1,
+                        "y": 118.5
+                    },
+                    "uuid": "9ae932e4-b277-52c8-af1e-73102ffe4d27"
+                },
+                {
+                    "description": "Track [/SCL] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 101.7,
+                        "y": 118.9
+                    },
+                    "uuid": "9cc25429-a198-5965-ac70-641a57ed9798"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1162 mm)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.2000 mm",
+                    "pos": {
+                        "x": 85.0,
+                        "y": 133.1
+                    },
+                    "uuid": "99444828-86f0-5d5c-aa2d-40659163812d"
+                },
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.7,
+                        "y": 133.2
+                    },
+                    "uuid": "d1db233d-a2d9-570f-a76d-6473584f6d8b"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /+3V3A and /VREF)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 99.2,
+                        "y": 137.1
+                    },
+                    "uuid": "6ad5f924-e182-58d0-a359-9c76ef333df2"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 136.8
+                    },
+                    "uuid": "94cfba53-6be4-5e86-a9fa-92350124706d"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.3000 mm",
+                    "pos": {
+                        "x": 99.0,
+                        "y": 136.9
+                    },
+                    "uuid": "65081238-f2d0-526a-a3ff-5e60cb5a1a33"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 136.8
+                    },
+                    "uuid": "94cfba53-6be4-5e86-a9fa-92350124706d"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Items shorting two nets (nets /+3V3A and /SCL)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 3.8184 mm",
+                    "pos": {
+                        "x": 101.5,
+                        "y": 118.5
+                    },
+                    "uuid": "56974635-01ad-5506-a74f-b5371f825b8a"
+                },
+                {
+                    "description": "Track [/SCL] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 101.7,
+                        "y": 118.9
+                    },
+                    "uuid": "9cc25429-a198-5965-ac70-641a57ed9798"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 96.6,
+                        "y": 122.8
+                    },
+                    "uuid": "46e1fac5-7e06-5d5a-a1ef-eee089390126"
+                },
+                {
+                    "description": "Track [/AREF] on F.Cu, length 0.3000 mm",
+                    "pos": {
+                        "x": 96.4,
+                        "y": 122.8
+                    },
+                    "uuid": "5ecbb11b-94cc-5f77-ab81-613a0c151005"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.1000 mm)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 99.1,
+                        "y": 137.2
+                    },
+                    "uuid": "4c1a4e5a-7558-57ea-a447-1cad796cc33b"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 136.8
+                    },
+                    "uuid": "94cfba53-6be4-5e86-a9fa-92350124706d"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /+3V3A and /AREF)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 96.6,
+                        "y": 122.7
+                    },
+                    "uuid": "35e5834e-d37c-5550-abd3-267402db6d64"
+                },
+                {
+                    "description": "Track [/AREF] on F.Cu, length 0.3000 mm",
+                    "pos": {
+                        "x": 96.4,
+                        "y": 122.8
+                    },
+                    "uuid": "5ecbb11b-94cc-5f77-ab81-613a0c151005"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 1.3000 mm",
+                    "pos": {
+                        "x": 108.3,
+                        "y": 148.6
+                    },
+                    "uuid": "3076f529-20b5-5fc5-a94c-441f9fd526c2"
+                },
+                {
+                    "description": "Track [/VREF] on F.Cu, length 4.1000 mm",
+                    "pos": {
+                        "x": 107.2,
+                        "y": 149.5
+                    },
+                    "uuid": "38ff873b-04ed-5fbd-a7ec-d49ef90dd92b"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.1500 mm; actual 0.0121 mm)",
+            "items": [
+                {
+                    "description": "Track [/+3V3A] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 85.0,
+                        "y": 132.9
+                    },
+                    "uuid": "1a96d046-a21d-5453-a40d-1df8014d8603"
+                },
+                {
+                    "description": "Track [/+5V_F] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 84.8,
+                        "y": 133.0
+                    },
+                    "uuid": "591b8019-b15d-553e-ab5c-378afadf796f"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets /+5V_F and /LM_C1P)",
+            "items": [
+                {
+                    "description": "Pad 1 [/+5V_F] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 82.369401,
+                        "y": 133.462323
+                    },
+                    "uuid": "babd97d0-4695-5b90-aba9-88ae2e8c7b7d"
+                },
+                {
+                    "description": "Pad 1 [/LM_C1P] of C409 on F.Cu",
+                    "pos": {
+                        "x": 82.075,
+                        "y": 133.2
+                    },
+                    "uuid": "d3274401-6ccf-51a4-8415-23afb234a92e"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets /+5V_F_BR401 and /GND)",
+            "items": [
+                {
+                    "description": "Pad 2 [/+5V_F_BR401] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 81.630599,
+                        "y": 134.937677
+                    },
+                    "uuid": "1835c389-0fe3-55b0-aedb-925fe95ee3c0"
+                },
+                {
+                    "description": "PTH pad 13 [/GND] of U401",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 135.0
+                    },
+                    "uuid": "cc793df1-0fa9-5bb0-a4a0-d176ffb21864"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets /+5V_F_BR401 and /GND)",
+            "items": [
+                {
+                    "description": "Pad 2 [/+5V_F_BR401] of BR401 on F.Cu",
+                    "pos": {
+                        "x": 81.630599,
+                        "y": 134.937677
+                    },
+                    "uuid": "1835c389-0fe3-55b0-aedb-925fe95ee3c0"
+                },
+                {
+                    "description": "Pad 13 [/GND] of U401 on F.Cu",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 136.0
+                    },
+                    "uuid": "58d5a0b1-323c-59cb-9e95-f9f128740d0c"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 115.7,
+                        "y": 150.0
+                    },
+                    "uuid": "811fd0ff-c358-5053-af7d-658e513ee3b2"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 115.1,
+                        "y": 150.0
+                    },
+                    "uuid": "8f2b09db-a29b-5ef4-a2c6-20aa53318953"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 115.8,
+                        "y": 149.9
+                    },
+                    "uuid": "dcb78965-f09f-58f2-acd5-c174c126dca7"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 114.1,
+                        "y": 150.3
+                    },
+                    "uuid": "14897ba4-f019-5ef2-a2a4-8c928e4f5bb9"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 10.0000 mm",
+                    "pos": {
+                        "x": 114.2,
+                        "y": 150.4
+                    },
+                    "uuid": "259c988f-a45b-5a72-ab1f-d9419da62451"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 0.1414 mm",
+                    "pos": {
+                        "x": 113.9,
+                        "y": 150.2
+                    },
+                    "uuid": "2a5c5953-ddfc-5ff4-ac6c-62fe32941601"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 1.6000 mm",
+                    "pos": {
+                        "x": 113.9,
+                        "y": 148.6
+                    },
+                    "uuid": "408fbb06-135a-5708-a0f5-3441136d5aa5"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 0.8485 mm",
+                    "pos": {
+                        "x": 124.2,
+                        "y": 150.4
+                    },
+                    "uuid": "c84c0846-0db8-54ef-ac2f-e78785876b9c"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Items not allowed",
+            "items": [
+                {
+                    "description": "Track [/AWG_BNC] on F.Cu, length 0.1000 mm",
+                    "pos": {
+                        "x": 114.0,
+                        "y": 150.3
+                    },
+                    "uuid": "f8099266-bfa3-58ed-adc2-50fce6ee711f"
+                }
+            ],
+            "severity": "error",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "The footprint library 'afe' is not enabled in the current configuration",
+            "items": [
+                {
+                    "description": "Footprint J101",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 104.4
+                    },
+                    "uuid": "9544288e-9dcc-5109-b336-6033fb4c70d0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The footprint library 'afe' is not enabled in the current configuration",
+            "items": [
+                {
+                    "description": "Footprint J201",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 122.18
+                    },
+                    "uuid": "ae211972-17c4-5c40-995f-ef9cbdd4a2a3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The footprint library 'afe' is not enabled in the current configuration",
+            "items": [
+                {
+                    "description": "Footprint J605",
+                    "pos": {
+                        "x": 146.519999,
+                        "y": 99.2
+                    },
+                    "uuid": "dd3369a2-d2ce-5ee3-852c-07ac74b0aaef"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The footprint library 'afe' is not enabled in the current configuration",
+            "items": [
+                {
+                    "description": "Footprint J301",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 141.11
+                    },
+                    "uuid": "f04cc7a2-acd9-572f-adaf-944a6e547d2b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.2000 mm)",
+            "items": [
+                {
+                    "description": "Via [/GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 80.0,
+                        "y": 138.9
+                    },
+                    "uuid": "214c729a-d63f-5a12-ad4f-49ef50c6d43d"
+                },
+                {
+                    "description": "Via [/GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 80.0,
+                        "y": 139.4
+                    },
+                    "uuid": "d18b5569-defa-5f54-abf4-17cf59c39d5a"
+                }
+            ],
+            "severity": "warning",
+            "type": "hole_to_hole"
+        },
+        {
+            "description": "Drilled holes co-located",
+            "items": [
+                {
+                    "description": "Via [/GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 105.5,
+                        "y": 132.5
+                    },
+                    "uuid": "469b5726-9f21-562f-a9d1-be2291389877"
+                },
+                {
+                    "description": "Via [/GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 105.5,
+                        "y": 132.5
+                    },
+                    "uuid": "94539502-252b-5973-a1c9-90cb913359c1"
+                }
+            ],
+            "severity": "warning",
+            "type": "holes_co_located"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/VREF] on F.Cu, length 0.7000 mm",
+                    "pos": {
+                        "x": 98.6,
+                        "y": 128.6
+                    },
+                    "uuid": "286ade91-f248-579b-ab45-bc9e2ba806d9"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/CH2_IN] on F.Cu, length 1.0000 mm",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 122.18
+                    },
+                    "uuid": "7f1c82f8-9cc7-5227-b48c-9f0c20a2966a"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/TAP3] on F.Cu, length 0.2000 mm",
+                    "pos": {
+                        "x": 111.3,
+                        "y": 137.4
+                    },
+                    "uuid": "c920e3b9-cdcb-5897-a9df-5ec633cc88c0"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/CH1_IN] on F.Cu, length 1.0000 mm",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 104.4
+                    },
+                    "uuid": "31476c1c-6ac3-5714-b3e9-e813892e9f88"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        }
+    ]
+}

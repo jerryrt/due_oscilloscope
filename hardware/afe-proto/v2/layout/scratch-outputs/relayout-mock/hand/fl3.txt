@@ -1,0 +1,35 @@
+start violations 2 ['region R511', 'label R506']
+n 2000 best 2 ['region R511', 'label R512'] 17
+n 4000 best 2 ['region R511', 'label R510'] 34
+n 6000 best 2 ['region R511', 'label R512'] 53
+n 8000 best 2 ['region R511', 'label R514'] 70
+n 10000 best 2 ['region R511', 'label R509'] 85
+n 12000 best 2 ['region R511', 'label R512'] 102
+n 14000 best 2 ['region R511', 'label R514'] 120
+n 16000 best 2 ['region R511', 'label R514'] 138
+n 18000 best 2 ['region R511', 'label R506'] 155
+n 20000 best 2 ['region R511', 'label R510'] 172
+n 22000 best 2 ['region R511', 'label R506'] 190
+n 24000 best 2 ['region R511', 'label R506'] 208
+n 26000 best 2 ['region R511', 'label R503'] 228
+n 28000 best 2 ['region R511', 'label R506'] 247
+n 30000 best 2 ['region R511', 'label R509'] 265
+n 32000 best 2 ['region R511', 'label R510'] 283
+n 34000 best 2 ['region R511', 'label R506'] 300
+n 36000 best 2 ['region R511', 'label R514'] 318
+n 38000 best 2 ['region R511', 'label R514'] 334
+n 40000 best 2 ['region R511', 'label R514'] 353
+n 42000 best 1 ['label R505'] 372
+n 44000 best 1 ['label R504'] 391
+n 46000 best 1 ['label R509'] 406
+n 48000 best 1 ['label R506'] 423
+n 50000 best 1 ['label R505'] 443
+n 52000 best 1 ['label R509'] 463
+n 54000 best 1 ['label R512'] 484
+n 56000 best 1 ['label R506'] 506
+n 58000 best 1 ['label R512'] 525
+n 60000 best 1 ['label R502'] 544
+n 62000 best 1 ['label R514'] 559
+n 64000 best 1 ['label R510'] 578
+n 66000 best 1 ['label R510'] 596
+done 66548 moves; violations 1 ['label R514']

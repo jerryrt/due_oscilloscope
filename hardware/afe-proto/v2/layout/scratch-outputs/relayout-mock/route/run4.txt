@@ -1,0 +1,70 @@
+[    3.0s] 16/61 /+5V_F: 0.2 s, 2 failed
+[    3.4s] 17/61 /+3V3A_U: 0.4 s, 1 failed
+[   77.7s] 19/61 /+3V3A: 74.0 s, 10 failed
+[   77.7s] 23/61 /LM_FBN: 0.0 s, 1 failed
+[   80.8s] 25/61 /CH1_OUT: 3.0 s, 1 failed
+[   83.4s] 26/61 /CH2_OUT: 2.6 s, 1 failed
+[   83.5s] 27/61 /LM_FBP: 0.1 s, 2 failed
+[   83.6s] 28/61 /LM_FB3M: 0.0 s, 1 failed
+[   89.3s] 40/61 /CH1_IN: 4.4 s, 2 failed
+[   91.4s] 41/61 /VNEG_G: 2.2 s, 2 failed
+[   94.3s] 46/61 /TAP5: 2.6 s, 1 failed
+[   94.5s] 47/61 /+3V3A_R: 0.2 s, 1 failed
+[  104.0s] 50/61 /AWG_VO: 8.7 s, 6 failed
+[  104.5s] 51/61 /TAP2: 0.5 s, 2 failed
+[  106.4s] 52/61 /TAP3: 1.9 s, 3 failed
+[  107.2s] 54/61 /A1: 0.4 s, 1 failed
+[  116.4s] 55/61 /SDA: 9.2 s, 1 failed
+[  119.4s] 57/61 /TAP4: 2.7 s, 4 failed
+[  128.4s] 59/61 /SCL: 5.3 s, 2 failed
+[  149.4s] 60/61 /VREF: 21.0 s, 6 failed
+[  149.7s] 61/61 /AWG_BNC: 0.3 s, 1 failed
+[  149.7s] first pass: 51 connections not routed
+[  303.0s] rip-up round 1: 46 connections not routed
+saved: 482 track segments, 38 vias, 46 connections not routed
+  unrouted: /+5V_F U401 12
+  unrouted: /+5V_F U401 8
+  unrouted: /+3V3A_U C105 1
+  unrouted: /+3V3A C405 1
+  unrouted: /+3V3A C406 1
+  unrouted: /+3V3A R401 1
+  unrouted: /+3V3A C305 1
+  unrouted: /+3V3A U301 8
+  unrouted: /+3V3A R513 1
+  unrouted: /+3V3A C503 1
+  unrouted: /+3V3A U502 8
+  unrouted: /+3V3A BR507 2
+  unrouted: /+3V3A R512 1
+  unrouted: /LM_FBN R404 2
+  unrouted: /CH1_OUT R108 1
+  unrouted: /CH2_OUT R208 1
+  unrouted: /LM_FBP R402 1
+  unrouted: /LM_FBP R401 2
+  unrouted: /LM_FB3M R403 2
+  unrouted: /CH1_IN R101 1
+  unrouted: /CH1_IN J101 1
+  unrouted: /VNEG_G C408 1
+  unrouted: /VNEG_G BR401 1
+  unrouted: /TAP5 R505 2
+  unrouted: /TAP2 R503 1
+  unrouted: /TAP2 J602 5
+  unrouted: /TAP3 J501 3
+  unrouted: /TAP3 R504 1
+  unrouted: /TAP3 J602 4
+  unrouted: /A1 J602 7
+  unrouted: /SDA J604 9
+  unrouted: /TAP4 J501 1
+  unrouted: /TAP4 BR506 1
+  unrouted: /TAP4 R504 2
+  unrouted: /TAP4 J602 3
+  unrouted: /SCL R513 2
+  unrouted: /SCL J604 10
+  unrouted: /AWG_BNC BR501 2
+  unrouted: /TAP1 J602 6
+  unrouted: /VNEG U301 4
+  unrouted: /VNEG C306 1
+  unrouted: /AWG_OA R308 1
+  unrouted: /VREF TP501 1
+  unrouted: /VREF R509 2
+  unrouted: /VREF R106 2
+  unrouted: /AWG_VREF R304 2

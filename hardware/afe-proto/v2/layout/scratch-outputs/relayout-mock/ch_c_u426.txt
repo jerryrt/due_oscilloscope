@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/ch_tmpl_cands.py", line 177, in <module>
+    x, y, rot, ls = TMPL[r]; c0 = cands_for(r, (x, y), [kof(r, rot)], (ls,), 0.0, 1.0)[0]
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range

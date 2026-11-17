@@ -1,0 +1,6 @@
+[    0.3s] 4/10 /CH1_M2: 0.0 s, 1 failed
+[    0.5s] 10/10 /CH2_NP: 0.1 s, 1 failed
+[    0.5s] first pass: 2 connections not routed
+[    1.3s] rip-up round 1: 1 connections not routed
+saved: 94 track segments, 0 vias, 1 connections not routed
+  unrouted: /CH2_NP U101 3

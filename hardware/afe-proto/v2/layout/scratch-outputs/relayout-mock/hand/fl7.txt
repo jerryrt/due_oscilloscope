@@ -1,0 +1,16 @@
+start violations 20 ['region R513', 'label C303', 'label C304', 'label C501', 'label C502', 'label C503', 'label R305', 'label R502', 'label R503', 'label R504', 'label R505', 'label R508', 'label R509', 'label R510', 'label R512', 'label R513', 'label R514', 'label TP301', 'label TP501', 'label U502']
+n 4000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 21.4 31
+n 8000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 60
+n 12000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 88
+n 16000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 117
+n 20000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 146
+n 24000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 175
+n 28000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 203
+n 32000 best 8 ['label C304', 'label C501', 'label R305', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 9.5 232
+n 36000 best 7 ['label C304', 'label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 13.4 259
+n 40000 best 7 ['label C304', 'label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 13.4 287
+n 44000 best 7 ['label C304', 'label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 13.4 315
+n 48000 best 7 ['label C304', 'label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 13.4 343
+n 52000 best 6 ['label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 20.0 370
+n 56000 best 6 ['label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] disp 19.1 395
+done 59888 moves; violations 6 ['label C501', 'label R502', 'label R504', 'label R508', 'label R513', 'label U502'] displacement 19.1

@@ -1,0 +1,7 @@
+swap0_flip0 83.15 24.7 NPbase 6.76 -> ('template label reads as another part', 'C202')
+swap0_flip0 83.15 23.9 NPbase 7.56 -> ('no fit', 288, {'C203': 408, 'D201': 295, 'R201': 431, 'R204': 549, 'R206': 1674, 'R208': 551, 'TP201': 361})
+swap0_flip0 82.1 24.7 NPbase 7.81 -> ('template label reads as another part', 'C202')
+swap0_flip0 83.15 23.05 NPbase 8.41 -> ('no fit', 3, {'C203': 126, 'D201': 315, 'R201': 312, 'R204': 340, 'R206': 1311, 'R208': 818, 'TP201': 336})
+swap0_flip1 80.4 24.6 NPbase 6.01 -> ('template label reads as another part', 'R203')
+swap0_flip1 81.4 23.6 NPbase 6.01 -> ('no fit', 103, {'C203': 472, 'D201': 152, 'R201': 355, 'R204': 380, 'R206': 1295, 'R208': 400, 'TP201': 140})
+swap0_flip1 82.4 22.6 NPbase 6.01 -> ('timeout', 95116, {'C203': 1243, 'D201': 268, 'R201': 296, 'R204': 344, 'R206': 1319, 'R208': 905, 'TP201': 254})

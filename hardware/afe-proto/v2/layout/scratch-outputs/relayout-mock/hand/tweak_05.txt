@@ -1,0 +1,8 @@
+[05] silk/align: silkread 0 align 42 {'1': 9, '4': 11, '3': 2, '5': 15, '2': 5} 
+[05] findings: 6
+[05] lane check: PASS, no part and no label zone stands in either lane
+[05] amb above-only: beside 17 CH1 8 CH2 9 ambiguous []
+[05] /CH2_M3 track 0.0 pads 2 bbox 6.7 x 0.9 HPWL 7.6
+[05] /CH2_NP track 0.0 pads 3 bbox 6.7 x 5.1 HPWL 11.8
+[05] saved: 67 track segments, 0 vias, 0 connections not routed
+[05] CH1_N=3.8 CH1_M1=4.5 CH1_M2=4.1 CH1_M3=5.5 CH1_NP=5.3 CH2_N=3.8 CH2_M1=3.8 CH2_M2=3.6 CH2_M3=5.9 CH2_NP=8.9 MAX=8.9 OUT: 4.9 1.6

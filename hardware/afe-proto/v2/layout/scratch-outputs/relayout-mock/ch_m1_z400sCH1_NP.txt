@@ -1,0 +1,23 @@
+domains {'C101': 1, 'C102': 1, 'C103': 330, 'R101': 330, 'R102': 1, 'R103': 1, 'R104': 330, 'R105': 1, 'R106': 330, 'R107': 1}
+conflict rows 351091
+POSITIVE CONTROL: current placement of C101 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of C102 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R102 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R103 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R105 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL: current placement of R107 is not a model candidate (tie, region mask or label zone)
+POSITIVE CONTROL /CH1_N HPWL now 25.16
+POSITIVE CONTROL /CH1_M1 HPWL now 3.58
+POSITIVE CONTROL /CH1_M2 HPWL now 2.15
+POSITIVE CONTROL /CH1_M3 HPWL now 5.73
+POSITIVE CONTROL /CH1_NP HPWL now 20.83
+POSITIVE CONTROL: conflict max 1.0 rest rows violated 27 (the HPWL rows are expected)
+MILP status 0 Optimization terminated successfully. (HiGHS Status 7: Optimal) gap 0.0 bound 855.3318281471497 obj 855.3318281471498
+max conflict-row sum 1.0
+MILP feasible; beside ['C101', 'C102', 'R101', 'R102', 'R103', 'R104', 'R105', 'R107'] aligned None
+SOLUTION /CH1_N HPWL 8.0
+SOLUTION /CH1_M1 HPWL 10.0
+SOLUTION /CH1_M2 HPWL 10.0
+SOLUTION /CH1_M3 HPWL 10.0
+SOLUTION /CH1_NP HPWL 400.0
+{'C101': [86.15, 43.6, -180, 10], 'C102': [83.1, 43.6, -180, 11], 'C103': [69.1, 34.98, 0, 4], 'R101': [85.035, 37.91, 0, 10], 'R102': [86.15, 41.8, -180, 10], 'R103': [86.15, 40.0, 0, 10], 'R104': [88.15, 47.01, 0, 11], 'R105': [83.1, 41.8, -180, 11], 'R106': [75.15, 43.47, -180, 2], 'R107': [83.1, 40.0, -180, 11]}

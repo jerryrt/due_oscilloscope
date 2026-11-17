@@ -1,0 +1,66 @@
+jobs 43 ['/+5V_DUE', '/+5V_F', '/LM_C1P', '/LM_C1N', '/AWG_VREF', '/SNS_B', '/AWG_BIN', '/AWG_VO', '/SCL', '/SNS_T0', '/CH2_IN', '/SDA', '/TAP4', '/TAP5', '/TAP1', '/TAP2', '/TAP3', '/AWG_BNC', '/LM_CP', '/AWG_OA', '/CH1_IN', '/DAC0', '/LM_FBP', '/LM_FB3M', '/AWG_OB', '/ADS_TAP', '/ADS_B', '/AREF', '/LM_FBN', '/+3V3A#star', '/+3V3A#scope', '/+3V3A#awg', '/+3V3A#adc', '/VNEG#star', '/VNEG#awg', '/VNEG#tp', '/VREF#src', '/VREF#0', '/VREF#1', '/VREF#2', '/VREF#3', '/VREF#4', '/VREF#5']
+GND pads without their own via: [('R501', '1'), ('U401', '4')]
+GNDVIA ('R501', '1') -> (55.8, 27.2) crowd score 1.5
+GNDVIA ('U401', '4') -> (30.0, 11.1) crowd score 40.5
+iter 0: 8s  routed 43/43  failed []  conflicting 40
+iter 1: 16s  routed 43/43  failed []  conflicting 40
+iter 2: 25s  routed 43/43  failed []  conflicting 40
+iter 3: 36s  routed 43/43  failed []  conflicting 39
+iter 4: 46s  routed 43/43  failed []  conflicting 33
+iter 5: 58s  routed 43/43  failed []  conflicting 32
+iter 6: 72s  routed 43/43  failed []  conflicting 30
+iter 7: 86s  routed 43/43  failed []  conflicting 29
+iter 8: 100s  routed 43/43  failed []  conflicting 27
+iter 9: 114s  routed 43/43  failed []  conflicting 27
+PAIRS [('/+5V_F', '/+3V3A#star', 28, (np.float64(36.8), np.float64(15.9))), ('/+3V3A#star', '/+5V_F', 24, (np.float64(32.9), np.float64(14.9))), ('/LM_C1N', '/+3V3A#star', 10, (np.float64(33.5), np.float64(15.8))), ('/AWG_VO', '/TAP1', 10, (np.float64(64.6), np.float64(5.3))), ('/TAP4', '/VREF#2', 10, (np.float64(48.1), np.float64(16.1))), ('/LM_C1P', '/+3V3A#star', 9, (np.float64(33.1), np.float64(15.4))), ('/TAP4', '/TAP3', 9, (np.float64(48.1), np.float64(16.1))), ('/VREF#0', '/TAP4', 8, (np.float64(51.3), np.float64(6.4))), ('/AWG_VO', '/AWG_OB', 8, (np.float64(76.1), np.float64(15.4))), ('/+3V3A#scope', '/SCL', 7, (np.float64(37.3), np.float64(31.0))), ('/+3V3A#scope', '/SDA', 7, (np.float64(45.4), np.float64(36.6))), ('/+3V3A#scope', '/AREF', 7, (np.float64(39.5), np.float64(32.9))), ('/VREF#5', '/SCL', 7, (np.float64(49.4), np.float64(21.1))), ('/VREF#0', '/TAP3', 7, (np.float64(52.0), np.float64(6.5))), ('/+5V_DUE', '/+3V3A#star', 7, (np.float64(37.5), np.float64(15.8))), ('/+5V_F', '/LM_C1P', 7, (np.float64(33.4), np.float64(15.2))), ('/+5V_F', '/LM_C1N', 7, (np.float64(33.8), np.float64(15.2))), ('/+5V_F', '/LM_CP', 7, (np.float64(29.7), np.float64(12.7))), ('/LM_C1P', '/+5V_F', 7, (np.float64(33.1), np.float64(15.5))), ('/LM_C1N', '/+5V_F', 7, (np.float64(33.5), np.float64(15.5))), ('/AWG_VREF', '/AWG_BIN', 7, (np.float64(72.9), np.float64(5.1))), ('/SNS_B', '/SNS_T0', 7, (np.float64(56.8), np.float64(29.9))), ('/SNS_B', '/SDA', 7, (np.float64(44.8), np.float64(34.8))), ('/AWG_BIN', '/AWG_VREF', 7, (np.float64(72.6), np.float64(5.4))), ('/SCL', '/+3V3A#scope', 7, (np.float64(37.6), np.float64(30.7))), ('/SCL', '/VREF#5', 7, (np.float64(49.1), np.float64(20.8))), ('/SCL', '/TAP4', 7, (np.float64(44.7), np.float64(22.2))), ('/SCL', '/TAP3', 7, (np.float64(48.2), np.float64(20.9))), ('/SCL', '/AREF', 7, (np.float64(45.1), np.float64(22.3))), ('/SNS_T0', '/SNS_B', 7, (np.float64(57.1), np.float64(29.6))), ('/SNS_T0', '/TAP1', 7, (np.float64(57.4), np.float64(26.7))), ('/SDA', '/+3V3A#scope', 7, (np.float64(45.1), np.float64(36.9))), ('/SDA', '/SNS_B', 7, (np.float64(45.1), np.float64(35.1))), ('/TAP4', '/VREF#0', 7, (np.float64(51.6), np.float64(6.8))), ('/TAP4', '/SCL', 7, (np.float64(45.0), np.float64(22.0))), ('/TAP1', '/AWG_VO', 7, (np.float64(64.3), np.float64(5.9))), ('/TAP1', '/SNS_T0', 7, (np.float64(57.1), np.float64(26.4))), ('/TAP1', '/VREF#3', 7, (np.float64(57.6), np.float64(26.4))), ('/TAP2', '/VREF#src', 7, (np.float64(54.2), np.float64(13.4))), ('/TAP3', '/VREF#0', 7, (np.float64(52.3), np.float64(6.2)))]
+METRIC conflict_segments 113 distinct_clusters 20
+PAIRSUM /+3V3A#star /+5V_F 28 34.61 16.33
+PAIRSUM /+3V3A#star /LM_C1P 8 33.12 14.92
+PAIRSUM /TAP3 /VREF#2 8 48.43 16.02
+PAIRSUM /AWG_VO /TAP1 6 64.52 5.42
+PAIRSUM /+3V3A#star /+5V_DUE 5 37.56 14.88
+PAIRSUM /+3V3A#star /LM_C1N 4 33.52 15.42
+PAIRSUM /SDA /SNS_B 4 46.48 33.35
+PAIRSUM /TAP3 /TAP4 4 48.9 16.1
+PAIRSUM /TAP2 /VREF#src 4 54.08 13.78
+PAIRSUM /TAP4 /VREF#0 3 51.5 6.42
+PAIRSUM /+5V_F /LM_C1P 3 33.03 15.25
+PAIRSUM /AWG_BIN /AWG_VREF 3 72.5 5.07
+PAIRSUM /SNS_B /SNS_T0 3 57.17 29.94
+PAIRSUM /AWG_OB /AWG_VO 3 76.18 15.42
+PAIRSUM /SCL /TAP3 3 48.42 20.88
+PAIRSUM /TAP4 /VREF#2 3 48.9 16.1
+PAIRSUM /+3V3A#scope /SDA 2 44.92 36.55
+PAIRSUM /+3V3A#scope /AREF 2 39.7 33.27
+PAIRSUM /+3V3A#scope /SCL 2 37.3 29.85
+PAIRSUM /+5V_F /LM_C1N 2 33.5 15.2
+PAIRSUM /+5V_F /LM_CP 2 29.7 12.85
+PAIRSUM /SCL /TAP4 2 44.9 22.12
+PAIRSUM /AREF /SCL 2 45.35 22.3
+PAIRSUM /AWG_OA /AWG_OB 2 77.1 15.9
+PAIRSUM /SCL /VREF#5 1 49.4 20.8
+PAIRSUM /VREF#1 /VREF#5 1 51.95 18.45
+PAIRSUM /TAP3 /VREF#0 1 52.0 6.5
+PAIRSUM /SNS_T0 /TAP1 1 57.4 26.85
+PAIRSUM /TAP1 /VREF#3 1 56.95 26.4
+CLUSTER (29.4, 20.6) ['/+3V3A#star', '/+5V_F']
+CLUSTER (29.7, 12.9) ['/+5V_F', '/LM_CP']
+CLUSTER (33.5, 15.2) ['/+3V3A#star', '/+5V_F', '/LM_C1N', '/LM_C1P']
+CLUSTER (37.3, 29.9) ['/+3V3A#scope', '/SCL']
+CLUSTER (37.6, 13.3) ['/+3V3A#star', '/+5V_DUE']
+CLUSTER (37.5, 16.3) ['/+3V3A#star', '/+5V_DUE', '/+5V_F']
+CLUSTER (40.2, 33.6) ['/+3V3A#scope', '/AREF']
+CLUSTER (44.5, 22.0) ['/AREF', '/SCL', '/TAP4']
+CLUSTER (45.1, 36.6) ['/+3V3A#scope', '/SDA', '/SNS_B']
+CLUSTER (48.1, 31.9) ['/SDA', '/SNS_B']
+CLUSTER (48.9, 16.1) ['/TAP3', '/TAP4', '/VREF#2']
+CLUSTER (49.4, 20.8) ['/SCL', '/TAP3', '/VREF#5']
+CLUSTER (51.2, 6.3) ['/TAP3', '/TAP4', '/VREF#0']
+CLUSTER (52.0, 18.4) ['/VREF#1', '/VREF#5']
+CLUSTER (54.1, 13.4) ['/TAP2', '/VREF#src']
+CLUSTER (57.4, 26.9) ['/SNS_T0', '/TAP1', '/VREF#3']
+CLUSTER (57.0, 29.9) ['/SNS_B', '/SNS_T0']
+CLUSTER (64.7, 5.2) ['/AWG_VO', '/TAP1']
+CLUSTER (72.7, 5.1) ['/AWG_BIN', '/AWG_VREF']
+CLUSTER (76.0, 15.3) ['/AWG_OA', '/AWG_OB', '/AWG_VO']
+wrote ps_p7_spec.py 97 polylines; failed [] conflicting ['/+3V3A#scope', '/VREF#5', '/VREF#0', '/+5V_DUE', '/+5V_F', '/LM_C1P', '/LM_C1N', '/AWG_VREF', '/SNS_B', '/AWG_BIN', '/AWG_VO', '/SCL', '/SNS_T0', '/SDA', '/TAP4', '/TAP1', '/TAP2', '/TAP3', '/LM_CP', '/AWG_OA', '/AWG_OB', '/AREF', '/+3V3A#star', '/VREF#src', '/VREF#1', '/VREF#2', '/VREF#3']

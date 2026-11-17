@@ -1,0 +1,4 @@
+swap0_flip0 legal translations 16402
+swap0_flip1 legal translations 16402
+swap1_flip0 legal translations 16402
+swap1_flip1 legal translations 16402

@@ -1,0 +1,4 @@
+domains {'BR501': 184, 'BR502': 186, 'BR503': 172, 'BR504': 172, 'BR506': 192, 'BR507': 196, 'BR508': 196, 'BR509': 197, 'BR510': 188, 'BR511': 192, 'C501': 112, 'C502': 144, 'C503': 126, 'J501': 92, 'R501': 164, 'R502': 145, 'R503': 148, 'R504': 162, 'R505': 182, 'R506': 196, 'R507': 188, 'R508': 177, 'R509': 176, 'R510': 138, 'R511': 136, 'R512': 202, 'R513': 194, 'R514': 148, 'TP501': 106, 'U501': 5, 'U502': 4}
+conflict rows 2163032
+MILP status 1 Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None) gap None bound None obj None
+capped: peak_rss_kb=2042388 wall_s=3013.55 exit=0 cap=14G limit_s=6000 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

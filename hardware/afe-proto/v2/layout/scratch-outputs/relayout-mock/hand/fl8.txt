@@ -1,0 +1,11 @@
+start violations 0 []
+n 4000 best 0 [] disp 102.0 40
+n 8000 best 0 [] disp 101.3 87
+n 12000 best 0 [] disp 101.2 133
+n 16000 best 0 [] disp 101.2 179
+n 20000 best 0 [] disp 101.2 225
+n 24000 best 0 [] disp 101.2 271
+n 28000 best 0 [] disp 101.2 318
+n 32000 best 0 [] disp 101.2 363
+n 36000 best 0 [] disp 101.2 409
+done 36928 moves; violations 0 [] displacement 101.2

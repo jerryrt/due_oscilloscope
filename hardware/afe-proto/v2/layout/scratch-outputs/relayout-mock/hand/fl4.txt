@@ -1,0 +1,11 @@
+start violations 1 ['label R514']
+n 2000 best 1 ['label R512'] 20
+n 4000 best 1 ['label R504'] 36
+n 6000 best 1 ['label R501'] 53
+n 8000 best 1 ['label R512'] 71
+n 10000 best 1 ['label R514'] 89
+n 12000 best 1 ['label R504'] 108
+n 14000 best 1 ['label R504'] 124
+n 16000 best 1 ['label R504'] 141
+n 18000 best 1 ['label R509'] 155
+n 20000 best 1 ['label R505'] 170

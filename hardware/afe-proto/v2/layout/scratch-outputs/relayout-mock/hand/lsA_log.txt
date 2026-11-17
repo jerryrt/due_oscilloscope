@@ -1,0 +1,27 @@
+start 181.9 (119, 17)
+reject R507 turn 90 ['court C503/R507', 'court R507/C503']
+accept R509 shift -2,+0 166.6 (66, 16) 176
+reject R506 shift +0,+1 179.4
+accept TP501 shift +0,-0.5 157.4 (74, 15) 356
+accept C501 shift +0,+0.5 146.6 (66, 14) 445
+reject R305 shift -1,+0 199.2
+reject R505 shift +0,+2 ['court R503/R505', 'court R505/R503']
+reject U502 shift -0.5,+0 ['court C501/U502', 'court U502/C501']
+reject swap C502 C503 ['LR-12 C502 12.4', 'LR-12 C503 11.8']
+reject R305 shift +0,-0.5 ['court J501/R305', 'court R305/J501']
+reject R305 shift -1,+0 199.2
+reject R512 shift +0,+2 177.9
+reject J501 shift -0.5,+0 ['court C502/J501', 'court J501/C502', 'court J501/U501']
+reject C304 shift +0,+0.5 174.9
+reject R505 shift -1,+0 ['court R505/U502', 'court U502/R505']
+reject U502 shift +0.5,+0 ['LR-12 C503 3.2']
+reject R510 shift +0.5,+0 196.4
+reject R509 shift +0,+0.5 198.7
+reject C303 shift -0.5,+0 146.6
+reject C501 turn 270 187.8
+reject R512 jump to 49.8,7.5 ['court R511/R512', 'court R512/R511']
+reject R511 shift +0,-2 ['court R511/J602']
+reject R510 turn 270 199.0
+reject R505 shift +0.5,+0 167.7
+reject R511 shift +0,+0.5 187.8
+reject C304 shift +0.5,+0 174.9

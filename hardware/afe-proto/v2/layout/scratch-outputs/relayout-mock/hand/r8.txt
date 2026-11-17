@@ -1,0 +1,60 @@
+[    4.6s] 5/34 /TAP5: 3.5 s, 1 failed
+[    6.3s] 6/34 /TAP1: 1.7 s, 2 failed
+[   20.7s] 7/34 /VREF: 14.3 s, 2 failed
+[   20.8s] 8/34 /ADS_TAP: 0.1 s, 1 failed
+[   20.9s] 9/34 /ADS_B: 0.1 s, 1 failed
+[   23.0s] 15/34 /AWG_OA: 2.0 s, 1 failed
+[   23.2s] 17/34 /AWG_BIN: 0.2 s, 1 failed
+[   25.9s] 18/34 /CH1_IN: 2.7 s, 2 failed
+[   28.1s] 19/34 /+3V3A_N: 2.2 s, 2 failed
+[   28.7s] 20/34 /SNS_B: 0.6 s, 2 failed
+[   31.0s] 21/34 /SNS_T0: 2.3 s, 1 failed
+[   31.2s] 22/34 /AWG_VREF: 0.2 s, 2 failed
+[   31.7s] 23/34 /AWG_VO: 0.5 s, 1 failed
+[   31.9s] 24/34 /AREF: 0.2 s, 1 failed
+[   32.0s] 25/34 /SDA: 0.1 s, 1 failed
+[   40.7s] 26/34 /SCL: 8.7 s, 2 failed
+[   44.5s] 28/34 /LM_C1P: 0.0 s, 1 failed
+[   44.5s] 29/34 /LM_C1N: 0.1 s, 1 failed
+[   47.3s] 31/34 /+5V_DUE: 2.7 s, 1 failed
+[   48.1s] 32/34 /+5V_F: 0.8 s, 5 failed
+[   60.2s] 34/34 /+3V3A: 11.6 s, 6 failed
+[   60.2s] first pass: 37 connections not routed
+[  208.0s] rip-up round 1: 36 connections not routed
+saved: 472 track segments, 38 vias, 36 connections not routed
+  unrouted: /TAP5 R505 2
+  unrouted: /TAP1 R502 1
+  unrouted: /TAP1 J602 6
+  unrouted: /ADS_TAP R510 2
+  unrouted: /AWG_OA R308 1
+  unrouted: /AWG_BIN R307 1
+  unrouted: /CH1_IN C101 1
+  unrouted: /CH1_IN J101 1
+  unrouted: /+3V3A_N BR201 2
+  unrouted: /+3V3A_N D101 2
+  unrouted: /SNS_B R511 1
+  unrouted: /SNS_B R508 2
+  unrouted: /SNS_T0 R507 2
+  unrouted: /AWG_VREF R305 2
+  unrouted: /AWG_VREF R304 2
+  unrouted: /AWG_VO TP301 1
+  unrouted: /AREF R514 2
+  unrouted: /SDA U502 9
+  unrouted: /SCL R513 2
+  unrouted: /SCL J604 10
+  unrouted: /LM_C1P U401 10
+  unrouted: /LM_C1N C409 2
+  unrouted: /+5V_DUE J601 5
+  unrouted: /+5V_F U401 12
+  unrouted: /+5V_F C402 1
+  unrouted: /+5V_F U401 3
+  unrouted: /+5V_F U401 8
+  unrouted: /+5V_F R406 2
+  unrouted: /+3V3A R513 1
+  unrouted: /+3V3A C503 1
+  unrouted: /+3V3A U502 8
+  unrouted: /+3V3A C502 1
+  unrouted: /+3V3A U501 1
+  unrouted: /+3V3A R512 1
+  unrouted: /VREF J602 1
+  unrouted: /VREF R206 2
