@@ -51,9 +51,27 @@ plain = [k for k in tasks if k not in critical + vref + rails]
 short = sorted([k for k in plain if k not in POWERS and span(tasks[k][0]) <= 12.0], key=lambda k: span(tasks[k][0]))
 long_ = sorted([k for k in plain if k not in short], key=lambda k: (k in POWERS, span(tasks[k][0])))
 base_order = critical + short + vref + rails + long_
+PRE = [('/VNEG', 'U401', '6', ('C410', '1'), 'hub'), ('/VNEG', 'C409', '1', ('C410', '1'), 'hub'), ('/+3V3A', 'C407', '1', ('C408', '1'), 'hub'),
+       ('/VREF', 'R512', '2', ('R515', '1'), 'vb3'), ('/VREF_P', 'R516', '2', None, None), ('/SNS_BI', 'D501', '3', None, None)]
+G0 = (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY)
+def fine_window(cx, cy, r, hs=0.05):
+    R.H = hs; R.X0 = cx - r; R.Y0 = cy - r; R.X1 = cx + r; R.Y1 = cy + r
+    R.NX = int((R.X1 - R.X0) / hs) + 1; R.NY = int((R.Y1 - R.Y0) / hs) + 1
+    R.GX = R.X0 + hs * np.arange(R.NX); R.GY = R.Y0 + hs * np.arange(R.NY)
+def coarse():
+    (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY) = G0
+SKIP = {(r, p) for _, r, p, _, _ in PRE}
 FINE = ['U401', 'U101', 'U301', 'U501', 'U502']
 def run(order, verbose=False):
     B = R.Board(src); fails_by = {}
+    for net, ref, pin, tgt, tag in PRE:
+        j = row[(ref, pin)]
+        others = [k for k in net_pads(net) if k != j and ((b.fp_ref[int(b.p_fp[k])], str(b.p_pin[k])) == tgt if tgt else True)]
+        k2 = min(others, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
+        fine_window((b.p_x[j] + b.p_x[k2]) / 2, (b.p_y[j] + b.p_y[k2]) / 2, max(5.0, math.hypot(b.p_x[j] - b.p_x[k2], b.p_y[j] - b.p_y[k2]) / 2 + 2.5))
+        segs, vs, fl = B.route(net, width=0.2, pads_subset={j, k2}, tag=tag or 'fine')
+        coarse(); B.add(segs, vs)
+        print('PRE', ref, pin, '->', 'ok len %.1f' % L_of(segs) if not fl else 'FAIL', flush=True)
     # escape stubs first, so no later net can box in a fine-pitch pad
     nstub = 0; nfail = 0
     for ref in FINE:
@@ -61,7 +79,7 @@ def run(order, verbose=False):
             if b.fp_ref[int(b.p_fp[j])] != ref: continue
             net = b.nets[int(b.p_net[j])]
             if not net or net == C.GND: continue
-            if net in C.HIZ: continue
+            if net in C.HIZ or (ref, str(b.p_pin[j])) in SKIP: continue
             segs, vs, ok = B.escape(net, j, ref, dist=1.2, width=0.2)
             if ok: B.add(segs, vs); nstub += 1
             else: nfail += 1
