@@ -389,10 +389,10 @@ def _extract(pcb, b, path, frame):
             box = (np.nan,) * 4
         p = f.GetPosition()
         FP.append((str(f.GetReference()), p.x, p.y, f.GetOrientationDegrees(), side) + box + (str(f.GetFPID().GetLibItemName()),))
-        fab = pcb.BOX2I()                              # the body: every F.Fab graphic, text included (as asked, and as the AFE's two-way test always measured it)
+        fab = pcb.BOX2I()                              # the body: every F.Fab SHAPE (text on that layer is a label, not the part: it is not printed)
         for g in f.GraphicalItems():
             lay_ = g.GetLayer()
-            if lay_ == pcb.F_Fab:
+            if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':
                 fab.Merge(g.GetBoundingBox())
             elif lay_ == pcb.F_SilkS:
                 FS.append((i, _SHAPE_KINDS.get(g.GetShape(), 'other') if g.GetClass() == 'PCB_SHAPE' else 'text') + BOX(g.GetBoundingBox()))

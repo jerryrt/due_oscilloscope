@@ -14,11 +14,11 @@ What fills them:
 | `pcbtools.boardio.read_board` (the AFE binding) | no: first release's arrays only, `read_fields` empty, so a pcbkit consumer of an added field raises. Read with `pcbkit.board.read_board(path, FRAME)` for them |
 | a board built by hand (`from_arrays`), an npz cache written before this step | no, unless the caller names the fields it filled in `read_fields=` |
 
-`fp_fab_*` is NaN for a footprint with no F.Fab graphic. **`fp_fab_*` includes the text on F.Fab, not only the shapes**: that is what the approved AFE boards were judged with, test-point footprints carry F.Fab text (their reference) and the two-way nearest test's distances depend on it (measured: with the text left out, seven test points' distances differed from the original test's). No configuration name is read beyond `FRAME`.
+`fp_fab_*` is NaN for a footprint with no F.Fab shape. **`fp_fab_*` is the box of the F.Fab SHAPES only; text on F.Fab is not part of it.** F.Fab text is not printed and is not the part: since D30 (1c) it is just the designators moved off the silk, and a label that touches another part's F.Fab reference text is not touching that part. A part with no F.Fab shape (the test points) has NaN, and the two-way nearest test then uses its pads as the solid, which it always includes. (An earlier version included the text: it made four of AFE-1's approved labels and one of AFE-2's block names fail the two-way test by touching other parts' F.Fab designators.) No configuration name is read beyond `FRAME`.
 
 | fields | one row per | what |
 |---|---|---|
-| `fp_fab_x0/y0/x1/y1` | footprint (same rows as `fp_*`) | the box of all the footprint's F.Fab graphics, shapes and text (the body as the AFE's two-way test measures it). NaN when it has none |
+| `fp_fab_x0/y0/x1/y1` | footprint (same rows as `fp_*`) | the box of all the footprint's F.Fab SHAPES (the body); F.Fab text is not part of it. NaN when it has none |
 | `fs_fp`, `fs_x0/y0/x1/y1`, `fs_kind` | F.SilkS graphic of a footprint | owner footprint row; pcbnew's bounding box, stroke width included; kind `segment`, `rect`, `arc`, `circle`, `poly`, `text`, `other` |
 | `g_x0/y0/x1/y1`, `g_kind` | board-level F.SilkS shape | pcbnew's bounding box with the stroke; kind `line`, `rect`, `poly`, `arc`, `circle`, `other` |
 | `t_ang`, `t_stroke`, `t_just`, `t_hide`, `t_layer`, `t_x0/y0/x1/y1` | board-level F.SilkS text (the existing `t_*` rows) | angle (degrees), stroke width, horizontal justification `left`/`center`/`right`, hide flag, layer code (0 = F.SilkS: only F.SilkS texts are rows), pcbnew's box of the rendered text |

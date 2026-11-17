@@ -126,6 +126,12 @@ def build_rich(pcb, path):
     pad.SetLayerSet(pad.SMDMask())
     pad.SetPosition(pt(pcb, 70, 130))
     x1.Add(pad)
+    xt = pcb.PCB_TEXT(x1)                                   # F.Fab text and no F.Fab shape: a part with no body (the test points)
+    xt.SetText('X1')
+    xt.SetPosition(pt(pcb, 70, 133))
+    xt.SetLayer(pcb.F_Fab)
+    xt.SetTextHeight(pcb.FromMM(1.0))
+    x1.Add(xt)
     b.Add(x1)
     S, SL = pcb, pcb.F_SilkS
     shape(pcb, b, S.SHAPE_T_SEGMENT, SL, 0.2, (52, 122), (58, 122))

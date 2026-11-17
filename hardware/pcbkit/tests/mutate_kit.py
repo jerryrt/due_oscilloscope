@@ -62,8 +62,8 @@ BOARD = [
     ('retry child does not pass the frame', "repr(ox), repr(oy)]", "'0.0', '0.0']"),
 ]
 SILK = [
-    ('fab box reads the silk layer', "if lay_ == pcb.F_Fab:", "if lay_ == pcb.F_SilkS:"),
-    ('fab box leaves the F.Fab text out', "if lay_ == pcb.F_Fab:", "if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':"),
+    ('fab box reads the silk layer', "if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':", "if lay_ == pcb.F_SilkS and g.GetClass() == 'PCB_SHAPE':"),
+    ('fab box takes the F.Fab text into the body', "if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':", "if lay_ == pcb.F_Fab:"),
     ('fab box of a footprint without one is 0, not NaN', "else (np.nan,) * 4)\n", "else (0.0,) * 4)\n"),
     ('fab box top edge taken from the wrong corner', "fx1, fy0 = to_f(fb[:, 2], fb[:, 3])", "fx1, fy0 = to_f(fb[:, 2], fb[:, 1])"),
     ('footprint silk reads the fab layer', "elif lay_ == pcb.F_SilkS:", "elif lay_ == pcb.F_Fab:"),
