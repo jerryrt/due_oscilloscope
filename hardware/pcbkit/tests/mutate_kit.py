@@ -124,10 +124,25 @@ CONFIG = [
     ('config: a missing project name does not raise', "if n.kind == 'project':", "if False:"),
     ('config: a default is reported as the project\'s', "v, src = n.default, 'default'", "v, src = n.default, 'project'"),
 ]
+GUARD = [
+    ('guard: nothing is ever near', "return a != b and ((m >= 6 and distance(a, b) <= 2) or (4 <= m < 6 and distance(a, b) <= 1))", "return False"),
+    ('guard: distance 2 allowed for short names', "(m >= 6 and distance(a, b) <= 2)", "(m >= 3 and distance(a, b) <= 2)"),
+    ('guard: a declared name is tested like any other', "if k in DECLARED:\n            continue", "pass"),
+    ('guard: an unrecognised name is not listed', "unknown.append(k)", "pass"),
+    ('guard: a near miss does not raise', "if hit:\n            raise ConfigError", "if False:\n            raise ConfigError"),
+    ('guard: the message does not name the declared name', 'near {", ".join(hit)}', "near it"),
+    ('guard: resolve does not run it', "    out = {}\n    check_names(cfg)\n", "    out = {}\n"),
+    ('guard: lower-case names are configuration names', "isinstance(k, str) and k.isupper()", "isinstance(k, str)"),
+    ('guard: the edit distance counts substitutions as free', "prev[j - 1] + (ca != cb)", "prev[j - 1]"),
+]
+GUARD_RULES = [
+    ('guard: effective_config does not list the unrecognised', "if unknown:\n        text +=", "if False:\n        text +="),
+]
 RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']),
         ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py']),
         ('rules.py', GROUND_PLANE, ['test_ground_plane.py']), ('rules.py', BOTTOM_HOPS, ['test_bottom_hops.py']),
-        ('config.py', CONFIG, ['test_ground_plane.py', 'test_bottom_hops.py'])]
+        ('config.py', CONFIG, ['test_ground_plane.py', 'test_bottom_hops.py']),
+        ('config.py', GUARD, ['test_config_guard.py']), ('rules.py', GUARD_RULES, ['test_config_guard.py'])]
 
 
 def _limit():

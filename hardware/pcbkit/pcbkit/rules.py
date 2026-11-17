@@ -16,7 +16,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from . import geom
-from .config import format_report, project, resolve, tunable
+from .config import declare, format_report, project, resolve, tunable, check_names
 
 
 @dataclasses.dataclass
@@ -348,6 +348,8 @@ def bottom_hops(b, cfg, report=None):
 
 # ----------------------------------------------------------------------------------------------------- the effective configuration
 RULES = {'ground_plane': GROUND_PLANE_NAMES, 'bottom_hops': BOTTOM_HOPS_NAMES}
+for _r, _n in RULES.items():
+    declare(_r, _n)
 
 
 def effective_config(cfg, rule):
@@ -355,4 +357,8 @@ def effective_config(cfg, rule):
     the value. A project name missing from `cfg` raises ConfigError, as running the rule would."""
     rows = []
     resolve(cfg, RULES[rule], rule, rows)
-    return format_report(rows, rule)
+    text = format_report(rows, rule)
+    unknown = check_names(cfg)
+    if unknown:
+        text += f'\nunrecognised (declared by no pcbkit module; informational): {", ".join(unknown)}'
+    return text

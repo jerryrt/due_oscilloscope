@@ -24,6 +24,14 @@ margin, a limit, a tolerance) has the default shown below and is reported as `de
 returns the effective configuration as text (name, `project` or `default`, value; the layout of `labels.effective_config`), and every rule function
 takes `report=[]` to receive the same rows. A rule never reads a name it does not list.
 
+**One `ConfigError` for the package** is `pcbkit.config.ConfigError`. **The typo guard:** `pcbkit.config.DECLARED` is the registry of every name any module
+declares (`config.declare(rule, names)`, called at import). Each rule checks the names of the configuration it is given: a name no module declares is
+*unrecognised*, listed by `effective_config` and otherwise ignored (an AFE configuration carries many names of its own); a name that is not declared but
+is a likely typo of a declared one raises `ConfigError` naming both (edit distance 2 when the shorter name has at least 6 characters, 1 when it has 4 or 5,
+never for shorter names). A declared name never raises, even when it is near another declared name (`config.declared_pairs_near()` lists such pairs: none
+today). The registry holds the modules imported so far; `import pcbkit` imports them all. On the AFE's configurations (`v2_layout`, `v2`, `v1`, `v1r`,
+`v1_frozen`) nothing raises (`tests/afe_effective_config.py`).
+
 ### rules.ground_plane
 
 | name | kind | type, unit | default | meaning |

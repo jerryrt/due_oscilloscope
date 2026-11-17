@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 
 class ConfigError(ValueError):
-    """a project name the rule needs is missing from the configuration"""
+    """a configuration problem in any pcbkit module: a project name the rule needs is missing, or a name is a likely typo of a declared one"""
 
 
 _REQUIRED = object()
@@ -42,6 +42,61 @@ def tunable(key, default, unit, note=''):
     return Name(key, 'tunable', unit, default, note)
 
 
+# ------------------------------------------------------------------------------------------- the registry and the typo guard
+DECLARED = {}               # every name any pcbkit module declares -> the set of rules (modules) that read it
+
+
+def declare(rule, names):
+    """register the names a rule reads (its Name table, or plain strings); a module calls this once at import"""
+    for n in names:
+        DECLARED.setdefault(n.key if isinstance(n, Name) else str(n), set()).add(rule)
+
+
+def distance(a, b):
+    """Levenshtein edit distance"""
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def near(a, b):
+    """a likely typo: within edit distance 2 when the shorter name has at least 6 characters, within 1 when it has 4 or 5, never for
+    shorter names (a 3-letter name is within 2 of half the alphabet)"""
+    m = min(len(a), len(b))
+    return a != b and ((m >= 6 and distance(a, b) <= 2) or (4 <= m < 6 and distance(a, b) <= 1))
+
+
+def declared_pairs_near():
+    """declared names that are near each other (a legitimate name that is near another one is never reported as a typo: a declared name never raises)"""
+    names = sorted(DECLARED)
+    return [(a, b) for i, a in enumerate(names) for b in names[i + 1:] if near(a, b)]
+
+
+def config_names(cfg):
+    """the upper-case names a configuration (mapping, module or object) carries"""
+    keys = cfg.keys() if isinstance(cfg, dict) else dir(cfg)
+    return sorted(k for k in keys if isinstance(k, str) and k.isupper())
+
+
+def check_names(cfg):
+    """(unrecognised names) of `cfg`: names no pcbkit module declares, listed for information only (a project's configuration carries many
+    names of its own). A name that is not declared but is near a declared one raises ConfigError naming both: a likely typo (HOP_MAXX)."""
+    unknown = []
+    for k in config_names(cfg):
+        if k in DECLARED:
+            continue
+        hit = sorted(d for d in DECLARED if near(k, d))
+        if hit:
+            raise ConfigError(f'{k} is not a configuration name but is near {", ".join(hit)}: a typo? (a name no module declares is '
+                              'otherwise listed as unrecognised and ignored)')
+        unknown.append(k)
+    return unknown
+
+
 def _get(cfg, key):
     if isinstance(cfg, dict):
         return cfg[key] if key in cfg else _REQUIRED
@@ -52,6 +107,7 @@ def resolve(cfg, names, rule='', report=None):
     """the effective values of `names` (a sequence of Name) in `cfg`, as a namespace; `report`, a list, receives (key, value, source)
     rows. A project name missing from `cfg` raises ConfigError naming the rule and the key."""
     out = {}
+    check_names(cfg)
     for n in names:
         v = _get(cfg, n.key)
         if v is _REQUIRED:

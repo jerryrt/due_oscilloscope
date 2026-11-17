@@ -25,6 +25,9 @@ from functools import cached_property
 
 import numpy as np
 
+from .config import declare
+
+declare('board', ['FRAME'])
 KICAD_FRAME = (0.0, 0.0)    # KiCad's own origin: board_x = OX + x, board_y = OY - y with OX = OY = 0, so y points up. Never a default: FRAME is required
 ND = 6                      # decimals: 1e-6 mm
 
