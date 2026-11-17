@@ -197,6 +197,7 @@ DESIG = [
     ('designators: the gap limit is halved', "if g < c.DESIGNATOR_GAP_MIN:", "if g < c.DESIGNATOR_GAP_MIN / 2:"),
     ('designators: the distance limit is doubled', "if d > c.DESIGNATOR_DIST_MAX:", "if d > c.DESIGNATOR_DIST_MAX * 2:"),
     ('designators: one baseline not required', "if dx < lim and ov > 0.5 * min(np.ptp(A[:, 1]), np.ptp(Bx[:, 1])):", "if dx < lim:"),
+    ('designators: a label inside its own block is foreign', "if blk != home and outlines.in_rects(ctr, rects)[0] and", "if outlines.in_rects(ctr, rects)[0] and"),
     ('designators: foreign waivers ignored', "outlines.in_rects(ctr, rects)[0] and c.DESIGNATOR_FOREIGN_WAIVED.get(ref) != blk:", "outlines.in_rects(ctr, rects)[0]:"),
     ('designators: shared parts judged as foreign', "or ref in c.SHARED_PARTS or ref in c.BLOCK_OVERRIDE", "or ref in c.BLOCK_OVERRIDE"),
     ('two-way: step 1 without the margin', "if dp + m > dq and (s1 is None or dq - dp < s1[0]):", "if dp > dq and (s1 is None or dq - dp < s1[0]):"),

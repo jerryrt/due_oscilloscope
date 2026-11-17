@@ -152,7 +152,7 @@ in `TP_NETS` is on its net. Findings: `block X has no test point` (sorted), then
 | `SILK_REQUIRED_PREFIXES` | project | tuple of prefixes, or None | required | |
 | `DESIGNATOR_MIN_H` | project | mm | required | |
 | `DESIGNATOR_GAP_MIN`, `DESIGNATOR_DIST_MAX` | project | mm | required | legibility terms |
-| `DESIGNATOR_ADVANCE`, `DESIGNATOR_INK_H` | tunable | fraction of text height | 0.95, 1.2 | the box; `pcbkit.labels` declares the same names |
+| `DESIGNATOR_ADVANCE`, `DESIGNATOR_INK_H` | tunable | fraction of text height | 0.95, 1.2 | the box. **One meaning across the package: fractions of the text height** (a box is the fraction times the text's height in mm; `pcbkit.labels` follows this) |
 | `DESIGNATOR_GAP_ONE_LABEL` | tunable | mm | 0.6 | |
 | `DESIGNATOR_FOREIGN_WAIVED` | tunable | dict ref -> block | `{}` | |
 | `READ_MARGIN` | tunable | mm | 0.15 | the owner's margin (round 5 of the label job) |

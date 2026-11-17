@@ -79,6 +79,24 @@ def test_a_designator_inside_another_blocks_outline_is_foreign_unless_waived_sha
     assert rules.foreign_labels(a, {**cfg, 'BLOCK': {'R2': 'B'}}) == []                    # a part with no block of its own is not judged
 
 
+def test_a_strays_label_may_be_anywhere_not_inside_another_blocks_rectangle():
+    """the rule for a named stray (a part outside its own block's rectangle): its label may sit outside its own rectangle too, in no
+    rectangle at all, but not inside ANOTHER block's; a part that is not a stray is held to the same (the rule never asks for 'inside its own')"""
+    out = {'A': [(-5, -5, 5, 5)], 'B': [(20, 20, 30, 30)]}
+    cfg = {**LEG, 'BLOCK': {'R1': 'A', 'R2': 'B'}, 'OUTLINE': out}
+
+    def board(label1):
+        return Arr('N').part('R1', 50, 0).p('R1', '1', 50, 0, 'N', size=0.8).label('R1', *label1).part('R2', 25, 25).p('R2', '1', 25, 25, 'N', size=0.8).label('R2', 25, 27)
+    assert rules.foreign_labels(board((52, 3)).build(), cfg) == []                                  # R1 is a stray of A, label in no rectangle
+    assert rules.foreign_labels(board((0, 0)).build(), cfg) == []                                   # ... or inside its own block's rectangle
+    assert rules.foreign_labels(board((25, 25)).build(), cfg) == [('R1', 'B')]                      # ... but not inside B's
+    assert rules.foreign_labels(board((25, 25)).build(), {**cfg, 'DESIGNATOR_FOREIGN_WAIVED': {'R1': 'B'}}) == []     # unless that exact label is waived (AFE-2's BR501, BR504)
+    # and the stray part itself is the blocks rule's business: allowed outside its own rectangle when named
+    b = Arr().part('R1', 50, 0).part('R2', 25, 25).build()
+    assert rules.blocks(b, dict(BLOCK={'R1': 'A', 'R2': 'B'}, OUTLINE=out, OUTLINE_STRAYS=['R1'])).ok
+    assert not rules.blocks(b, dict(BLOCK={'R1': 'A', 'R2': 'B'}, OUTLINE=out)).ok
+
+
 def test_legibility_project_names_raise_and_the_box_tunables_default():
     a = leg_board().build()
     for k in ('BLOCK', 'OUTLINE', 'DESIGNATOR_GAP_MIN', 'DESIGNATOR_DIST_MAX'):

@@ -14,7 +14,7 @@ What fills them:
 | `pcbtools.boardio.read_board` (the AFE binding) | no: first release's arrays only, `read_fields` empty, so a pcbkit consumer of an added field raises. Read with `pcbkit.board.read_board(path, FRAME)` for them |
 | a board built by hand (`from_arrays`), an npz cache written before this step | no, unless the caller names the fields it filled in `read_fields=` |
 
-`fp_fab_*` is NaN for a footprint with no F.Fab shape. No configuration name is read beyond `FRAME`.
+`fp_fab_*` is NaN for a footprint with no F.Fab graphic. **`fp_fab_*` includes the text on F.Fab, not only the shapes**: that is what the approved AFE boards were judged with, test-point footprints carry F.Fab text (their reference) and the two-way nearest test's distances depend on it (measured: with the text left out, seven test points' distances differed from the original test's). No configuration name is read beyond `FRAME`.
 
 | fields | one row per | what |
 |---|---|---|
