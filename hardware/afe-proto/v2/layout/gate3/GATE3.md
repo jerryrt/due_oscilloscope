@@ -183,11 +183,11 @@ LR-1's limit is 3.0 mm and 2 vias per hop; the checker reports 1 bottom run(s), 
 
 **KiCad's own connectivity.** kicad-cli DRC (`--severity-all`, section 3) reports **0 unconnected items** on the board, its nets assigned from the schematic: KiCad sees the net connected through the same tracks. The check is only worth that if it can fire, so one track is cut at a time in a scratch copy of the board file (the board is never touched), the graph predicts which pads lose the source, and DRC is run on the cut copy:
 
-| arm | track cut | removed from the scratch text | graph: pads that lose the source | DRC unconnected items | DRC item(s) | agree |
+| arm | track cut | removed from the scratch text | graph: pads that lose the source | DRC unconnected items | DRC pair(s): pads of the lost piece each names | agree |
 |---|---|---|---|---|---|---|
-| stub at U401 pin 12 | F.Cu (32.350,15.350)-(32.350,15.800) | 1 | U401.12 | 1 | Track [/+5V_F] on F.Cu, length 0.2828 mm / Pad 12 [/+5V_F] of U401 on F.Cu | yes |
-| stub at U401 pin 3 | F.Cu (30.300,14.250)-(29.950,14.250) | 1 | U401.3 | 1 | Pad 3 [/+5V_F] of U401 on F.Cu / Track [/+5V_F] on F.Cu, length 1.9092 mm | yes |
-| trunk, middle of the pin 3 run | F.Cu (24.300,8.950)-(25.550,7.700) | 1 | C401.1, C402.1, TP403.1, U401.12, U401.3 | 1 | Track [/+5V_F] on F.Cu, length 4.6500 mm / Track [/+5V_F] on F.Cu, length 3.6000 mm | yes |
+| stub at U401 pin 12 | F.Cu (32.350,15.350)-(32.350,15.800) | 1 | U401.12 | 1 | U401.12 | yes |
+| stub at U401 pin 3 | F.Cu (30.300,14.250)-(29.950,14.250) | 1 | U401.3 | 1 | U401.3 | yes |
+| trunk, middle of the pin 3 run | F.Cu (24.300,8.950)-(25.550,7.700) | 1 | C401.1, C402.1, TP403.1, U401.12, U401.3 | 1 | C401.1, C402.1, TP403.1, U401.12, U401.3 | yes |
 
 **Which rule sees this net.** LR-6 (the star rails) checks only `/+3V3A` and `/VNEG_G` (`STAR` and `GROUPS` in `pcbtools/boards/v2.py`); `/+5V_F` is in neither, and no LR row looks at its connectivity. The only check that sees it is LR-10 (kicad-cli DRC, unconnected items), which is what the figure above is, and this section's graph. LR-6 therefore says nothing about U401 pins 3 and 12.
 

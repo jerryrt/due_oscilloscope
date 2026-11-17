@@ -577,23 +577,39 @@ def _piece_of(g, item, origin):
     return found.pop() if len(found) == 1 else None
 
 
+def pair_pieces(g, report, src, origin):
+    """the lost piece each unconnected pair of the DRC report names (a list of component ids, one per pair), or None when some pair is not two
+    items, one on a lost piece and one on the kept piece (an item on no piece, or both items on one side)"""
+    kept = g['pad_comp'][src]
+    out = []
+    for u in report.get('unconnected_items', []):
+        it = u.get('items', [])
+        if len(it) != 2:
+            return None
+        a, c = (_piece_of(g, i, origin) for i in it)
+        if a is None or c is None or (a == kept) == (c == kept):
+            return None
+        out.append(c if a == kept else a)
+    return out
+
+
+def pair_pads(g, report, src, origin):
+    """what a broken-once arm records of the DRC's pairs: the pads of each lost piece a pair names, sorted, one list per DISTINCT piece. KiCad chooses which
+    item of a piece represents it (pad or track, and which, from run to run); the piece is what it reports and is the same every run"""
+    named = pair_pieces(g, report, src, origin)
+    if not named:
+        return []
+    return sorted(sorted(k for k, c in g['pad_comp'].items() if c == p) for p in set(named))
+
+
 def straddles(g, report, src, pred, origin):
     """the exact condition of a broken-once arm. The cut splits the net into the piece of `src` (kept) and the pieces that lose it (lost). Every
     unconnected pair DRC reports must be two items, one on a lost piece and one on the kept piece, and the lost pieces the pairs name must be
     exactly the pieces of the predicted lost pads. An item on no piece, a pair with both items on one side, and a predicted piece no pair
     names all fail. Which item KiCad picks to represent a piece is its own business."""
-    kept = g['pad_comp'][src]
     want = {g['pad_comp'][p] for p in pred}
-    named = set()
-    for u in report.get('unconnected_items', []):
-        it = u.get('items', [])
-        if len(it) != 2:
-            return False
-        a, c = (_piece_of(g, i, origin) for i in it)
-        if a is None or c is None or (a == kept) == (c == kept):
-            return False
-        named.add(c if a == kept else a)
-    return named == want
+    named = pair_pieces(g, report, src, origin)
+    return named is not None and set(named) == want
 
 
 def cut_arm(b, text, net, seg, src, drc_fn, origin=(50.0, 150.0)):
@@ -604,9 +620,8 @@ def cut_arm(b, text, net, seg, src, drc_fn, origin=(50.0, 150.0)):
     new, n = CONN.cut_segment_text(text, (b.s_x0[seg], b.s_y0[seg], b.s_x1[seg], b.s_y1[seg]), ox=origin[0], oy=origin[1])
     rep_ = drc_fn(new) if n == 1 else {}
     un = drc_unconnected(rep_)
-    named = sorted({p for u in un for p in u['pads']})
     return dict(track=f"{LAYER_NAMES[int(b.s_layer[seg])]} ({b.s_x0[seg]:.3f},{b.s_y0[seg]:.3f})-({b.s_x1[seg]:.3f},{b.s_y1[seg]:.3f})", removed_from_text=n,
-                graph_lost_pads=pred, drc_unconnected=len(un), drc_named_pads=named, drc_items=un,
+                graph_lost_pads=pred, drc_unconnected=len(un), drc_pieces=pair_pads(g, rep_, src, origin),
                 agree=bool(n == 1 and bool(pred) == bool(un) and straddles(g, rep_, src, pred, origin)))
 
 
@@ -680,8 +695,8 @@ def proof_md(P, T):
     else:
         w(T.PROOF_UPSTREAM_NONE)
     w(tpl(T.PROOF_DRC, n=P['drc_unconnected_baseline']))
-    w(md_table(['arm', 'track cut', 'removed from the scratch text', 'graph: pads that lose the source', 'DRC unconnected items', 'DRC item(s)', 'agree'],
-               [[a['label'], a['track'], a['removed_from_text'], ', '.join(a['graph_lost_pads']) or 'none', a['drc_unconnected'], ' | '.join(' / '.join(u['raw']) for u in a['drc_items']) or '-', 'yes' if a['agree'] else '**NO**'] for a in P['arms']]))
+    w(md_table(['arm', 'track cut', 'removed from the scratch text', 'graph: pads that lose the source', 'DRC unconnected items', 'DRC pair(s): pads of the lost piece each names', 'agree'],
+               [[a['label'], a['track'], a['removed_from_text'], ', '.join(a['graph_lost_pads']) or 'none', a['drc_unconnected'], ' | '.join(', '.join(p) for p in a['drc_pieces']) or '-', 'yes' if a['agree'] else '**NO**'] for a in P['arms']]))
     w(T.PROOF_RULE)
     return '\n'.join(o)
 
