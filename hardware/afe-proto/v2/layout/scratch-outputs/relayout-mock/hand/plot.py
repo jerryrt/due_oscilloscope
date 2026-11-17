@@ -10,6 +10,11 @@ S = 40
 W, H = int((x1 - x0) * S), int((y1 - y0) * S)
 im = Image.new('RGB', (W, H), (20, 50, 35)); d = ImageDraw.Draw(im)
 def px(x, y): return ((x - x0) * S, (y1 - y) * S)
+import math
+for gx in range(int(math.ceil(x0)), int(x1) + 1):
+    d.line([px(gx, y0), px(gx, y1)], fill=(40, 90, 70), width=1); d.text((px(gx, y1)[0] + 2, 2), str(gx), fill=(200, 255, 200))
+for gy in range(int(math.ceil(y0)), int(y1) + 1):
+    d.line([px(x0, gy), px(x1, gy)], fill=(40, 90, 70), width=1); d.text((2, px(x0, gy)[1] + 1), str(gy), fill=(200, 255, 200))  # GRID
 P = json.load(open('/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/pads.json'))
 for p in P:
     bx0, by0, bx1, by1 = p['bb']

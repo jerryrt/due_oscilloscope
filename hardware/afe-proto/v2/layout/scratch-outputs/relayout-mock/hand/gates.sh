@@ -4,13 +4,21 @@ R=hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock
 B=hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb
 python3 $R/hand/hr.py $B $R/hand/g_$2.kicad_pcb $1 >/dev/null
 cp hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pro $R/hand/g_$2.kicad_pro
-python3 - $R/hand/g_$2.kicad_pcb <<'PY'
-import sys
-t = open(sys.argv[1]).read()
-old = '(xy 131.3 131.654999) (xy 135.35 131.654999) (xy 135.35 144.385) (xy 131.3 144.385)'
-new = '(xy 124.675 134.675) (xy 129.715 134.675) (xy 129.715 145.885) (xy 124.675 145.885)'    # AWG_FB keep-back: its pads and tracks plus 0.6 mm
-if old in t: open(sys.argv[1], 'w').write(t.replace(old, new, 1))
-else: print('keepout rectangle not found (already moved?)')
+python3 - $R/hand/g_$2.kicad_pcb $1 $R/hand/pads.json <<'PY'
+import sys, json, re
+# the AWG_FB keep-back rule area (F.Cu, no top pour) follows the node: the bounding box of its pads and routed copper, plus 0.6 mm
+t = open(sys.argv[1]).read(); ns = {}; exec(open(sys.argv[2]).read(), ns)
+xs, ys = [], []
+for p in json.load(open(sys.argv[3])):
+    if p['net'] == '/AWG_FB': xs += [p['bb'][0], p['bb'][2]]; ys += [p['bb'][1], p['bb'][3]]
+for net, lay, pts, w in ns['ROUTES']:
+    if net == '/AWG_FB':
+        for x, y in pts: xs += [x - w / 2, x + w / 2]; ys += [y - w / 2, y + w / 2]
+x0, x1, y0, y1 = min(xs) - 0.6, max(xs) + 0.6, min(ys) - 0.6, max(ys) + 0.6
+new = '(xy %.3f %.3f) (xy %.3f %.3f) (xy %.3f %.3f) (xy %.3f %.3f)' % (x0 + 50, 150 - y1, x1 + 50, 150 - y1, x1 + 50, 150 - y0, x0 + 50, 150 - y0)
+m = re.search(r'\(xy 131\.3 131\.654999\) \(xy 135\.35 131\.654999\) \(xy 135\.35 144\.385\) \(xy 131\.3 144\.385\)', t)
+if m: open(sys.argv[1], 'w').write(t.replace(m.group(0), new, 1)); print('AWG_FB keep-back: Due x %.2f-%.2f, y %.2f-%.2f' % (x0, x1, y0, y1))
+else: print('keepout rectangle not found')
 PY
 python3 - $R/hand/g_$2.kicad_pcb <<'PY'
 import sys
