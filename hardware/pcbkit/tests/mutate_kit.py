@@ -77,7 +77,18 @@ SILK = [
     ('pad box right edge is its left edge', "bb.GetRight(), bb.GetBottom(), pd.GetNetCode()", "bb.GetLeft(), bb.GetBottom(), pd.GetNetCode()"),
     ('an added field of the wrong length is let through', "if not (n in _ADDED and len(getattr(self, n)) == 0)}\n        if len(ns) > 1:", "if not (n in _ADDED)}\n        if len(ns) > 1:"),
 ]
-RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']), ('board.py', SILK, ['test_board_silk.py'])]
+REQUIRE = [
+    ('require never raises', "if f in LATER_FIELDS and f not in b.read_fields:", "if False:"),
+    ('fab_boxes forgets require', "require(b, 'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1')\n", "pass\n"),
+    ('text_boxes forgets require', "require(b, 't_x0', 't_y0', 't_x1', 't_y1')\n", "pass\n"),
+    ('footprint_silk forgets require', "require(b, 'fs_fp', 'fs_x0', 'fs_y0', 'fs_x1', 'fs_y1', 'fs_kind')\n", "pass\n"),
+    ('board_silk_graphics forgets require', "require(b, 'g_x0', 'g_y0', 'g_x1', 'g_y1', 'g_kind')\n", "pass\n"),
+    ('a hand-built board claims every later field read', "dataclasses.field(default=frozenset()))]      # which LATER_FIELDS", "dataclasses.field(default=LATER_FIELDS))]      # which LATER_FIELDS"),
+    ('read_board does not record what it filled', "read_fields=frozenset(LATER_FIELDS), **kw)", "**kw)"),
+    ('the npz cache forgets read_fields', "'__read_fields': np.array(sorted(b.read_fields), dtype=str)}", "'__read_fields': np.array([], dtype=str)}"),
+    ('an unknown field name is accepted', "if f not in KIND:", "if False:"),
+]
+RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']), ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py'])]
 
 
 def _limit():

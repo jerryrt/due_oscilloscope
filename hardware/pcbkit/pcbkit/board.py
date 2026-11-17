@@ -94,6 +94,7 @@ def _post_init(self):
     for name, kind in _ALL:
         object.__setattr__(self, name, _coerce(kind, getattr(self, name)))
     object.__setattr__(self, 'nets', tuple(str(x) for x in self.nets))
+    object.__setattr__(self, 'read_fields', frozenset(self.read_fields))
     for g, fields in SPEC.items():
         if g == 'outline':
             continue
@@ -114,7 +115,8 @@ def _post_init(self):
 
 def _make():
     fields = [('path', str, dataclasses.field(default='')), ('copper_layers', int, dataclasses.field(default=2)),
-              ('nets', tuple, dataclasses.field(default=('',)))]
+              ('nets', tuple, dataclasses.field(default=('',))),
+              ('read_fields', frozenset, dataclasses.field(default=frozenset()))]      # which LATER_FIELDS a read filled (see require)
     for n, k in _ALL:
         fields.append((n, object, dataclasses.field(default_factory=(lambda k=k: _empty(k)))))
     return dataclasses.make_dataclass('BoardArrays', fields, frozen=True, eq=False, namespace={'__post_init__': _post_init,
@@ -187,6 +189,47 @@ BoardArrays.from_arrays = classmethod(lambda cls, **kw: cls(**kw))
 BoardArrays.replace = lambda self, **kw: dataclasses.replace(self, **kw)
 
 
+# ----------------------------------------------------------------------------------------------- fields that may not have been read
+class FieldNotRead(LookupError):
+    """a consumer asked for an array the board's reader did not fill"""
+
+
+def require(b, *fields):
+    """Raise FieldNotRead, naming the field, unless every named field was filled by the read that made `b` (b.read_fields). Fields
+    of the first release are always there; the LATER_FIELDS are there only for a board read by pcbkit.board.read_board (or an npz
+    cache of one). Every pcbkit consumer of a later field calls this first: an empty array is "not read", never "no rows"."""
+    for f in fields:
+        if f not in KIND:
+            raise ValueError(f'unknown board field {f!r}')
+        if f in LATER_FIELDS and f not in b.read_fields:
+            raise FieldNotRead(f'board field {f!r} was not read: this board did not come from pcbkit.board.read_board (read it with '
+                               f'pcbkit.board.read_board(path, cfg), not a binding that keeps the first release\'s arrays)')
+
+
+def fab_boxes(b):
+    """(n, 4) the F.Fab body box of every footprint, x0, y0, x1, y1, NaN for one with none"""
+    require(b, 'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1')
+    return np.column_stack([b.fp_fab_x0, b.fp_fab_y0, b.fp_fab_x1, b.fp_fab_y1]) if len(b.fp_fab_x0) else np.zeros((0, 4))
+
+
+def footprint_silk(b):
+    """(owner rows, (m, 4) boxes, kinds) of the F.SilkS graphics of the footprints"""
+    require(b, 'fs_fp', 'fs_x0', 'fs_y0', 'fs_x1', 'fs_y1', 'fs_kind')
+    return b.fs_fp, np.column_stack([b.fs_x0, b.fs_y0, b.fs_x1, b.fs_y1]) if len(b.fs_fp) else np.zeros((0, 4)), b.fs_kind
+
+
+def board_silk_graphics(b):
+    """((m, 4) boxes, kinds) of the board-level F.SilkS shapes"""
+    require(b, 'g_x0', 'g_y0', 'g_x1', 'g_y1', 'g_kind')
+    return (np.column_stack([b.g_x0, b.g_y0, b.g_x1, b.g_y1]) if len(b.g_kind) else np.zeros((0, 4))), b.g_kind
+
+
+def text_boxes(b):
+    """(n, 4) the rendered box of every board-level silk text"""
+    require(b, 't_x0', 't_y0', 't_x1', 't_y1')
+    return np.column_stack([b.t_x0, b.t_y0, b.t_x1, b.t_y1]) if len(b.t_text) else np.zeros((0, 4))
+
+
 # ----------------------------------------------------------------------------------------------- the transform
 def frame_of(cfg=None):
     """the (OX, OY) a configuration names: None -> DEFAULT_FRAME; a 2-sequence is the frame itself; otherwise `cfg.FRAME` or
@@ -221,7 +264,8 @@ def _r(a):
 
 # ----------------------------------------------------------------------------------------------- npz cache
 def save_npz(b, path):
-    d = {'__path': np.array(b.path), '__copper_layers': np.array(b.copper_layers), '__nets': np.array(b.nets, dtype=str)}
+    d = {'__path': np.array(b.path), '__copper_layers': np.array(b.copper_layers), '__nets': np.array(b.nets, dtype=str),
+         '__read_fields': np.array(sorted(b.read_fields), dtype=str)}
     for n, k in _ALL:
         v = getattr(b, n)
         d[n] = np.array(v, dtype=str) if k == 'S' else v
@@ -230,7 +274,8 @@ def save_npz(b, path):
 
 def load_npz(path):
     with np.load(path, allow_pickle=False) as z:
-        kw = dict(path=str(z['__path']), copper_layers=int(z['__copper_layers']), nets=tuple(z['__nets'].tolist()))
+        kw = dict(path=str(z['__path']), copper_layers=int(z['__copper_layers']), nets=tuple(z['__nets'].tolist()),
+                  read_fields=frozenset(z['__read_fields'].tolist()) if '__read_fields' in z.files else frozenset())
         for n, k in _ALL:
             if n not in z.files:             # additive fields: an older cache lacks them (z_keepout -> all False, by _post_init)
                 continue
@@ -443,7 +488,7 @@ def _extract(pcb, b, path, frame):
         a = np.array(ring)
         x, y = to_f(a[:, 0], a[:, 1])
         kw['outline'] = np.column_stack([_r(x), _r(y)])
-    return BoardArrays(path=path, copper_layers=b.GetCopperLayerCount(), nets=nets, **kw)
+    return BoardArrays(path=path, copper_layers=b.GetCopperLayerCount(), nets=nets, read_fields=frozenset(LATER_FIELDS), **kw)
 
 
 LAST_ATTEMPTS = {'n': 0}        # attempts the last read_board_retry used (1 = first try); anything above 1 is a finding to report

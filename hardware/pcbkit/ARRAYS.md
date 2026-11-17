@@ -1,7 +1,18 @@
 # Arrays added to `board` after the first release (step 1b)
 
 All in the configured frame (`FRAME`), mm, y up; boxes are `x0 <= x1`, `y0 <= y1`. Read from pcbnew, never from the file text. A
-board built by hand, or an npz cache that predates them, leaves them empty (length 0 = not read; a consumer that needs one checks `len`). `fp_fab_*` is NaN for a footprint with no F.Fab shape. No configuration name is read.
+field that was not read RAISES. `board.require(b, *fields)` raises `FieldNotRead`, naming the field, unless the read that made `b` filled
+it; `b.read_fields` is the set of added fields a read filled, and an empty array never means "not read". Every pcbkit consumer of an added
+field calls `require` first (`fab_boxes`, `footprint_silk`, `board_silk_graphics` and `text_boxes` do; so must each later rule).
+What fills them:
+
+| reader | fills the added fields? |
+|---|---|
+| `pcbkit.board.read_board(path, cfg)`, `read_board_retry`, and an npz cache written from one | yes: `read_fields == LATER_FIELDS`, a field with zero rows is still read |
+| `pcbtools.boardio.read_board` (the AFE binding) | no: first release's arrays only, `read_fields` empty, so a pcbkit consumer of an added field raises. Read with `pcbkit.board.read_board(path, FRAME)` for them |
+| a board built by hand (`from_arrays`), an npz cache written before this step | no, unless the caller names the fields it filled in `read_fields=` |
+
+`fp_fab_*` is NaN for a footprint with no F.Fab shape. No configuration name is read beyond `FRAME`.
 
 | fields | one row per | what |
 |---|---|---|

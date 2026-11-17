@@ -36,7 +36,7 @@ def from_due(x, y):
 def _first_release(b):
     """the arrays without the later fields (left empty), so the AFE's array edits (pcbtools.mutate, editor) and its recorded caches see
     the field set they always had"""
-    return b.replace(**{n: [] for n in _kit.LATER_FIELDS})
+    return b.replace(read_fields=frozenset(), **{n: [] for n in _kit.LATER_FIELDS})
 
 
 def read_board(path):
