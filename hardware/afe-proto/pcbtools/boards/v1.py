@@ -79,10 +79,7 @@ BLOCK_TITLE = {
     'cal': 'CALIBRATION: REF3030E, ladder (A2..A7), ADS1115 on I2C, AWG-sense divider and ratio switch',
     'due': 'DUE HEADERS (V03 positions), mounting, test points',
 }
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', 'P33_R']
-# the rail nets a 0 ohm bridge splits off (R410: VNEG_O, R411: P33_G) carry a power input (U301 pins 4 and 8) and no driver of their own: a flag
-# each (the live design only; the frozen 34b2e51 design has neither net, so its generated schematic is unchanged)
-PWR_FLAG_NETS += [n for n in ('P33_G', 'VNEG_O') if any(n in p_['pins'].values() for p_ in PARTS)]
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC']
 SCH_COMMENTS = ['Generated from design.py by pcbtools.schematic: edit design.py, not this file',
                 'Values and parts: whatif/bom.txt. Connectivity: the simulated circuit (docs/architecture.md)',
                 'Own work, CC BY-SA 4.0']
@@ -267,12 +264,9 @@ GENERATOR_BLOCK = frozenset(r for r, k in BLOCK.items() if k == 'POWER')
 ANALOG_FENCE = ('REFCAL', 'AWG', 'SCOPE')       # LR-1: no bottom copper in these fences (old NO_BOTTOM_FENCES)
 BRIDGE_TOL = 0.5                                # mm: a bridge counts as inside its block when within this of its floorplan point
 OUTLINE = {k: list(v) for k, v in FENCES.items()}
-for _name, _nets, _at, _x in _floorplan.BRIDGES:                 # the six 0603 bridges straddle the wall, outside every fence:
+for _name, _nets, _at, _x in _floorplan.BRIDGES:                 # a 0603 bridge straddles a wall, outside every fence:
     _r = _name[_name.index('(') + 1:_name.index(')')]            # each is inside its block's outline at its floorplan point
     OUTLINE[BLOCK[_r]].append((_at[0] - BRIDGE_TOL, _at[1] - BRIDGE_TOL, _at[0] + BRIDGE_TOL, _at[1] + BRIDGE_TOL))
-for _r in ('R411', 'R412', 'R413'):             # the corridor bridges (POWER parts) lie outside every fence: inside POWER's outline at their placed point
-    if _r in PLACE:
-        OUTLINE['POWER'].append((PLACE[_r][0] - 1.5, PLACE[_r][1] - 1.5, PLACE[_r][0] + 1.5, PLACE[_r][1] + 1.5))
 LR_HUNDREDS = {'1': 'SCOPE', '2': 'SCOPE', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
 TEST_BLOCKS = ('SCOPE', 'AWG', 'POWER', 'REFCAL')
 TP_NETS = {p['ref']: _n(p['pins']['1']) for p in PARTS if p['ref'].startswith('TP')}
@@ -328,7 +322,7 @@ SUPPLY_CAPS = list(DECOUP)
 
 RAILS = ('/+3V3A', '/VNEG')
 _CONSUMER = {'AWG': 'AWG', 'SCOPE': 'SCOPE', 'REFCAL': 'REF/ADS'}
-# the 0 ohm bridges that split a rail: (ref, net on pad 1, net on pad 2) from the design (R410: VNEG | VNEG_O; R411-R413: +3V3A | P33_G, P33_RN, P33_SC)
+# the 0 ohm bridges that split a rail: (ref, net on pad 1, net on pad 2) from the design; none unless the routing adds one
 _RAIL_BRIDGES = [(q['ref'], '/' + q['pins']['1'], '/' + q['pins']['2']) for q in PARTS
                  if q['ref'] in ('R410', 'R411', 'R412', 'R413') and q['pins']['1'] != q['pins']['2']]
 _FAMILY = {_r: {_r[1:]} | {n[1:] for _, a_, b_ in _RAIL_BRIDGES for n in (a_, b_) if _r in (a_, b_)} for _r in RAILS}
@@ -344,7 +338,7 @@ BRIDGE_PADS = []
 RAIL_TEXT = '+3V3A and VNEG'
 VREF_NET = '/VREF'
 VREF_SOURCE = [('U501', '2'), ('C504', '1')]
-VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512', 'R515'))]
+VREF_BRANCHES = [sum((_pad_on(r, 'VREF') for r in rs), []) for rs in (('J602', 'R508'), ('U502', 'C503'), ('R307',), ('R512',), ('R104', 'R204'))]
 CAP_PAIRS = (('N-N', ('/CH1_N', '/CH2_N'), 3.0, 0.2), ('NP-NP (+IN pads)', ('/CH1_NP', '/CH2_NP'), 3.0, 0.1))
 CAP_SELF = (('/AWG_INV', 3.0, 0.1), ('/AWG_BIN', 3.0, 0.1), ('/CH1_N', 3.0, 0.1), ('/CH2_N', 3.0, 0.1))
 DRC_ARM = dict(ref='R102', pin='1', net='/CH1_N')

@@ -94,19 +94,14 @@ def other(ref, sym, value, fp, pins, block, note='', fitted_by='owner', dnp=Fals
 
 
 G, P5, P5F, P33A, VN, P33D = 'GND', '+5V_DUE', '+5V_F', '+3V3A', 'VNEG', '+3V3_DUE'
-VNO = 'VNEG_O'     # VNEG beyond R410 (the far side of the +5V_F column): the AWG's V- pin, its 100 nF and the VNEG test point
-P33E = 'P33_G'   # the AWG's +3.3 V_A: carried east on a strip lane under the pad rows, beyond the bridge R411 over the VNEG lane
+VNO = 'VNEG'     # the AWG's V- pin, its 100 nF and the VNEG test point (one net with VNEG: no bridge)
+P33E = '+3V3A'   # the AWG's +3.3 V_A (one net with +3V3A: no bridge)
 VREF = 'VREF'   # REF3030E output = ladder top tap = REFP0 (PA-8)
 
 # ------------------------------------------------------------------ power (architecture.md "Power"; sim/powercal)
 B = 'power'
 two('R408', '1R', P5, P5F, B, '5 V feed sense, take only (PW-1)')
-two('R410', '0Rb', VN, VNO, 'power', 'POWER block agent: a 0 ohm link that carries VNEG over the +5V_F column (VNEG | VNEG_O, one net each side so the board connects it through the part): the generator\'s two rails cannot both leave the pockets the +5V_F tree encloses on one layer (LR-1: no hop)')
-# +3V3A bridges of the corridors (the integrator, 2026-11-12; spec team's standing rule: a 0603 0R over a net that is not an ADC line, a divider node
-# or a VREF branch; AREF stays continuous on top and the other net bridges it): each splits +3V3A, as R410 splits VNEG
-two('R411', '0Rb', P33A, P33E, 'power', 'bridge over the VNEG strip lane: +3V3A from the generator to the AWG branch (the lane order is the reverse of the generator\'s outputs)')
-two('R412', '0Rb', P33A, 'P33_RN', 'power', 'bridge over AREF: the +3V3A trunk to the ADS side of REFCAL (R517); AREF stays continuous')
-two('R413', '0Rb', P33A, 'P33_S', 'power', 'bridge over AREF: the scope\'s own +3V3A branch from the star, straight to R110 (R109 removed: its crossing vanished with the final REFCAL routing); AREF stays continuous')
+# no 0R bridges on this board unless the routing needs one (afe.md D24: the count is set by the layout); a bridge is added where a net must cross an A0/A1/ref wall
 two('C403', '10u', P5F, G, B, '5 V bulk = CIN'); two('C404', '10u', P5F, G, B, '5 V bulk = CIN')
 two('C401', '100n', P5F, G, B, 'LM27762 VIN')
 part('U401', 'LM27762', {'1': G, '2': 'LM_FBP', '3': P5F, '4': G, '5': 'LM_CP', '6': VN, '7': 'LM_FBN',
@@ -141,7 +136,7 @@ for ch, (r1, r2, r3, c1, c2, rnp, cnp, riso, dk, j) in SC.items():
     two(r1[0], '470k', n('IN'), n('R1A'), B, 'R101 (770k), part 1'); two(r1[1], '300k', n('R1A'), n('N'), B, 'R101, part 2')
     two(c1, '12p', n('IN'), n('N'), B, 'C101 across R101')
     two(r2[0], '470k', n('N'), n('R2A'), B, 'R201 (800k) to GND, part 1'); two(r2[1], '330k', n('R2A'), G, B, 'R201, part 2')
-    two(r3, '330k', n('N'), 'VREF_R' if ch == 'CH1' else 'VREF_P', B, 'R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)')
+    two(r3, '330k', n('N'), 'VREF', B, 'R3 to the REF3030E: the centre')
     two(c2, '30p', n('N'), G, B, 'C201')
     two(rnp, '680', n('N'), n('NP'), B, 'Rnp, clamp-current limit')
     two(cnp, '10p', n('NP'), G, B, 'Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz')
@@ -151,10 +146,10 @@ for ch, (r1, r2, r3, c1, c2, rnp, cnp, riso, dk, j) in SC.items():
         part('U101', 'TPH2502', {'1': 'CH2_OUT', '2': 'CH2_OUT', '3': 'CH2_NP', '4': G,
                                '5': 'CH1_NP', '6': 'CH1_OUT', '7': 'CH1_OUT', '8': 'SC_VCC'}, B,
              'scope dual: A CH2, B CH1, followers')
-        two('R108', '1R', 'P33_U', 'SC_VCC', B, 'scope dual supply branch (LR-6)'); two('C104', '10u', 'SC_VCC', G, B, 'supply branch')
+        two('R108', '1R', '+3V3A', 'SC_VCC', B, 'scope dual supply branch (LR-6)'); two('C104', '10u', 'SC_VCC', G, B, 'supply branch')
         two('C103', '100n', 'SC_VCC', G, B, 'supply pin')
     two(riso, '22', n('OUT'), ADC[ch], B, 'Riso')
-    part(dk, 'BAV99', {'1': G, '3': ADC[ch], '2': 'P33_U'}, B, 'ADC-pin clamp after Riso (BAV99, Basic: kvm_02\'s v2 scope run holds PR-2 with it)')
+    part(dk, 'BAV99', {'1': G, '3': ADC[ch], '2': '+3V3A'}, B, 'ADC-pin clamp after Riso (BAV99, Basic: kvm_02\'s v2 scope run holds PR-2 with it)')
 
 # ------------------------------------------------------------------ AWG (sim/awg variant buf, sim/powercal ac_netlist)
 B = 'awg'
@@ -173,13 +168,6 @@ two('C305', '10u', 'AWG_X', G, B, 'offset filter, 10 uF (14 uF with the 2nd, abo
 two('C306', '10u', 'AWG_X', G, B, 'offset filter, 10 uF')
 two('C302', '100n', P33E, G, B, 'TPH2502 V+ pin')
 # the AWG's +3.3 V branch crosses the A1 and A0 lines (the ADC lines from the channels to the Due's A1 / A0 pins) on two
-# 0 ohm bridges (afe.md D24: a bridge, not a bottom hop, over an ADC trace)
-two('R110', '0Rb', 'P33_S', 'P33_U', 'ch1', 'bridge over the A1 column: the scope\'s +3V3A branch (from R413) to the dual V+ and the clamps')
-two('R515', '0Rb', VREF, 'VREF_M', 'cal', 'wall bridge over A1 (the CH2 leg of VREF), part 1 of 2')
-two('R111', '0Rb', 'VREF_P', 'VREF_Q', 'ch1', 'SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3')
-two('R113', '0Rb', 'VREF_Q', 'VREF_S', 'ch1', 'SCOPE agent: over the supply belt (R110.2 -> R108 -> U101.8 -> U101 -> R107) inside fence 1, part 2 of 3')
-two('R112', '0Rb', 'VREF_S', 'VREF_R', 'ch1', 'SCOPE agent: over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R')
-two('R516', '0Rb', 'VREF_M', 'VREF_P', 'cal', 'wall bridge over A0 (the CH2 leg of VREF), part 2 of 2')
 two('C303', '100n', VNO, G, B, 'TPH2502 V- pin (at the pin)')
 part('U301', 'TPH2502', {'1': 'AWG_SP', '2': 'AWG_SP', '3': G, '4': VNO, '5': 'AWG_BIN', '6': 'AWG_INV', '7': 'AWG_OUT', '8': P33E}, B,
      'half B the gain stage (pins 5-7: +IN, -IN, OUT); half A the spare: +IN to GND, follower (V2-2). At 270 degrees the '
@@ -206,32 +194,26 @@ two('R510', '0R', VREF, 'AREF', B, 'PA-7: reference to the Due AREF pin, unfitte
 # BNC node - R501 - tap T0 - R502 - bottom end B - Rd - VREF (the default tie, wire off); k = R502 / (R501 + R502) = 0.405.  The wire (a
 # shunt on J501) joins B to TAP3.  T0 and B each reach the ADS1115 through a series resistor (Rs 3.9k, Rm 13k = Rt||Rb + Rs
 # matched) and a BAV99 clamp, and are read as the differential pair AIN2-AIN3.
-two('R309', '0Rb', 'AWG_S', 'AWG_I', 'awg', 'wall bridge over A1 (AWG_BNC sense tap, west-bound), part 1 of 2')
-two('R310', '0Rb', 'AWG_I', 'AWG_BNC', 'awg', 'wall bridge over A0 (AWG_BNC sense tap, west-bound), part 2 of 2')
-two('R501', '22k', 'AWG_S', 'SNS_TAP', B, 'sense divider, BNC node to the tap T0')
+two('R501', '22k', 'AWG_BNC', 'SNS_TAP', B, 'sense divider, BNC node to the tap T0')
 two('R502', '15k', 'SNS_TAP', 'SNS_B', B, 'sense divider, tap to the bottom end B')
-two('R512', '1k', 'SNS_B_N', VREF, B, 'Rd: the default tie of B to VREF (wire off); on the _N side of the sense bridge R520')
-two('R520', '0Rb', 'SNS_B', 'SNS_B_N', B, 'bridge over a VREF leg (not a TAP line, as built): splits the sense bottom node B so the Rd tie reaches branch D without crossing (v2 BR508); carries only the ADS input current')
+two('R512', '1k', 'SNS_B', VREF, B, 'Rd: the default tie of B to VREF (wire off)')
 two('R513', '3.9k', 'SNS_TAP', 'SNS_TI', B, 'Rs: T0 to AIN2')
 two('R514', '13k', 'SNS_B', 'SNS_BI', B, 'Rm: B to AIN3 (source impedance matched to AIN2)')
-part('D502', 'BAV99', {'1': G, '3': 'SNS_TI', '2': 'P33_R'}, B, 'clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others)')
-part('D501', 'BAV99', {'1': G, '3': 'SNS_BI', '2': 'P33_R'}, B, 'clamp on AIN3')
+part('D502', 'BAV99', {'1': G, '3': 'SNS_TI', '2': '+3V3A'}, B, 'clamp on AIN2 (SBAS444E 7.3.1: an overdriven input disturbs the others)')
+part('D501', 'BAV99', {'1': G, '3': 'SNS_BI', '2': '+3V3A'}, B, 'clamp on AIN3')
 other('J501', 'Connector_Generic:Conn_01x03', 'CAL', 'Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical',
       {'1': 'TAP4', '2': 'SNS_B', '3': 'TAP3'}, B, 'ratio jumper: a shunt across B and TAP3 (pins 2-3); TAP4 next to it is a wrong '
       'position that stays in range', fitted_by='owner')
 # precision ADC (D15: v2's ADS1115, afe-v2 V2-8 / section 3.4)
 part('U502', 'ADS1115', {'1': G, '3': G, '4': VREF, '5': 'TAP3', '6': 'SNS_TI', '7': 'SNS_BI',
-                       '8': 'P33_R', '9': 'SDA1_A', '10': 'SCL1_A'}, B,
+                       '8': '+3V3A', '9': 'SDA1', '10': 'SCL1'}, B,
      'ADDR to GND (0x48); AIN0 VREF (a check), AIN1 TAP3, AIN2 / AIN3 the sense tap T0 and the bottom end B read as a '
      'differential pair; RDY unused')
-two('C502', '100n', 'P33_R', G, B, 'ADS1115 VDD')
-two('R509', '4.7k', 'SDA1_A', 'P33_R', B, 'I2C pull-up, SDA1 (the Due has none on TWI0)')
-two('R511', '4.7k', 'SCL1_A', 'P33_R', B, 'I2C pull-up, SCL1')
+two('C502', '100n', '+3V3A', G, B, 'ADS1115 VDD')
+two('R509', '4.7k', 'SDA1', '+3V3A', B, 'I2C pull-up, SDA1 (the Due has none on TWI0)')
+two('R511', '4.7k', 'SCL1', '+3V3A', B, 'I2C pull-up, SCL1')
 # REFCAL's planar cut (the block agent's finding): the VREF tree (legs A south, D1 north, D2 east) splits the fence, and the ADS
-# straddles it. Three 0603 0 ohm bridges carry the nets that must cross: the ADS's +3V3A, SDA and SCL.
-two('R517', '0Rb', 'P33_RN', 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)')
-two('R518', '0Rb', 'SDA1', 'SDA1_A', B, 'bridge over a VREF leg: SDA to the ADS')
-two('R519', '0Rb', 'SCL1', 'SCL1_A', B, 'bridge over a VREF leg: SCL to the ADS')
+# straddles it.
 
 # ------------------------------------------------------------------ Due headers (docs/due-header-table.md, V03)
 B = 'due'
@@ -264,7 +246,7 @@ other('MH601', 'Mechanical:MountingHole', 'M2.5 standoff', 'MountingHole:Mountin
 other('MH602', 'Mechanical:MountingHole', 'M2.5 standoff', 'MountingHole:MountingHole_2.7mm_M2.5', {}, B,
       'over the Due hole (90.17, 50.8), beside the BNCs')
 for k, (net, why) in enumerate(((P5, '5 V pin side of the sense resistor (R408)'), (P5F, 'AFE side of the sense resistor (R408)'),
-                                (G, 'ground'), (P33A, '+3.3 V_A'), (VNO, 'negative rail, beyond R410'), (VREF, '3.0 V reference')), 1):
+                                (G, 'ground'), (P33A, '+3.3 V_A'), (VNO, 'negative rail'), (VREF, '3.0 V reference')), 1):
     other(f'TP{400 + k}' if k <= 5 else 'TP501', 'Connector:TestPoint', net, TP, {'1': net}, 'power' if k <= 5 else 'cal', why, fitted_by='none')
 
 # LR-11 test points on the key nodes of the blocks that had none: each ADC pin (on the existing trace, no stub: A1, A0 add pad
