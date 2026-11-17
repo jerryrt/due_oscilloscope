@@ -83,16 +83,17 @@ def other(ref, sym, value, fp, pins, block, note='', nc='rest', fitted_by='owner
 
 
 G, P5, P5F, P33A, VN, VREF = 'GND', '+5V_DUE', '+5V_F', '+3V3A', 'VNEG', 'VREF'
-P33A_U = '+3V3A_U'   # the +3V3A segment at the scope dual's V+ pad, beyond bridge BR101
 
 # ---------------------------------------------------------------- scope: one TPH2502 dual, +3.3 V_A only, V- at ground
 # TPH2502 SOP-8 (datasheet pin figure): 1 OUTA, 2 -INA, 3 +INA, 4 V-, 5 +INB, 6 -INB, 7 OUTB, 8 V+
+# The two halves are the same op-amp and share only V+ and V-; the gate assignment is free and follows the board: CH2 on half A
+# (pins 1-3), CH1 on half B (pins 5-7).
 B = 'CH1'      # the shared dual belongs to both channels; it takes the 1xx number (U101) and block CH1
-part('U101', 'TPH2502', {'1': 'CH1_OUT', '2': 'CH1_OUT', '3': 'CH1_NP', '4': G, '5': 'CH2_NP', '6': 'CH2_OUT',
-                       '7': 'CH2_OUT', '8': P33A_U}, B, 'scope.U (shared)',
+part('U101', 'TPH2502', {'1': 'CH2_OUT', '2': 'CH2_OUT', '3': 'CH2_NP', '4': G, '5': 'CH1_NP', '6': 'CH1_OUT',
+                       '7': 'CH1_OUT', '8': P33A}, B, 'scope.U (shared)',
      'two unity followers: output straight to -IN (RF = 0); V- = GND, no negative-rail connection')
-two('C104', '100n', P33A_U, G, B, 'scope.C (shared) 100nF', 'dual supply decoupling, at the pin')
-two('C105', '1u', P33A_U, G, B, 'scope.C (shared) 1uF', 'dual supply decoupling, at the pin')
+two('C104', '100n', P33A, G, B, 'scope.C (shared) 100nF', 'dual supply decoupling, at the pin')
+two('C105', '1u', P33A, G, B, 'scope.C (shared) 1uF', 'dual supply decoupling, at the pin')
 ADCPIN = {1: 'A1', 2: 'A0'}               # CH1 on A1, CH2 on A0 (version 1, afe.md)
 for ch in (1, 2):
     n = lambda s: f'CH{ch}_{s}'
@@ -110,8 +111,8 @@ for ch in (1, 2):
     two(f'C{b + 2}', '47p', n('N'), G, B, 'scope.Cn', 'Cn at the node')
     two(f'R{b + 7}', '470R', n('N'), n('NP'), B, 'scope.Rnp', 'Rnp, ahead of +IN')
     two(f'C{b + 3}', '10p', n('NP'), G, B, 'scope.Cpx', 'Cpx, +IN to ground')
-    two(f'R{b + 8}', '22R', n('OUT'), 'CH2_RISO' if ch == 2 else ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
-    part(f'D{b + 1}', 'BAV99', {'1': G, '3': 'CH2_RISO' if ch == 2 else ADCPIN[ch], '2': P33A_U if ch == 2 else P33A}, B,
+    two(f'R{b + 8}', '22R', n('OUT'), ADCPIN[ch], B, 'scope.Riso', 'Riso, amplifier output to the Due ADC pin')
+    part(f'D{b + 1}', 'BAV99', {'1': G, '3': ADCPIN[ch], '2': P33A}, B,
          'scope.Dp',
          'ADC-pin clamp: GND / pin / +3.3 V_A')
 
@@ -170,12 +171,7 @@ part('U502', 'ADS1115', {'1': G, '3': G, '4': VREF, '5': 'TAP4', '6': 'ADS_TAP',
 two('C503', '100n', P33A, G, B, 'pc.C_ADS', 'ADS1115 VDD')
 two('R512', '4.7k', P33A, 'SDA', 'REFCAL', '', 'I2C pull-up SDA (required; 4.7k Basic, not in powercal/parts.csv)')
 two('R513', '4.7k', P33A, 'SCL', 'REFCAL', '', 'I2C pull-up SCL (required)')
-# Top-layer 0 ohm bridges the layout needs (afe.md LR-11 placeholders until the layout names the exact nets):
-# BR101 (CH1) carries +3V3A over the A0 column to the scope dual's V+ pad; BR201 (CH2) carries CH2's route over CH1's run
-# (the gap is in CH2's ADC-pin net, between Riso/the clamp D201 and the A0 pin).  Each joins two segment names of ONE electrical net; the
-# netlist comparison merges them (pcbtools.spicecmp BR rule: every BR part is a short).  Each sits in the block it serves.
-two('BR101', '0R', P33A, P33A_U, 'CH1', '', 'top-layer 0R bridge: +3V3A to the scope dual V+ segment (placeholder net)')
-two('BR201', '0R', 'CH2_RISO', 'A0', 'CH2', '', 'top-layer 0R bridge: CH2 Riso to the A0 pin segment (placeholder net)')
+# No 0 ohm bridges: the layout adds one (BR + the block's number) only where a net must cross a line on the top layer.
 two('R514', '0R', VREF, 'AREF', 'REFCAL', '', 'PA-7: reference to the Due AREF pin, unfitted', dnp=True)
 
 # ---------------------------------------------------------------- calibration ladder, sense divider (sim/powercal)
