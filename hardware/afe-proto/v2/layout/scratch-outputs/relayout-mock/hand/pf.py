@@ -1,43 +1,59 @@
-"""PathFinder (negotiated congestion) router for the scratch board, one layer (F.Cu), 0.1 mm grid. Run in the PCB image:
+"""PathFinder (negotiated congestion) router for a scratch KiCad 10 board: one copper layer, 0.1 mm grid, pcbnew from the PCB image.
 
-    python3 pf.py BOARD.kicad_pcb OUT_SPEC.py [ITER] [SECONDS]
+USAGE (in the image, cwd = this folder):   [PF_CFG=<module>] python3 pf.py BOARD.kicad_pcb OUT_SPEC.py [ITER] [SECONDS]
+    BOARD      a .kicad_pcb that already carries the copper to keep (every track and via on it is FIXED), e.g. spliced by hr.py
+    OUT_SPEC   a Python file with ROUTES = [(net, 'F', [(x, y), ...], width)] and VIAS = [(net, x, y)] in user mm (hr.py splices it back)
+    ITER, SECONDS   negotiation rounds (default 25) and wall-clock stop (default 900 s)
+    PF_CFG     the board's data module (default pf_cfg_afe2, next to this file): frame origin, grid box, edge box, clearances, high-impedance and
+               sensitive nets, digital nets and the courtyards they avoid, supply stars with their consumer groups, Kelvin nets. pf.py itself
+               knows no board: another board writes its own module with the same names.
 
-Fixed copper = every track and via already on BOARD (hi-Z, outputs, AWG_FB, A0/A1, GND stubs and vias, hand trunks). Nets still open
-are routed; LR-6 (+3V3A, VNEG) and LR-8 (VREF) groups are separate pseudo nets that may touch only their star / source pads.
-Rules honoured as hard blocks: clearance 0.2 (cells within 0.42 of other copper), hi-Z tracks 0.9, edge 0.65, the far-edge band,
-LR-5 (sensitive nets 10 mm from U401 / C409), LR-9 (SDA/SCL out of the analog courtyards). Writes ROUTES in Due mm."""
-import sys, math, heapq, time, json, os
+WHAT IT DOES: every net with pads not yet joined by the fixed copper is a job (a supply star or Kelvin branch is a separate pseudo net that
+may touch only its star / source pads). Each round every job is ripped up and re-routed by A* (8 directions) with a soft penalty on cells
+within reach of other jobs' copper that grows each round, plus a history cost on cells that stayed in conflict; fixed copper, pads of other
+nets, the edge box, the sensitive-net keep-away and the DIGITAL courtyards are hard blocks. A GND SMD pad that the rule (greedy, a via of its own
+within 3 mm) leaves without one gets a stub and a via first, as fixed copper.
+
+OUTPUT: the spec file, and on stdout one line per round (jobs routed, jobs still conflicting), then
+    METRIC conflict_segments N distinct_clusters K     N = pairs of segments (different jobs, or a job and fixed copper) closer than the clearance
+                                                        (0.37 mm centre to centre, 0.9 to a hi-Z track); K = those pairs grouped within 2 mm.
+                                                        K is the number of distinct places where a bridge, hop or move is still needed.
+    CLUSTER (x, y) [jobs]                              one per distinct place.
+LIMITS: single layer (no vias but the GND ones), one track width, 45-degree grid, no length rules (fix A0/A1, outputs and feedback nodes first), the
+count is geometric, so verify the spliced board with KiCad DRC (tracks_crossing, shorting_items, clearance, unconnected_items)."""
+import sys, math, heapq, time, json, os, importlib
 sys.path.append('/usr/lib/python3/dist-packages')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 import pcbnew
 
+cfg = importlib.import_module(os.environ.get('PF_CFG', 'pf_cfg_afe2'))      # all board knowledge lives in this module
 BOARD, OUT = sys.argv[1], sys.argv[2]
 ITER = int(sys.argv[3]) if len(sys.argv) > 3 else 25
 SECS = float(sys.argv[4]) if len(sys.argv) > 4 else 900
 RES = 0.1
-X0, Y0, X1, Y1 = 16.0, -5.0, 118.0, 58.5
+X0, Y0, X1, Y1 = cfg.GRID
 NX, NY = int(round((X1 - X0) / RES)), int(round((Y1 - Y0) / RES))
-INFL = 0.355     # centre to centre 0.4 (0.2 track + 0.2 clearance) must pass: the disk radius is INFL + 0.035
-INFL_PAD = 0.26      # centre line of a 0.2 track to a pad edge: 0.15 class clearance + 0.1 + 0.01 (0.5 mm pitch parts need it)
-INFL_HIZ = 0.9
+INFL, INFL_PAD, INFL_HIZ = cfg.INFL, cfg.INFL_PAD, cfg.INFL_HIZ
+ORIGIN_X, ORIGIN_Y = cfg.ORIGIN_X, cfg.ORIGIN_Y
 mm = pcbnew.ToMM
-
-HIZ = {'/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP', '/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP'}
-SENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')
-DIGITAL = ('/SDA', '/SCL')
-STAR = {'/+3V3A': ['U401.11', 'C405.1', 'C406.1', 'R401.1', 'TP401.1', 'R407.1'], '/VNEG': ['U401.6', 'C407.1', 'C408.1', 'R403.1']}
-GROUPS = {'/+3V3A': {'scope': ['U101.8', 'C104.1', 'C105.1', 'D201.2', 'D101.2'], 'awg': ['U301.8', 'C305.1'],
-                     'adc': ['U501.1', 'C502.1', 'U502.8', 'C503.1', 'R512.1', 'R513.1']},
-          '/VNEG': {'awg': ['U301.4', 'C306.1'], 'tp': ['TP402.1']}}
-VREF_SRC = ['U501.2', 'C501.1']
-VREF_GROUPS = [['J602.1', 'R506.2'], ['U502.4'], ['R514.1'], ['TP501.1'], ['R305.1'], ['R106.2', 'R509.2', 'R206.2']]
-ANALOG_COURT = ('CH1', 'CH2', 'AWG', 'REFCAL')
+HIZ, SENS, DIGITAL, STAR, GROUPS = cfg.HIZ, cfg.SENS, cfg.DIGITAL, cfg.STAR, cfg.GROUPS
+KELVIN = cfg.KELVIN
+GND = cfg.GND_NET
 
 b = pcbnew.LoadBoard(BOARD)
+ANALOG_BOX = {}                       # courtyard boxes (user mm) of the parts the DIGITAL nets keep out of
+for _f in b.GetFootprints():
+    if _f.GetReference() in set(cfg.ANALOG_REFS):
+        try:
+            _bb = _f.GetCourtyard(pcbnew.F_CrtYd).BBox()
+        except Exception:
+            _bb = _f.GetBoundingBox()
+        ANALOG_BOX[_f.GetReference()] = (mm(_bb.GetX()) - ORIGIN_X, ORIGIN_Y - mm(_bb.GetBottom()), mm(_bb.GetRight()) - ORIGIN_X, ORIGIN_Y - mm(_bb.GetY()))
 
 
-def cx(v): return mm(v) - 50.0
-def cy(v): return 150.0 - mm(v)
+def cx(v): return mm(v) - ORIGIN_X
+def cy(v): return ORIGIN_Y - mm(v)
 
 
 def cell(x, y): return int(round((x - X0) / RES)), int(round((y - Y0) / RES))
@@ -122,7 +138,7 @@ for p in pads:
     if not p['net']:
         stamp_rect(static, *p['bb'], INFL_PAD)
 # board edge, far-edge band
-ex0, ey0, ex1, ey1 = 17.0 + 0.65, -4.5 + 0.65, 117.0 - 0.65, 53.34 - 0.2
+ex0, ey0, ex1, ey1 = cfg.EDGE_BOX
 i, j = np.meshgrid(np.arange(NX), np.arange(NY), indexing='ij')
 gx, gy = X0 + i * RES, Y0 + j * RES
 static |= (gx < ex0) | (gx > ex1) | (gy < ey0) | (gy > ey1)
@@ -163,10 +179,10 @@ def comps_of(padkeys):
 
 bynet = {}
 for p in pads:
-    if p['net'] and p['net'] != '/GND':
+    if p['net'] and p['net'] not in cfg.SKIP_NETS:
         bynet.setdefault(p['net'], []).append((p['ref'], p['pin']))
 for n, ks in bynet.items():
-    if n in STAR or n == '/VREF':
+    if n in STAR or n in KELVIN:
         continue
     comps = comps_of(ks)
     if len(comps) > 1:
@@ -178,12 +194,13 @@ for n, groups in GROUPS.items():
         ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == n]
         if not ks: continue
         jobs.append(dict(name=n + '#' + gname, own=n, comps=[ks], star=stars))
-vsrc = [tuple(s.split('.')) for s in VREF_SRC]
-jobs.append(dict(name='/VREF#src', own='/VREF', comps=[[k] for k in vsrc], star=None))
-for gi, gp in enumerate(VREF_GROUPS):
-    ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == '/VREF']
-    if ks:
-        jobs.append(dict(name='/VREF#%d' % gi, own='/VREF', comps=[ks], star=vsrc))
+for kn, kspec in KELVIN.items():
+    ksrc = [tuple(s.split('.')) for s in kspec['src']]
+    jobs.append(dict(name=kn + '#src', own=kn, comps=[[k] for k in ksrc if k in key], star=None))
+    for gi, gp in enumerate(kspec['groups']):
+        ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == kn]
+        if ks:
+            jobs.append(dict(name='%s#%d' % (kn, gi), own=kn, comps=[ks], star=ksrc))
 print('jobs', len(jobs), [j['name'] for j in jobs])
 
 # per-job static mask: other nets' fixed copper (own net's removed), star pads of the same family are neutral
@@ -199,16 +216,19 @@ def job_block(job):
         if k in key:
             for c in pad_cells(k):
                 blk[c] = False
-    if nm in SENS or nm.startswith(SENS):
-        for ref in ('U401', 'C409'):
+    if nm.startswith(SENS):
+        for ref in cfg.SENS_FROM:
             for p in pads:
                 if p['ref'] == ref:
                     x0, y0, x1, y1 = p['bb']
                     cxm, cym = (x0 + x1) / 2, (y0 + y1) / 2
                     blk |= np.hypot(gx - cxm, gy - cym) < 10.0
     if nm in DIGITAL:
-        for p in pads:
-            pass
+        own_refs = {p['ref'] for p in pads if p['net'] == nm}
+        for ref, (bx0, by0, bx1, by1) in ANALOG_BOX.items():
+            if ref in own_refs: continue
+            m = 0.3 + 0.1
+            blk |= (gx >= bx0 - m) & (gx <= bx1 + m) & (gy >= by0 - m) & (gy <= by1 + m)
     return blk
 
 occ = np.zeros((NX, NY), np.int16)         # dynamic: other jobs' routed copper
@@ -334,8 +354,20 @@ def route_job(job, pres):
     return res
 
 
-def polyline(path):
+PADBOX = [(p['bb'], p) for p in pads]
+def pad_at(pt, net):
+    for (x0, y0, x1, y1), p in PADBOX:
+        if p['net'] == net and x0 <= pt[0] <= x1 and y0 <= pt[1] <= y1:
+            return p
+    return None
+
+
+def polyline(path, net=None):
     pts = [xy(*c) for c in path]
+    if net:
+        p0, p1 = pad_at(pts[0], net), pad_at(pts[-1], net)
+        if p0: pts = [((p0['bb'][0] + p0['bb'][2]) / 2, (p0['bb'][1] + p0['bb'][3]) / 2)] + pts
+        if p1: pts = pts + [((p1['bb'][0] + p1['bb'][2]) / 2, (p1['bb'][1] + p1['bb'][3]) / 2)]
     out = [pts[0]]
     for a, c, d in zip(pts, pts[1:], pts[2:]):
         if abs((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) > 1e-9:
@@ -343,6 +375,61 @@ def polyline(path):
     out.append(pts[-1])
     return [(round(x, 3), round(y, 3)) for x, y in out]
 
+
+# ------------------------------------------------------------------------------------------------ GND pads without a via (LR-1)
+EXTRA_ROUTES, EXTRA_VIAS = [], []
+_gv = [(vx, vy) for m, vx, vy, vd in vias if m == GND]
+_used = [False] * len(_gv)
+_nov = []
+for k, p in sorted(key.items()):                # the rule (rules.lr1): greedy in (ref, pin) order, a via within 3 mm of the pad centre, each used once
+    if p['net'] != GND or p['th']:
+        continue
+    pxc, pyc = (p['bb'][0] + p['bb'][2]) / 2, (p['bb'][1] + p['bb'][3]) / 2
+    best, bi = 1e9, -1
+    for i_, (vx, vy) in enumerate(_gv):
+        d_ = math.hypot(vx - pxc, vy - pyc)
+        if not _used[i_] and d_ < best:
+            best, bi = d_, i_
+    if bi >= 0 and best <= 3.0:
+        _used[bi] = True
+    else:
+        _nov.append(k)
+print('GND pads without their own via:', _nov)
+for k in _nov:
+    p = key[k]
+    blkg = ((total - net_mask[GND].astype(np.int16)) > 0) | static
+    pc = pad_cells(k)
+    for c in pc:
+        blkg[c] = False
+    vblk = blkg.copy()
+    for di in range(-2, 3):
+        for dj in range(-2, 3):
+            if di * di + dj * dj <= 5:
+                vblk |= np.roll(np.roll(blkg, di, 0), dj, 1)
+    cx0 = sum(c[0] for c in pc) / len(pc); cy0 = sum(c[1] for c in pc) / len(pc)
+    R3 = int(cfg.GND_VIA_RADIUS_MM / RES) - 2          # the rule counts a via within GND_VIA_RADIUS_MM of the pad centre; no stub: the top pour joins the pad
+    best, bc = 1e9, None
+    free = (~blkg).astype(np.int32)
+    csum = np.cumsum(np.cumsum((blkg).astype(np.int32), 0), 1)
+    for i in range(int(cx0) - R3, int(cx0) + R3 + 1):
+        for j in range(int(cy0) - R3, int(cy0) + R3 + 1):
+            if not (0 <= i < NX and 0 <= j < NY) or vblk[i, j] or math.hypot(i - cx0, j - cy0) > R3 or math.hypot(i - cx0, j - cy0) < 3:
+                continue
+            i0, j0, i1, j1 = max(i - 10, 1), max(j - 10, 1), min(i + 10, NX - 1), min(j + 10, NY - 1)
+            crowd = csum[i1, j1] - csum[i0 - 1, j1] - csum[i1, j0 - 1] + csum[i0 - 1, j0 - 1]
+            sc = crowd + 5.0 * math.hypot(i - cx0, j - cy0) * RES
+            if sc < best:
+                best, bc = sc, (i, j)
+    if bc is None:
+        print('GNDVIA none for', k); continue
+    vx, vy = xy(*bc)
+    EXTRA_VIAS.append((GND, round(vx, 3), round(vy, 3)))
+    gm = np.zeros((NX, NY), bool)
+    stamp_seg(gm, vx, vy, vx, vy, 0.3 + INFL - 0.1)
+    new = gm & ~net_mask[GND]
+    total += new.astype(np.int16)
+    net_mask[GND] |= gm
+    print('GNDVIA', k, '->', (round(vx, 2), round(vy, 2)), 'crowd score', round(best, 1))
 
 t0 = time.time()
 paths_of = {}
@@ -446,10 +533,48 @@ for a in paths_of:
                 pairs.append((a, c, n, tuple(np.round(xy(*pc[(cov_of[c][pc[:, 0], pc[:, 1]] > 0).argmax()]), 1))))
 pairs.sort(key=lambda t: -t[2])
 print('PAIRS', pairs[:40])
+def seg_dist(a, b, c, d):
+    def ccw(p, q, r): return (r[1] - p[1]) * (q[0] - p[0]) - (q[1] - p[1]) * (r[0] - p[0])
+    if ccw(a, c, d) * ccw(b, c, d) < 0 and ccw(a, b, c) * ccw(a, b, d) < 0: return 0.0
+    def pd(p, s0, s1):
+        dx, dy = s1[0] - s0[0], s1[1] - s0[1]; L = dx * dx + dy * dy
+        t = 0 if L == 0 else max(0, min(1, ((p[0] - s0[0]) * dx + (p[1] - s0[1]) * dy) / L))
+        return math.hypot(p[0] - s0[0] - t * dx, p[1] - s0[1] - t * dy)
+    return min(pd(a, c, d), pd(b, c, d), pd(c, a, b), pd(d, a, b))
+SEGS = []
+for nm, rs in paths_of.items():
+    net_ = [j for j in jobs if j['name'] == nm][0]['own']
+    for p in rs:
+        pl = polyline(p, net_)
+        for u, v in zip(pl, pl[1:]):
+            SEGS.append((nm, net_, u, v))
+for nm, net_, a, c, d, e in [(t[0], t[0], t[1], t[2], t[3], t[4]) for t in tracks]:
+    pass
+FIXSEGS = [(t[0], t[0], (t[1], t[2]), (t[3], t[4])) for t in tracks if t[0] != GND]
+confl = []
+for i, (n1, o1, a, b_) in enumerate(SEGS):
+    for (n2, o2, c, d) in SEGS[i + 1:] + FIXSEGS:
+        if n1 == n2 or (o1 == o2 and '#' not in n1 and '#' not in str(n2)): continue
+        if o1 == o2 and n2 in ('%s' % o1,): continue
+        if max(min(a[0], b_[0]), min(c[0], d[0])) - min(max(a[0], b_[0]), max(c[0], d[0])) > 0.45 or max(min(a[1], b_[1]), min(c[1], d[1])) - min(max(a[1], b_[1]), max(c[1], d[1])) > 0.45: continue
+        lim = 0.9 if (o2 in HIZ or o1 in HIZ) else 0.37
+        if seg_dist(a, b_, c, d) < lim:
+            confl.append((((a[0] + b_[0]) / 2), ((a[1] + b_[1]) / 2), n1, n2))
+clusters = []
+for x, y, n1, n2 in confl:
+    for cl in clusters:
+        if math.hypot(cl[0] - x, cl[1] - y) < 2.0:
+            cl[2].add(n1); cl[2].add(n2); break
+    else:
+        clusters.append([x, y, {n1, n2}])
+print('METRIC conflict_segments', len(confl), 'distinct_clusters', len(clusters))
+for cl in sorted(clusters, key=lambda c: (round(c[0]), round(c[1]))):
+    print('CLUSTER (%.1f, %.1f)' % (cl[0], cl[1]), sorted(cl[2]))
 R = []
 for nm, rs in paths_of.items():
     net = [j for j in jobs if j['name'] == nm][0]['own']
     for p in rs:
-        R.append((net, 'F', polyline(p), 0.2))
-open(OUT, 'w').write('ROUTES = %r\nVIAS = []\n' % R)
+        R.append((net, 'F', polyline(p, net), 0.2))
+R += EXTRA_ROUTES
+open(OUT, 'w').write('ROUTES = %r\nVIAS = %r\n' % (R, EXTRA_VIAS))
 print('wrote', OUT, len(R), 'polylines; failed', [j['name'] for j in jobs if j['name'] not in paths_of], 'conflicting', bad)
