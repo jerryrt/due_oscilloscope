@@ -208,7 +208,7 @@ if RECT_MODE:
     def cut(sg):
         out = []
         fb = []
-        for f in [q for q in os.environ.get('FORCE', '').split(',') if q]:      # a forced label breaks any edge it touches (0.2 clear each side)
+        for f in [q for q in os.environ.get('FORCE', '').split(',') if q and not os.environ.get('NOCUT')]:      # a forced label breaks any edge it touches (0.2 clear each side)
             rr_, fx_, fy_, fa_ = f.split(':'); fx_, fy_ = float(fx_), float(fy_); hl = len(rr_) * 0.45 + 0.2
             fb.append((fx_ - 0.8, fy_ - hl, fx_ + 0.8, fy_ + hl) if int(fa_) == 90 else (fx_ - hl, fy_ - 0.8, fx_ + hl, fy_ + 0.8))
         obs = np.vstack([np.array(silk_fp).reshape(-1, 4), pads] + ([np.array(fb)] if fb else []))
