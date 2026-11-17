@@ -42,11 +42,12 @@ KELVIN = {'VREF': (['U501.2', 'C501.1'],
                    [['J602.1'], ['U502.4'],    # R506.2 (the ladder top) is tied to the A7 pad by hand (layout.PREROUTE)
                      ['R514.1'], ['TP501.1'],
                     ['R305.1'],                            # the AWG's offset branch (its own lane, LR-8, spec decision 4)
-                    ['R106.2', 'R509.2', 'BR503.1']]),     # the scope centring and the sense tie: one quiet branch
+                    ['R106.2', 'R509.2', 'R206.2']]),     # the scope centring and the sense tie: one quiet branch
           '+3V3A': (['U401.11', 'C405.1', 'C406.1'],
-                    [['R401.1'], ['TP401.1'], ['R407.1'], ['BR102.1'],
+                    [['R401.1'], ['TP401.1'], ['R407.1'], ['U101.8', 'C104.1', 'C105.1', 'D101.2', 'D201.2'],
                      ['U301.8', 'C305.1'],
-                     ['BR507.2', 'U502.8', 'C503.1', 'R512.1', 'R513.1']])}   # the quiet branch
+                     ['U501.1', 'C502.1', 'U502.8', 'C503.1', 'R512.1', 'R513.1']]),
+          'VNEG': (['U401.6', 'C407.1', 'C408.1', 'R403.1'], [['U301.4', 'C306.1'], ['TP402.1']])}   # the quiet branch
 ALLOW_BOTTOM = False           # LR-1: the bottom layer is the ground plane; hops are hand-drawn (layout.PREROUTE)
 ESCAPE = 0.8                   # mm of channel reserved straight out from each signal pad, before anything routes
 VIA_COST = 30.0                # in cells (1.5 mm of track)
@@ -794,6 +795,8 @@ def route(board):
         return (nm not in _first, not hz, nm not in POWER, job.span(n), nm)
     nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1), key=_key)
     ONLY = os.environ.get('ONLYNETS')
+    _skip = {x for x in os.environ.get('SKIPNETS', '').split(',') if x}
+    nets = [n for n in nets if job.names[n].lstrip('/') not in _skip]
     if ONLY:
         keep = {x for x in ONLY.split(',')}
         nets = [n for n in nets if job.names[n].lstrip('/') in keep]

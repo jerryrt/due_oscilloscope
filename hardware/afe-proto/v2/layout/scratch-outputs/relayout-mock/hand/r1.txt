@@ -1,0 +1,69 @@
+[    2.9s] 18/48 /+5V_F: 0.2 s, 2 failed
+[    8.2s] 19/48 /VNEG: 5.3 s, 3 failed
+[  183.3s] 20/48 /+3V3A: 175.1 s, 18 failed
+[  183.4s] 24/48 /LM_FBP: 0.1 s, 2 failed
+[  184.2s] 25/48 /LM_FB3M: 0.9 s, 1 failed
+[  195.1s] 38/48 /AWG_VO: 9.1 s, 6 failed
+[  195.7s] 39/48 /TAP2: 0.5 s, 2 failed
+[  195.9s] 40/48 /A0: 0.2 s, 1 failed
+[  196.6s] 41/48 /TAP3: 0.7 s, 2 failed
+[  198.3s] 42/48 /TAP4: 1.7 s, 3 failed
+[  199.0s] 44/48 /A1: 0.7 s, 1 failed
+[  199.2s] 45/48 /SDA: 0.2 s, 1 failed
+[  207.6s] 46/48 /SCL: 8.4 s, 2 failed
+[  216.7s] 47/48 /AWG_BNC: 9.2 s, 1 failed
+[  256.5s] 48/48 /VREF: 39.7 s, 6 failed
+[  256.5s] first pass: 51 connections not routed
+[  373.8s] rip-up round 1: 51 connections not routed
+saved: 342 track segments, 38 vias, 51 connections not routed
+  unrouted: /+5V_F U401 12
+  unrouted: /+5V_F U401 8
+  unrouted: /VNEG C407 1
+  unrouted: /VNEG R403 1
+  unrouted: /VNEG C408 1
+  unrouted: /+3V3A C405 1
+  unrouted: /+3V3A C406 1
+  unrouted: /+3V3A R401 1
+  unrouted: /+3V3A TP401 1
+  unrouted: /+3V3A R407 1
+  unrouted: /+3V3A D201 2
+  unrouted: /+3V3A D101 2
+  unrouted: /+3V3A C104 1
+  unrouted: /+3V3A U101 8
+  unrouted: /+3V3A C105 1
+  unrouted: /+3V3A C305 1
+  unrouted: /+3V3A U301 8
+  unrouted: /+3V3A R513 1
+  unrouted: /+3V3A C503 1
+  unrouted: /+3V3A U502 8
+  unrouted: /+3V3A C502 1
+  unrouted: /+3V3A U501 1
+  unrouted: /+3V3A R512 1
+  unrouted: /LM_FBP R402 1
+  unrouted: /LM_FBP R401 2
+  unrouted: /LM_FB3M R403 2
+  unrouted: /AWG_VO R308 2
+  unrouted: /AWG_VO R309 2
+  unrouted: /AWG_VO R303 1
+  unrouted: /AWG_VO R302 1
+  unrouted: /AWG_VO R301 1
+  unrouted: /AWG_VO TP301 1
+  unrouted: /TAP2 R503 1
+  unrouted: /TAP2 J602 5
+  unrouted: /A0 R208 2
+  unrouted: /TAP3 R504 1
+  unrouted: /TAP3 J602 4
+  unrouted: /TAP4 R505 1
+  unrouted: /TAP4 R504 2
+  unrouted: /TAP4 J602 3
+  unrouted: /A1 J602 7
+  unrouted: /SDA U502 9
+  unrouted: /SCL R513 2
+  unrouted: /SCL J604 10
+  unrouted: /AWG_BNC R507 1
+  unrouted: /VREF J602 1
+  unrouted: /VREF TP501 1
+  unrouted: /VREF R305 1
+  unrouted: /VREF R206 2
+  unrouted: /VREF R509 2
+  unrouted: /VREF R106 2
