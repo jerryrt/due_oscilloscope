@@ -16,4 +16,5 @@ P
   cp whatif/_scratch/fr/out$M.kicad_pcb whatif/_scratch/fr/d$M.kicad_pcb; cp whatif/_scratch/fr/in.kicad_pro whatif/_scratch/fr/d$M.kicad_pro
   (cd whatif/_scratch/fr && kicad-cli pcb drc --format json --severity-all --all-track-errors -o d$M.json d$M.kicad_pcb >/dev/null 2>&1)
   python3 kicad/relayout/gaps.py whatif/_scratch/fr/d$M.json
+  python3 kicad/relayout/lockcheck.py whatif/_scratch/fr/lanes.kicad_pcb whatif/_scratch/fr/out$M.kicad_pcb
 done

@@ -14,7 +14,7 @@ X0, X1, Y0, Y1 = 17.0, 117.0, 0.0, 53.34
 FENCES = {   # AFE-1 relayout: hulls of the placed blocks (member courtyards and designators, 0.3 mm clearance); two rectangles where a wall part
     'POWER': [(19.4, 4.8, 44.5, 31.8)],                     # of another block stands next to the block
     'REFCAL': [(44.7, 5.4, 65.15, 25.4), (44.7, 25.4, 64.46, 39.45)],
-    'SCOPE': [(64.65, 26.07, 92.25, 47.8), (72.0, 21.9, 92.25, 29.5), (98.5, 16.5, 116.4, 50.0)],
+    'SCOPE': [(64.65, 26.07, 92.25, 47.8), (72.0, 26.0, 92.25, 29.5), (76.0, 21.9, 92.25, 26.0), (98.5, 16.5, 116.4, 50.0)],
     'AWG': [(70.1, 4.7, 92.3, 21.4), (98.5, 0.6, 116.4, 15.5)],
 }
 # corridors: copper owned by a block that runs outside its fence
@@ -76,8 +76,8 @@ row('AWG supply decoupling parts', 'AWG', 'AWG', ('inside', ), '', '', 'AWG', 'V
 row('SCOPE dual (U101)', 'SCOPE', 'SCOPE', ('inside', ), '', '', 'SCOPE (one agent for both channels)', 'U101 is shared; CH1 and CH2 are labelled on the silk beside its halves, CH2 laid out in CH1\'s pattern, mirrored')
 
 BRIDGES = [  # ref, nets, at (x, y), crosses: only where the routing needs a crossing (afe.md D24)
-    ('BR1 (R515)', 'VREF / VREF_M', (75.0, 21.5), 'none: the VREF Kelvin split sits east of the bus (floorplan v2)'),
-    ('BR2 (R516)', 'VREF_M / VREF_P', (77.8, 21.5), 'none: the VREF_P leg to the CH2 divider (floorplan v2)'),
+    ('BR1 (R515)', 'VREF / VREF_M', (74.0, 24.4), 'none: the VREF Kelvin split sits east of the bus (floorplan v2)'),
+    ('BR2 (R516)', 'VREF_M / VREF_P', (74.0, 21.5), 'none: the VREF_P leg to the CH2 divider (floorplan v2)'),
     ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.6, 15.55), 'the A0 line (x 68.58)'),
     ('BR7 (R517)', '+3V3A / P33_R', (49.8, 29.0), 'a VREF leg west of the ADS'),
     ('BR8 (R518)', 'SDA1 / SDA1_A', (50.45, 24.55), 'a VREF leg west of the ADS'),

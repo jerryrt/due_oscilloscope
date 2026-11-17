@@ -22,8 +22,20 @@ print('LOCKED nets', len(locked) - 1, 'partial (dropped, routed by Freerouting):
 b = pcbnew.LoadBoard(board)
 tr0 = list(b.GetTracks())
 keep_items = [t for t in tr0 if t.GetNetname() in locked]
+import json
+LANEJ = json.load(open(os.environ.get('LANES', W + '/lanes.json'))) if os.path.exists(os.environ.get('LANES', W + '/lanes.json')) else []
+def _k(net, a, c): return (net,) + tuple(sorted([(round(a[0], 3), round(a[1], 3)), (round(c[0], 3), round(c[1], 3))]))
+LANEK = {_k(n_, (x0, y0), (x1, y1)) for n_, l_, x0, y0, x1, y1, w_ in LANEJ}
+if os.environ.get('KEEPPARTIAL'):      # keep every pre-routed track of a partial net as a FIXED wire: Freerouting completes the net from that copper
+    for t_ in tr0:
+        if t_.GetNetname() not in locked and t_.GetClass() != 'PCB_VIA':
+            a_, c_ = t_.GetStart(), t_.GetEnd(); LANEK.add(_k(t_.GetNetname(), (mm(a_.x) - 50.0, 150.0 - mm(a_.y)), (mm(c_.x) - 50.0, 150.0 - mm(c_.y))))
+def is_lane(t): return t.GetClass() != 'PCB_VIA' and _k(t.GetNetname(), (mm(t.GetStart().x) - 50.0, 150.0 - mm(t.GetStart().y)), (mm(t.GetEnd().x) - 50.0, 150.0 - mm(t.GetEnd().y))) in LANEK
+lane_items = [t for t in tr0 if t.GetNetname() not in locked and is_lane(t)]
+print('LANE items on a partial net (kept as protected wires, then exact-restored):', len(lane_items))
 for t in tr0:
-    if t.GetNetname() not in locked: b.RemoveNative(t)
+    if t.GetNetname() in locked or (t.GetNetname() not in locked and not is_lane(t)): b.RemoveNative(t)
+for t in lane_items: t.SetLocked(True)
 pcbnew.ExportSpecctraDSN(b, W + '/inS.dsn')
 t = open(W + '/inS.dsn').read()
 U = lambda v: int(round(v * 1000)); X = lambda x: U(x + 50.0); Y = lambda y: U(y - 150.0)
@@ -31,7 +43,8 @@ HZ = set(C.HIZ) | {'/A0', '/A1', '/AWG_INV'}
 # 2. remove locked nets from the network and from the classes; empty the wiring
 for n in locked:
     t = re.sub(r'\n    \(net (?:"%s"|%s)\n.*?\n    \)' % (re.escape(n), re.escape(n)), '', t, flags=re.S)
-i = t.index('  (wiring'); t = t[:i] + '  (wiring\n  )\n)\n'
+if not lane_items:
+    i = t.index('  (wiring'); t = t[:i] + '  (wiring\n  )\n)\n'
 # 3. keep-outs: locked copper, fences/courtyards on B.Cu
 ko = ''
 def kpath(a, c, w): return '    (keepout "" (path F.Cu %d %d %d %d %d))\n' % (U(w), U(mm(a.x)), -U(mm(a.y)) if False else U(mm(a.y)) * 1, U(mm(c.x)), U(mm(c.y)))
@@ -52,6 +65,7 @@ else:
     for k in range(len(bd.fp_ref)):
         if bd.fp_ref[k] in C.ANALOG_REFS and not np.isnan(bd.fp_cx0[k]):
             ko += rect(bd.fp_cx0[k] - 0.45, bd.fp_cy0[k] - 0.45, bd.fp_cx1[k] + 0.45, bd.fp_cy1[k] + 0.45)
+t = re.sub(r'(\(wire\s*\(path [^)]*\)\s*\(net [^)]*\))\s*\)', r'\1 (type fix))', t) if lane_items else t
 t = t.replace('    (via "', ko + '    (via "', 1)
 t = t.replace('      (clearance 50 (type smd_smd))\n', '')
 # 4. classes
@@ -79,6 +93,13 @@ nk = 0
 for t_ in b0.GetTracks():
     if t_.GetNetname() in locked:
         d_ = t_.Duplicate(); d_.SetNet(b.FindNet(t_.GetNetname())); b.Add(d_); nk += 1
+exact_n = 0
+for t_ in list(b.GetTracks()):                         # Freerouting may have split or moved the protected lane wires: take its copy of them out, put the exact originals back
+    if t_.GetNetname() not in locked and is_lane(t_): b.RemoveNative(t_)
+for t_ in b0.GetTracks():
+    if t_.GetNetname() not in locked and is_lane(t_):
+        d_ = t_.Duplicate(); d_.SetNet(b.FindNet(t_.GetNetname())); d_.SetLocked(False); b.Add(d_); exact_n += 1
+print('LANE copper restored exact:', exact_n, 'of', len(LANEJ))
 print('LOCKED copper re-inserted', nk, 'items; on the board:', len([x for x in b.GetTracks() if x.GetNetname() in locked]))
 # 5. post: width floor, stubs, bottom runs
 padbox = []

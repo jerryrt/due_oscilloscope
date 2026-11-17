@@ -10,14 +10,23 @@ import route_lib as R
 src, dst = sys.argv[1], sys.argv[2]
 B = R.Board(src)
 W = 0.2
-LANES = {'/VREF': [(47.0, 1.35), (70.9, 1.35), (70.9, 35.0)],
-         '/+3V3A': [(44.0, 0.95), (71.3, 0.95), (71.3, 37.5)],
-         '/VNEG': [(44.0, 0.55), (71.7, 0.55), (71.7, 14.5)]}
-for net, pts in LANES.items():
-    B.add([(net, 0, a, c, W, 'lane') for a, c in zip(pts, pts[1:])], [])
+import os
+BUS = os.environ.get('BUS', 'A')     # A: the bus ends at y 22 (A0 crosses the wall north of it); B: the full bus, with a 4 mm break where A0 crosses (would be 2 supply bridges)
+if BUS == 'A':
+    LANES = {'/VREF': [[(47.0, 1.35), (70.9, 1.35), (70.9, 25.0)]], '/+3V3A': [[(44.0, 0.95), (71.3, 0.95), (71.3, 25.0)]], '/VNEG': [[(44.0, 0.55), (71.7, 0.55), (71.7, 14.5)]]}
+    GUARD = ((3.7, 14.7), (16.5, 25.0))
+else:
+    LANES = {'/VREF': [[(47.0, 1.35), (70.9, 1.35), (70.9, 26.0)], [(70.9, 30.0), (70.9, 35.0)]],
+             '/+3V3A': [[(44.0, 0.95), (71.3, 0.95), (71.3, 26.0)], [(71.3, 30.0), (71.3, 37.5)]],
+             '/VNEG': [[(44.0, 0.55), (71.7, 0.55), (71.7, 14.5)]]}
+    GUARD = ((3.7, 14.7), (16.5, 26.0), (30.0, 35.5))
+for net, pls in LANES.items():
+    for pts in pls: B.add([(net, 0, a, c, W, 'lane') for a, c in zip(pts, pts[1:])], [])
 GX = 69.65
-for y0, y1 in ((3.7, 14.7), (16.5, 35.5)):
+for y0, y1 in GUARD:
     B.add([('/GND', 0, (GX, y0), (GX, y1), W, 'guard')], [])
-B.add([], [('/GND', GX, y, 'guard') for y in (5.0, 9.0, 13.5, 17.5, 21.5, 25.5, 33.0)])
+B.add([], [('/GND', GX, y, 'guard') for y in (5.0, 9.0, 13.5, 17.5, 21.5, 33.0 if BUS == 'B' else 23.5)])
 B.save(dst)
-print('LANES', {n: len(p) - 1 for n, p in LANES.items()}, 'guard vias 7')
+import json
+json.dump([[n, l, a[0], a[1], c[0], c[1], w] for n, l, a, c, w, t in B.tracks if n != '/GND'], open(dst.replace('.kicad_pcb', '.json'), 'w'))
+print('LANES', BUS, {n: len(p) for n, p in LANES.items()}, 'guard vias 6')
