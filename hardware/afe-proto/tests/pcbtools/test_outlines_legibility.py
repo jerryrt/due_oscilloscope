@@ -337,7 +337,7 @@ def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding
     assert R._in_rects(P[i:i + 1], grown)[0] and 'U101' not in inside['CH2']           # the shared dual: held to CH1, no extra in CH2
     assert 'TP101' in inside['CH1'] and 'D201' in inside['CH2'] and 'D201' not in inside['CH1']
     close, over, far, n = R.designator_findings(b, c)
-    assert over == [] and far == [] and n == 109                                         # 112 designators less the three BNCs', which are on the bottom silk (D30)
+    assert over == [] and far == [] and n == 96                                          # 112 designators less the 13 bridges' (BR101 ... BR511, gone with the bridges) and the three BNCs', which are on the bottom silk (D30)
     assert close == [] and c.DESIGNATOR_GAP_WAIVED == {} and c.DESIGNATOR_GAP_MIN == 0.5 == c.DESIGNATOR_GAP_ONE_LABEL       # D30: 0.5 mm between labels, none waived
     assert c.DESIGNATOR_FOREIGN_WAIVED == {}
     assert R.one_label_pairs(b, c) == [] and R.foreign_labels(b, c) == []                  # nothing reads as one label; no label in a foreign outline

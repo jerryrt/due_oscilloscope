@@ -26,7 +26,7 @@ SECTION_SOURCES = (
     ('1 Renders', 'PNGs in `v2/layout/integrated/render` (not regenerated here; checked for existence and, by content hash, that they were made from this board)'),
     ('2 LR table', '`pcbtools.rules.ROWS` on the board with `boards/v2_layout.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
     ('3 DRC', 'kicad-cli `pcb drc --severity-all` on a work copy of the board and its project file'),
-    ('4 Bridges and hops', 'board arrays (pads, tracks, vias) via `gate3.bridge_table` / `hop_table`; justifications from `v2/kicad/design.py` `BRIDGES`'),
+    ('4 Bridges and hops', 'board arrays (pads, tracks, vias) via `gate3.bridge_table` / `hop_table`; justifications from `v2/kicad/design.py` `BRIDGES` (none: the design has no bridge until the layout adds one)'),
     ('5 Deviations', 'rule figures (2), board (power caps, outline), `boards/v2_layout.py` waiver tables, project file rules; cited spec text is quoted from the named file'),
     ('6 Cap and ripple rows', '`pcbtools/cap_converged_v2_integrated.json`, `v2/sim/scope/sensitivity_n_stray.json`, `v2/sim/powercal/pw2_ac/results/pw2_ac_results.json` and `GATE3_ROW.md`, `v2/sim/awg/report_table.md` and `design.md` (read, not recomputed)'),
     ('7 BOM and cost', 'LCSC/value/footprint from the board; prices and the cost model from `v2/bom/*.csv` through `v2/bom/bom.py` (the engine that writes `bom.md`)'),
@@ -58,7 +58,7 @@ RULE_DIFF_TEXT = ("**The project file next to the board does not carry the desig
 
 # ---------------------------------------------------------------------------------------------------- section 4: bridges and hops
 BRIDGE_REF_PATTERN = r'BR\d+'                              # which footprints on the board are bridges (re.fullmatch)
-BRIDGES_SOURCE = ('pcbtools.boards.v2', '_design.BRIDGES')   # (module, attribute path): (ref, net a, net b, block, justification) tuples
+BRIDGES_SOURCE = ('pcbtools.boards.v2', 'BRIDGE_ROWS')   # (module, attribute path): (ref, net a, net b, block, justification) tuples
 # how a crossed net is classed, from config fields: adc = fields joined, divider = fields joined, vref = prefix field, other = first minus second
 NET_CLASS_FIELDS = dict(adc=('CHANNELS.out_nets', 'ADC_NETS'), divider=('HIZ', 'DIVIDER_GROUPS'), vref_prefix='VREF_NET', other=('XSENS', 'HIZ'))
 D24_ROW_PATTERN = r'\| D24 \|[^\n]*'
