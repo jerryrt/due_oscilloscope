@@ -281,6 +281,8 @@ IDENTITY_CHECK = True                           # LR-11 also reads the identity 
 ARROWS = []                                     # board silk carries no arrows (docs/afe.md LR-11)
 DESIGNATOR_MIN_H = 1.0                          # the board house's minimum text height (docs/jlcpcb.md)
 TP_PREFIX, TP_PIN = 'TP', '1'
+SILK_REQUIRED_PREFIXES = ('U', 'J', 'TP', 'D')   # D30 (owner, 2026-11-17): ICs, connectors (BNCs included), test points and diodes always carry a silk
+                                                # designator; any other part may carry it on F.Fab instead and is found through the ibom
 
 ZONE_PAD = 0.3
 HOP_MAX, HOP_MAX_VIAS = 3.0, 2
