@@ -38,6 +38,11 @@ for d in bd.GetDrawings():
         silk += [(x0 - w, y0 - w, x1 + w, y0 + w), (x0 - w, y1 - w, x1 + w, y1 + w), (x0 - w, y0 - w, x0 + w, y1 + w), (x1 - w, y0 - w, x1 + w, y1 + w)]
     else: silk.append(tobox(d.GetBoundingBox()))
 silk = np.array(silk).reshape(-1, 4)
+body = {}
+for fp in bd.GetFootprints():
+    bs = [tobox(it.GetBoundingBox()) for it in fp.GraphicalItems() if it.GetLayer() == pcbnew.F_Fab and it.GetClass() == 'PCB_SHAPE']
+    if bs: body[fp.GetReference()] = (min(x[0] for x in bs), min(x[1] for x in bs), max(x[2] for x in bs), max(x[3] for x in bs))
+RELAX = False
 BNC = ('J101', 'J201', 'J301')
 def ovl(a, A, m=0.0):                              # box a against an array of boxes
     if not len(A): return np.zeros(0, bool)
@@ -70,10 +75,16 @@ def ok_(r, x, y, ang):
     # the tested reading, on silkread's own box (0.9 per character, 1.0 high)
     t = silkread.text_box(r, x, y, 1.0, 1.0, ang)
     g_own = gap(t, own)
-    m = ovl(t, cr); m[cr_refs.index(r)] = False
-    if m.any(): return 'othercourt'                                                       # on another courtyard
-    others = [gap(t, cr[k]) for k in range(len(cr_refs)) if cr_refs[k] != r]
-    if min(others) - g_own < silkread.OWN_MARGIN: return 'ownmargin'
+    if RELAX:        # anchors only: on no other part's BODY (F.Fab outline) and on no pad; the nearest body is its own by OWN_MARGIN
+        bk = [q for q in body if q != r]; BA = np.array([body[q] for q in bk])
+        if ovl(t, BA).any(): return 'otherbody'
+        gb = gap(t, body.get(r, cour[r]))
+        if min(gap(t, body[q]) for q in bk) - gb < silkread.OWN_MARGIN: return 'ownmargin'
+    else:
+        m = ovl(t, cr); m[cr_refs.index(r)] = False
+        if m.any(): return 'othercourt'
+        others = [gap(t, cr[k]) for k in range(len(cr_refs)) if cr_refs[k] != r]
+        if min(others) - g_own < silkread.OWN_MARGIN: return 'ownmargin'
     if ovl(L, pads, CLR).any() or ovl(L, vias, CLR).any(): return 'padvia'
     if ovl(L, silk, CLR).any(): return 'silk'
     for q, (B, *_r) in placed.items():
@@ -104,13 +115,24 @@ def cands(r):
                 out.append((2, 'east90', c[2] + g + INK / 2, cy + dy, 90, g, abs(dy))); out.append((2, 'west90', c[0] - g - INK / 2, cy + dy, 90, g, abs(dy)))
     return sorted(out, key=lambda t: (t[0], t[5], t[6]))
 def first_ok(r, only=None):
+    global RELAX
+    RELAX = False
+    k = first_ok_(r, only)
+    if k or r not in anchors_set: return k
+    RELAX = True
+    k = first_ok_(r, only); RELAX = False
+    if k: relaxed.add(r)
+    return k
+relaxed = set(); anchors_set = set()
+def first_ok_(r, only=None):
     for k in cands(r):
         if only and k[1] not in only: continue
         if ok(r, k[2], k[3], k[4]): return k
     return None
 # ---- order: anchors first
 anchors = [r for r in cr_refs if r.startswith(('U', 'J')) and r not in BNC]
-rest = [r for r in cr_refs if r not in anchors and r not in BNC]
+MH = [r for r in cr_refs if r.startswith('MH')]
+rest = [r for r in cr_refs if r not in anchors and r not in BNC and r not in MH]
 # BNC designators stay as they are (identical frames, D30 2)
 js = [j for j in range(len(b.r_fp))]
 for j in js:
@@ -126,7 +148,9 @@ def run(order, tag):
             placed[r] = (lab_box(r, k[2], k[3], k[4]), k[2], k[3], k[4]); plan[r] = [round(k[2], 3), round(k[3], 3), k[4]]; kind[r] = k[1]
         else:
             plan[r] = None; kind[r] = 'OFF'
+for r in MH: plan[r] = None; kind[r] = 'OFF'
 # anchors: most constrained first
+anchors_set.update(anchors)
 anchors.sort(key=feasibility)
 run(anchors, 'anchors')
 rest.sort(key=feasibility)
@@ -140,7 +164,7 @@ def blockers(r, k):
 fixed_ref = set(anchors) | set(BNC)
 for rnd in range(6):
     moved = 0
-    for r in [q for q in plan if plan[q] is None and q not in BNC]:
+    for r in [q for q in plan if plan[q] is None and q not in BNC and q not in MH]:
         done = False
         for k in cands(r):
             saved = dict(placed)
@@ -170,5 +194,6 @@ for r in os.environ.get('DBG','').split(','):
         REASON.clear(); [ok(r, k[2], k[3], k[4]) for k in cands(r)]; print('DBG', r, dict(REASON))
 for r in anchors:
     print('FEAS', r, sorted({k[1] for k in cands(r) if ok(r, k[2], k[3], k[4])}))
+print('relaxed anchors', sorted(relaxed))
 print('anchors OFF', [r for r in anchors if plan[r] is None])
 for r in anchors: print('  ', r, kind[r], plan[r])
