@@ -61,7 +61,17 @@ RECT_MODE = bool(os.environ.get('RECT'))
 _rj = json.load(open(os.environ.get('RJSON', 'kicad/labels/rects.json'))) if os.path.exists(os.environ.get('RJSON', 'kicad/labels/rects.json')) else {}
 if os.environ.get('PX1') and 'POWER' in _rj: _rj['POWER'][2] = float(os.environ['PX1'])
 RECTS = {B: [tuple(_rj[B])] for B in ('POWER', 'REFCAL', 'AWG', 'CH2', 'CH1')}
-RECTS['AWG'].append((98.5, -0.5, 116.4, 17.4)); RECTS['CH2'].append((98.5, 17.9, 116.4, 36.3)); RECTS['CH1'].append((98.5, 36.8, 116.4, 54.0))
+BNCM = None
+def _bnc_silk(ref):
+    fp = bd.FindFootprintByReference(ref); bx = [tobox(it.GetBoundingBox()) for it in fp.GraphicalItems() if it.GetLayer() == pcbnew.F_SilkS]
+    return (min(q[0] for q in bx), min(q[1] for q in bx), max(q[2] for q in bx), max(q[3] for q in bx))
+BNC_SILK = {r: _bnc_silk(r) for r in BNC}
+_pitch = abs(float(b.fp_y[refs.index('J101')]) - float(b.fp_y[refs.index('J201')]))
+BNCM = float(os.environ.get('BNCM') or (_pitch - (BNC_SILK['J101'][3] - BNC_SILK['J101'][1])) / 2)   # round 11: the margin that makes the two input boxes share one line, (pitch - silk height) / 2, line centre to silk, on all four sides of all three boxes
+print('BNC margin', round(BNCM, 3))
+for _r, _B in BNCBLK.items():
+    _q = BNC_SILK[_r]; _d = BNCM
+    RECTS[_B].append((round(_q[0] - _d, 3), round(_q[1] - _d, 3), round(_q[2] + _d, 3), round(_q[3] + _d, 3)))
 placed = {}; own_of = {}; plan = {}; kind = {}; relaxed = set(); RELAX = False; FALLBACK = False; SAMEKIND = False; fallback_used = set(); samekind_used = set(); FALLBACK = False; fallback_used = set()
 REGION_IN = {}; REGION_ANY = None; SAT = {}
 def lab_box(r, x, y, ang):
@@ -251,10 +261,18 @@ if RECT_MODE:
         return out
     OUTSEG = {B: cut(sg) for B, sg in OUTSEG.items()}
     print('OUTLINE pieces', {B: len(v) for B, v in OUTSEG.items()})
+    _seen = set()
+    for _B in list(OUTSEG):
+        _keep = []
+        for _sg in OUTSEG[_B]:
+            _k = tuple(round(float(v), 2) for v in _sg)
+            if _k in _seen: continue
+            _seen.add(_k); _keep.append(_sg)
+        OUTSEG[_B] = _keep
     lines = np.array([(min(a, c) - 0.075, min(d, e) - 0.075, max(a, c) + 0.075, max(d, e) + 0.075) for sg in OUTSEG.values() for a, d, c, e in sg]).reshape(-1, 4)
     silk = np.vstack([silk, lines])
 # (0) the BNC labels, fixed, placed first so every other label is judged against them
-BNC_X, DES_DY, FN_DY = 99.23, -3.35, -0.45; fnpos = {}; fnang = 90   # round 10: on the LEFT of each BNC, vertical, reading bottom to top, between the box's west line and the body; one offset in every frame
+BNC_X, DES_DY, FN_DY = BNC_SILK['J101'][0] - (BNCM - 0.075) / 2, -3.35, -0.45; fnpos = {}; fnang = 90   # round 10: on the LEFT of each BNC, vertical, reading bottom to top, between the box's west line and the body; one offset in every frame
 for r in BNC:
     i = refs.index(r); cx, cy = float(b.fp_x[i]), float(b.fp_y[i]); xd, yd = BNC_X, cy + DES_DY; ys = cy + FN_DY
     L1 = lab_box(r, xd, yd, 90); L2 = (xd - INK / 2, ys, xd + INK / 2, ys + len(BNCFN[r]) * ADV)
