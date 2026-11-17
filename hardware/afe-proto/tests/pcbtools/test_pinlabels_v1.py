@@ -158,7 +158,9 @@ def test_the_labels_are_spliced_in_idempotently_and_touch_nothing_else(pcbnew_re
     assert PL.apply_labels(text, plan, L, ids) == text                                          # already applied: unchanged
     bare = PL.apply_labels(text, [], L, ids)                                                    # drop every label ...
     assert bare != text and len(file_labels(bare)) == len(file_labels(text)) - 50
-    assert PL.apply_labels(bare, plan, L, ids) == text                                          # ... and put them back: byte for byte
+    back = PL.apply_labels(bare, plan, L, ids)                                                  # ... and put them back: the same labels,
+    assert sorted(file_labels(back)) == sorted(file_labels(text))                               # and the rest of the board byte for byte
+    assert PL.apply_labels(back, [], L, ids) == bare and PL.apply_labels(back, plan, L, ids) == back
 
 
 @pcbnew_mark

@@ -340,15 +340,18 @@ def label_block(p):
 def apply_labels(text, plan, cfg, all_ids=None):
     """the board text with one gr_text per planned label and no stale one: a block whose uuid is one a label of this config can have
     (all_ids: every (ref, pin) of the edge sockets, so a label dropped from the table goes too) is removed and the planned ones are
-    inserted after the last existing board-level text. Nothing else is touched; running it again changes nothing."""
+    inserted where the first old label stood, or, on a board that has none yet, after the last existing board-level text (so board text
+    added after the labels, such as block names, does not move them). Nothing else is touched; running it again changes nothing."""
     ids = {label_uuid(r, p) for r, p in (all_ids or [(p.ref, p.pin) for p in plan])}
     blk = re.compile(r'\n\t\(gr_text .*?\n\t\)(?=\n)', re.S)
+    ours = [m for m in blk.finditer(text) if any(f'(uuid "{u}")' in m.group(0) for u in ids)]
+    first = ours[0].start() + 1 if ours else None          # where the old labels began, counted in the text with them removed
     text = blk.sub(lambda m: '' if any(f'(uuid "{u}")' in m.group(0) for u in ids) else m.group(0), text)
     last = None
-    for m in re.finditer(r'\n\t\(gr_text .*?\n\t\)(?=\n)', text, re.S):
+    for m in blk.finditer(text):
         last = m
     blocks = ''.join(label_block(p).replace('{t}', _fmt(cfg.PIN_LABEL_THICK)) for p in plan)
-    at = last.end() + 1 if last else text.index('\n\t(gr_line\n') + 1
+    at = first if first is not None else (last.end() + 1 if last else text.index('\n\t(gr_line\n') + 1)
     return text[:at] + blocks + text[at:]
 
 
