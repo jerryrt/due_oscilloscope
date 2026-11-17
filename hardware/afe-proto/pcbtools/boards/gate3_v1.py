@@ -2,20 +2,20 @@
 fields and no logic (`pcbtools/gate3/README.md` describes each; `gate3_v2.py` is the v2 table this one follows in wording and shape).
 
     docker/pcb/run.sh -m 3G -t 900 -c 2 env PYTHONPATH=hardware/afe-proto python3 -B -m pcbtools.gate3 \
-        --config v1 --table gate3_v1 --out hardware/afe-proto/kicad/gate3
+        --config v1_layout --table gate3_v1 --out hardware/afe-proto/kicad/gate3
 
 Facts this table rests on, all from the repo: the running record of the deviations and rulings is `kicad/gate3/notes.md` (items 1-17, in kvm_01's
 tree); the board is `kicad/afe-proto.kicad_pcb` with its project file; v1's 0603 0R bridge part is C21189 (type 0Rb in `kicad/design.py`); the study
 results are `v1/results/`; v1's BOM is priced by the same engine as v2's, `v2/bom/bom.py`, over `bom/v1/data/` (parts streams generated from `kicad/design.py` by `bom/v1/make_parts.py`,
 `catalog.csv`, `intl.csv`, `blocks.csv`, `extra.csv`); `bom/v1/bom.md` is that engine's output and `bom/v1/bom.txt` the designator list.
 """
-from pcbtools.boards import v1 as _cfg
+from pcbtools.boards import v1_layout as _cfg
 
 AFE = 'hardware/afe-proto/'
 
 # ---------------------------------------------------------------------------------------------------- identity and files
 TITLE = f'{_cfg.NAME} {_cfg.MODEL} REV {_cfg.REV} integrated layout ({_cfg.FILE_STEM})'
-GENERATED_BY = '`pcbtools/gate3` (`python3 -B -m pcbtools.gate3 --config v1 --table gate3_v1`)'
+GENERATED_BY = '`pcbtools/gate3` (`python3 -B -m pcbtools.gate3 --config v1_layout --table gate3_v1`)'
 BOARD = AFE + 'kicad/afe-proto.kicad_pcb'
 PROJECT = AFE + 'kicad/afe-proto.kicad_pro'
 RENDER_DIR = AFE + 'kicad/render/'
