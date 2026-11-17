@@ -621,7 +621,7 @@ def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
     g = CONN.copper_graph(b, net)
     g0 = CONN.copper_graph(b, net, zones=False)
     zones = CONN.board_zones(text)
-    paths = {pin: CONN.join_path(g, pin, src) for pin in pins}
+    paths = {pin: CONN.join_path(g, pin, src) or [] for pin in pins}      # no path (an unrouted net) is an empty one: a finding below, never an exception
     up_net, up_a, up_b = spec['upstream']
     up = CONN.copper_graph(b, up_net)
     up_path = CONN.join_path(up, up_a, up_b)
@@ -640,6 +640,7 @@ def prove_net(b, text, drc_fn, drc_baseline, spec, origin):
              length_mm=float(sum(np.hypot(b.s_x1[k] - b.s_x0[k], b.s_y1[k] - b.s_y0[k]) for k in np.flatnonzero(b.s_net == b.nets.index(net)))))
     for pin in pins:
         P['path_' + _pin_key(pin)] = [dict(item=a, link=l) for a, l, _ in paths[pin]]
+    P['findings'] = [f'no copper on {net}'] if not (g['counts']['tracks'] or g['counts']['vias']) else []
     P.update(upstream_components=CONN.components(up), upstream_path=[dict(item=a, link=l) for a, l, _ in up_path] if up_path else None,
              upstream_counts=up['counts'], drc_unconnected_baseline=int(drc_baseline))
     for pin in pins:
@@ -658,6 +659,8 @@ def proof_md(P, T):
     one = len(comp) == 1 and set(pins) <= set(comp[0])
     status = 'PROVEN JOINED' if one and P['drc_unconnected_baseline'] == 0 else '**NOT PROVEN: SEE BELOW**'
     w(tpl(T.PROOF_HEADING, status=status))
+    for f in P.get('findings', ()):
+        w('**Finding: %s.**\n' % f)
     w(tpl(T.PROOF_INTRO, net=P['net']))
     w(tpl(T.PROOF_COPPER, tracks=P['counts']['tracks'], length=P['length_mm'], vias=P['counts']['vias'], npads=P['counts']['pads'],
           pads=', '.join(P['pads']), arcs=P['arcs'], zones_on_net=P['zones_on_net'], nzones=len(P['zones'])))

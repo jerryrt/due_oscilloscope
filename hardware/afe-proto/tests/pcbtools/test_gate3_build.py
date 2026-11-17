@@ -300,3 +300,26 @@ def _chain_check(g):
     c = g.CONN
     gr = c.copper_graph(chain().build(), '/N')
     assert gr['pad_comp']['A.1'] == gr['pad_comp']['B.1']
+
+
+# ------------------------------------------------------------------------------------ an unrouted +5V_F is a finding, not an exception
+def unrouted_5v(with_copper=False):
+    s = Synth('/+5V_F', '/+5V_DUE').part('R406', 10.0, 10.0).part('U401', 20.0, 10.0).part('J601', 5.0, 10.0)
+    s.p('R406', '2', 10.5, 10.0, '/+5V_F').p('U401', '12', 20.0, 10.0, '/+5V_F').p('U401', '3', 20.0, 11.0, '/+5V_F')
+    s.p('R406', '1', 9.5, 10.0, '/+5V_DUE').p('J601', '5', 5.0, 10.0, '/+5V_DUE')
+    if with_copper:
+        s.s('/+5V_F', 'F', 10.5, 10.0, 20.0, 10.0).s('/+5V_F', 'F', 20.0, 10.0, 20.0, 11.0)
+    return s.build()
+
+
+def test_prove_net_on_a_board_with_no_5v_copper_reports_a_finding():
+    eng = load()
+    P = eng.prove_net(unrouted_5v(), '', lambda s: {}, 0, TABLE.PROOF, TABLE.DUE_ORIGIN)
+    assert P['findings'] == ['no copper on /+5V_F'] and P['arms'] == []
+    assert 'no copper on /+5V_F' in eng.proof_md(P, TABLE) and 'NOT PROVEN' in eng.proof_md(P, TABLE)
+
+
+def test_prove_net_reports_no_finding_where_there_is_copper():
+    eng = load()
+    P = eng.prove_net(unrouted_5v(True), '', lambda s: {}, 0, TABLE.PROOF, TABLE.DUE_ORIGIN)
+    assert P['findings'] == []
