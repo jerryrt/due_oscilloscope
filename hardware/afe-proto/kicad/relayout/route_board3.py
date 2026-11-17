@@ -21,38 +21,39 @@ tasks = {}
 for n in ('/A1', '/A0', '/AWG_INV'): tasks[n] = (n, dict(width=0.2))
 for n in HORD: tasks[n] = (n, dict(width=0.2))
 vp = net_pads('/VREF'); src_rows = {row[k] for k in C.VREF_SOURCE}
-tasks['vsrc'] = ('/VREF', dict(width=0.3, bottom=True, vias=True, pads_subset=src_rows, tag='vsrc'))
-brs = [{row[k] for k in br} for br in C.VREF_BRANCHES]
+brs = [{row[tuple(k)] for k in br} for br in C.VREF_BRANCHES]
 for j in [j for j in vp if j not in src_rows and not any(j in br for br in brs)]:
     k = min(range(len(brs)), key=lambda q: min(math.hypot(b.p_x[j] - b.p_x[m], b.p_y[j] - b.p_y[m]) for m in brs[q])); brs[k].add(j)
+tasks['vsrc'] = ('/VREF', dict(width=0.3, bottom=True, vias=True, pads_subset=src_rows, tag='vsrc'))
 for q, br in enumerate(brs):
     near = min(src_rows, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in br))
     tasks[f'vb{q}'] = ('/VREF', dict(width=0.3, bottom=True, vias=True, pads_subset=set(br) | {near}, tag=f'vb{q}'))
-PLAN = {'/+3V3A': dict(hub=[('U401', '11'), ('C407', '1'), ('C408', '1'), ('TP404', '1'), ('R407', '1'), ('R406', '1')],
-                       legs={'R411': [('R411', '1')], 'R412': [('R412', '1'), ('C501', '1'), ('C505', '1'), ('U501', '1')], 'R413': [('R413', '1')]}),
-        '/VNEG': dict(hub=[('U401', '6'), ('C409', '1'), ('C410', '1'), ('R402', '1')], legs={'R410': [('R410', '1')]})}
-for rail, pl in PLAN.items():
-    hub = {row[k] for k in pl['hub']}
-    for name, ks in pl['legs'].items():
-        leg = {row[k] for k in ks}
-        near = min(hub, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in leg))
-        tasks[f'{rail}-leg-{name}'] = (rail, dict(width=0.4, bottom=True, vias=True, pads_subset=leg | {near}, tag='leg-' + name))
+for rail in ('/+3V3A', '/VNEG'):
+    star = {row[tuple(k)] for k in C.STAR[rail]}
+    groups = C.GROUPS[rail]; ingroup = set().union(*groups.values())
+    onrail = net_pads(rail)
+    hub = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] not in ingroup}
     tasks[f'{rail}-hub'] = (rail, dict(width=0.4, bottom=True, vias=True, pads_subset=hub, tag='hub'))
+    for g, refs in groups.items():
+        leg = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] in refs}
+        if not leg: continue
+        near = min(star, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in leg))
+        tasks[f'{rail}-leg-{g}'] = (rail, dict(width=0.4, bottom=True, vias=True, pads_subset=leg | {near}, tag='leg-' + g))
 special = {t[0] for t in tasks.values()}
 for n in b.nets:
     if not n or n == C.GND or n in special or len(net_pads(n)) < 2: continue
     own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
-    cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1', '/SDA1_A', '/SCL1_A') else None
+    cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1') else None
     tasks[n] = (n, dict(width=POWERS.get(n, 0.2), bottom=True, vias=True, net_courtyards=cour))
 critical = ['/A1', '/A0', '/AWG_INV'] + HORD
-vref = ['vsrc', 'vb0', 'vb1', 'vb2', 'vb3']
+vref = [k for k in tasks if k == 'vsrc' or k.startswith('vb')]
 rails = [k for k in tasks if '-leg-' in k or k.endswith('-hub')]
 plain = [k for k in tasks if k not in critical + vref + rails]
 short = sorted([k for k in plain if k not in POWERS and span(tasks[k][0]) <= 12.0], key=lambda k: span(tasks[k][0]))
 long_ = sorted([k for k in plain if k not in short], key=lambda k: (k in POWERS, span(tasks[k][0])))
 base_order = critical + short + vref + rails + long_
 PRE = [('/VNEG', 'U401', '6', ('C410', '1'), 'hub'), ('/VNEG', 'C409', '1', ('C410', '1'), 'hub'), ('/+3V3A', 'C407', '1', ('C408', '1'), 'hub'),
-       ('/VREF', 'R512', '2', ('R515', '1'), 'vb3'), ('/VREF_P', 'R516', '2', None, None), ('/SNS_BI', 'D501', '3', None, None)]
+       ('/SNS_BI', 'D501', '3', None, None)]
 G0 = (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY)
 def fine_window(cx, cy, r, hs=0.05):
     R.H = hs; R.X0 = cx - r; R.Y0 = cy - r; R.X1 = cx + r; R.Y1 = cy + r
