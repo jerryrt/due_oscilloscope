@@ -58,7 +58,7 @@ _rj = json.load(open(os.environ.get('RJSON', 'kicad/labels/rects.json'))) if os.
 if os.environ.get('PX1') and 'POWER' in _rj: _rj['POWER'][2] = float(os.environ['PX1'])
 RECTS = {B: [tuple(_rj[B])] for B in ('POWER', 'REFCAL', 'AWG', 'CH2', 'CH1')}
 RECTS['AWG'].append((98.5, -0.5, 116.4, 17.4)); RECTS['CH2'].append((98.5, 17.9, 116.4, 36.3)); RECTS['CH1'].append((98.5, 36.8, 116.4, 54.0))
-placed = {}; own_of = {}; plan = {}; kind = {}; relaxed = set(); RELAX = False; FALLBACK = False; fallback_used = set(); FALLBACK = False; fallback_used = set()
+placed = {}; own_of = {}; plan = {}; kind = {}; relaxed = set(); RELAX = False; FALLBACK = False; SAMEKIND = False; fallback_used = set(); samekind_used = set(); FALLBACK = False; fallback_used = set()
 REGION_IN = {}; REGION_ANY = None; SAT = {}
 def lab_box(r, x, y, ang):
     L = len(r) * ADV
@@ -90,7 +90,11 @@ def ok_(r, x, y, ang):
     if RELAX:
         bk = [q for q in body if q != r]; BA = np.array([body[q] for q in bk])
         if ovl(t, BA).any(): return 'otherbody'
-        if min(gap(t, body[q]) for q in bk) - gap(t, body.get(r, own)) < silkread.OWN_MARGIN: return 'ownmargin'
+        if SAMEKIND:                      # anchors only: the own-part-nearer test against parts of the same kind (J against J, U against U, TP against TP)
+            kd = 'TP' if r.startswith('TP') else r[0]
+            sk = [q for q in bk if (q.startswith('TP') if kd == 'TP' else (q[0] == kd and not q.startswith('TP')))]
+            if sk and min(gap(t, body[q]) for q in sk) - gap(t, body.get(r, own)) < silkread.OWN_MARGIN: return 'ownmargin'
+        elif min(gap(t, body[q]) for q in bk) - gap(t, body.get(r, own)) < silkread.OWN_MARGIN: return 'ownmargin'
     else:
         m = ovl(t, cr); m[cr_refs.index(r)] = False
         if m.any(): return 'othercourt'
@@ -126,8 +130,9 @@ def ok(r, x, y, ang):
     v = ok_(r, x, y, ang)
     if v is True: return True
     REASON.update([v]); return False
-GAPS = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9)
+GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9)
 def cands(r):
+    GAPS = GAPS0 + ((1.2, 1.6, 2.0, 2.5, 3.0) if FALLBACK else ())
     c = cour[r]; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; w, h = c[2] - c[0], c[3] - c[1]; L = len(r) * ADV; out = []
     sl = lambda half: sorted([0.0] + [s * k * 0.25 for k in range(1, int(half / 0.25) + 2) for s in (1, -1)], key=abs)
     for g in GAPS:
@@ -165,6 +170,16 @@ def first_ok(r, anchor=False):
                         if rl: relaxed.add(r)
                         return k
             finally: RELAX = False; FALLBACK = False
+        global SAMEKIND
+        for fb in (False, True):                       # the same-kind own-part-nearer rule (round 7), inside the rectangle then just past it
+            RELAX = True; FALLBACK = fb; SAMEKIND = True
+            try:
+                for k in cands(r):
+                    if ok(r, k[2], k[3], k[4]):
+                        samekind_used.add(r); relaxed.add(r)
+                        if fb: fallback_used.add(r)
+                        return k
+            finally: RELAX = False; FALLBACK = False; SAMEKIND = False
     return None
 def put(r, k):
     L = lab_box(r, k[2], k[3], k[4]); placed[r] = L; own_of[r] = cour[r]; plan[r] = [round(k[2], 3), round(k[3], 3), k[4]]; kind[r] = k[1]
@@ -328,7 +343,7 @@ for r in list(cour):
     else: byb[B][2].append(r)
 print('placed', sum(1 for r in plan if plan[r]), 'of', len(plan))
 for B, (a, c, offl) in sorted(byb.items()): print('BLOCK', B, a, c, a - c, ' '.join(sorted(offl)))
-print('relaxed anchors', sorted(relaxed)); print('anchors outside their rectangle', sorted(fallback_used)); print('anchors OFF', [r for r in ANCH if plan.get(r) is None])
+print('relaxed anchors', sorted(relaxed)); print('anchors outside their rectangle', sorted(fallback_used)); print('anchors on the same-kind rule', sorted(samekind_used)); print('anchors OFF', [r for r in ANCH if plan.get(r) is None])
 print('kinds', collections.Counter(kind.values()))
 for r in [q for q in os.environ.get('DBG', '').split(',') if q]:
     for mode in (False, True):
