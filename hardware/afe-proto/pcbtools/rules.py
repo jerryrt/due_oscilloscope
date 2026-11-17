@@ -464,194 +464,52 @@ def lr9(b, cfg):
 
 
 # ----------------------------------------------------------------------------------------------------- LR-11
-def _in_rects(P, rects):
-    """bool (N,): the point lies in one of the rects (closed)"""
-    R = np.array(rects, float).reshape(-1, 4)
-    return ((P[:, None, 0] >= R[None, :, 0]) & (P[:, None, 0] <= R[None, :, 2])
-            & (P[:, None, 1] >= R[None, :, 1]) & (P[:, None, 1] <= R[None, :, 3])).any(axis=1)
+from pcbkit.rules import _box_corners, _convex_gap, _label_boxes      # noqa: E402,F401  (pinlabels reads them from here)
+from pcbkit.outlines import in_rects as _in_rects                      # noqa: E402,F401
+
+_LR11_NAMES = ('BLOCK', 'OUTLINE', 'OUTLINE_STRAYS', 'EDGE_BLOCK', 'BLOCK_OVERRIDE', 'SHARED_PARTS', 'SHARED_MARGIN', 'TEST_BLOCKS', 'TP_NETS',
+               'TP_PREFIX', 'TP_PIN', 'DESIGNATOR_MIN_H', 'DESIGNATOR_ADVANCE', 'DESIGNATOR_INK_H', 'DESIGNATOR_GAP_MIN', 'DESIGNATOR_DIST_MAX',
+               'DESIGNATOR_GAP_ONE_LABEL', 'DESIGNATOR_FOREIGN_WAIVED')
 
 
-def _box_corners(x, y, length, height, ang):
-    """corners (4,2) of a text box of `length` x `height` centred on (x, y), turned by ang degrees (a box is symmetric under
-    180 degrees, so the sign of the angle, which the y flip of the Due frame reverses, does not matter)"""
-    c, s_ = np.cos(np.radians(ang)), np.sin(np.radians(ang))
-    u, v = np.array([c, s_]) * length / 2, np.array([-s_, c]) * height / 2
-    ctr = np.array([x, y])
-    return np.array([ctr + u + v, ctr - u + v, ctr - u - v, ctr + u - v])
-
-
-def _convex_gap(P, Q):
-    """edge-to-edge distance of two convex polygons (n,2), (m,2): 0 when they overlap or touch"""
-    for poly in (P, Q):                                       # separating axis: a gap along an edge normal of either
-        for k in range(len(poly)):
-            e = poly[(k + 1) % len(poly)] - poly[k]
-            n = np.array([-e[1], e[0]])
-            n = n / (np.hypot(*n) or 1.0)
-            a, b = P @ n, Q @ n
-            if a.max() < b.min() or b.max() < a.min():
-                break
-        else:
-            continue
-        break
-    else:
-        return 0.0
-
-    def pt_seg(p, poly):
-        a, b = poly, np.roll(poly, -1, axis=0)
-        d = b - a
-        t = np.clip(((p - a) * d).sum(1) / np.maximum((d * d).sum(1), 1e-18), 0, 1)
-        return np.hypot(*(p - (a + t[:, None] * d)).T).min()
-    return min(min(pt_seg(p, Q) for p in P), min(pt_seg(q, P) for q in Q))
+def kit_cfg_lr11(cfg):
+    """this configuration's names for pcbkit's blocks, test_points and designators rules: the names the AFE configuration sets are passed under the
+    same names (SILK_REQUIRED_PREFIXES as None when it does not set it: every part must carry a silk designator), and the tunables it
+    does not set keep the kit's defaults. The AFE's own LR-11 terms (designator numbers, pin labels, identity, silk words, waivers) stay here."""
+    kc = {n: getattr(cfg, n) for n in _LR11_NAMES if hasattr(cfg, n)}
+    kc['SILK_REQUIRED_PREFIXES'] = getattr(cfg, 'SILK_REQUIRED_PREFIXES', None)
+    return kc
 
 
 def designator_findings(b, cfg):
-    """the visible silk designators judged as boxes (LR-11, legibility): ([(refA, refB, gap)] pairs closer than
-    DESIGNATOR_GAP_MIN, [(ref, other ref)] a box over another part's pad, [(ref, distance)] a box farther than
-    DESIGNATOR_DIST_MAX from every pad of its own part, number of designators judged). The box is the text's height by
-    len(designator) x DESIGNATOR_ADVANCE x height (the stroke font's character advance is an assumption, marked (check) in the
-    config); text is taken as centred on its position."""
-    rows = [k for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0]
-    refs = list(b.fp_ref)
-    box = {}
-    for k in rows:
-        ref = refs[int(b.r_fp[k])]
-        box[ref] = _box_corners(b.r_x[k], b.r_y[k], len(ref) * cfg.DESIGNATOR_ADVANCE * b.r_h[k], cfg.DESIGNATOR_INK_H * b.r_h[k], b.r_ang[k])
-    names = sorted(box)
-    close = []
-    for i, a in enumerate(names):
-        A = box[a]
-        for c in names[i + 1:]:
-            Bx = box[c]
-            if A[:, 0].min() - cfg.DESIGNATOR_GAP_MIN > Bx[:, 0].max() or Bx[:, 0].min() - cfg.DESIGNATOR_GAP_MIN > A[:, 0].max() \
-                    or A[:, 1].min() - cfg.DESIGNATOR_GAP_MIN > Bx[:, 1].max() or Bx[:, 1].min() - cfg.DESIGNATOR_GAP_MIN > A[:, 1].max():
-                continue
-            g = _convex_gap(A, Bx)
-            if g < cfg.DESIGNATOR_GAP_MIN:
-                close.append((a, c, round(float(g), 2)))
-    over, far = [], []
-    owner = b.p_fp.astype(int)
-    for ref, B in box.items():
-        fi = refs.index(ref)
-        near = np.flatnonzero((b.p_bx1 >= B[:, 0].min() - 1) & (b.p_bx0 <= B[:, 0].max() + 1)
-                              & (b.p_by1 >= B[:, 1].min() - 1) & (b.p_by0 <= B[:, 1].max() + 1) & (owner != fi))
-        hit = sorted({refs[owner[j]] for j in near if _convex_gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]],
-                                                                                [b.p_bx1[j], b.p_by1[j]], [b.p_bx0[j], b.p_by1[j]]])) <= 0})
-        over += [(ref, h) for h in hit]
-        mine = np.flatnonzero(owner == fi)
-        if len(mine):
-            d = min(_convex_gap(B, np.array([[b.p_bx0[j], b.p_by0[j]], [b.p_bx1[j], b.p_by0[j]], [b.p_bx1[j], b.p_by1[j]],
-                                             [b.p_bx0[j], b.p_by1[j]]])) for j in mine)
-            if d > cfg.DESIGNATOR_DIST_MAX:
-                far.append((ref, round(float(d), 2)))
-    return close, over, far, len(box)
-
-
-def _label_boxes(b, cfg):
-    refs = list(b.fp_ref)
-    return {refs[int(b.r_fp[k])]: _box_corners(b.r_x[k], b.r_y[k], len(refs[int(b.r_fp[k])]) * cfg.DESIGNATOR_ADVANCE * b.r_h[k],
-                                              cfg.DESIGNATOR_INK_H * b.r_h[k], b.r_ang[k])
-            for k in range(len(b.r_fp)) if b.r_on_silk[k] and int(b.r_layer[k]) == 0}
+    return _kit.designator_findings(b, kit_cfg_lr11(cfg))
 
 
 def one_label_pairs(b, cfg):
-    """[(refA, refB, gap)] pairs of visible designators that READ AS ONE LABEL: on a common baseline (the vertical extents of the
-    two boxes overlap by more than half of the smaller one) and the horizontal gap under cfg.DESIGNATOR_GAP_ONE_LABEL (touching or
-    overlapping included). The waiver list cannot cover them: whatever DRC says, 'C401C402' is one word to a reader."""
-    box = _label_boxes(b, cfg)
-    lim = cfg.DESIGNATOR_GAP_ONE_LABEL
-    names = sorted(box)
-    out = []
-    for i, a in enumerate(names):
-        A = box[a]
-        for c in names[i + 1:]:
-            Bx = box[c]
-            dx = max(0.0, max(Bx[:, 0].min() - A[:, 0].max(), A[:, 0].min() - Bx[:, 0].max()))
-            ov = min(A[:, 1].max(), Bx[:, 1].max()) - max(A[:, 1].min(), Bx[:, 1].min())
-            if dx < lim and ov > 0.5 * min(np.ptp(A[:, 1]), np.ptp(Bx[:, 1])):
-                out.append((a, c, round(float(dx), 2)))
-    return out
+    return _kit.one_label_pairs(b, kit_cfg_lr11(cfg))
 
 
 def foreign_labels(b, cfg):
-    """[(ref, block it sits in)] visible designators whose centre lies inside another block's outline than the one holding their part
-    (a part with no block of its own, a shared part and the edge block's parts are not judged)"""
-    box = _label_boxes(b, cfg)
-    shared = getattr(cfg, 'SHARED_PARTS', {})
-    out = []
-    for ref, B in box.items():
-        home = cfg.BLOCK.get(ref)
-        if home is None or home == cfg.EDGE_BLOCK or ref in shared or ref in cfg.BLOCK_OVERRIDE:
-            continue
-        ctr = B.mean(axis=0, keepdims=True)
-        for blk, rects in cfg.OUTLINE.items():
-            if blk != home and _in_rects(ctr, rects)[0] and getattr(cfg, 'DESIGNATOR_FOREIGN_WAIVED', {}).get(ref) != blk:
-                out.append((ref, blk))
-    return sorted(out)
+    return _kit.foreign_labels(b, kit_cfg_lr11(cfg))
 
 
-def lr11(b, cfg):
-    bad = []
-    blocks = {}
-    for r, blk in cfg.BLOCK.items():
-        if blk != cfg.EDGE_BLOCK or r in cfg.BLOCK_OVERRIDE:
-            blocks.setdefault(blk, set()).add(r)
-    blocks.pop(cfg.EDGE_BLOCK, None)
+def lr11(b, cfg, report=None):
+    kc = kit_cfg_lr11(cfg)
+    bad = list(_kit.blocks_parts(b, kc, report))
     refs = list(b.fp_ref)
-    P = np.column_stack([b.fp_x, b.fp_y])
-    candidate = np.array([(r in cfg.BLOCK and cfg.BLOCK[r] != cfg.EDGE_BLOCK) or r in cfg.BLOCK_OVERRIDE for r in refs], bool)
-    shared = getattr(cfg, 'SHARED_PARTS', {})          # ref -> the block whose outline holds a part that straddles two
-    margin = getattr(cfg, 'SHARED_MARGIN', 0.0)
-    for blk, rects in cfg.OUTLINE.items():
-        inside = {refs[i] for i in np.flatnonzero(candidate & _in_rects(P, rects))}
-        for r, home in shared.items():                 # a shared part is held to its home outline (within the margin: its
-            if r in refs:                              # centre sits on the edge) and is no extra part in any other
-                i = refs.index(r)
-                inside.discard(r)
-                if home == blk and _in_rects(P[i:i + 1], [(x0 - margin, y0 - margin, x1 + margin, y1 + margin)
-                                                          for x0, y0, x1, y1 in rects])[0]:
-                    inside.add(r)
-        want = blocks.get(blk, set()) - set(getattr(cfg, 'OUTLINE_STRAYS', ()))   # D30 (1c): named parts may sit outside their own
-        inside -= set(getattr(cfg, 'OUTLINE_STRAYS', ())) & blocks.get(blk, set())  # block's rectangle; never inside another's
-        if inside != want:
-            bad.append(f'{blk}: outline holds {sorted(inside - want)[:5]} extra, lacks {sorted(want - inside)[:5]}')
-    inout = {k: _in_rects(P, rects) for k, rects in cfg.OUTLINE.items()}
-
-    def block_of(i):
-        r = refs[i]
-        v = cfg.BLOCK.get(r)
-        if v is None:
-            v = next((k for k in cfg.OUTLINE if inout[k][i]), None)
-        return v
-    bof = [block_of(i) for i in range(len(refs))]
+    bof = _kit.block_of_parts(b, kc)
     for i, r in enumerate(refs):
         digits = ''.join(c for c in r if c.isdigit())
         want = cfg.LR_HUNDREDS.get(digits[:1]) if len(digits) >= 3 else None
         if want != bof[i]:
             bad.append(f'{r}: designator number says {want}, the part is in {bof[i]}')
-    pt = pads(b)
-    have = {bof[i] for i, r in enumerate(refs) if r.startswith(cfg.TP_PREFIX) and (r, cfg.TP_PIN) in pt.lookup}
-    for blk in sorted(set(cfg.TEST_BLOCKS) - have):
-        bad.append(f'block {blk} has no test point')
-    refrow = {int(f): i for i, f in enumerate(b.r_fp)}
-    ndes = 0
+    tp_blocks, tp_nets = _kit.test_points_parts(b, kc, report)
+    bad += tp_blocks
     nwaived = 0
-    noff = 0
-    required = getattr(cfg, 'SILK_REQUIRED_PREFIXES', None)   # D30 (owner, 2026-11-17): only these must carry a silk designator;
-    for i, r in enumerate(refs):                              # any other part may move its designator to F.Fab, found through the ibom
-        ndes += 1
-        k = refrow.get(i)
-        on = k is not None and b.r_on_silk[k] and b.r_h[k] >= cfg.DESIGNATOR_MIN_H
-        if on:
-            continue
-        anchor = required is None or r.rstrip('0123456789') in required
-        if not anchor and k is not None and int(b.r_layer[k]) == 2:      # 2: boardio.R_LAYERS['F.Fab']
-            noff += 1
-            continue
-        bad.append(f'{r}: designator not on silk at 0.8 mm or more'
-                   + ('' if anchor else ', and not on F.Fab either'))
-    for r, n in cfg.TP_NETS.items():
-        if (r, cfg.TP_PIN) not in pt.lookup or pad_net(b, r, cfg.TP_PIN) != n:
-            bad.append(f'{r}: missing or not on {n}')
+    silk_bad, noff, ndes = _kit.silk_required_parts(b, kc, report)       # D30 (owner, 2026-11-17): only the required prefixes must carry a silk designator;
+    for r, anchor in silk_bad:                                           # any other part may move its designator to F.Fab, found through the ibom
+        bad.append(f'{r}: designator not on silk at 0.8 mm or more' + ('' if anchor else ', and not on F.Fab either'))
+    bad += tp_nets
     if hasattr(cfg, 'DESIGNATOR_GAP_MIN'):                 # legibility: only a config that sets the thresholds is held to it
         close, over, far, njudged = designator_findings(b, cfg)
         waived = getattr(cfg, 'DESIGNATOR_GAP_WAIVED', {})   # {(refA, refB): the least gap accepted for that pair}: pairs the room

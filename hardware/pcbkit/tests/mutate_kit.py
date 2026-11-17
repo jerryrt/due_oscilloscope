@@ -176,13 +176,47 @@ DECOUP = [
 GUARD_RULES = [
     ('guard: effective_config does not list the unrecognised', "if unknown:\n        text +=", "if False:\n        text +="),
 ]
+OUTLINES = [
+    ('outlines: the edge block is kept as a block', "blocks.pop(edge_block, None)", "pass"),
+    ('outlines: strays are still wanted inside their block', "want = blocks.get(blk, set()) - set(strays)", "want = blocks.get(blk, set())"),
+    ('outlines: a stray inside its own rectangle is an extra part', "inside -= set(strays) & blocks.get(blk, set())", "pass"),
+    ('outlines: the shared margin is not applied', "[(x0 - shared_margin, y0 - shared_margin, x1 + shared_margin, y1 + shared_margin)", "[(x0, y0, x1, y1)"),
+    ('outlines: a part with no block takes no outline', "v = next((k for k in outline if inout[k][i]), None)", "v = None"),
+    ('outlines: the rectangle is open on the left', ">= R[None, :, 0]", "> R[None, :, 0]"),
+]
+TESTPTS = [
+    ('test_points: the pin is not checked for the block', "if r.startswith(c.TP_PREFIX) and (r, c.TP_PIN) in pt.lookup}", "if r.startswith(c.TP_PREFIX)}"),
+    ('test_points: the prefix is not checked', "if r.startswith(c.TP_PREFIX) and (r, c.TP_PIN) in pt.lookup}", "if (r, c.TP_PIN) in pt.lookup}"),
+    ('test_points: a block with one is reported', "for x in sorted(set(c.TEST_BLOCKS) - have)", "for x in sorted(set(c.TEST_BLOCKS) & have)"),
+    ('test_points: the net is not checked', "if (r, c.TP_PIN) not in pt.lookup or pad_net(b, r, c.TP_PIN) != n:", "if (r, c.TP_PIN) not in pt.lookup:"),
+]
+DESIG = [
+    ('designators: the height floor is inverted', "on = k is not None and b.r_on_silk[k] and b.r_h[k] >= c.DESIGNATOR_MIN_H", "on = k is not None and b.r_on_silk[k] and b.r_h[k] <= c.DESIGNATOR_MIN_H"),
+    ('designators: None does not mean every part', "anchor = required is None or r.rstrip('0123456789') in required", "anchor = r.rstrip('0123456789') in (required or ())"),
+    ('designators: an anchor on F.Fab is accepted', "if not anchor and k is not None and int(b.r_layer[k]) == 2:", "if k is not None and int(b.r_layer[k]) == 2:"),
+    ('designators: the gap limit is halved', "if g < c.DESIGNATOR_GAP_MIN:", "if g < c.DESIGNATOR_GAP_MIN / 2:"),
+    ('designators: the distance limit is doubled', "if d > c.DESIGNATOR_DIST_MAX:", "if d > c.DESIGNATOR_DIST_MAX * 2:"),
+    ('designators: one baseline not required', "if dx < lim and ov > 0.5 * min(np.ptp(A[:, 1]), np.ptp(Bx[:, 1])):", "if dx < lim:"),
+    ('designators: foreign waivers ignored', "outlines.in_rects(ctr, rects)[0] and c.DESIGNATOR_FOREIGN_WAIVED.get(ref) != blk:", "outlines.in_rects(ctr, rects)[0]:"),
+    ('designators: shared parts judged as foreign', "or ref in c.SHARED_PARTS or ref in c.BLOCK_OVERRIDE", "or ref in c.BLOCK_OVERRIDE"),
+    ('two-way: step 1 without the margin', "if dp + m > dq and (s1 is None or dq - dp < s1[0]):", "if dp > dq and (s1 is None or dq - dp < s1[0]):"),
+    ('two-way: step 2 without the margin', "if own + m > do and (s2 is None or do - own < s2[0]):", "if own > do and (s2 is None or do - own < s2[0]):"),
+    ('two-way: step 1 compares anchors with every kind', "if q == p or (kinds[p] != 'P' and kinds[q] != kinds[p]):", "if q == p:"),
+    ('two-way: step 2 compares anchors with every kind', "if o == p or (kinds[p] != 'P' and kinds[o] != kinds[p]):", "if o == p:"),
+    ('two-way: hidden and fab designators are labels', "        if b.r_on_silk[k] and int(b.r_layer[k]) == 0:\n            L, W", "        if True:\n            L, W"),
+    ('two-way: a turned label keeps its box', "else (x - W / 2, y - L / 2, x + W / 2, y + L / 2))", "else (x - L / 2, y - W / 2, x + L / 2, y + W / 2))"),
+    ('two-way: a text for a part not on the board is a label', "if t in c.LABEL_TEXTS and c.LABEL_TEXTS[t] in solid:", "if t in c.LABEL_TEXTS:"),
+    ('two-way: the fields are not required', "    require(b, 'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1', 't_x0', 't_y0', 't_x1', 't_y1')\n", "    pass\n"),
+    ('designators: the two-way test is not part of the rule', "    tw = two_way_test(b, cfg, report)\n", "    tw = {}\n"),
+]
 RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']),
         ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py']),
         ('rules.py', GROUND_PLANE, ['test_ground_plane.py']), ('rules.py', BOTTOM_HOPS, ['test_bottom_hops.py']),
         ('config.py', CONFIG, ['test_ground_plane.py', 'test_bottom_hops.py']),
         ('config.py', GUARD, ['test_config_guard.py']), ('rules.py', GUARD_RULES, ['test_config_guard.py']),
         ('rules.py', SENSITIVE, ['test_sensitive_nets.py']), ('rules.py', POUR, ['test_pour_gap.py']), ('rules.py', KEEPOUT, ['test_keepout_ring.py']),
-        ('rules.py', DECOUP, ['test_decoupling.py'])]
+        ('rules.py', DECOUP, ['test_decoupling.py']),
+        ('outlines.py', OUTLINES, ['test_blocks.py']), ('rules.py', TESTPTS, ['test_test_points.py']), ('rules.py', DESIG, ['test_designators.py'])]
 
 
 def _limit():

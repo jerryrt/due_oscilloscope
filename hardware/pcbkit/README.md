@@ -33,9 +33,9 @@ installed into another repository as it stands.
 | `pour_gap` | no copper pour within a distance of the listed nodes | `GND`, `POUR_NODES`, `POUR_KEEP_BACK`, `POUR_INFO_NODES` |
 | `keepout_ring` | listed nets stay a distance from listed parts | `KEEPOUT_PARTS`, `KEEPOUT_NETS`, `KEEPOUT_EXEMPT_PARTS`, `KEEPOUT_DIST` |
 | `decoupling` | each listed capacitor within a distance of its IC pin | `DECOUPLING`, `DECOUPLING_MAX` |
-| `blocks` | each block's parts inside its rectangle, named strays excepted, no part inside another block's | `BLOCK`, `OUTLINE`, `OUTLINE_STRAYS` |
-| `designators` | the always-labelled kinds are on silk; every other designator is on silk and reads without doubt, or is on the fab layer | `SILK_REQUIRED_PREFIXES`, `DESIGNATOR_MIN_H`, `READ_MARGIN` |
-| `test_points` | each listed block has a test point on its listed net | `TEST_BLOCKS`, `TP_NETS` |
+| `blocks` | each block's parts inside its rectangle, named strays excepted, no part inside another block's | `BLOCK`, `OUTLINE`, `OUTLINE_STRAYS`, `EDGE_BLOCK`, `BLOCK_OVERRIDE`, `SHARED_PARTS`, `SHARED_MARGIN` |
+| `designators` | the always-labelled kinds are on silk; every other designator is on silk and reads without doubt, or is on the fab layer | `SILK_REQUIRED_PREFIXES`, `DESIGNATOR_MIN_H`, `READ_MARGIN`, `LABEL_TEXTS`, the legibility names in `CONFIG.md` |
+| `test_points` | each listed block has a test point on its listed net | `BLOCK`, `OUTLINE`, `TEST_BLOCKS`, `TP_NETS`, `TP_PREFIX`, `TP_PIN` |
 
 "Reads without doubt" is the two-way nearest test: from the text, its own part is nearer than any other part, and from the
 part, its own text is nearer than any other text, both by `READ_MARGIN`, measured to bodies and pads; a part of an

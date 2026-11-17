@@ -30,7 +30,7 @@ for name in ('v2_layout', 'v2', 'v1', 'v1r', 'v1_frozen'):
 # step 3: the effective configuration of the moved rules, as one AFE run on the integrated board reports them (names, source, value)
 from pcbkit.config import format_report   # noqa: E402
 b = __import__('pcbtools.boardio', fromlist=['x']).read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb')
-for fn in (R.lr3, R.lr4, R.lr5, R.lr12):
+for fn in (R.lr3, R.lr4, R.lr5, R.lr12, R.lr11):
     rep = []
     fn(b, C, rep)
     print()

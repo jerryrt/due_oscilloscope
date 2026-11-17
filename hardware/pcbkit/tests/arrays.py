@@ -13,6 +13,7 @@ class Arr:
         self.nets = ('',) + tuple(nets)
         self.layers = layers
         self.seg, self.via, self.zone, self.fp, self.pad = [], [], [], [], []
+        self.fab, self.lab, self.txt = {}, [], []
 
     def n(self, name):
         return self.nets.index(name)
@@ -40,6 +41,21 @@ class Arr:
         self.pad.append((k, pin, x, y, x - h, y - h, x + h, y + h, self.n(net), smd, size))
         return self
 
+    def body(self, ref, x0, y0, x1, y1):
+        """the F.Fab body box of a part"""
+        self.fab[ref] = (x0, y0, x1, y1)
+        return self
+
+    def label(self, ref, x, y, ang=0.0, h=1.0, silk=True, layer=0):
+        """the reference text of a part (layer 0 = F.SilkS, 2 = F.Fab); `silk` False is a hidden one"""
+        self.lab.append((ref, x, y, h, ang, layer, silk))
+        return self
+
+    def text(self, label, x0, y0, x1, y1):
+        """a board-level silk text with its rendered box"""
+        self.txt.append((label, x0, y0, x1, y1))
+        return self
+
     def build(self):
         S, V, F, P = self.seg, self.via, self.fp, self.pad
         kw = dict(nets=self.nets, copper_layers=self.layers)
@@ -57,6 +73,22 @@ class Arr:
             kw.update(p_fp=[q[0] for q in P], p_pin=[q[1] for q in P], p_x=[q[2] for q in P], p_y=[q[3] for q in P], p_bx0=[q[4] for q in P],
                       p_by0=[q[5] for q in P], p_bx1=[q[6] for q in P], p_by1=[q[7] for q in P], p_net=[q[8] for q in P], p_smd=[q[9] for q in P],
                       p_rot=[0] * len(P), p_shape=[1] * len(P), p_sx=[q[10] for q in P], p_sy=[q[10] for q in P], p_layer_mask=[1] * len(P))
+        if F:
+            nan = (np.nan,) * 4
+            fb = [self.fab.get(f[0], nan) for f in F]
+            kw.update(fp_fab_x0=[q[0] for q in fb], fp_fab_y0=[q[1] for q in fb], fp_fab_x1=[q[2] for q in fb], fp_fab_y1=[q[3] for q in fb])
+        if self.lab:
+            idx = {f[0]: i for i, f in enumerate(F)}
+            R = self.lab
+            kw.update(r_x=[q[1] for q in R], r_y=[q[2] for q in R], r_h=[q[3] for q in R], r_w=[q[3] for q in R], r_t=[0.15] * len(R),
+                      r_ang=[q[4] for q in R], r_layer=[q[5] for q in R], r_on_silk=[q[6] and q[5] == 0 for q in R], r_fp=[idx[q[0]] for q in R],
+                      r_hide=[not q[6] for q in R], r_just=['center'] * len(R))
+        if self.txt:
+            T = self.txt
+            kw.update(t_text=[q[0] for q in T], t_x=[(q[1] + q[3]) / 2 for q in T], t_y=[(q[2] + q[4]) / 2 for q in T], t_h=[1.0] * len(T),
+                      t_ang=[0.0] * len(T), t_stroke=[0.15] * len(T), t_x0=[q[1] for q in T], t_y0=[q[2] for q in T], t_x1=[q[3] for q in T],
+                      t_y1=[q[4] for q in T], t_hide=[False] * len(T), t_layer=[0] * len(T), t_just=['center'] * len(T))
+        kw['read_fields'] = B.LATER_FIELDS
         if self.zone:
             xy, roff, voff, rhole = [], [0], [0], []
             for _, _, _, _, rings in self.zone:

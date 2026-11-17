@@ -113,10 +113,10 @@ MUTANTS = [
     (R, 'LR-7 shell pad minimum lowered', "if shell < 3:", "if shell < 2:"),
     (R, 'LR-9 own parts not excused', "hit &= ~own", "hit &= hit"),
     (R, 'LR-9 courtyard margin dropped', "hit = geom.seg_in_box(segs(b)[rows], boxes, pad=cfg.ZONE_PAD + b.s_w[rows] / 2)", "hit = geom.seg_in_box(segs(b)[rows], boxes, pad=b.s_w[rows] / 2)"),
-    (R, 'LR-11 outline membership test inverted', "if inside != want:", "if inside == want:"),
-    (R, 'LR-11 designator height test inverted', "b.r_on_silk[k] and b.r_h[k] >= cfg.DESIGNATOR_MIN_H", "b.r_on_silk[k] and b.r_h[k] < cfg.DESIGNATOR_MIN_H"),
+    ('K:outlines.py', 'LR-11 outline membership test inverted', 'if inside != want:', 'if inside == want:'),
+    ('K:rules.py', 'LR-11 designator height test inverted', 'b.r_on_silk[k] and b.r_h[k] >= c.DESIGNATOR_MIN_H', 'b.r_on_silk[k] and b.r_h[k] < c.DESIGNATOR_MIN_H'),
     (R, 'LR-11 designators with two digits owned', "if len(digits) >= 3 else None", "if len(digits) >= 2 else None"),
-    (R, 'LR-11 test point net test dropped', "or pad_net(b, r, cfg.TP_PIN) != n:", "or False:"),
+    ('K:rules.py', 'LR-11 test point net test dropped', 'or pad_net(b, r, c.TP_PIN) != n:', 'or False:'),
     # config-driven rules: a rule that stops reading its config field must fail
     (R, 'LR-2 only the first channel checked', "    for ch in cfg.CHANNELS:\n        seq", "    for ch in cfg.CHANNELS[:1]:\n        seq"),
     (R, 'LR-4 supply caps not read', "    for cap, ic, pin in cfg.SUPPLY_CAPS:", "    for cap, ic, pin in []:"),
@@ -155,7 +155,8 @@ def run(tag, edit):
     shutil.copytree(os.path.join(os.path.dirname(ROOT), 'pcbkit'), kit, ignore=shutil.ignore_patterns('.scratch', '__pycache__', 'tests'))
     if edit:
         f, old, new = edit
-        p = os.path.join(kit, 'pcbkit', f[2:]) if f.startswith('K:') else os.path.join(d, 'pcbtools', f)
+        p = (os.path.join(kit, 'pcbkit', f[2:]) if f.startswith('K:') else os.path.join(kit, 'pcbkit', 'geom.py') if f == 'shapes.py'      # the copper shapes live in pcbkit.geom now
+             else os.path.join(d, 'pcbtools', f))
         s = open(p).read()
         if s.count(old) != 1:
             return 'BAD-MUTANT (pattern found %d times)' % s.count(old)

@@ -108,6 +108,60 @@ Each listed capacitor's pad on the pin's net (pad 1 when neither is) is within `
 The AFE's `lr3`, `lr4` (via, bottom copper, FB length and pour terms), `lr5` and `lr12` build these names from `HIZ`, `ADC_NETS`, `INV_NODES`, `AWG['fb_net']`/`FB_MAX`, `POUR_NODES`/`POUR_INFO_NODES`
 (and the module constant `POUR_KEEP_BACK`), `GEN`/`SENSITIVE`/`GENERATOR_BLOCK`/`KEEPOUT`, `DECOUP`/`DECOUP_MAX`; LR-4's output-resistor and supply-capacitor terms stay in the AFE.
 
+### rules.blocks (and `outlines`)
+
+Each block's rectangles hold exactly the parts of that block (a part is judged by its origin, rectangles closed), named strays excepted. `blocks_parts` returns the findings as text
+(`BLOCK: outline holds [extra] extra, lacks [missing]`); `block_of_parts` is each footprint's block (its configured block, else the first outline holding its origin).
+The lines of an outline (breaks at pads and silk) are drawn by `pcbkit.labels`, not here.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `BLOCK` | project | dict ref -> block | required | |
+| `OUTLINE` | project | dict block -> list of (x0, y0, x1, y1), frame mm | required | |
+| `OUTLINE_STRAYS` | tunable | list of designators | `()` | allowed outside their own block's rectangles, never inside another's |
+| `EDGE_BLOCK` | tunable | block name or None | None | its parts are in no outline, unless listed in `BLOCK_OVERRIDE` |
+| `BLOCK_OVERRIDE` | tunable | list of designators | `()` | edge-block parts that are judged anyway |
+| `SHARED_PARTS` | tunable | dict ref -> home block | `{}` | a part straddling two rectangles: held to its home outline within `SHARED_MARGIN`, counted in no other |
+| `SHARED_MARGIN` | tunable | mm | 0.0 | |
+
+### rules.test_points
+
+Each of `TEST_BLOCKS` has a test point (a part whose designator starts with `TP_PREFIX` and which has pad `TP_PIN`; a part without a block of its own takes the outline holding it), and each test point
+in `TP_NETS` is on its net. Findings: `block X has no test point` (sorted), then `TPn: missing or not on NET`.
+
+| name | kind | type | default |
+|---|---|---|---|
+| `BLOCK`, `OUTLINE` | project | as blocks | required |
+| `TEST_BLOCKS` | project | list of block names | required |
+| `TP_NETS` | project | dict ref -> net | required |
+| `TP_PREFIX`, `TP_PIN` | project | designator prefix, pin number | required |
+
+### rules.designators
+
+`designators` = the silk requirement + the two-way nearest test; `silk_required_parts`, `designator_findings`, `one_label_pairs` and `foreign_labels` are the pieces a project words itself (the AFE's LR-11 does).
+
+* **Silk requirement** (`silk_required_parts`): a part whose designator prefix is in `SILK_REQUIRED_PREFIXES` (None: every part) must have its reference text on F.SilkS at `DESIGNATOR_MIN_H` or more; any other part may have moved it to F.Fab.
+* **Legibility terms** (`designator_findings`, `one_label_pairs`, `foreign_labels`): designator boxes (length per character x `DESIGNATOR_ADVANCE`, width `DESIGNATOR_INK_H`, both times the text height) closer than `DESIGNATOR_GAP_MIN`,
+  over another part's pad, farther than `DESIGNATOR_DIST_MAX` from every pad of their own part, two on one baseline closer than `DESIGNATOR_GAP_ONE_LABEL`, or a centre inside another block's outline.
+* **The two-way nearest test** (`two_way_test`, ported unchanged from the AFE-2 label job): measured from the boxes of the part's solid (the F.Fab body box of every graphic, text included, and each pad box) and of its label (its designator, plus any `LABEL_TEXTS` text);
+  (1) from the label, its own part is nearer than any other part by `READ_MARGIN`; (2) from the part, its own label is nearer than any other label by `READ_MARGIN`; an anchor (longest matching prefix in `SILK_REQUIRED_PREFIXES`) is compared only with its own kind, a passive with all.
+  It reads `fp_fab_*` and the board text boxes through `board.require`, so a board that did not come from `pcbkit.board.read_board` raises `FieldNotRead`. On the AFE-2 integrated board it reproduces the original script's result: 60 labelled parts, only J605 failing, all own distances equal.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `SILK_REQUIRED_PREFIXES` | project | tuple of prefixes, or None | required | |
+| `DESIGNATOR_MIN_H` | project | mm | required | |
+| `DESIGNATOR_GAP_MIN`, `DESIGNATOR_DIST_MAX` | project | mm | required | legibility terms |
+| `DESIGNATOR_ADVANCE`, `DESIGNATOR_INK_H` | tunable | fraction of text height | 0.95, 1.2 | the box; `pcbkit.labels` declares the same names |
+| `DESIGNATOR_GAP_ONE_LABEL` | tunable | mm | 0.6 | |
+| `DESIGNATOR_FOREIGN_WAIVED` | tunable | dict ref -> block | `{}` | |
+| `READ_MARGIN` | tunable | mm | 0.15 | the owner's margin (round 5 of the label job) |
+| `LABEL_TEXTS` | tunable | dict text -> designator | `{}` | board silk texts that are part of a part's label (a BNC's function text) |
+| `BLOCK`, `OUTLINE`, `EDGE_BLOCK`, `BLOCK_OVERRIDE`, `SHARED_PARTS` | as blocks | | | foreign labels |
+
+The AFE's `lr11` builds these names from its own tables in `kit_cfg_lr11` and keeps what is its own: the designator-number rule (`LR_HUNDREDS`), the recorded waivers of close pairs (`DESIGNATOR_GAP_WAIVED`), the pin labels, the identity silk, the silk words and the D30 wording. It does not run the two-way test (the AFE's two-way
+test is the label job's `stackcheck.py`, now `pcbkit.rules.two_way_test`).
+
 ## pinlabels (`pcbkit.pinlabels`)
 
 | name | type | default | meaning |

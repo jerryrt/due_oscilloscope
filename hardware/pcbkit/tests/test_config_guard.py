@@ -37,7 +37,9 @@ def test_a_near_miss_raises_naming_both_names(typo, declared):
 
 
 def test_a_declared_name_never_raises_even_when_near_another_declared_name():
-    assert C.declared_pairs_near() == []                                      # none today; the guard checks declared names first regardless
+    pairs = C.declared_pairs_near()                                           # declared names near each other exist (INK_H / MIN_H): both are fine
+    assert ('DESIGNATOR_INK_H', 'DESIGNATOR_MIN_H') in pairs
+    assert C.check_names({'DESIGNATOR_INK_H': 1, 'DESIGNATOR_MIN_H': 2}) == []
     C.declare('probe', ['PROBE_ABCDEF', 'PROBE_ABCDEG'])                      # two declared names one edit apart
     try:
         assert C.check_names({'PROBE_ABCDEF': 1, 'PROBE_ABCDEG': 2}) == []
