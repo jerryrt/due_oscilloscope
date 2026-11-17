@@ -72,9 +72,16 @@ def _plan():
     return K.Plan('CH2', (40.0, 39.0, 58.3, 46.0), texts, rows, 0.0), refs
 
 
+def _on_silk(text, refs):
+    """the board with these designators back on top silk: D30 (1c) moved them to F.Fab on the real board, and the key tool starts from silk"""
+    for r in refs:
+        text = re.sub(r'(\(property "Reference" "%s"\n\t\t\t\(at [^)]*\)\n\t\t\t)\(layer "F\.Fab"\)' % r, r'\1(layer "F.SilkS")', text)
+    return text
+
+
 def test_apply_edits_only_the_designators_and_adds_the_key_and_is_idempotent():
     p, refs = _plan()
-    text = BOARD.read_text()
+    text = _on_silk(BOARD.read_text(), refs)
     new = K.apply(text, p, CFG)
     assert K.apply(new, p, CFG) == new                                   # twice changes nothing
     a, b = text.splitlines(), new.splitlines()

@@ -117,6 +117,9 @@ SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL', 'CAL', 'ON')       # th
 # pcbtools/silkarrows.arrowheads (LR-11) finds a head on the board whatever the list says.
 ARROWS = []
 DESIGNATOR_MIN_H = 0.79
+SILK_REQUIRED_PREFIXES = ('U', 'J', 'TP', 'D')   # D30 (1c), owner 2026-11-17: ICs, connectors, test points and diodes always carry a silk
+                                                # designator; any other part may carry it on F.Fab instead (found through the ibom)
+OUTLINE_STRAYS = ('BR102', 'BR501', 'BR502', 'BR503', 'BR504')   # D30 (1c): bridges outside their block's rectangle, approved 2026-11-17
 # LR-2 / LR-7 constants of the old tool
 GND = '/GND'                                   # the one ground net
 ADC_NETS = ('/A0', '/A1')                      # the nets that reach the Due's ADC pins, in report order (LR-4)

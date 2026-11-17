@@ -23,7 +23,7 @@ SCOPE_PITCH = _t.SCOPE_PITCH                                                    
 # J605's designator sat at (100.0, 51.75), where CH1's BNC box and the BNC's own silk now reach (the BNC moved north 2.54 mm). It moves above the
 # socket, into the strip between the socket's own silk (top edge 52.13) and the Due's edge, beside the owner's pin labels' band and not in it
 # (silk only; v2/layout/place_bncs.py). {ref: (x, y) Due mm, centre of the label}
-DESIGNATOR_AT = {'J605': (96.2, 53.0)}
+DESIGNATOR_AT = {'J605': (95.2, 53.2)}
 # 3D models the board names by reference instead of the footprint's own (KiCad 10 ships none for the LM27762's WSON-12 package: the library's
 # link dangles). ${KIPRJMOD} is the board's folder (v2/layout/integrated); the file is the project's own VRML stand-in, render only (a KiCad
 # STEP export leaves it out). v2/layout/set_models.py applies it by text splice.
@@ -37,8 +37,8 @@ SHARED_MARGIN = _t.SHARED_MARGIN
 # character, was short by a third and the DRC said so (silk_over_copper on labels judged clear).
 DESIGNATOR_ADVANCE = 0.95        # length of the box per character, as a fraction of the text height
 DESIGNATOR_INK_H = 1.2           # width of the box across the text, as a fraction of the text height (ink plus stroke)
-DESIGNATOR_GAP_MIN = 1.0         # two designators are at least this far apart, edge to edge: one character height (1.0 mm text, the project's
-                                 # DRC minimum text height)
+DESIGNATOR_GAP_MIN = 0.2         # D30 (1c), owner 2026-11-17: readability is judged by the two-way nearest test the placement ran (own part
+                                 # and own label nearer by 0.15 mm); this floor is only the spacing that placement kept off a shared baseline
 DESIGNATOR_GAP_ONE_LABEL = 0.6   # two labels on one baseline (vertical extents overlapping by more than half a box height) closer than this read as one
                                  # label (C401C402): they fail whatever DESIGNATOR_GAP_WAIVED says, a waiver can never cover them
 DESIGNATOR_DIST_MAX = 3.0        # a designator is at most this far from the nearest pad of its own part
@@ -48,18 +48,7 @@ DESIGNATOR_DIST_MAX = 3.0        # a designator is at most this far from the nea
 # human decision). R203 and R204 were waived too until CH2's resistor-capacitor array (R201-R207, C201-C203) moved 1.3 mm north,
 # which put the bottom row's labels inside CH2 under the row. {ref: the block whose outline the label sits in}, an exact match.
 DESIGNATOR_FOREIGN_WAIVED = {'BR501': 'CH2', 'BR504': 'CH2'}
-# The pairs the room does not allow. The CH2 and AWG passives sit on a 1.5-3 mm grid and a 1 mm designator is 3.4-4.8 mm long, so
-# with every part where it is, no placement keeps every pair 1.0 mm apart: the placement search (v2/layout/place_designators.py)
-# got 74 pairs under 1.0 mm down to these 20 (none touching: closest 0.30 mm) and not lower, from several starts and with the
-# distance to the part relaxed to 3.5 and 4.5 mm. Each is recorded at the gap it reached, rounded down to 0.05; the check holds a
-# pair to its floor, so it still catches a label that moves toward its neighbour. Closing them means moving a part or shortening a
-# label (a human decision); the board house's minimum text height is the project's 1.0 mm, so a smaller label is not an option.
-DESIGNATOR_GAP_WAIVED = {('BR502', 'R507'): 0.60, ('BR508', 'J501'): 0.30, ('C201', 'R201'): 0.80, ('C306', 'R301'): 0.80,
-                         ('J501', 'R509'): 0.40, ('R206', 'R207'): 0.75, ('R304', 'R306'): 0.65, ('R307', 'U301'): 0.40}
-# 8 pairs after the CH2 array moved north (17 before it, 20 at first): v2/layout/refine_designators.py (silk only, after place_designators.py) turned and moved labels until none
-# reads as one label (DESIGNATOR_GAP_ONE_LABEL: no same-baseline pair is under 0.65 mm, and the rule below is not waivable). Three
-# pairs are still under 0.6 mm and are NOT one word - BR508/J501 and R307/U301 are stacked lines, J501/R509 a horizontal and a vertical
-# label - and none could be improved by any silk-only move (each label sits at its best admissible place with the others fixed).
+DESIGNATOR_GAP_WAIVED = {}       # D30 (1c) replaced the 1.0 mm gap and its recorded floors
 
 # The Due's own pin names, printed on top silk in the bands beside each edge-row socket (LR-11, owner 2026-11-13: the shield covers the
 # Due's silkscreen). pcbtools/pinlabels.py builds them from this config and the table; no name is typed here. EDGE_SOCKETS: which sockets

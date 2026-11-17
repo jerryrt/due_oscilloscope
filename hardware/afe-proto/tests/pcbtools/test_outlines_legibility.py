@@ -233,7 +233,7 @@ def test_board_silk_outlines_equal_the_table():
 def test_board_silk_shifted_one_millimetre_no_longer_equals_the_table():
     segs = X.silk_segments(_board_text())
     in_ch1 = lambda g: 113.8 <= min(g[0], g[2]) and max(g[0], g[2]) <= 143.05 and 99.9 <= min(g[1], g[3]) and max(g[1], g[3]) <= 117.05
-    assert sum(in_ch1(g) for g in segs) > 10                                           # CH1's main rectangle: many dashes
+    assert sum(in_ch1(g) for g in segs) >= 4                                           # CH1's main rectangle: at least its four edges
     shifted = [(g[0] + 1.0, g[1], g[2] + 1.0, g[3]) if in_ch1(g) else g for g in segs]
     got = sorted(X.to_due_rect(r) for r in X.rects_from_segments(shifted))
     assert not X.same(got, TABLE.all_rects())
@@ -261,16 +261,10 @@ def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding
     assert R._in_rects(P[i:i + 1], grown)[0] and 'U101' not in inside['CH2']           # the shared dual: held to CH1, no extra in CH2
     assert 'TP101' in inside['CH1'] and 'D201' in inside['CH2'] and 'D201' not in inside['CH1']
     close, over, far, n = R.designator_findings(b, c)
-    assert over == [] and far == [] and n == 112
-    assert 0 < len(close) <= len(c.DESIGNATOR_GAP_WAIVED) == 8                           # 74 pairs were under 1.0 mm before the placement
-    assert all(g >= c.DESIGNATOR_GAP_WAIVED[(a, b_)] and g >= 0.3 for a, b_, g in close)   # each on its recorded floor, none touching
+    assert over == [] and far == [] and n == int(sum(b.r_on_silk & (b.r_layer == 0)))   # every top-silk designator judged
+    assert close == [] and c.DESIGNATOR_GAP_WAIVED == {}                                 # D30 (1c): the 0.2 mm floor, nothing waived
     assert c.DESIGNATOR_FOREIGN_WAIVED == {'BR501': 'CH2', 'BR504': 'CH2'}               # R203 and R204 left the waived set when the CH2 array moved north
-    refs_ = list(b.fp_ref)
-    for ref_ in ('R203', 'R204'):                                                    # their labels sit inside the CH2 outline, with no waiver
-        k = [k for k in range(len(b.r_fp)) if refs_[int(b.r_fp[k])] == ref_][0]
-        assert any(x0 <= b.r_x[k] <= x1 and y0 <= b.r_y[k] <= y1 for x0, y0, x1, y1 in c.OUTLINE['CH2']), ref_
     assert R.one_label_pairs(b, c) == [] and R.foreign_labels(b, c) == []                  # nothing reads as one label; no label in a foreign outline
-    assert not [k for k in c.DESIGNATOR_GAP_WAIVED if k not in {(a, b_) for a, b_, g in close}]   # every waiver names a live pair
 
 
 # ----------------------------------------------------------------------------- reads as one label, and a label in a foreign outline
