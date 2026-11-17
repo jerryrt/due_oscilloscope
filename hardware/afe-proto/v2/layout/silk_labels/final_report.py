@@ -4,6 +4,8 @@ sys.path.insert(0, '/work/hardware/afe-proto'); sys.path.append('/usr/lib/python
 import numpy as np
 from pcbtools import boardio, silkread, align, rules
 from pcbtools.boards import v2_layout as C
+import os
+if os.environ.get('RECTS_JSON'): C.OUTLINE = {k: [tuple(r) for r in v] for k, v in json.load(open(os.environ['RECTS_JSON'])).items()}
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 EDGE = {'J601', 'J602', 'J603', 'J604', 'J605', 'J606', 'J607'}
 main, new, planp = sys.argv[1:4]

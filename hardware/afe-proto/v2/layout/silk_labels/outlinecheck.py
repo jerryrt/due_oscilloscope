@@ -1,9 +1,11 @@
 """python3 _work/outlinecheck.py BOARD: rule (a) on the board's own silk and the outline table (v2/layout/outlines.py via pcbtools v2_layout): what the outlines are, which parts they hold, the failures by name"""
-import sys, re, itertools
+import sys, re, itertools, json
 sys.path.insert(0, '/work/hardware/afe-proto'); sys.path.append('/usr/lib/python3/dist-packages')
 import numpy as np
 from pcbtools import boardio, silkread as S
 from pcbtools.boards import v2_layout as C
+import os
+if os.environ.get('RECTS_JSON'): C.OUTLINE = {k: [tuple(r) for r in v] for k, v in json.load(open(os.environ['RECTS_JSON'])).items()}
 b = boardio.read_board(sys.argv[1]); silk = [s for s in S.read_silk(open(sys.argv[1]).read()) if s[0] == 'seg']
 print('F.SilkS board-level segments:', len(silk), '; outline table blocks:', {k: len(v) for k, v in C.OUTLINE.items()})
 refs = list(b.fp_ref)

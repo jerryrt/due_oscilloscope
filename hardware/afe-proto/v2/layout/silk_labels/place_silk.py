@@ -18,6 +18,8 @@ from pcbtools import boardio, silkread as S, rules
 from pcbtools.boards import v2_layout as C
 
 inp, out, plan_out = sys.argv[1:4]
+import os
+if os.environ.get('RECTS_JSON'): C.OUTLINE = {k: [tuple(r) for r in v] for k, v in json.load(open(os.environ['RECTS_JSON'])).items()}
 SECS = float(sys.argv[4]) if len(sys.argv) > 4 else 150.0
 txt = open(inp).read()
 b = boardio.read_board(inp)
@@ -134,17 +136,17 @@ def strict_static(r, kind, x, y):
     return True
 
 
-def relaxed_static(r, kind, x, y, need_inside=True):
-    """anchors only: not on another part's body, not on a pad, nearest body its own by 0.25 mm; plus readability: no silk line, no board text"""
+def relaxed_static(r, kind, x, y, need_inside=True, clean=True):
+    """anchors only (owner): not on another part's body, not on an exposed pad, nearest body its own by 0.25 mm. Tented vias may lie under the text. `clean` also keeps off silk
+    lines and board text, and `need_inside` keeps inside the block's own outline; the later modes drop them in that order"""
     ang = ang_of(kind); sb = sbox(r, x, y, ang)
     if need_inside and not inside_blk(sb, r): return False
     if any(S._overlap(sb, bd) for k, bd in body.items() if k != r and bd is not None): return False
     if any(S._overlap(sb, p) for p in pads): return False
-    if any(S._overlap(sb, v) for v in vias): return False
     own = lgap(sb, body[r]) if body.get(r) else 0.0
     if any(lgap(sb, bd) < own + 0.25 for k, bd in body.items() if k != r and bd is not None): return False
-    if on_silk(sb, silk): return False
-    if any(lgap(sb, t) < 0.2 for t in texts): return False
+    if clean and on_silk(sb, silk): return False
+    if clean and any(lgap(sb, t) < 0.2 for t in texts): return False
     return True
 
 
@@ -182,22 +184,18 @@ labelled = [r for r in cour if not is_mh(r) and r not in BNC]
 anchors = sorted([r for r in labelled if r[0] in 'UJ' or r.startswith('TP')], key=lambda r: (r[:1] if not r.startswith('TP') else 'T', int(re.sub(r'\D', '', r))))
 passives = [r for r in labelled if r not in anchors]
 
-fixed = {}                                                       # the BNCs' labels stay as main has them here (bnc.py moves them afterwards)
-for j in range(len(b.r_fp)):
-    r = refs[row[int(b.r_fp[j])]]
-    if r in BNC and b.r_on_silk[j]:
-        fixed[r] = Cand('above', float(b.r_x[j]), float(b.r_y[j]), lbox(r, float(b.r_x[j]), float(b.r_y[j])), frozenset(), 0)
+fixed = {}                                                       # no fixed labels: the BNCs' labels move into their own rectangles (bnc.py), the holes carry none
 P = {}                                                           # ref -> Cand
 
 # ---- anchors first
 anchor_note = {}
 for r in anchors:
     done = None; how = None
-    for mode in ('strict', 'relaxed_in', 'relaxed_free'):
+    for mode in ('strict', 'relaxed_in', 'relaxed_clean', 'relaxed_bare'):
         for kind in ORDER:
             for x, y in cands(r, kind):
                 if mode == 'strict': okp = strict_static(r, kind, x, y)
-                else: okp = relaxed_static(r, kind, x, y, need_inside=(mode == 'relaxed_in'))
+                else: okp = relaxed_static(r, kind, x, y, need_inside=(mode == 'relaxed_in'), clean=(mode != 'relaxed_bare'))
                 if not okp: continue
                 c = make(r, kind, x, y, mode != 'strict')
                 others = list(P.values()) + list(fixed.values())
@@ -214,27 +212,20 @@ for r in anchors:
 
 blocked = {}
 for r in [q for q, v in anchor_note.items() if v is None]:
-    j = [jj for jj in range(len(b.r_fp)) if refs[row[int(b.r_fp[jj])]] == r][0]
-    x0, y0 = float(b.r_x[j]), float(b.r_y[j])
-    fixed[r] = Cand('above', x0, y0, lbox(r, x0, y0, float(b.r_ang[j])), frozenset(), 0)
+    j0 = [jj for jj in range(len(b.r_fp)) if refs[row[int(b.r_fp[jj])]] == r][0]               # not a place: it stays visible where main had it, and passives keep clear of it
+    fixed[r] = Cand('above', float(b.r_x[j0]), float(b.r_y[j0]), lbox(r, float(b.r_x[j0]), float(b.r_y[j0]), float(b.r_ang[j0])), frozenset(), 0)
     why = {}
     for kind in ORDER:
         hit = collections.Counter(); n = 0
         for x, y in cands(r, kind):
             n += 1; ang = ang_of(kind); sb = sbox(r, x, y, ang); w = set()
-            if not inside_blk(sb, r): w.add('outside its block outline')
             for k, bd in body.items():
                 if k != r and bd is not None and S._overlap(sb, bd): w.add('body of ' + k)
             for p, o in zip(pads, owner):
                 if S._overlap(sb, p): w.add('pad of ' + o)
-            if any(S._overlap(sb, v) for v in vias): w.add('via')
-            if on_silk(sb, silk): w.add('silk line')
-            if any(lgap(sb, t) < 0.2 for t in texts): w.add('board text')
             own = lgap(sb, body[r]) if body.get(r) else 0.0
             for k, bd in body.items():
                 if k != r and bd is not None and lgap(sb, bd) < own + 0.25 and ('body of ' + k) not in w: w.add('nearer to ' + k + ' than 0.25 mm beyond its own body')
-            for o, oc in list(P.items()) + list(fixed.items()):
-                if o != r and lgap(lbox(r, x, y, ang), oc.lb) < 0.3: w.add('label of ' + o)
             for q in w: hit[q] += 1
         why[kind] = (n, hit.most_common(4))
     blocked[r] = why

@@ -1,70 +1,24 @@
-"""bnc.py IN.kicad_pcb OUT.kicad_pcb REPORT.json   (in the PCB image; run after place_silk.py)
+"""bnc.py IN.kicad_pcb OUT.kicad_pcb RECTS_IN.json RECTS_OUT.json REPORT.json   (in the PCB image; run after place_silk.py)
 
-The three BNCs (J101, J201, J301), owner's rule: each designator and its function label ("CH1 IN", "CH2 IN", "AWG OUT") sits OUTSIDE the BNC body (the body
-hides what is under it) and at one offset and orientation in each BNC's own frame, equal to 0.05 mm. The three have one rotation on this board, so one board
-offset serves all three; the search is a grid of offsets from the footprint origin (0.1 mm, both text orientations), judged for all three BNCs at once:
- designator: on no part's body (F.Fab outline), pad, silk line, board text or other label; within DESIGNATOR_DIST_MAX of its own pads; clear of every courtyard
-   but its own BNC's; LR-11's gap to other designators.
- function label: the same, without the distance test (a function label is not a designator).
-Only text moves: the BNC's Reference offset and the function label's gr_text position and angle. Ties break to the smallest offset."""
-import sys, re, math, json
+The three BNCs (J101, J201, J301): each gets its own RECTANGLE on the silk holding its designator and its function label ("CH1 IN", "CH2 IN", "AWG OUT"), at one frame
+offset and one text orientation for all three (the BNCs share one rotation on this board, so one board offset is that). The rectangle is outside every part's body and
+courtyard, 0.3 mm clear of every pad, silk line, outline rectangle and board text, 0.8 mm clear of every other designator, inside the board outline, and the three
+do not touch. The smallest offset from the footprint origin wins; both text orientations are tried. The rectangle joins the BNC's block in RECTS (so the labels sit
+inside an outline of their block). Only silk changes: the Reference offset, the function label's gr_text, four gr_lines per rectangle."""
+import sys, re, math, json, uuid
 sys.path.insert(0, '/work/hardware/afe-proto'); sys.path.append('/usr/lib/python3/dist-packages')
 import numpy as np
 import pcbnew
 from pcbtools import boardio, silkread as S
-from pcbtools.boards import v2_layout as C
 
-inp, out, rep = sys.argv[1:4]
+inp, out, rects_in, rects_out, rep = sys.argv[1:6]
 txt = open(inp).read(); b = boardio.read_board(inp); pb = pcbnew.LoadBoard(inp); mm = pcbnew.ToMM
+RECTS = json.load(open(rects_in)); refs = list(b.fp_ref); fi = {r: i for i, r in enumerate(refs)}; row = {int(k): i for i, k in enumerate(b.fp_idx)}
+BNC = {'J101': ('CH1 IN', 'CH1'), 'J201': ('CH2 IN', 'CH2'), 'J301': ('AWG OUT', 'AWG')}
 silk = S.read_silk(txt)
-def footprint_silk(pb):
-    """every footprint's F.SilkS graphics as ('seg', x0, y0, x1, y1, width) in Due mm: a line as it is, a rectangle by its four edges, anything else (arc, circle) by its box"""
-    out = []
-    f_ = lambda v: (pcbnew.ToMM(v.x) - 50.0, 150.0 - pcbnew.ToMM(v.y))
-    for f in pb.GetFootprints():
-        for g in f.GraphicalItems():
-            if g.GetLayer() != pcbnew.F_SilkS or not hasattr(g, 'GetShape'): continue
-            w = pcbnew.ToMM(g.GetWidth()); sh = g.GetShape()
-            if sh == pcbnew.SHAPE_T_SEGMENT:
-                (x0, y0), (x1, y1) = f_(g.GetStart()), f_(g.GetEnd()); out.append(('seg', x0, y0, x1, y1, w))
-            else:
-                bx = g.GetBoundingBox(); x0, y1 = f_(bx.GetOrigin()); x1, y0 = f_(pcbnew.VECTOR2I(bx.GetRight(), bx.GetBottom()))
-                for a, c in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): out.append(('seg', *a, *c, w))
-    return out
-SILK_CLEAR = 0.2
-def on_silk(sb, shapes):
-    g = (sb[0] - SILK_CLEAR, sb[1] - SILK_CLEAR, sb[2] + SILK_CLEAR, sb[3] + SILK_CLEAR)
-    return any(S._on_shape(g, sh) for sh in shapes)
-
-silk = silk + footprint_silk(pb)
-refs = list(b.fp_ref); fi = {r: i for i, r in enumerate(refs)}
-row = {int(k): i for i, k in enumerate(b.fp_idx)}
-BNC = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
-cour = {refs[i]: S._box(b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]) for i in range(len(refs)) if int(b.fp_side[i]) == 0 and not np.isnan(b.fp_cx0[i])}
-body = {}
-for f in pb.GetFootprints():
-    bx = pcbnew.BOX2I(); n = 0
-    for g in f.GraphicalItems():
-        if g.GetLayer() == pcbnew.F_Fab: bx.Merge(g.GetBoundingBox()); n += 1
-    body[f.GetReference()] = (mm(bx.GetX()) - 50.0, 150.0 - mm(bx.GetBottom()), mm(bx.GetRight()) - 50.0, 150.0 - mm(bx.GetY())) if n else cour.get(f.GetReference())
-pads = [(x0, y0, x1, y1) for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
-owner = [refs[int(f)] for f in b.p_fp]
-tlist = [(t.decode() if isinstance(t, bytes) else t, x, y, h) for t, x, y, h in zip(b.t_text, b.t_x, b.t_y, b.t_h)]
-texts = [(lambda L: (x - L / 2, y - L / 2, x + L / 2, y + L / 2))(max(len(t) * 0.95 * h, h)) for t, x, y, h in tlist if t not in BNC.values()]
-labels = {}                                                      # other designators on the top silk
-for j in range(len(b.r_fp)):
-    r = refs[row[int(b.r_fp[j])]]
-    if b.r_on_silk[j] and r not in BNC: labels[r] = S.text_box(r, b.r_x[j], b.r_y[j], b.r_w[j], b.r_h[j], b.r_ang[j])
-rot = {r: round(float(b.fp_rot[fi[r]]), 3) for r in BNC}
-assert len(set(rot.values())) == 1, 'the BNCs have different rotations; the frame offset is not one board offset'
-H, ADV_L, H_L = 1.0, C.DESIGNATOR_ADVANCE, C.DESIGNATOR_INK_H
-
-
-def lgap(a, c):
-    return math.hypot(max(c[0] - a[2], 0.0, a[0] - c[2]), max(c[1] - a[3], 0.0, a[1] - c[3]))
-
-
 RING = [tuple(p) for p in b.outline]
+
+
 def inside_board(px, py):
     c = False; n = len(RING)
     for i in range(n):
@@ -73,83 +27,85 @@ def inside_board(px, py):
     return c
 
 
-NEED_INSIDE = True
+obst = []                                                         # (x0, y0, x1, y1, margin)
+for i in range(len(refs)):
+    if int(b.fp_side[i]) == 0 and not np.isnan(b.fp_cx0[i]): obst.append((min(b.fp_cx0[i], b.fp_cx1[i]), min(b.fp_cy0[i], b.fp_cy1[i]), max(b.fp_cx0[i], b.fp_cx1[i]), max(b.fp_cy0[i], b.fp_cy1[i]), 0.1))
+for f in pb.GetFootprints():
+    bx = pcbnew.BOX2I(); n = 0
+    for g in f.GraphicalItems():
+        if g.GetLayer() == pcbnew.F_Fab: bx.Merge(g.GetBoundingBox()); n += 1
+    if n: obst.append((mm(bx.GetX()) - 50.0, 150.0 - mm(bx.GetBottom()), mm(bx.GetRight()) - 50.0, 150.0 - mm(bx.GetY()), 0.3))
+    for g in f.GraphicalItems():
+        if g.GetLayer() == pcbnew.F_SilkS and hasattr(g, 'GetShape'):
+            bb = g.GetBoundingBox(); obst.append((mm(bb.GetX()) - 50.0, 150.0 - mm(bb.GetBottom()), mm(bb.GetRight()) - 50.0, 150.0 - mm(bb.GetY()), 0.3))
+for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1): obst.append((x0, y0, x1, y1, 0.3))
+for sh in silk:
+    if sh[0] == 'seg': obst.append((min(sh[1], sh[3]), min(sh[2], sh[4]), max(sh[1], sh[3]), max(sh[2], sh[4]), 0.3 + sh[5] / 2))
+    else: obst.append((sh[1], sh[2], sh[3], sh[4], 0.3))
+for rs in RECTS.values():                                         # outline rectangles: not inside or across any
+    for x0, y0, x1, y1 in rs: obst.append((x0, y0, x1, y1, 0.3))
+for t, x, y, h in zip(b.t_text, b.t_x, b.t_y, b.t_h):
+    t = t.decode() if isinstance(t, bytes) else t
+    if t in [v[0] for v in BNC.values()]: continue
+    L = max(len(t) * 0.95 * h, h); obst.append((x - L / 2, y - L / 2, x + L / 2, y + L / 2, 0.4))
+for j in range(len(b.r_fp)):
+    r = refs[row[int(b.r_fp[j])]]
+    if b.r_on_silk[j] and r not in BNC:
+        bx = S.text_box(r, b.r_x[j], b.r_y[j], b.r_w[j], b.r_h[j], b.r_ang[j]); obst.append((bx[0], bx[1], bx[2], bx[3], 0.8))
 
-
-def ok(text, r, x, y, ang, designator):
-    sb = S.text_box(text, x, y, 1.0, H, ang)
-    lb = (x - len(text) * ADV_L / 2, y - H_L / 2, x + len(text) * ADV_L / 2, y + H_L / 2) if ang == 0 else (x - H_L / 2, y - len(text) * ADV_L / 2, x + H_L / 2, y + len(text) * ADV_L / 2)
-    if NEED_INSIDE:
-        rs = C.OUTLINE.get(C.BLOCK.get(r))
-        if rs and not any(x0 - 0.005 <= sb[0] and sb[2] <= x1 + 0.005 and y0 - 0.005 <= sb[1] and sb[3] <= y1 + 0.005 for x0, y0, x1, y1 in rs): return False
-    if any(S._overlap(sb, bd) for k, bd in body.items() if bd is not None and (k != r or True)): return False
-    if any(S._overlap(sb, c) for k, c in cour.items() if k != r): return False
-    if any(S._overlap(sb, p) for p in pads): return False
-    if on_silk(sb, silk): return False
-    if any(lgap(sb, t) < 0.4 for t in texts): return False
-    if any(lgap(lb, (l[0] - 0.0, l[1], l[2], l[3])) < (1.0 if designator else 0.5) for l in labels.values()): return False
-    if not all(inside_board(px, py) for px, py in ((sb[0] - 0.3, sb[1] - 0.3), (sb[2] + 0.3, sb[1] - 0.3), (sb[2] + 0.3, sb[3] + 0.3), (sb[0] - 0.3, sb[3] + 0.3))): return False
-    if designator:
-        mine = [p for p, o in zip(pads, owner) if o == r]
-        if min(lgap(lb, p) for p in mine) > C.DESIGNATOR_DIST_MAX: return False
-    return True
-
-
-def search(designator):
-    best = []
-    for ang in (0, 90):
-        for ox in np.arange(-14.0, 22.0, 0.1):
-            for oy in np.arange(-10.0, 10.0, 0.1):
-                good = True
-                for r, lab in BNC.items():
-                    text = r if designator else lab
-                    x, y = b.fp_x[fi[r]] + ox, b.fp_y[fi[r]] + oy
-                    if not ok(text, r, float(x), float(y), ang, designator): good = False; break
-                if good: best.append((math.hypot(ox, oy), round(float(ox), 2), round(float(oy), 2), ang))
-    return sorted(best)
-
-
-des = search(True); fun = search(False)
-inside_note = 'inside own block outline'
-if not des or not fun:
-    NEED_INSIDE = False; inside_note = 'NOT inside own block outline (no common offset sits inside the three BNC boxes)'
-    des = search(True); fun = search(False)
-rep_ = {'designator_offsets_found': len(des), 'function_offsets_found': len(fun), 'designator': des[:3], 'function': fun[:3]}
-print(rep_)
-json.dump(rep_, open(rep, 'w'), indent=1)
-if not des or not fun: sys.exit(0)
-def boxes(des_o, fun_o):
-    d = {r: (S.text_box(r, b.fp_x[fi[r]] + des_o[1], b.fp_y[fi[r]] + des_o[2], 1.0, H, des_o[3])) for r in BNC}
-    f = {r: (S.text_box(lab, b.fp_x[fi[r]] + fun_o[1], b.fp_y[fi[r]] + fun_o[2], 1.0, H, fun_o[3])) for r, lab in BNC.items()}
-    return d, f
-
-
-def cross_ok(des_o, fun_o):
-    d, f = boxes(des_o, fun_o)
-    for r1 in BNC:
-        for r2 in BNC:
-            if r1 < r2 and lgap(d[r1], d[r2]) < 1.0: return False       # LR-11: designators 1.0 mm apart
-            if r1 < r2 and lgap(f[r1], f[r2]) < 0.5: return False
-            if lgap(d[r1], f[r2]) < 0.5: return False
-    return True
-
-
-pair = next(((d_, f_) for d_ in des for f_ in fun if cross_ok(d_, f_)), None)
-if not pair: print('no designator and function offsets clear each other across the three BNCs'); sys.exit(0)
-(dox, doy, dang), (fox, foy, fang) = pair[0][1:], pair[1][1:]
-print('designator offset', dox, doy, dang, '; function label offset', fox, foy, fang, '; ', inside_note)
+WR, HR = 7.5, 3.4
+step = 0.1
+ox = np.arange(-30.0, 30.0 + 1e-9, step); oy = np.arange(-24.0, 24.0 + 1e-9, step); OX, OY = np.meshgrid(ox, oy, indexing='ij')
+res = {}
+for orient in ('h', 'v'):
+    w, h = (WR, HR) if orient == 'h' else (HR, WR)
+    ok = np.ones(OX.shape, bool)
+    for r in BNC:
+        bx0, by0 = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
+        rx0, ry0 = bx0 + OX, by0 + OY; rx1, ry1 = rx0 + w, ry0 + h        # the rectangle at offset (OX, OY): its lower-left corner relative to the origin
+        for (x0, y0, x1, y1, m) in obst:
+            ok &= ~((rx1 + m > x0) & (rx0 - m < x1) & (ry1 + m > y0) & (ry0 - m < y1))
+    cand = np.argwhere(ok); best = None
+    for i, j in sorted(cand.tolist(), key=lambda p: math.hypot(ox[p[0]], oy[p[1]])):
+        good = True
+        for r in BNC:
+            bx0, by0 = float(b.fp_x[fi[r]]) + ox[i], float(b.fp_y[fi[r]]) + oy[j]
+            if not all(inside_board(px, py) for px, py in ((bx0 - 0.3, by0 - 0.3), (bx0 + w + 0.3, by0 - 0.3), (bx0 + w + 0.3, by0 + h + 0.3), (bx0 - 0.3, by0 + h + 0.3))): good = False; break
+        if good:
+            rs = [(float(b.fp_x[fi[r]]) + ox[i], float(b.fp_y[fi[r]]) + oy[j], float(b.fp_x[fi[r]]) + ox[i] + w, float(b.fp_y[fi[r]]) + oy[j] + h) for r in BNC]
+            if all(not (a[0] - 0.5 < c[2] and c[0] - 0.5 < a[2] and a[1] - 0.5 < c[3] and c[1] - 0.5 < a[3]) for a in rs for c in rs if a is not c):
+                best = (round(float(ox[i]), 2), round(float(oy[j]), 2)); break
+    res[orient] = best
+print('offsets', res)
+json.dump({'offsets': res, 'size': (WR, HR)}, open(rep, 'w'))
+pick = min((o for o in res if res[o]), key=lambda o: math.hypot(*res[o]), default=None)
+if not pick:
+    print('NO RECTANGLE OFFSET FITS ALL THREE BNCs'); sys.exit(0)
+dx, dy = res[pick]; w, h = (WR, HR) if pick == 'h' else (HR, WR)
+new_rects = {}; add = ''
+for r, (lab, blk) in BNC.items():
+    x0, y0 = float(b.fp_x[fi[r]]) + dx, float(b.fp_y[fi[r]]) + dy; x1, y1 = x0 + w, y0 + h
+    RECTS[blk].append([round(x0, 3), round(y0, 3), round(x1, 3), round(y1, 3)])
+    for ei, (p, q) in enumerate((((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)))):
+        add += '\n\t(gr_line\n\t\t(start %.4f %.4f)\n\t\t(end %.4f %.4f)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)' % (
+            p[0] + 50.0, 150.0 - p[1], q[0] + 50.0, 150.0 - q[1], uuid.uuid5(uuid.NAMESPACE_URL, 'bncbox/%s/%d' % (r, ei)))
+    if pick == 'h': des_at = ((x0 + x1) / 2, y1 - 0.9, 0.0); fun_at = ((x0 + x1) / 2, y0 + 0.9, 0.0)
+    else: des_at = (x0 + 0.9, (y0 + y1) / 2, 90.0); fun_at = (x1 - 0.9, (y0 + y1) / 2, 90.0)
+    new_rects[r] = (des_at, fun_at)
 for f in pb.GetFootprints():
     r = f.GetReference()
     if r in BNC:
-        rf = f.Reference(); rf.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(float(b.fp_x[fi[r]] + dox) + 50.0), pcbnew.FromMM(150.0 - float(b.fp_y[fi[r]] + doy)))); rf.SetTextAngleDegrees(float(dang)); rf.SetVisible(True)
+        d = new_rects[r][0]; rf = f.Reference(); rf.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(float(d[0]) + 50.0), pcbnew.FromMM(150.0 - float(d[1])))); rf.SetTextAngleDegrees(d[2]); rf.SetVisible(True)
 pcbnew.SaveBoard('/tmp/scratch_bnc.kicad_pcb', pb)
 sc = open('/tmp/scratch_bnc.kicad_pcb').read(); t = txt
-for r, lab in BNC.items():
+for r, (lab, blk) in BNC.items():
     i = t.index('(property "Reference" "%s"' % r); m = re.compile(r'\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)').search(t, i)
     j = sc.index('(property "Reference" "%s"' % r); ms = re.compile(r'\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)').search(sc, j)
     t = t[:m.start()] + '(at %s %s %s)' % (ms.group(1), ms.group(2), ms.group(3) or '0') + t[m.end():]
     g = re.search(r'\(gr_text "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)' % re.escape(lab), t)
-    nx, ny = b.fp_x[fi[r]] + fox + 50.0, 150.0 - (b.fp_y[fi[r]] + foy)
-    t = t[:g.start(1)] + '%.3f %.3f %g' % (nx, ny, fang) + t[g.end(0) - 1:]
+    f_ = new_rects[r][1]
+    t = t[:g.start(1)] + '%.3f %.3f %g' % (f_[0] + 50.0, 150.0 - f_[1], f_[2]) + t[g.end(0) - 1:]
+i = t.rindex('\n)'); t = t[:i] + add + t[i:]
 open(out, 'w').write(t)
-print('wrote', out)
+json.dump({k: [list(r) for r in v] for k, v in RECTS.items()}, open(rects_out, 'w'), indent=1)
+print('orientation', pick, 'offset', dx, dy, 'rectangle', w, 'x', h, 'wrote', out)

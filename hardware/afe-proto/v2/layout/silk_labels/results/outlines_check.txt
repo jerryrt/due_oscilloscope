@@ -1,0 +1,13 @@
+F.SilkS board-level segments: 40 ; outline table blocks: {'POWER': 1, 'REFCAL': 2, 'CH1': 3, 'CH2': 2, 'AWG': 2}
+parts whose courtyard is not inside a rectangle of their own block (13): [('D201', 'CH2'), ('D101', 'CH1'), ('BR503', 'REFCAL'), ('BR502', 'REFCAL'), ('R501', 'REFCAL'), ('BR102', 'CH1'), ('J101', 'CH1'), ('U101', 'CH1'), ('R306', 'AWG'), ('J201', 'CH2'), ('BR501', 'REFCAL'), ('J301', 'AWG'), ('BR504', 'REFCAL')]
+parts whose courtyard enters another block's rectangle (4): [('D201', 'CH2', 'CH1'), ('U101', 'CH1', 'CH2'), ('BR501', 'REFCAL', 'CH2'), ('BR504', 'REFCAL', 'CH2')]
+rectangles of different blocks that overlap (0): []
+block POWER   rectangles 1, separate polygons 1
+block REFCAL  rectangles 2, separate polygons 2
+block CH1     rectangles 3, separate polygons 2
+block CH2     rectangles 2, separate polygons 2
+block AWG     rectangles 2, separate polygons 2
+  POWER rect (17.9, 4.6, 43.6, 26.0): silk breaks (edge: from-to) {'S': [(np.float64(43.6), 43.6)], 'N': [(np.float64(43.6), 43.6)]}
+  CH2 rect (69.0, 19.75, 93.0, 32.9): silk breaks (edge: from-to) {'E': [(np.float64(32.9), 32.9)]}
+  CH2 rect (98.5, 20.19, 116.4, 35.69): silk breaks (edge: from-to) {'W': [(np.float64(35.69), 35.69)], 'E': [(np.float64(35.69), 35.69)]}
+  AWG rect (98.55, 0.75, 116.4, 16.5): silk breaks (edge: from-to) {'E': [(np.float64(16.5), 16.5), (np.float64(35.69), 16.5)]}

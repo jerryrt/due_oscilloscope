@@ -1,5 +1,11 @@
 {
  "placed": {
+  "J501": [
+   "east90",
+   63.305,
+   10.9,
+   "relaxed"
+  ],
   "J601": [
    "west0",
    24.294999999999998,
@@ -90,6 +96,12 @@
    15.2,
    "strict"
   ],
+  "U101": [
+   "east0",
+   87.175,
+   32.8,
+   "relaxed"
+  ],
   "C202": [
    "west0",
    80.58000000000001,
@@ -98,7 +110,7 @@
   ],
   "R309": [
    "west90",
-   80.70500000000001,
+   81.245,
    16.8,
    "strict"
   ],
@@ -108,10 +120,16 @@
    32.1,
    "strict"
   ],
-  "R204": [
-   "below",
+  "R201": [
+   "above",
    90.285,
-   20.6,
+   27.1,
+   "strict"
+  ],
+  "C203": [
+   "above",
+   84.625,
+   28.6,
    "strict"
   ],
   "C102": [
@@ -126,28 +144,22 @@
    46.4,
    "strict"
   ],
-  "R105": [
-   "above",
-   84.42500000000001,
-   46.4,
+  "R204": [
+   "below",
+   90.285,
+   20.6,
    "strict"
   ],
   "R205": [
    "below",
-   84.305,
+   84.67500000000001,
    20.6,
    "strict"
   ],
-  "R201": [
+  "R105": [
    "above",
-   90.285,
-   26.9,
-   "strict"
-  ],
-  "C203": [
-   "above",
-   84.625,
-   28.6,
+   84.42500000000001,
+   46.4,
    "strict"
   ],
   "R101": [
@@ -159,7 +171,7 @@
   "C103": [
    "below",
    84.625,
-   38.3,
+   38.5,
    "strict"
   ],
   "BR401": [
@@ -168,28 +180,34 @@
    7.7,
    "strict"
   ],
+  "BR508": [
+   "east0",
+   61.475,
+   14.4,
+   "strict"
+  ],
   "R406": [
    "west0",
-   33.38,
+   33.92,
    5.8,
    "strict"
   ],
   "C104": [
    "west0",
-   75.934999,
-   34.7,
-   "strict"
-  ],
-  "BR507": [
-   "below",
-   49.0,
-   8.0,
+   76.304999,
+   35.0,
    "strict"
   ],
   "C503": [
    "east0",
    58.875,
    23.8,
+   "strict"
+  ],
+  "BR507": [
+   "below",
+   49.0,
+   8.0,
    "strict"
   ],
   "C306": [
@@ -200,26 +218,32 @@
   ],
   "R401": [
    "west0",
-   28.694999999999997,
+   28.525,
    18.8,
    "strict"
   ],
   "R402": [
    "west0",
    26.069999999999997,
-   16.6,
+   16.5,
    "strict"
   ],
   "R403": [
    "west0",
-   28.3,
+   28.47,
    7.1,
    "strict"
   ],
   "R407": [
    "west90",
-   39.769999999999996,
-   22.9,
+   39.599999999999994,
+   22.8,
+   "strict"
+  ],
+  "C105": [
+   "west0",
+   76.474999,
+   37.9,
    "strict"
   ],
   "BR101": [
@@ -230,7 +254,7 @@
   ],
   "C409": [
    "east0",
-   38.894999999999996,
+   38.355,
    14.0,
    "strict"
   ],
@@ -240,34 +264,16 @@
    16.9,
    "strict"
   ],
-  "C105": [
-   "west0",
-   76.304999,
-   38.1,
-   "strict"
-  ],
   "R513": [
    "east90",
-   46.405,
-   21.5,
+   46.775,
+   21.3,
    "strict"
   ],
   "R514": [
    "west90",
-   50.195,
+   49.825,
    19.8,
-   "strict"
-  ],
-  "R308": [
-   "west0",
-   74.225,
-   13.5,
-   "strict"
-  ],
-  "C404": [
-   "west0",
-   20.624999999999996,
-   12.0,
    "strict"
   ],
   "C408": [
@@ -276,15 +282,27 @@
    9.7,
    "strict"
   ],
+  "C404": [
+   "west0",
+   20.624999999999996,
+   12.0,
+   "strict"
+  ],
   "C401": [
    "west0",
    20.624999999999996,
    14.3,
    "strict"
   ],
+  "R308": [
+   "west0",
+   74.395,
+   13.5,
+   "strict"
+  ],
   "C303": [
    "west0",
-   74.545,
+   74.175,
    9.1,
    "strict"
   ]
@@ -296,7 +314,6 @@
   "BR503",
   "BR504",
   "BR506",
-  "BR508",
   "BR509",
   "BR510",
   "BR511",
@@ -347,6 +364,7 @@
  "beside": [
   "BR101",
   "BR401",
+  "BR508",
   "C102",
   "C104",
   "C105",
@@ -367,11 +385,12 @@
   "R403",
   "R406",
   "TP201",
-  "TP404"
+  "TP404",
+  "U101"
  ],
  "east_end": [],
  "anchors": {
-  "J501": null,
+  "J501": "relaxed_in east90",
   "J601": "strict west0",
   "J602": "strict above",
   "J603": "strict west90",
@@ -387,241 +406,13 @@
   "TP403": "strict above",
   "TP404": "strict east0",
   "TP501": "strict west90",
-  "U101": null,
+  "U101": "relaxed_bare east0",
   "U301": null,
   "U401": null,
   "U501": null,
   "U502": null
  },
  "blocked": {
-  "J501": {
-   "above": [
-    25,
-    [
-     [
-      "board text",
-      25
-     ],
-     [
-      "body of BR508",
-      25
-     ],
-     [
-      "pad of BR508",
-      25
-     ],
-     [
-      "nearer to BR506 than 0.25 mm beyond its own body",
-      25
-     ]
-    ]
-   ],
-   "east0": [
-    20,
-    [
-     [
-      "silk line",
-      20
-     ],
-     [
-      "outside its block outline",
-      20
-     ]
-    ]
-   ],
-   "west0": [
-    20,
-    [
-     [
-      "nearer to BR507 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "nearer to C502 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "via",
-      20
-     ],
-     [
-      "body of U501",
-      20
-     ]
-    ]
-   ],
-   "below": [
-    25,
-    [
-     [
-      "pad of R504",
-      25
-     ],
-     [
-      "pad of R503",
-      25
-     ],
-     [
-      "body of R504",
-      25
-     ],
-     [
-      "body of R503",
-      25
-     ]
-    ]
-   ],
-   "east90": [
-    20,
-    [
-     [
-      "via",
-      20
-     ],
-     [
-      "nearer to R501 than 0.25 mm beyond its own body",
-      14
-     ],
-     [
-      "nearer to R502 than 0.25 mm beyond its own body",
-      12
-     ],
-     [
-      "silk line",
-      10
-     ]
-    ]
-   ],
-   "west90": [
-    20,
-    [
-     [
-      "pad of C502",
-      20
-     ],
-     [
-      "nearer to U501 than 0.25 mm beyond its own body",
-      20
-     ],
-     [
-      "pad of U501",
-      20
-     ],
-     [
-      "via",
-      15
-     ]
-    ]
-   ]
-  },
-  "U101": {
-   "above": [
-    30,
-    [
-     [
-      "pad of R108",
-      30
-     ],
-     [
-      "nearer to C105 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to C104 than 0.25 mm beyond its own body",
-      30
-     ],
-     [
-      "nearer to C103 than 0.25 mm beyond its own body",
-      30
-     ]
-    ]
-   ],
-   "east0": [
-    20,
-    [
-     [
-      "silk line",
-      20
-     ],
-     [
-      "outside its block outline",
-      20
-     ]
-    ]
-   ],
-   "west0": [
-    20,
-    [
-     [
-      "silk line",
-      20
-     ],
-     [
-      "outside its block outline",
-      20
-     ],
-     [
-      "nearer to C104 than 0.25 mm beyond its own body",
-      16
-     ]
-    ]
-   ],
-   "below": [
-    25,
-    [
-     [
-      "pad of R208",
-      25
-     ],
-     [
-      "nearer to C203 than 0.25 mm beyond its own body",
-      25
-     ],
-     [
-      "outside its block outline",
-      25
-     ],
-     [
-      "body of R208",
-      25
-     ]
-    ]
-   ],
-   "east90": [
-    20,
-    [
-     [
-      "silk line",
-      20
-     ],
-     [
-      "outside its block outline",
-      20
-     ]
-    ]
-   ],
-   "west90": [
-    20,
-    [
-     [
-      "pad of C104",
-      20
-     ],
-     [
-      "outside its block outline",
-      20
-     ],
-     [
-      "silk line",
-      20
-     ],
-     [
-      "body of C104",
-      20
-     ]
-    ]
-   ]
-  },
   "U301": {
    "above": [
     30,
@@ -631,11 +422,11 @@
       30
      ],
      [
-      "nearer to C301 than 0.25 mm beyond its own body",
+      "body of R303",
       30
      ],
      [
-      "body of R303",
+      "nearer to C301 than 0.25 mm beyond its own body",
       30
      ],
      [
@@ -648,20 +439,16 @@
     20,
     [
      [
-      "pad of R302",
+      "body of R302",
       20
      ],
      [
-      "body of R302",
+      "pad of R302",
       20
      ],
      [
       "nearer to R301 than 0.25 mm beyond its own body",
       6
-     ],
-     [
-      "silk line",
-      5
      ]
     ]
    ],
@@ -673,15 +460,15 @@
       20
      ],
      [
-      "via",
-      20
-     ],
-     [
       "nearer to C304 than 0.25 mm beyond its own body",
       20
      ],
      [
       "pad of C304",
+      12
+     ],
+     [
+      "pad of C303",
       12
      ]
     ]
@@ -690,7 +477,7 @@
     30,
     [
      [
-      "nearer to C306 than 0.25 mm beyond its own body",
+      "body of R304",
       30
      ],
      [
@@ -698,11 +485,11 @@
       30
      ],
      [
-      "body of R306",
+      "nearer to C304 than 0.25 mm beyond its own body",
       30
      ],
      [
-      "body of R304",
+      "nearer to C306 than 0.25 mm beyond its own body",
       30
      ]
     ]
@@ -715,26 +502,22 @@
       20
      ],
      [
-      "nearer to R301 than 0.25 mm beyond its own body",
-      10
-     ],
-     [
       "nearer to R302 than 0.25 mm beyond its own body",
       10
      ],
      [
-      "via",
-      8
+      "nearer to R301 than 0.25 mm beyond its own body",
+      10
+     ],
+     [
+      "pad of R307",
+      4
      ]
     ]
    ],
    "west90": [
     20,
     [
-     [
-      "via",
-      20
-     ],
      [
       "body of C304",
       20
@@ -744,7 +527,7 @@
       20
      ],
      [
-      "silk line",
+      "nearer to C303 than 0.25 mm beyond its own body",
       5
      ]
     ]
@@ -759,15 +542,15 @@
       25
      ],
      [
-      "pad of C405",
-      25
-     ],
-     [
       "body of C405",
       25
      ],
      [
       "body of R402",
+      25
+     ],
+     [
+      "pad of C405",
       25
      ]
     ]
@@ -776,11 +559,11 @@
     20,
     [
      [
-      "body of C409",
+      "pad of C409",
       20
      ],
      [
-      "pad of C409",
+      "body of C409",
       20
      ],
      [
@@ -793,10 +576,6 @@
     20,
     [
      [
-      "via",
-      20
-     ],
-     [
       "body of C402",
       20
      ],
@@ -807,6 +586,10 @@
      [
       "nearer to C403 than 0.25 mm beyond its own body",
       19
+     ],
+     [
+      "nearer to C401 than 0.25 mm beyond its own body",
+      10
      ]
     ]
    ],
@@ -814,7 +597,7 @@
     25,
     [
      [
-      "via",
+      "pad of R405",
       25
      ],
      [
@@ -822,12 +605,12 @@
       25
      ],
      [
-      "pad of R405",
-      25
-     ],
-     [
       "nearer to C407 than 0.25 mm beyond its own body",
       19
+     ],
+     [
+      "nearer to C403 than 0.25 mm beyond its own body",
+      16
      ]
     ]
    ],
@@ -839,11 +622,11 @@
       20
      ],
      [
-      "body of C409",
+      "nearer to C406 than 0.25 mm beyond its own body",
       15
      ],
      [
-      "nearer to C406 than 0.25 mm beyond its own body",
+      "body of C409",
       15
      ],
      [
@@ -856,7 +639,7 @@
     20,
     [
      [
-      "body of C402",
+      "nearer to R402 than 0.25 mm beyond its own body",
       20
      ],
      [
@@ -864,11 +647,11 @@
       20
      ],
      [
-      "pad of C403",
+      "body of C403",
       20
      ],
      [
-      "nearer to R402 than 0.25 mm beyond its own body",
+      "body of C402",
       20
      ]
     ]
@@ -900,10 +683,6 @@
     24,
     [
      [
-      "silk line",
-      24
-     ],
-     [
       "nearer to BR508 than 0.25 mm beyond its own body",
       24
      ],
@@ -914,16 +693,16 @@
      [
       "body of J501",
       24
+     ],
+     [
+      "pad of J501",
+      16
      ]
     ]
    ],
    "west0": [
     24,
     [
-     [
-      "label of TP501",
-      24
-     ],
      [
       "nearer to BR507 than 0.25 mm beyond its own body",
       20
@@ -934,15 +713,15 @@
     25,
     [
      [
-      "pad of BR507",
-      25
-     ],
-     [
       "pad of C502",
       25
      ],
      [
       "body of C502",
+      25
+     ],
+     [
+      "pad of BR507",
       25
      ],
      [
@@ -955,10 +734,6 @@
     24,
     [
      [
-      "silk line",
-      24
-     ],
-     [
       "nearer to BR506 than 0.25 mm beyond its own body",
       24
      ],
@@ -969,6 +744,10 @@
      [
       "nearer to C502 than 0.25 mm beyond its own body",
       24
+     ],
+     [
+      "pad of J501",
+      12
      ]
     ]
    ],
@@ -980,12 +759,12 @@
       20
      ],
      [
-      "label of TP501",
-      18
-     ],
-     [
       "nearer to C501 than 0.25 mm beyond its own body",
       15
+     ],
+     [
+      "body of BR507",
+      4
      ],
      [
       "pad of BR507",
@@ -999,11 +778,11 @@
     30,
     [
      [
-      "nearer to BR510 than 0.25 mm beyond its own body",
+      "body of C503",
       30
      ],
      [
-      "body of C503",
+      "pad of C503",
       30
      ],
      [
@@ -1011,7 +790,7 @@
       30
      ],
      [
-      "nearer to R511 than 0.25 mm beyond its own body",
+      "nearer to BR510 than 0.25 mm beyond its own body",
       30
      ]
     ]
@@ -1051,10 +830,6 @@
      [
       "nearer to TP501 than 0.25 mm beyond its own body",
       6
-     ],
-     [
-      "silk line",
-      5
      ]
     ]
    ],
@@ -1062,7 +837,11 @@
     30,
     [
      [
-      "nearer to C501 than 0.25 mm beyond its own body",
+      "nearer to U501 than 0.25 mm beyond its own body",
+      30
+     ],
+     [
+      "nearer to BR508 than 0.25 mm beyond its own body",
       30
      ],
      [
@@ -1071,10 +850,6 @@
      ],
      [
       "body of BR506",
-      30
-     ],
-     [
-      "nearer to BR508 than 0.25 mm beyond its own body",
       30
      ]
     ]
@@ -1095,7 +870,7 @@
       8
      ],
      [
-      "silk line",
+      "nearer to R508 than 0.25 mm beyond its own body",
       5
      ]
     ]
@@ -1112,11 +887,11 @@
       15
      ],
      [
-      "silk line",
+      "nearer to TP501 than 0.25 mm beyond its own body",
       10
      ],
      [
-      "nearer to TP501 than 0.25 mm beyond its own body",
+      "body of TP501",
       10
      ]
     ]
@@ -1124,12 +899,12 @@
   }
  },
  "kinds": {
+  "east90": 3,
   "west0": 14,
   "above": 12,
   "west90": 5,
-  "east0": 9,
-  "east90": 2,
+  "east0": 11,
   "below": 6
  },
- "iterations": 24811
+ "iterations": 23181
 }
