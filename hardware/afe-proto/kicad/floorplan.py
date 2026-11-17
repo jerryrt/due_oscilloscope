@@ -79,6 +79,9 @@ BRIDGES = [  # ref, nets, at (x, y), crosses: only where the routing needs a cro
     ('BR1 (R515)', 'VREF / VREF_M', (66.05, 21.75), 'the A1 line (x 66.04)'),
     ('BR2 (R516)', 'VREF_M / VREF_P', (68.6, 24.7), 'the A0 line (x 68.58)'),
     ('BR3 (R310)', 'AWG_I / AWG_BNC', (68.6, 15.55), 'the A0 line (x 68.58)'),
+    ('BR7 (R517)', '+3V3A / P33_R', (49.8, 29.0), 'a VREF leg west of the ADS'),
+    ('BR8 (R518)', 'SDA1 / SDA1_A', (50.45, 24.55), 'a VREF leg west of the ADS'),
+    ('BR9 (R519)', 'SCL1 / SCL1_A', (46.85, 30.55), 'a VREF leg west of the ADS'),
     ('BR4 (R309)', 'AWG_S / AWG_I', (66.05, 18.85), 'the A1 line (x 66.04)'),
 ]
 

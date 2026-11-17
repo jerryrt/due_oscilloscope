@@ -79,7 +79,7 @@ BLOCK_TITLE = {
     'cal': 'CALIBRATION: REF3030E, ladder (A2..A7), ADS1115 on I2C, AWG-sense divider and ratio switch',
     'due': 'DUE HEADERS (V03 positions), mounting, test points',
 }
-PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC']
+PWR_FLAG_NETS = ['GND', '+5V_DUE', '+5V_F', 'SC_VCC', 'P33_R']
 SCH_COMMENTS = ['Generated from design.py by pcbtools.schematic: edit design.py, not this file',
                 'Values and parts: whatif/bom.txt. Connectivity: the simulated circuit (docs/architecture.md)',
                 'Own work, CC BY-SA 4.0']
