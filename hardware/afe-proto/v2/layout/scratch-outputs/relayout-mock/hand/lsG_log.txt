@@ -1,0 +1,41 @@
+start 1001003.3 ['LR-12 C501 3.3']
+reject swap C502 C503 ['LR-12 C501 3.3', 'LR-12 C502 12.4', 'LR-12 C503 12.7']
+reject C501 turn 270 ['court C501/TP501', 'court C501/U502', 'court TP501/C501', 'court U502/C501']
+reject swap C502 C501 ['LR-12 C501 4.2', 'LR-12 C502 5.2']
+accept R514 shift +0.1,+0 1001003.3 ['LR-12 C501 3.3'] 0
+accept C501 turn 180 30.7 (7, 3) 52
+reject C502 shift +0,+0.05 30.7
+reject R506 turn 180 30.8
+reject R514 shift +0,+0.5 31.3
+reject C503 shift +1,+0 ['court C503/R511', 'court R511/C503']
+reject C502 turn 90 ['LR-12 C502 3.3']
+reject R514 turn 180 41.4
+reject C501 shift +0,-2 ['court C501/U501']
+reject TP501 shift +0.5,+0 30.7
+reject R514 turn 90 ['court R514/U502', 'court U502/R514']
+reject C501 turn 180 ['LR-12 C501 3.3']
+reject C503 shift -1,+0 ['court C503/R512', 'court R512/C503']
+reject R514 shift +0.1,+0 30.7
+reject swap C501 C503 ['LR-12 C501 10.6', 'LR-12 C503 7.0']
+reject TP501 shift +0,-0.5 ['court TP501/U501']
+reject TP501 shift +0,+2 30.7
+reject C501 shift -1,+0 ['court C501/TP501', 'court TP501/C501']
+reject TP501 shift +0,+0.05 30.7
+accept R514 shift +0,-0.5 20.6 (6, 2) 512
+reject R506 shift +0,-1 20.6
+reject R514 shift +2,+0 ['court R514/U502', 'court U502/R514']
+reject C502 shift +2,+0 ['court C502/J501', 'court C502/R505', 'court J501/C502', 'court R505/C502']
+reject C501 shift +0,+0.05 20.7
+reject C501 shift +0,+2 ['LR-12 C501 3.8', 'court C501/R514', 'court R514/C501']
+reject R506 shift +0,+1 20.6
+reject C503 shift +0,-2 ['court C503/U502', 'court U502/C503']
+reject swap R514 R506 61.9
+reject C502 shift +0.1,+0 20.6
+reject R506 shift +0,+1 20.6
+reject C501 shift +0,-0.1 40.9
+reject TP501 shift +1,+0 ['court C501/TP501', 'court TP501/C501']
+reject C501 shift -2,+0 ['LR-12 C501 3.1', 'court C501/TP501', 'court TP501/C501']
+reject swap C503 C502 ['LR-12 C502 12.4', 'LR-12 C503 12.7']
+reject C501 turn 90 ['court C501/TP501', 'court C501/U502', 'court TP501/C501', 'court U502/C501']
+reject C503 shift +0,+0.5 20.6
+done 39 moves tried; best 20.6

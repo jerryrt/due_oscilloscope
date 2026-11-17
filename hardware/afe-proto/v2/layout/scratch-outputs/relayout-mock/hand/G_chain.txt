@@ -1,0 +1,3 @@
+silkread findings after placement: 30
+beside set grew by ['C501', 'C503', 'R305', 'R502', 'R504', 'R508', 'R509', 'R510', 'R511', 'R512', 'R513', 'R514', 'TP301', 'U502'] and lost ['C502']
+capped: peak_rss_kb=1547832 wall_s=187.83 exit=0 cap=6G limit_s=2400 image=sha256:c88880a2f14bae91388b43631276657da24206fbff9a927ef7fe969e8d1a24bf installed=d5ac9c79d85aa5c5372a991a327854761f8b239606d33273d8d18b9c42fe68ac

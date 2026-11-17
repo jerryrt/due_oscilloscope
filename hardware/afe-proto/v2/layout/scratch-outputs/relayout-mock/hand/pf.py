@@ -232,7 +232,7 @@ def job_block(job):
         own_refs = {p['ref'] for p in pads if p['net'] == nm}
         for ref, (bx0, by0, bx1, by1) in ANALOG_BOX.items():
             if ref in own_refs: continue
-            m = 0.3 + 0.1
+            m = 0.3 + 0.1 + 0.15        # LR-9: box + 0.3 + half the track, and a cell of margin
             blk |= (gx >= bx0 - m) & (gx <= bx1 + m) & (gy >= by0 - m) & (gy <= by1 + m)
     return blk
 

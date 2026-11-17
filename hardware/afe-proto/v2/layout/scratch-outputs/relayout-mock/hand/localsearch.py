@@ -10,12 +10,12 @@ import pcbnew
 base, start, tag, rounds, secs, seed = sys.argv[1:7]
 rounds, secs, seed = int(rounds), float(secs), int(seed)
 random.seed(seed)
-ONLY = r'^/(TAP|SNS|ADS|VREF|SDA|SCL|AREF|AWG_BNC|AWG_VREF)|3V3A#adc'
+ONLY = os.environ.get('ONLYRE', r'^/(TAP|SNS|ADS|VREF|SDA|SCL|AREF|AWG_BNC|AWG_VREF)|3V3A#adc')
 REGION = (44.6, 3.4, 65.0, 42.0)               # Due mm: no part's courtyard leaves it (REF/CAL fence west, the A1 lane east)
 LANES = [(65.3, 4.6, 66.8, 18.4), (67.9, 4.6, 69.3, 18.4)]
 MOV = [r for r in 'C501 C502 C503 J501 R501 R502 R503 R504 R505 R506 R507 R508 R509 R510 R511 R512 R513 R514 TP501 U502 TP301 C303 C304 R305'.split()]
 AWGW = ('TP301', 'C303', 'C304', 'R305')           # the AWG block's west spill sits in the REF/CAL region: it may move, within the AWG-side box
-REGION_AWG = (44.6, 3.4, 92.0, 25.0)
+REGION_AWG = tuple(float(v) for v in os.environ.get('AWGBOX', '44.6,3.4,92.0,25.0').split(','))
 if os.environ.get('MOVSET'):
     MOV = os.environ['MOVSET'].split(',')
 mm = pcbnew.ToMM
@@ -43,7 +43,10 @@ def courts(brd):
         for p in f.Pads():
             pads[(f.GetReference(), p.GetNumber())] = (mm(p.GetPosition().x) - 50, 150 - mm(p.GetPosition().y), p.GetNetname())
     return d, pads
-def ov(a, c, m=0.05): return min(a[2], c[2]) - max(a[0], c[0]) > m and min(a[3], c[3]) - max(a[1], c[1]) > m
+OVTOL = float(os.environ.get('OVTOL', '0.05'))
+def ov(a, c, m=None):
+    m = OVTOL if m is None else m
+    return min(a[2], c[2]) - max(a[0], c[0]) > m and min(a[3], c[3]) - max(a[1], c[1]) > m
 SENSP = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')
 def violations(brd, moved):
     d, pads = courts(brd); v = []
@@ -57,7 +60,8 @@ def violations(brd, moved):
             if o != r and ov(c, c2): v.append('court %s/%s' % (r, o))
     for cap, ic, pin in (('C502', 'U501', '1'), ('C501', 'U501', '2'), ('C503', 'U502', '8')):
         a, b2 = pads[(cap, '1')], pads[(ic, pin)]
-        dist = min(math.hypot(pads[(cap, k)][0] - b2[0], pads[(cap, k)][1] - b2[1]) for k in '12')
+        ks = [k for k in '12' if pads[(cap, k)][2] == b2[2]] or ['1']
+        dist = min(math.hypot(pads[(cap, k)][0] - b2[0], pads[(cap, k)][1] - b2[1]) for k in ks)      # rules.decoup_dist: the cap pad on the IC pin's net
         if dist > 3.0: v.append('LR-12 %s %.1f' % (cap, dist))
     gen = [(p[0], p[1]) for k, p in pads.items() if k[0] in ('U401', 'C409')]
     for r in ('R501', 'R506', 'U501', 'U502'):
@@ -70,7 +74,7 @@ def score(pl, tagn):
     brd = '%s_cand.kicad_pcb' % tag
     build(pl, brd)
     v = violations(brd, list(pl))
-    if v: return 1e6 + 1000 * len(v), v
+    if v: return 1e6 + 1000 * len(v) + sum(float(x.split()[-1]) for x in v if x.startswith('LR-12')), v
     env = dict(os.environ, PF_ONLY=ONLY, PF_NOGND='1')
     out = subprocess.run(['python3', '-u', 'pf.py', brd, '%s_cand_spec.py' % tag, str(rounds), '300'], capture_output=True, text=True, env=env).stdout
     m = re.search(r'METRIC conflict_segments (\d+) distinct_clusters (\d+)', out)
@@ -84,10 +88,10 @@ while time.time() - t0 < secs:
     cand = {k: list(v) for k, v in cur.items()}
     mv = random.choice(['shift', 'shift', 'shift', 'turn', 'swap', 'jump'])
     r = random.choice(MOV)
-    if mv == 'jump' and r not in AWGW and random.random() < 0.6:
+    if mv == 'jump' and r not in AWGW:
         mv = 'shift'
     if mv == 'shift':
-        dx, dy = random.choice([(0.5, 0), (-0.5, 0), (0, 0.5), (0, -0.5), (1, 0), (-1, 0), (0, 1), (0, -1), (2, 0), (-2, 0), (0, 2), (0, -2)])
+        dx, dy = random.choice([(0.05, 0), (-0.05, 0), (0, 0.05), (0, -0.05), (0, -0.1), (0, 0.1), (0.1, 0), (-0.1, 0), (0.5, 0), (-0.5, 0), (0, 0.5), (0, -0.5), (1, 0), (-1, 0), (0, 1), (0, -1), (2, 0), (-2, 0), (0, 2), (0, -2)])
         cand[r][0] += dx; cand[r][1] += dy; desc = '%s shift %+g,%+g' % (r, dx, dy)
     elif mv == 'jump':
         rg = REGION_AWG if r in AWGW else REGION
