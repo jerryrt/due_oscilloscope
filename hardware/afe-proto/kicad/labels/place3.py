@@ -36,6 +36,10 @@ body = {}
 for fp in bd.GetFootprints():
     bs = [tobox(it.GetBoundingBox()) for it in fp.GraphicalItems() if it.GetLayer() == pcbnew.F_Fab and it.GetClass() == 'PCB_SHAPE']
     if bs: body[fp.GetReference()] = (min(x[0] for x in bs), min(x[1] for x in bs), max(x[2] for x in bs), max(x[3] for x in bs))
+own_solid = {}
+for fp in bd.GetFootprints():
+    bx = [tobox(pd.GetBoundingBox()) for pd in fp.Pads()] + ([body[fp.GetReference()]] if fp.GetReference() in body else [])
+    if bx: own_solid[fp.GetReference()] = (min(q[0] for q in bx), min(q[1] for q in bx), max(q[2] for q in bx), max(q[3] for q in bx))
 silk_board = []
 for d in bd.GetDrawings():
     if d.GetLayer() != pcbnew.F_SilkS or (d.GetClass() == 'PCB_TEXT' and d.GetText() in NAMES): continue
@@ -84,8 +88,8 @@ def outside_regions(L):
 def ok_(r, x, y, ang):
     L = lab_box(r, x, y, ang)
     if L[0] < DUE[0] + EDGE or L[2] > DUE[2] - EDGE or L[1] < DUE[1] + EDGE or L[3] > DUE[3] - EDGE: return 'edge'
-    own = cour[r]
-    if gap(L, own) < 0.05 or (L[0] < own[2] and own[0] < L[2] and L[1] < own[3] and own[1] < L[3]): return 'body'
+    own = cour[r]; sol = own_solid.get(r, own)
+    if gap(L, sol) < 0.05 or (L[0] < sol[2] and sol[0] < L[2] and L[1] < sol[3] and sol[1] < L[3]): return 'body'
     t = silkread.text_box(r, x, y, 1.0, 1.0, ang)
     if RELAX:
         bk = [q for q in body if q != r]; BA = np.array([body[q] for q in bk])
@@ -130,11 +134,11 @@ def ok(r, x, y, ang):
     v = ok_(r, x, y, ang)
     if v is True: return True
     REASON.update([v]); return False
-GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9)
+GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9, -0.1, -0.2, -0.3, -0.4)
 def cands(r):
     GAPS = GAPS0 + ((1.2, 1.6, 2.0, 2.5, 3.0) if FALLBACK else ())
     c = cour[r]; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; w, h = c[2] - c[0], c[3] - c[1]; L = len(r) * ADV; out = []
-    sl = lambda half: sorted([0.0] + [s * k * 0.25 for k in range(1, int(half / 0.25) + 2) for s in (1, -1)], key=abs)
+    sl = lambda half: sorted([0.0] + [s * k * 0.1 for k in range(1, int(half / 0.1) + 2) for s in (1, -1)], key=abs)
     for g in GAPS:
         for dx in sl(w / 2 + 1.0 + L / 2):
             if abs(dx) <= w / 2 + 1.0 + L / 2: out.append((0, 'above', cx + dx, c[3] + g + INK / 2, 0, g, abs(dx)))
@@ -147,7 +151,7 @@ def cands(r):
     for g in GAPS:
         for dy in sl(h / 2 + 1.0 + L / 2):
             if abs(dy) <= h / 2 + 1.0 + L / 2: out.append((2, 'east90', c[2] + g + INK / 2, cy + dy, 90, g, abs(dy))); out.append((2, 'west90', c[0] - g - INK / 2, cy + dy, 90, g, abs(dy)))
-    return sorted(out, key=lambda t: (t[0], t[5], t[6]))
+    return sorted(out, key=lambda t: (t[0], t[5] if t[5] >= 0 else 5 + abs(t[5]), t[6]))
 def first_ok(r, anchor=False):
     global RELAX
     RELAX = False
@@ -203,7 +207,11 @@ if RECT_MODE:
         if len(rs) > 1: OUTSEG[B] = OUTSEG[B] + [(q[0], q[1], q[2], q[1]) for q in rs[1:]] + [(q[2], q[1], q[2], q[3]) for q in rs[1:]] + [(q[0], q[3], q[2], q[3]) for q in rs[1:]] + [(q[0], q[1], q[0], q[3]) for q in rs[1:]]
     def cut(sg):
         out = []
-        obs = np.vstack([np.array(silk_fp).reshape(-1, 4), pads])
+        fb = []
+        for f in [q for q in os.environ.get('FORCE', '').split(',') if q]:      # a forced label breaks any edge it touches (0.2 clear each side)
+            rr_, fx_, fy_, fa_ = f.split(':'); fx_, fy_ = float(fx_), float(fy_); hl = len(rr_) * 0.45 + 0.2
+            fb.append((fx_ - 0.8, fy_ - hl, fx_ + 0.8, fy_ + hl) if int(fa_) == 90 else (fx_ - hl, fy_ - 0.8, fx_ + hl, fy_ + 0.8))
+        obs = np.vstack([np.array(silk_fp).reshape(-1, 4), pads] + ([np.array(fb)] if fb else []))
         for (a, d_, c, e) in sg:
             horiz = abs(d_ - e) < 1e-9; lo, hi = (min(a, c), max(a, c)) if horiz else (min(d_, e), max(d_, e)); fixed = d_ if horiz else a
             ivs = []
@@ -244,6 +252,8 @@ for r in BNC:
 # (2b) anchors inside the blocks (U, J501, TP): placed before the regions, which then take their labels in
 PRIO = [q for q in os.environ.get('PRIO', 'TP405').split(',') if q]
 blk_anch = sorted([r for r in ANCH if blk(r) is not None], key=lambda r: (0 if r in PRIO else 1, feas(r)))
+for f in [q for q in os.environ.get('FORCE', '').split(',') if q]:      # FORCE=REF:x:y:angle puts a label at a stated place the candidate grid cannot reach
+    rr, fx, fy, fa = f.split(':'); put(rr, (0, 'forced', float(fx), float(fy), int(fa), 0, 0)); blk_anch = [q for q in blk_anch if q != rr]
 run(blk_anch)
 # (2c) block names: one size, each at a corner of its block (the corners of its members' bounding box), the same corner wherever it fits
 SIZE = 1.2; NAMETXT = {'POWER': 'POWER', 'REFCAL': 'REF/CAL', 'AWG': 'AWG', 'CH1': 'CH1', 'CH2': 'CH2'}
