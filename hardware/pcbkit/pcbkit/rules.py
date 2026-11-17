@@ -750,6 +750,11 @@ def designator_findings(b, cfg, report=None):
     return close, over, far, len(box)
 
 
+def shares_baseline(ya0, ya1, yb0, yb1):
+    """two boxes are on one baseline: their vertical extents overlap by more than half of the smaller (the one-label rule; pcbkit.labels spaces labels by it too)"""
+    return min(ya1, yb1) - max(ya0, yb0) > 0.5 * min(ya1 - ya0, yb1 - yb0)
+
+
 def one_label_pairs(b, cfg, report=None):
     """[(refA, refB, gap)] pairs of visible designators that READ AS ONE LABEL: on a common baseline (the vertical extents of the two boxes overlap
     by more than half of the smaller one) and the horizontal gap under DESIGNATOR_GAP_ONE_LABEL (touching or overlapping included)."""
@@ -763,8 +768,7 @@ def one_label_pairs(b, cfg, report=None):
         for cn in names[i + 1:]:
             Bx = box[cn]
             dx = max(0.0, max(Bx[:, 0].min() - A[:, 0].max(), A[:, 0].min() - Bx[:, 0].max()))
-            ov = min(A[:, 1].max(), Bx[:, 1].max()) - max(A[:, 1].min(), Bx[:, 1].min())
-            if dx < lim and ov > 0.5 * min(np.ptp(A[:, 1]), np.ptp(Bx[:, 1])):
+            if dx < lim and shares_baseline(A[:, 1].min(), A[:, 1].max(), Bx[:, 1].min(), Bx[:, 1].max()):
                 out.append((a, cn, round(float(dx), 2)))
     return out
 
@@ -839,9 +843,15 @@ def two_way_test(b, cfg, report=None):
     for k, t in enumerate(b.t_text):
         if t in c.LABEL_TEXTS and c.LABEL_TEXTS[t] in solid:
             labels.setdefault(c.LABEL_TEXTS[t], []).append((float(b.t_x0[k]), float(b.t_y0[k]), float(b.t_x1[k]), float(b.t_y1[k])))
-    m = c.READ_MARGIN
-    eps = c.EPS                                                     # a distance passes when own + margin <= other + EPS
-    kinds = {r: _kind(r, c.SILK_REQUIRED_PREFIXES) for r in set(solid) | set(labels)}
+    return two_way_core(solid, labels, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, c.EPS)
+
+
+def two_way_core(solid, labels, prefixes, margin, eps):
+    """the two-way nearest test on boxes: `solid` {ref: [boxes]} (a part's body box and its pad boxes), `labels` {ref: [boxes]} (a part's label boxes; a BNC's designator and function text are
+    two boxes of one label), `prefixes` the anchor kinds (see _kind). Returns {ref: (own distance, step 1 failure, step 2 failure)} for every part that has a label. This is the one
+    implementation: `two_way_test` reads the boxes off a board, pcbkit.labels reads them off a proposed plan."""
+    m = margin
+    kinds = {r: _kind(r, prefixes) for r in set(solid) | set(labels)}
 
     def dsolid(p, bx):
         return min(_gap(bx, it) for it in solid[p]) if solid.get(p) else 9e9

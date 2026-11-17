@@ -248,3 +248,7 @@ three directions, the region rules); the owner's reading standard is the two-way
 `validate_names(labelboard, boxes, cfg, others)` and `validate_outline(labelboard, drawn_segments, cfg)` check the block names (one size, at a corner inside the rectangle or flush
 with a corner just outside, clear of bodies, pads, silk and labels) and the outline lines (every edge closed except at pad, footprint-silk or forced-label breaks, each break 0.2 mm
 clear, a shared line drawn once, no line across anything, none off the rectangles). A forced label may touch a line; only crossing it counts.
+
+Where the checks live: `pcbkit.rules` owns the two-way nearest test (`two_way_core` on boxes, `two_way_test` on a board) and the one-label rule (`shares_baseline`); `pcbkit.outlines` owns the region rule for a label
+(`label_region_findings`), the block-name check (`check_name_boxes`) and the outline-line check (`check_outline_lines`). `pcbkit.labels` places labels and calls them: `validate`, `validate_names`, `validate_outline` and
+`check_two_way` are thin callers, so the placer and the rules can never disagree about what reads.

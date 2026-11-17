@@ -49,9 +49,7 @@ TEXT_CLEAR                   default   0.4
 VIA_CLEAR                    default   None
 v2 approved labels 60 failing validate 1 | the placer's plan 70 labels, failing validate 0
   APPROVED J605 (95.2, 53.2, 0.0)
-        two-way, from the part: label fn_J301 is 0.545 mm from it, its own label 0.480 (needs +0.15)
-        two-way, from the part: label fn_J101 is 0.545 mm from it, its own label 0.480 (needs +0.15)
-        two-way, from the part: label fn_J201 is 0.545 mm from it, its own label 0.480 (needs +0.15)
+        two-way, from the part: label of J101 is 0.545 mm from it, its own label 0.480 (needs +0.15)
 v2 names placed {'POWER': 'TL', 'REFCAL': 'TL+', 'AWG': 'TL', 'CH1': 'TL', 'CH2': 'TL'} missing []
 v2 block names: approved failing [] | plan failing []
 v2 outline: approved problems 0 | plan problems 0

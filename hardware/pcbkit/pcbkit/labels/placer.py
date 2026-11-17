@@ -13,6 +13,7 @@ marks with a default."""
 import collections
 import re
 from . import _g as G
+from .. import outlines, rules
 
 
 from ..config import ConfigError, declare, check_names, EPS_DEFAULT      # one error class and one typo guard for the package
@@ -81,11 +82,7 @@ def block_of(cfg, ref):
 
 def kind_of(cfg, ref):
     """the anchor kind (the longest matching SILK_REQUIRED_PREFIXES entry) or 'P' for a passive"""
-    best = ''
-    for p in cfg.SILK_REQUIRED_PREFIXES:
-        if ref.startswith(p) and len(p) > len(best):
-            best = p
-    return best or 'P'
+    return rules._kind(ref, cfg.SILK_REQUIRED_PREFIXES)
 
 
 def lab_box(cfg, ref, x, y, ang):
@@ -104,9 +101,7 @@ def text_box(cfg, s, x, y, ang):
 
 def clash(cfg, L, B, name=False):
     """spacing between two labels: DESIGNATOR_GAP_ONE_LABEL when they share a baseline (overlap in y > half the shorter), LABEL_GAP otherwise"""
-    vo = min(L[3], B[3]) - max(L[1], B[1])
-    sm = min(L[3] - L[1], B[3] - B[1])
-    mx = cfg.DESIGNATOR_GAP_ONE_LABEL if (vo > 0.5 * sm and not name) else cfg.LABEL_GAP      # the one-label rule is about two designators reading as one; a block name is not one
+    mx = cfg.DESIGNATOR_GAP_ONE_LABEL if (rules.shares_baseline(L[1], L[3], B[1], B[3]) and not name) else cfg.LABEL_GAP      # the one-label rule is about two designators reading as one; a block name is not one
     e = cfg.EPS
     return B[0] - mx + e < L[2] and L[0] < B[2] + mx - e and B[1] - cfg.LABEL_GAP + e < L[3] and L[1] < B[3] + cfg.LABEL_GAP - e
 
@@ -177,21 +172,14 @@ class _P:
         return True
 
     def region(s, ref, L, where):
-        rects = s.rects
-        blk = block_of(s.c, ref)
+        rects, c = s.rects, s.c
+        blk = block_of(c, ref)
         if not rects or blk not in rects:
             return True              # a part of no block (an edge part): its label may lie in any rectangle when the two-way test passes (owner's delegate, 2026-11-17)
-        p = s.parts[ref]
-        stray = ref in s.c.OUTLINE_STRAYS
-        own_in = blk in rects and (not stray and any(G.in_box((p.x, p.y), q) for q in rects[blk]))
-        ctr = G.centre(L)
-        if stray and blk in rects:                  # a named stray: its label inside its own block's rectangle, or at least in no other block's
-            return G.covered(G.grow(L, s.c.REGION_MARGIN - s.c.EPS), rects[blk]) or not any(G.in_box(ctr, q) for k, v in rects.items() if k != blk for q in v)
-        if where == 'out':
-            return not any(G.in_box(ctr, q) for v in rects.values() for q in v)
-        if own_in:
-            return G.covered(G.grow(L, s.c.REGION_MARGIN - s.c.EPS), rects[blk])
-        return not any(G.in_box(ctr, q) for v in rects.values() for q in v)
+        pt = s.parts[ref]
+        if where == 'out' and ref not in c.OUTLINE_STRAYS:      # the outside tier: in no block's rectangle at all
+            return not any(G.in_box(G.centre(L), q) for v in rects.values() for q in v)
+        return outlines.label_region_ok(L, (pt.x, pt.y), blk, rects, c.OUTLINE_STRAYS, ref, c.REGION_MARGIN, c.EPS, s.anchor(ref), False)
 
     def static(s, ref, x, y, ang, test, where):
         c = s.c
@@ -342,33 +330,9 @@ def check_two_way(lb, labels, cfg, keys=None):
     label). From the label: its own part is nearer than any other comparable part by READ_MARGIN. From the part: its own label is nearer than any other comparable
     label. Returns {ref: (step1 failure or None, step2 failure or None)} for failing parts only."""
     c = Cfg(cfg, NEEDS['check_two_way'])
-    m = c.READ_MARGIN
-    solid = {r: (p.solid() or ([p.cour] if p.cour else [])) for r, p in lb.parts.items()}
-    kind = lambda r: kind_of(c, r)
-
-    def ds(p, bx):
-        return min(G.gap(bx, it) for it in solid[p]) if solid.get(p) else 9e9
-    bad = {}
-    for p, bxs in labels.items():
-        if p not in solid:
-            continue
-        own = min(ds(p, bx) for bx in bxs)
-        s1 = s2 = None
-        for q in solid:
-            if q == p or (kind(p) != 'P' and kind(q) != kind(p)):
-                continue
-            dq = min(ds(q, bx) for bx in bxs)
-            if own + m > dq and (s1 is None or dq - own < s1[0]):
-                s1 = (dq - own, q)
-        for o, oxs in labels.items():
-            if o == p or o not in solid or (kind(p) != 'P' and kind(o) != kind(p)):
-                continue
-            do = min(ds(p, bx) for bx in oxs)
-            if own + m > do and (s2 is None or do - own < s2[0]):
-                s2 = (do - own, o)
-        if s1 or s2:
-            bad[p] = (s1, s2)
-    return bad
+    solid = {r: (pt.solid() or ([pt.cour] if pt.cour else [])) for r, pt in lb.parts.items()}
+    res = rules.two_way_core(solid, {r: b for r, b in labels.items() if r in solid}, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, c.EPS)      # the one implementation, pcbkit.rules
+    return {r: ((s1[0], s1[1]) if s1 else None, (s2[0], s2[1]) if s2 else None) for r, (own, s1, s2) in res.items() if s1 or s2}
 
 
 def validate(lb, plan, cfg, skip=()):
@@ -420,36 +384,19 @@ def validate(lb, plan, cfg, skip=()):
         for q, B in s.placed.items():
             if owner_of(q) != r and clash(c, L, B, q.startswith('name_')):
                 why.append('label %s: %.3f mm' % (q, G.gap(L, B)))
-        for q, B in s.placed.items():
-            o = owner_of(q)
-            if o == r or o not in s.parts:
-                continue
-            if s.comparable(r, o) and s.dsolid(r, B) < d_own + c.READ_MARGIN - e:
-                why.append('two-way, from the part: label %s is %.3f mm from it, its own label %.3f (needs +%.2f)' % (q, s.dsolid(r, B), d_own, c.READ_MARGIN))
-            if s.comparable(o, r) and s.dsolid(o, L) < (9e9 if s.own_label_dist(o) is None else s.own_label_dist(o)) + c.READ_MARGIN - e:
-                why.append('two-way, from %s: this label is %.3f mm from %s, its own label %.3f (needs +%.2f)' % (o, s.dsolid(o, L), o, s.own_label_dist(o), c.READ_MARGIN))
-        for o, pt in s.parts.items():                       # from the label: the own part nearer than any other comparable part
-            if o != r and s.comparable(r, o):
-                d_o = s.dsolid(o, L)
-                if d_o < d_own + c.READ_MARGIN - e:
-                    why.append('two-way, from the label: part %s is %.3f mm from it, its own part %.3f (needs +%.2f)' % (o, d_o, d_own, c.READ_MARGIN))
-        blk = block_of(c, r)
-        if s.rects:
-            pt = s.parts[r]
-            stray = r in c.OUTLINE_STRAYS
-            own_in = blk in s.rects and (not stray and any(G.in_box((pt.x, pt.y), q) for q in s.rects[blk]))
-            if stray and blk in s.rects:
-                if not (G.covered(G.grow(L, c.REGION_MARGIN - e), s.rects[blk]) or not any(G.in_box(G.centre(L), q) for k2, v in s.rects.items() if k2 != blk for q in v)):
-                    why.append('label of a stray inside another block\'s rectangle')
-            elif own_in:
-                inside = G.covered(G.grow(L, c.REGION_MARGIN - e), s.rects[blk])
-                outside = not any(G.in_box(G.centre(L), q) for v in s.rects.values() for q in v)
-                if not (inside or (outside and s.anchor(r))):          # an anchor may sit just outside every rectangle when none has room (the 'out' tiers)
-                    why.append('not inside its block %s rectangle%s' % (blk, '' if s.anchor(r) else ' (a passive has no outside tier)'))
-            elif blk in s.rects:
-                for k2, rs2 in s.rects.items():
-                    if any(G.in_box(G.centre(L), q) for q in rs2):
-                        why.append('label centre inside block %s rectangle, the part is in none of its own' % k2)
+        pt = s.parts[r]
+        why += outlines.label_region_findings(L, (pt.x, pt.y), block_of(c, r), s.rects, c.OUTLINE_STRAYS, r, c.REGION_MARGIN, e, s.anchor(r), True)
         if why:
             out[r] = why
+    labels = {r: [lab_box(c, r, *pl)] for r, pl in plan.items() if pl and r in s.parts}
+    for key, box in lb.fixed.items():
+        if key.startswith('fn_') and key[3:] in s.parts:
+            labels.setdefault(key[3:], []).append(box)
+    for p_, (own, s1, s2) in rules.two_way_core(s.solid, labels, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, e).items():
+        if p_ in skip:
+            continue
+        if s1:
+            out.setdefault(p_, []).append('two-way, from the label: part %s is %.3f mm from it, its own part %.3f (needs +%.2f)' % (s1[1], s1[3], s1[2], c.READ_MARGIN))
+        if s2:
+            out.setdefault(p_, []).append('two-way, from the part: label of %s is %.3f mm from it, its own label %.3f (needs +%.2f)' % (s2[1], s2[3], s2[2], c.READ_MARGIN))
     return out

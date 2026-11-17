@@ -1,0 +1,8 @@
+killed    two_way_step2_dropped
+killed    outline_break_clearance
+killed    outline_crossing_unseen
+killed    anchor_kinds_ignored
+killed    baseline_threshold
+killed    stray_rule_dropped
+killed    two_way_ignores_the_margin
+killed    edge_part_not_free

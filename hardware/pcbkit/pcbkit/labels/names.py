@@ -6,6 +6,7 @@ Names: BLOCK_NAMES (block -> text), NAME_SIZE (1.2), OUTLINE, NAME_AREA (box the
 NAME_REACH (12 mm search distance from the corner), NAME_STEP (0.25)."""
 from . import _g as G
 from .placer import Cfg, NEEDS, lab_box, clash
+from .. import outlines
 
 CORNERS = ('TL', 'TR', 'BL', 'BR')
 
@@ -81,44 +82,10 @@ def place_names(lb, cfg, placed):
 
 
 def validate_names(lb, boxes, cfg, others=None):
-    """{block: [failing terms]} for the name boxes `boxes` {block: box}: one size (the box height is the NAME_SIZE ink height), at a corner of the block's first rectangle
-    (inside it, or just outside flush with the corner, NAME_OUTSIDE_GAPS), clear of bodies, pads and silk, of the other labels in `others`, and inside the area."""
+    """{block: [failing terms]} for the name boxes `boxes` {block: box}; the check is pcbkit.outlines.check_name_boxes"""
     c = Cfg(cfg, NEEDS['validate_names'])
     rects = {k: [tuple(q) for q in v] for k, v in c.OUTLINE.items()}
     area = c.NAME_AREA or c.LABEL_AREA or lb.edge
-    bodies = [p.body for p in lb.parts.values() if p.body]
-    pads = [b for p in lb.parts.values() for b in p.pads]
-    out = {}
-    e = c.EPS
-    for blk, t in boxes.items():
-        why = []
-        rr = rects[blk][0]
-        hh = c.DESIGNATOR_INK_H * c.NAME_SIZE
-        if abs((t[3] - t[1]) - hh) > 0.05:
-            why.append('size: box height %.3f, one size means %.3f' % (t[3] - t[1], hh))
-        inside = G.covered(G.grow(t, c.REGION_MARGIN - e), rects[blk])
-        flush_gap = None
-        for k in CORNERS:
-            x_flush = abs(t[0] - rr[0]) if k[1] == 'L' else abs(t[2] - rr[2])
-            vgap = (t[1] - rr[3]) if k[0] == 'T' else (rr[1] - t[3])
-            if x_flush <= 0.1 and -e <= vgap <= max(c.NAME_OUTSIDE_GAPS) + 0.1:
-                flush_gap = vgap
-        if not inside and flush_gap is None:
-            why.append('neither inside the rectangle of %s nor flush with a corner just outside it' % blk)
-        if inside:                                               # a corner: the nearest rectangle corner is within NAME_CORNER_MAX (manhattan, box corner to corner)
-            d = min(abs((t[0] if k[1] == 'L' else t[2]) - (rr[0] if k[1] == 'L' else rr[2])) + abs((t[3] if k[0] == 'T' else t[1]) - (rr[3] if k[0] == 'T' else rr[1])) for k in CORNERS)
-            if d > c.NAME_CORNER_MAX:
-                why.append('%.2f mm from the nearest corner (at most %.1f)' % (d, c.NAME_CORNER_MAX))
-        if area and (t[0] < area[0] + c.EDGE_CLEAR - e or t[2] > area[2] - c.EDGE_CLEAR + e or t[1] < area[1] + c.EDGE_CLEAR - e or t[3] > area[3] - c.EDGE_CLEAR + e):
-            why.append('outside the name area')
-        for nm, lst, m in (('body', bodies, c.NAME_CLEAR_BODY), ('pad', pads, c.NAME_CLEAR_PAD), ('silk', lb.silk, c.NAME_CLEAR_SILK)):
-            for b in lst:
-                if G.near(t, b, m - e):
-                    why.append('%s %.3f mm (needs %.2f)' % (nm, G.gap(t, b), m))
-                    break
-        for q, B in (others or {}).items():
-            if clash(c, t, B, True):
-                why.append('label %s %.3f mm' % (q, G.gap(t, B)))
-        if why:
-            out[blk] = why
-    return out
+    return outlines.check_name_boxes(boxes, rects, area, [p.body for p in lb.parts.values() if p.body], [b for p in lb.parts.values() for b in p.pads], lb.silk, others,
+                                     c.DESIGNATOR_INK_H * c.NAME_SIZE, c.EDGE_CLEAR, c.REGION_MARGIN, c.EPS, c.NAME_CLEAR_BODY, c.NAME_CLEAR_PAD, c.NAME_CLEAR_SILK,
+                                     c.NAME_OUTSIDE_GAPS, c.NAME_CORNER_MAX, lambda t, B: clash(c, t, B, True))
