@@ -187,6 +187,7 @@ class Router:
             if hasattr(board.GetNetInfo(), 'NetsByName') else None
 
     narrow = False      # set while retrying a supply connection at signal width
+    forbid = {}
 
     def width(self, net):
         return W_PWR if (self.names[net].lstrip('/') in POWER and not self.narrow) else W_SIG
@@ -233,6 +234,8 @@ class Router:
         for L in (0, 1):
             h = g.halo[L].reshape(g.ny, nx)[iy1:iy2 + 1, ix1:ix2 + 1]
             ok = (h == 0) | (h == net)
+            fb = self.forbid.get(net)
+            if fb is not None: ok = ok & ~fb.reshape(g.ny, nx)[iy1:iy2 + 1, ix1:ix2 + 1]
             lg = box_all(ok, kw) if kw else ok
             leg.append(bytes(lg.ravel().astype(np.uint8)) if (L == 0 or ALLOW_BOTTOM) else bytes(lg.size))
             pc = g.padcu[L].reshape(g.ny, nx)[iy1:iy2 + 1, ix1:ix2 + 1]
@@ -437,12 +440,42 @@ class Job:
             if pd[2]:
                 self.bynet.setdefault(pd[2], []).append(pd)
 
+    def forbid_masks(self, g):
+        """per-net cells a route may not enter: sensitive nets stay 10 mm from U401 and C409 (LR-5); SDA and SCL stay out of every
+        courtyard but those of the parts they connect (LR-9)"""
+        SENS = ('A0', 'A1', 'VREF', 'TAP', 'SNS', 'AWG_BNC', 'ADS_', 'CH1_N', 'CH2_N')
+        boxes = {}
+        for f in self.board.GetFootprints():
+            bb = f.GetCourtyard(pcb.F_CrtYd).BBox()
+            if bb.GetWidth() > 0:
+                boxes[f.GetReference()] = (mm(bb.GetLeft()), mm(bb.GetTop()), mm(bb.GetRight()), mm(bb.GetBottom()))
+        m_sens = np.zeros(g.nx * g.ny, np.bool_)
+        for r in ('U401', 'C409'):
+            x1, y1, x2, y2 = boxes[r]; m_sens[g.rect_cells(x1 - 10, y1 - 10, x2 + 10, y2 + 10)] = True
+        out = {}
+        owners = {}
+        for f in self.board.GetFootprints():
+            for p in f.Pads():
+                owners.setdefault(str(p.GetNetname()), set()).add(f.GetReference())
+        for name, nid in self.netid.items():
+            base = name.lstrip('/')
+            if any(base.startswith(k) for k in SENS) and base not in HIZ:
+                out[nid] = m_sens
+            elif base in ('SDA', 'SCL'):
+                m = np.zeros(g.nx * g.ny, np.bool_)
+                for r, (x1, y1, x2, y2) in boxes.items():
+                    if r in owners.get(name, ()) or r.startswith(('MH', 'J')): continue
+                    m[g.rect_cells(x1 - 0.3, y1 - 0.3, x2 + 0.3, y2 + 0.3)] = True
+                out[nid] = m
+        return out
+
     def rebuild(self):
         g = Grid(self.board)
         self.pads = build_obstacles(self.board, g, self.netid)
         self.escapes(g)
         self.g = g
         self.r = Router(self.board, g, self.netid)
+        self.r.forbid = self.forbid_masks(g)
         for pid, real in self.canon.items():
             self.r.names[pid] = self.names[real]
         self.r.routes = self.routes
@@ -752,8 +785,14 @@ def route(board):
     import time
     t0 = time.time()
     job = Job(board)
-    nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1),
-                              key=lambda n: (job.names[n].lstrip('/') not in HIZ | {'CH1_OUT', 'CH2_OUT'}, job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
+    _mode = os.environ.get('ORDERMODE', '')
+    _first = [x for x in os.environ.get('FIRSTNETS', '').split(',') if x]
+    def _key(n):
+        nm = job.names[n].lstrip('/')
+        hz = nm in HIZ | {'CH1_OUT', 'CH2_OUT'}
+        if _mode == 'long': return (nm not in _first, not hz, -job.span(n), nm)
+        return (nm not in _first, not hz, nm not in POWER, job.span(n), nm)
+    nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1), key=_key)
     ONLY = os.environ.get('ONLYNETS')
     if ONLY:
         keep = {x for x in ONLY.split(',')}
