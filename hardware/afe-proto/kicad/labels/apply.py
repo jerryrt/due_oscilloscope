@@ -24,5 +24,27 @@ def sub(m):
         return f'{m.group(1)}(at {m.group(3)}){m.group(4)}(layer "{layer}")'
     return f'{m.group(1)}(at {at}){m.group(4)}(layer "{layer}")'
 res = pat.sub(sub, src)
+extra_p = plan_p.replace('.json', '_extra.json')
+if os.path.exists(extra_p):
+    import uuid
+    ex = json.load(open(extra_p)); kx = lambda x: round(x + 50.0, 4); ky = lambda y: round(150.0 - y, 4)
+    for name, v in ex['names'].items():                    # block names: one size, moved to their corner
+        if v is None: continue
+        m = re.search(r'\(gr_text "%s"\s*\(at [-\d.]+ [-\d.]+ [-\d.]+\)' % re.escape(name), res)
+        assert m, name
+        end = res.index('\n\t)\n', m.start())
+        blk = res[m.start():end]
+        blk = re.sub(r'\(at [-\d.]+ [-\d.]+ ([-\d.]+)\)', lambda q: '(at %s %s %s)' % (kx(v[0]), ky(v[1]), q.group(1)), blk, 1)
+        blk = re.sub(r'\(size [-\d.]+ [-\d.]+\)', '(size %g %g)' % (v[2], v[2]), blk, 1)
+        blk = re.sub(r'\(thickness [-\d.]+\)', '(thickness 0.2)', blk, 1)
+        res = res[:m.start()] + blk + res[end:]
+    add = ''
+    for text, (x, y) in ex['bncfn'].items():               # the BNC function labels, outside the bodies
+        add += '\t(gr_text "%s"\n\t\t(at %s %s 0)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1 1)\n\t\t\t\t(thickness 0.15)\n\t\t\t)\n\t\t\t(justify left)\n\t\t)\n\t)\n' % (text, kx(x), ky(y), uuid.uuid4())
+    for blk, segs in ex['outline'].items():                # each block's full outline
+        for x0, y0, x1, y1 in segs:
+            add += '\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)\n' % (kx(x0), ky(y0), kx(x1), ky(y1), uuid.uuid4())
+    k = res.rindex('\t(embedded_fonts')
+    res = res[:k] + add + res[k:]
 open(out, 'w').write(res)
 print('spliced', sum(1 for m in pat.finditer(src) if m.group(2) in plan), 'designators')
