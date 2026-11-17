@@ -41,8 +41,9 @@ def footprint_silk(pb):
                 for a, c in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): out.append(('seg', *a, *c, w))
     return out
 SILK_CLEAR = 0.2
-def on_silk(sb, shapes):
-    g = (sb[0] - SILK_CLEAR, sb[1] - SILK_CLEAR, sb[2] + SILK_CLEAR, sb[3] + SILK_CLEAR)
+def on_silk(sb, shapes, clr=None):
+    c_ = SILK_CLEAR if clr is None else clr
+    g = (sb[0] - c_, sb[1] - c_, sb[2] + c_, sb[3] + c_)
     return any(S._on_shape(g, sh) for sh in shapes)
 
 board_silk = list(silk)                                          # the outline lines and other board-level silk, without the footprints' own
@@ -62,7 +63,8 @@ for f in pb.GetFootprints():                                     # the F.Fab out
 pads = [(x0, y0, x1, y1) for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
 owner = [refs[int(f)] for f in b.p_fp]
 vias = [(x - d / 2 - S.VIA_CLEAR, y - d / 2 - S.VIA_CLEAR, x + d / 2 + S.VIA_CLEAR, y + d / 2 + S.VIA_CLEAR) for x, y, d in zip(b.v_x, b.v_y, b.v_drill)]
-texts = [(lambda L: (x - L / 2, y - L / 2, x + L / 2, y + L / 2))(max(len(t.decode() if isinstance(t, bytes) else t) * 0.95 * h, h)) for t, x, y, h in zip(b.t_text, b.t_x, b.t_y, b.t_h)]   # pin labels may be turned: a square of the longer side
+LEFT_JUSTIFIED = {m_.group(1) for m_ in re.finditer(r'\(gr_text "([^"]+)"(?:(?!\n\t\)).)*?\(justify left\)', txt, re.S)}       # a left-justified text starts at its position
+texts = [(lambda L, xc: (xc - L / 2, y - L / 2, xc + L / 2, y + L / 2))(max(len(t.decode() if isinstance(t, bytes) else t) * 0.95 * h, h), x + (max(len(t.decode() if isinstance(t, bytes) else t) * 0.95 * h, h) / 2 if (t.decode() if isinstance(t, bytes) else t) in LEFT_JUSTIFIED else 0.0)) for t, x, y, h in zip(b.t_text, b.t_x, b.t_y, b.t_h)]   # pin labels may be turned: a square of the longer side
 BNC = ('J101', 'J201', 'J301')
 H = 1.0
 ADV_L, H_L = C.DESIGNATOR_ADVANCE, C.DESIGNATOR_INK_H
@@ -179,13 +181,13 @@ def relaxed_static(r, kind, x, y, need_inside=True, clean=True):
 
 
 class Cand:
-    __slots__ = ('kind', 'x', 'y', 'lb', 'pl', 'rank', 'relaxed')
-    def __init__(s, kind, x, y, lb, pl, rank, relaxed=False): s.kind, s.x, s.y, s.lb, s.pl, s.rank, s.relaxed = kind, x, y, lb, pl, rank, relaxed
+    __slots__ = ('kind', 'x', 'y', 'lb', 'pl', 'rank', 'relaxed', 'gown')
+    def __init__(s, kind, x, y, lb, pl, rank, relaxed=False, gown=0.0): s.kind, s.x, s.y, s.lb, s.pl, s.rank, s.relaxed, s.gown = kind, x, y, lb, pl, rank, relaxed, gown
 
 
 def make(r, kind, x, y, relaxed=False):
-    ang = ang_of(kind)
-    return Cand(kind, x, y, lbox(r, x, y, ang), frozenset(o for o, c in cour.items() if o != r and S._places(sbox(r, x, y, ang), c)), ORDER.index(kind), relaxed)
+    ang = ang_of(kind); lb_ = lbox(r, x, y, ang)
+    return Cand(kind, x, y, lb_, frozenset(o for o, c in cour.items() if o != r and S._places(sbox(r, x, y, ang), c)), ORDER.index(kind), relaxed, lgap(lb_, cour[r]) if r in cour else 0.0)
 
 
 PASSIVE = re.compile(r'(?:R|C|BR|L|FB)(\d)\d\d$')
@@ -199,12 +201,18 @@ for a_ in pl_:
             rowmates[a_].add(c_); rowmates[c_].add(a_)
 
 
-def pair_ok(r, c, o, oc, gap=GAP_MIN):
-    if lgap(c.lb, oc.lb) < gap - 1e-9: return False
-    if c.kind in BES and r in oc.pl: return False                 # 3b: another label where this part's own would be read
-    if oc.kind in BES and o in c.pl: return False
-    if o in rowmates.get(r, ()) and abs(c.y - oc.y) > 0.04: return False          # D31: one label line per row
-    return True
+def lab_clash(L, B):
+    """AFE-1's label spacing: 0.6 mm between two labels that share a baseline, 0.2 mm otherwise"""
+    vo = min(L[3], B[3]) - max(L[1], B[1]); sm = min(L[3] - L[1], B[3] - B[1])
+    mx = 0.6 if vo > 0.5 * sm else 0.2
+    return B[0] - mx < L[2] and L[0] < B[2] + mx and B[1] - 0.2 < L[3] and L[1] < B[3] + 0.2
+
+
+def pair_ok(r, c, o, oc, gap=None):
+    """no clash, and no stacking: each label's own part is nearer than the other label, by 0.15 mm (the owner's "reads without doubt" test)"""
+    if lab_clash(c.lb, oc.lb): return False
+    d = lgap(c.lb, oc.lb)
+    return d > c.gown + 0.15 and d > oc.gown + 0.15
 
 
 def is_mh(r): return re.fullmatch(r'MH\d+', r) is not None
@@ -308,7 +316,7 @@ def bnc_ok(dx, dy, fx):
             dist_own = lgap(bx, bods[r])
             if any(dist_own >= lgap(bx, bods[q]) for q in BNC if q != r): return False
             if any(lgap((bx[0], bx[1], bx[2], bx[3]), oc.lb) < 0.5 for oc in list(P.values()) + list(fixed.values())): return False
-        if any(lgap(lbox(r, ox + dx, oy + dy), oc.lb) < GAP_MIN for oc in list(P.values()) + list(fixed.values())): return False
+        if any(lab_clash(lbox(r, ox + dx, oy + dy), oc.lb) for oc in list(P.values()) + list(fixed.values())): return False
         if lgap(db, fb) < 0.4: return False
     return True
 best_b = None
@@ -330,36 +338,91 @@ if best_b:
 else:
     for r in BNC: anchor_note[r] = None
 
-# ---- passives: most constrained first, restarts
+# ---- passives (round 4): AFE-1's tests (kicad/labels/place3.py), first fit in AFE-1's candidate order, most constrained first, random restarts
+GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9, -0.1, -0.2, -0.3, -0.4)               # label to own courtyard; negative = over its own courtyard's edge
+bx0b, by0b, bx1b, by1b = float(b.outline[:, 0].min()), float(b.outline[:, 1].min()), float(b.outline[:, 0].max()), float(b.outline[:, 1].max())
+own_solid = {}
+for r in passives:
+    bxs = [p for p, o in zip(pads, owner) if o == r] + ([body[r]] if body.get(r) else [])
+    own_solid[r] = (min(q[0] for q in bxs), min(q[1] for q in bxs), max(q[2] for q in bxs), max(q[3] for q in bxs))
+oth_bodies = {r: [(k, bd) for k, bd in body.items() if k != r and bd is not None] for r in passives}
+pad_arr = np.array(pads).reshape(-1, 4); via_arr = np.array(vias).reshape(-1, 4) if vias else np.zeros((0, 4))
+
+
+def pcands(r):
+    c = cour[r]; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; w_, h_ = c[2] - c[0], c[3] - c[1]; L = len(r) * ADV_L; out = []
+    sl = lambda half: sorted([0.0] + [sg * k * 0.1 for k in range(1, int(half / 0.1) + 2) for sg in (1, -1)], key=abs)
+    for g in GAPS0:
+        for dx in sl(w_ / 2 + 1.0 + L / 2):
+            if abs(dx) <= w_ / 2 + 1.0 + L / 2: out.append((0, 'above', cx + dx, c[3] + g + H_L / 2, g, abs(dx)))
+    for g in GAPS0:
+        for dy in sl(h_ / 2 + 1.0):
+            if abs(dy) <= h_ / 2 + 0.5: out.append((1, 'east0', c[2] + g + L / 2, cy + dy, g, abs(dy))); out.append((1, 'west0', c[0] - g - L / 2, cy + dy, g, abs(dy)))
+    for g in GAPS0:
+        for dx in sl(w_ / 2 + 1.0 + L / 2):
+            if abs(dx) <= w_ / 2 + 1.0 + L / 2: out.append((1.5, 'below', cx + dx, c[1] - g - H_L / 2, g, abs(dx)))
+    for g in GAPS0:
+        for dy in sl(h_ / 2 + 1.0 + L / 2):
+            if abs(dy) <= h_ / 2 + 1.0 + L / 2: out.append((2, 'east90', c[2] + g + H_L / 2, cy + dy, g, abs(dy))); out.append((2, 'west90', c[0] - g - H_L / 2, cy + dy, g, abs(dy)))
+    return [(k, x, y) for _, k, x, y, _, _ in sorted(out, key=lambda t: (t[0], t[4] if t[4] >= 0 else 5 + abs(t[4]), t[5]))]
+
+
+def ovl_any(L, A, m):
+    return bool(len(A)) and bool(((L[0] - m < A[:, 2]) & (A[:, 0] - m < L[2]) & (L[1] - m < A[:, 3]) & (A[:, 1] - m < L[3])).any())
+
+
+def passive_fails(r, kind, x, y, stop=2):
+    """the static tests (AFE-1's) a place fails, by name; stops after `stop` failures"""
+    ang = ang_of(kind); L = lbox(r, x, y, ang); t = sbox(r, x, y, ang); f = []
+    if L[0] < bx0b + 0.4 or L[2] > bx1b - 0.4 or L[1] < by0b + 0.4 or L[3] > by1b - 0.4: f.append('board edge')
+    sol = own_solid[r]
+    if lgap(L, sol) < 0.05: f.append('own part body/pads')
+    if len(f) < stop and any(S._overlap(t, bd) for _, bd in oth_bodies[r]): f.append('on another part body')
+    if len(f) < stop:
+        own_ = lgap(t, body[r]) if body.get(r) else 0.0
+        if any(lgap(t, bd) - own_ < 0.25 for _, bd in oth_bodies[r]): f.append('own body not nearer by 0.25 mm')
+    if len(f) < stop and (ovl_any(L, pad_arr, 0.10) or ovl_any(L, via_arr, 0.10)): f.append('pad or via')
+    if len(f) < stop and on_silk(t, silk, 0.15): f.append('silk line or outline')
+    if len(f) < stop and any(lgap(L, tx) < 0.4 for tx in texts): f.append('board text / pin label')
+    if len(f) < stop and not inside_blk(t, r): f.append('outside own block outline')
+    return f
+
+
+REASON1 = collections.Counter(); SOLE = collections.defaultdict(collections.Counter)
 base = {}
 for r in passives:
     cs = []
-    for kind in ORDER:
-        for x, y in slide_cands(r, kind):
-            if strict_static(r, kind, x, y, passive=True): cs.append(make(r, kind, x, y))
+    for kind, x, y in pcands(r):
+        fl = passive_fails(r, kind, x, y)
+        if not fl: cs.append(make(r, kind, x, y))
+        else:
+            REASON1[fl[0]] += 1
+            if len(fl) == 1: SOLE[r][fl[0]] += 1
     base[r] = cs
 fixed_all = dict(P); fixed_all.update(fixed)
 start = {r: [c for c in cs if all(pair_ok(r, c, o, oc) for o, oc in fixed_all.items())] for r, cs in base.items()}
 rng = random.Random(7); best = None; t0 = time.time(); it = 0
 while time.time() - t0 < SECS:
     it += 1
-    live = {r: list(c) for r, c in start.items()}; got = {}
-    noise = 0.0 if it == 1 else rng.random() * 2.0
-    while live:
-        r = min(live, key=lambda q: (len(live[q]) + rng.random() * noise, q))
-        cs = live.pop(r)
-        if not cs: continue
-        pick = cs[0] if it == 1 or rng.random() < 0.5 else cs[min(len(cs) - 1, int(rng.random() ** 2 * len(cs)))]
-        got[r] = pick
-        for q in live: live[q] = [c for c in live[q] if pair_ok(q, c, r, pick)]
+    noise = 0.0 if it == 1 else rng.random() * 40.0
+    order = sorted(passives, key=lambda q: (len(start[q]) + rng.random() * noise, q)); got = {}
+    for r in order:
+        for c in start[r]:
+            if all(pair_ok(r, c, q, pc) for q, pc in got.items()): got[r] = c; break
     score = (len(got), -sum(c.rank for c in got.values()))
     if best is None or score > best[0]: best = (score, got); print('restart', it, 'labelled', score[0], 'rank sum', -score[1], round(time.time() - t0), flush=True)
 for r, c in best[1].items(): P[r] = c
 dropped = sorted(set(passives) - set(best[1]))
+tests_report = {'candidates failing first at each test': dict(REASON1),
+                'passives with no static place at all': sorted(r for r in passives if not base[r]),
+                'dropped with static places but lost to label spacing or stacking': sorted(r for r in dropped if start[r]),
+                'dropped with no static place, by the single test whose removal alone would give a place': dict(collections.Counter(t for r in dropped if not base[r] for t in SOLE[r])),
+                'dropped passives for which that test alone is the blocker (any place)': {t: sum(1 for r in dropped if not base[r] and SOLE[r].get(t)) for t in set(t for r in dropped for t in SOLE[r])}}
+print('TESTS', json.dumps(tests_report))
 
 beside = sorted(r for r, c in P.items() if c.kind in ('east0', 'west0'))
 plan = {'placed': {r: [c.kind, c.x, c.y, 'relaxed' if c.relaxed else 'strict'] for r, c in P.items()}, 'dropped': dropped, 'beside': beside, 'east_end': [],
-        'anchors': anchor_note, 'blocked': blocked, 'bnc': bnc_info, 'kinds': dict(collections.Counter(c.kind for c in P.values())), 'iterations': it}
+        'anchors': anchor_note, 'blocked': blocked, 'bnc': bnc_info, 'tests': tests_report, 'kinds': dict(collections.Counter(c.kind for c in P.values())), 'iterations': it}
 json.dump(plan, open(plan_out, 'w'), indent=1)
 print('anchors:', anchor_note)
 print('bnc:', bnc_info)
@@ -392,6 +455,8 @@ if bnc_info['found']:
     for r, lab in BNC_FUN.items():
         fx_, fy_ = bnc_info['function_at'][r]
         g = re.search(r'\(gr_text "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)' % re.escape(lab), t)
-        t = t[:g.start(1)] + '%.3f %.3f 0' % (fx_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
+        gtxt = t[g.start():g.start() + 600].split('\n\t)')[0]
+        fxs_ = fx_ - len(lab) * S.CHAR_ADV / 2 if '(justify left)' in gtxt else fx_            # a left-justified text starts at its position
+        t = t[:g.start(1)] + '%.3f %.3f 0' % (fxs_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
 open(out, 'w').write(t)
 print('wrote', out)

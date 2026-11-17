@@ -96,13 +96,14 @@ t_ = txt
 for t, v in placed.items():
     if not v and t == 'REF / CAL':                              # owner: above the top-left corner of its rectangle, touching it (0.3 mm clear of the line)
         x0_, y0_, x1_, y1_ = max(RECTS['REFCAL'], key=lambda r: (r[2] - r[0]) * (r[3] - r[1])); L_ = len(t) * 0.95 * SIZE
-        v = ('above the NW corner', (round(x0_ + L_ / 2, 3), round(y1_ + 0.075 + 0.3 + SIZE * 0.5, 3))); report['placed'][t] = ['above NW corner', list(v[1])]
+        v = ('above the NW corner', (round(x0_ + L_ / 2, 3), round(y1_ + 1.25, 3))); report['placed'][t] = ['above NW corner', list(v[1])]
     if not v:
         mm_ = re.search(r'\(gr_text "%s"\s+\(at ([-\d.]+) ([-\d.]+)' % re.escape(t), t_); v = ('kept', (float(mm_.group(1)) - 50.0, 150.0 - float(mm_.group(2))))
     (x, y) = v[1][0], v[1][1]
     m = re.search(r'\(gr_text "%s"\s+\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)\s+\(layer "F.SilkS"\)\s+\(uuid "[^"]+"\)\s+\(effects\s+\(font\s+\(size ([\d.]+) ([\d.]+)\)\s+\(thickness ([\d.]+)\)' % re.escape(t), t_)
     seg = t_[m.start():m.end()]
-    seg = re.sub(r'\(at [-\d.]+ [-\d.]+(?: [-\d.]+)?\)', '(at %.3f %.3f 0)' % (x + 50.0, 150.0 - y), seg, count=1)
+    xs_ = x - len(t) * 0.95 * SIZE / 2 if '(justify left)' in t_[m.start():m.start() + 600].split('\n\t)')[0] else x      # a left-justified text starts at its position
+    seg = re.sub(r'\(at [-\d.]+ [-\d.]+(?: [-\d.]+)?\)', '(at %.3f %.3f 0)' % (xs_ + 50.0, 150.0 - y), seg, count=1)
     seg = re.sub(r'\(size [\d.]+ [\d.]+\)', '(size %g %g)' % (SIZE, SIZE), seg, count=1)
     seg = re.sub(r'\(thickness [\d.]+\)', '(thickness %g)' % round(0.15 * SIZE, 3), seg, count=1)
     t_ = t_[:m.start()] + seg + t_[m.end():]

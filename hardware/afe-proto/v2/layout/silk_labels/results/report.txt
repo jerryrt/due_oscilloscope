@@ -1,14 +1,14 @@
 BLOCK       parts  with-label(new)  without(new)   with-label(main)
-POWER          22         17              5             22
-CH1            19          9             10             19
-CH2            14          6              8             14
-AWG            17          8              9             17
-REFCAL         31         10             21             31
+POWER          22         18              4             22
+CH1            19         11              8             19
+CH2            14          7              7             14
+AWG            17         11              6             17
+REFCAL         31         12             19             31
 EDGE            9          7              2              9
-TOTAL         112         57             55            112
-without a label (new): ['BR102', 'BR501', 'BR502', 'BR504', 'BR506', 'BR508', 'BR509', 'BR510', 'BR511', 'C101', 'C102', 'C103', 'C201', 'C202', 'C301', 'C304', 'C306', 'C402', 'C403', 'C409', 'C501', 'C502', 'MH601', 'MH602', 'R101', 'R102', 'R103', 'R104', 'R105', 'R108', 'R201', 'R202', 'R203', 'R204', 'R205', 'R207', 'R302', 'R303', 'R304', 'R305', 'R306', 'R307', 'R404', 'R405', 'R501', 'R502', 'R503', 'R504', 'R505', 'R507', 'R508', 'R509', 'R510', 'R511', 'R513']
-beside set (east/west at 0 degrees): ['BR401', 'C104', 'C105', 'C303', 'C305', 'C404', 'C406', 'C408', 'C503', 'D201', 'J601', 'R107', 'R208', 'R308', 'R309', 'R401', 'R406', 'R506', 'R512', 'R514', 'TP201', 'TP404', 'U301', 'U401', 'U501', 'U502']
-places used by passives and anchors: {'above': 19, 'west0': 16, 'west90': 3, 'east0': 10, 'east90': 1, 'below': 5, 'bnc': 3}
+TOTAL         112         66             46            112
+without a label (new): ['BR102', 'BR501', 'BR502', 'BR504', 'BR506', 'BR509', 'BR511', 'C101', 'C102', 'C201', 'C202', 'C301', 'C304', 'C402', 'C403', 'C501', 'C502', 'MH601', 'MH602', 'R101', 'R102', 'R103', 'R104', 'R105', 'R201', 'R202', 'R203', 'R204', 'R205', 'R302', 'R303', 'R306', 'R307', 'R404', 'R405', 'R501', 'R502', 'R503', 'R504', 'R505', 'R507', 'R508', 'R509', 'R510', 'R511', 'R513']
+beside set (east/west at 0 degrees): ['BR508', 'C103', 'C104', 'C303', 'C306', 'C404', 'C406', 'C408', 'C409', 'C503', 'D201', 'J601', 'R107', 'R207', 'R208', 'R304', 'R403', 'R506', 'R514', 'TP201', 'TP404', 'U301', 'U401', 'U501', 'U502']
+places used by passives and anchors: {'above': 28, 'west0': 14, 'west90': 4, 'east0': 11, 'east90': 1, 'below': 5, 'bnc': 3}
 ANCHORS (U, J, TP):
    J101  visible=yes  bnc line below its body
    J201  visible=yes  bnc line below its body
@@ -32,15 +32,15 @@ ANCHORS (U, J, TP):
    U101  visible=yes  relaxed_in_clean above
    U301  visible=yes  relaxed_in_clean west0
    U401  visible=yes  relaxed_in_clean east0
-   U501  visible=yes  relaxed_in_clean west0
+   U501  visible=yes  strict west0
    U502  visible=yes  relaxed_in_clean east0
 ALL ANCHORS LABELLED BY A PLACE THE TEST ACCEPTS: yes
-silkread (silk-above) findings: main 207  new 102
-  of the new findings: 53 are "no designator" (the part lost its label), 9 name a part placed below or at 90 degrees (the owner's order, not in silk-above's rules), rest 30
-  rest: ['D201: designator not centred beside it (off centre 0.35 mm, gap 0.03 mm)', 'D101: designator not centred above it (off centre 2.82 mm, gap 0.05 mm)', 'R106: designator not centred above it (off centre 0.67 mm, gap 0.20 mm)', 'R206: designator not centred above it (off centre 0.87 mm, gap 0.41 mm)', 'R512: designator not centred beside it (off centre 0.80 mm, gap 0.03 mm)', 'BR401: designator lies on the courtyard of TP402', 'J501: designator not centred above it (off centre 2.48 mm, gap 0.09 mm)', 'J501: designator lies on the courtyard of BR508', 'C305: designator not centred beside it (off centre 0.42 mm, gap 0.03 mm)', 'C406: designator not centred beside it (off centre 0.45 mm, gap 0.03 mm)', 'U501: designator not centred beside it (off centre 0.35 mm, gap 0.03 mm)', 'C405: designator not centred above it (off centre 1.35 mm, gap 0.11 mm)', 'U101: designator not centred above it (off centre 1.80 mm, gap 0.03 mm)', 'U101: designator lies on the courtyard of R108', 'R401: designator not centred beside it (off centre 1.38 mm, gap 0.03 mm)', 'C503: designator not centred beside it (off centre 0.42 mm, gap 0.03 mm)', 'U301: designator not centred beside it (off centre 0.30 mm, gap 0.30 mm)', 'U301: designator lies on the courtyard of C303, C304', 'U301: designator lies on a via', 'R309: designator not centred beside it (off centre 1.52 mm, gap 0.30 mm)', 'U502: designator not centred beside it (off centre 1.90 mm, gap 0.30 mm)', 'U502: designator lies on the courtyard of R510, R511', 'BR101: designator not centred above it (off centre 0.76 mm, gap 0.52 mm)', 'J604: designator not centred below it, on its inboard side (off centre 0.00 mm, gap -4.72 mm)', 'J606: designator not centred below it, on its inboard side (off centre 0.00 mm, gap -4.72 mm)']
+silkread (silk-above) findings: main 207  new 116
+  of the new findings: 44 are "no designator" (the part lost its label), 10 name a part placed below or at 90 degrees (the owner's order, not in silk-above's rules), rest 38
+  rest: ['C105: designator not centred above it (off centre 2.30 mm, gap 0.25 mm)', 'R406: designator not centred above it (off centre 1.60 mm, gap 0.25 mm)', 'C409: designator not centred beside it (off centre 0.30 mm, gap -0.00 mm)', 'C409: designator lies on the courtyard of C409', 'R304: designator not centred beside it (off centre 1.20 mm, gap -0.30 mm)', 'R304: designator lies on the courtyard of R304', 'D101: designator not centred above it (off centre 2.70 mm, gap 0.25 mm)', 'R206: designator not centred above it (off centre 1.10 mm, gap 0.25 mm)', 'R512: designator not centred above it (off centre 3.30 mm, gap -0.20 mm)', 'R512: designator lies on the courtyard of R512', 'BR401: designator not centred above it (off centre 0.40 mm, gap 0.00 mm)', 'BR401: designator lies on the courtyard of R404, TP402', 'BR508: designator not centred beside it (off centre 0.50 mm, gap 0.27 mm)', 'J501: designator not centred above it (off centre 2.48 mm, gap 0.09 mm)', 'J501: designator lies on the courtyard of BR508', 'C305: designator not centred above it (off centre 2.30 mm, gap 0.25 mm)', 'R305: designator not centred above it (off centre 0.80 mm, gap 0.25 mm)', 'R308: designator not centred above it (off centre 2.50 mm, gap -0.20 mm)', 'R308: designator lies on the courtyard of R308', 'C405: designator not centred above it (off centre 1.50 mm, gap 0.25 mm)', 'U101: designator not centred above it (off centre 1.80 mm, gap 0.03 mm)', 'U101: designator lies on the courtyard of R108', 'R207: designator not centred beside it (off centre 0.00 mm, gap -0.10 mm)', 'R207: designator lies on the courtyard of R207', 'R401: designator not centred above it (off centre 2.30 mm, gap 0.25 mm)']
 align findings: main 45  new 16
 LR-11 terms main: pairs under 1.0 mm 8, over a pad 0, too far 0, designators judged 112, one-label 0, foreign 0
-LR-11 terms new : pairs under 1.0 mm 3, over a pad 0, too far 0, designators judged 57, one-label 0, foreign 0
+LR-11 terms new : pairs under 1.0 mm 21, over a pad 0, too far 0, designators judged 66, one-label 0, foreign 0
 labels whose centre is outside the board outline: []
 (c) labels whose nearest other label is not farther than their own part: []
 (b) labels not inside their own block outline: ['J101', 'J201', 'J301']
