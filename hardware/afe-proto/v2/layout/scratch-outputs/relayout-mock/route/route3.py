@@ -594,6 +594,7 @@ class Job:
         g, r = self.g, self.r
         srcs, groups = KELVIN[self.names[n].lstrip('/')]
         byref = {(p[0], p[1]): p for p in self.bynet[n]}
+        groups = [x for x in ([k for k in g_ if tuple(k.split('.')) in byref] for g_ in groups) if x]      # a group whose pads moved to another net (a scratch bridge) is not this net's
         src = [byref[tuple(s.split('.'))] for s in srcs]
         srccells = set()
         for p in src:
