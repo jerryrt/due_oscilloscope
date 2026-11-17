@@ -789,8 +789,10 @@ def route(board):
     job = Job(board)
     _mode = os.environ.get('ORDERMODE', '')
     _first = [x for x in os.environ.get('FIRSTNETS', '').split(',') if x]
+    _order = [x for x in os.environ.get('FIRSTORDER', '').split(',') if x]
     def _key(n):
         nm = job.names[n].lstrip('/')
+        if nm in _order: return (-1, _order.index(nm), 0, nm)
         hz = nm in HIZ | {'CH1_OUT', 'CH2_OUT'}
         if _mode == 'powerlast': return (nm not in _first, not hz, nm in POWER, job.span(n), nm)
         if _mode == 'long': return (nm not in _first, not hz, -job.span(n), nm)
