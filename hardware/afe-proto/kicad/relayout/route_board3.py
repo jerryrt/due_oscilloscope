@@ -48,8 +48,9 @@ for n in b.nets:
     if not n or n == C.GND or n in special or len(net_pads(n)) < 2: continue
     own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
     cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1') else None
-    tasks[n] = (n, dict(width=POWERS.get(n, 0.2), bottom=True, vias=True, net_courtyards=cour))
-critical = ['/A1', '/A0', '/AWG_INV'] + HORD
+    top_only = n.startswith(('/TAP', '/SNS', '/VREF', '/AWG_', '/DAC0', '/AREF')) or n in ('/SC_VCC',)
+    tasks[n] = (n, dict(width=POWERS.get(n, 0.2), bottom=not top_only, vias=not top_only, net_courtyards=cour))
+critical = ['/A1', '/A0', '/AWG_INV'] + HORD + [k for k in ('/CH2_IN', '/CH1_IN', '/VREF_P') if k in tasks]
 vref = [k for k in tasks if k == 'vsrc' or k.startswith('vb')]
 rails = [k for k in tasks if '-leg-' in k or k.endswith('-hub')]
 plain = [k for k in tasks if k not in critical + vref + rails]
