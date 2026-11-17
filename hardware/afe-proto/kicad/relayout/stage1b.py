@@ -1,0 +1,129 @@
+import sys, time, math, os, copy
+sys.path.insert(0, 'whatif/_scratch')
+import numpy as np
+import route_lib as R
+from pcbtools.boards import v1 as C
+t0 = time.time()
+src = os.environ.get('SRC', 'whatif/_scratch/base_final.kicad_pcb')
+MAXIT = int(os.environ.get('MAXIT', '8'))
+B0 = R.Board(src); b = B0.b
+row = {}
+for j in range(len(b.p_fp)): row[(b.fp_ref[int(b.p_fp[j])], str(b.p_pin[j]))] = j
+def net_pads(n): return [j for j in range(len(b.p_fp)) if b.nets[int(b.p_net[j])] == n]
+def L_of(segs): return sum(math.hypot(s[3][0] - s[2][0], s[3][1] - s[2][1]) for s in segs)
+def span(n):
+    idx = net_pads(n); return (b.p_x[idx].max() - b.p_x[idx].min()) + (b.p_y[idx].max() - b.p_y[idx].min())
+POWERS = {'/+5V_DUE': 0.5, '/+5V_F': 0.5, '/+3V3A': 0.4, '/VNEG': 0.4, '/VREF': 0.3, '/SC_VCC': 0.4, '/P33_U': 0.3, '/P33_S': 0.3}
+ANALOG = [r for r in b.fp_ref if C.BLOCK.get(r) in ('AWG', 'SCOPE', 'REFCAL') and not r.startswith(('J', 'MH'))]
+HORD = ['/CH1_N', '/CH1_NP', '/CH1_R1A', '/CH1_R2A', '/CH2_R1A', '/CH2_N', '/CH2_NP', '/CH2_R2A']
+# ---- tasks: (key, net, kwargs)
+tasks = {}
+for n in ('/A1', '/A0', '/AWG_INV'): tasks[n] = (n, dict(width=0.2))
+for n in HORD: tasks[n] = (n, dict(width=0.2))
+vp = net_pads('/VREF'); src_rows = {row[k] for k in C.VREF_SOURCE}
+brs = []
+for br in C.VREF_BRANCHES:
+    st = {row[tuple(k)] for k in br}
+    if any(b.nets[int(b.p_net[j])] != '/VREF' for j in st) and ('R515', '1') in row: st = {j for j in st if b.nets[int(b.p_net[j])] == '/VREF'} | {row[('R515', '1')]}
+    brs.append(st)
+for j in [j for j in vp if j not in src_rows and not any(j in br for br in brs)]:
+    k = min(range(len(brs)), key=lambda q: min(math.hypot(b.p_x[j] - b.p_x[m], b.p_y[j] - b.p_y[m]) for m in brs[q])); brs[k].add(j)
+tasks['vsrc'] = ('/VREF', dict(width=0.3, bottom=False, vias=False, pads_subset=src_rows, tag='vsrc'))
+for q, br in enumerate(brs):
+    near = min(src_rows, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in br))
+    tasks[f'vb{q}'] = ('/VREF', dict(width=0.3, bottom=False, vias=False, pads_subset=set(br) | {near}, tag=f'vb{q}'))
+for rail in ('/+3V3A', '/VNEG'):
+    star = {row[tuple(k)] for k in C.STAR[rail]}
+    groups = C.GROUPS[rail]; ingroup = set().union(*groups.values())
+    onrail = net_pads(rail)
+    hub = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] not in ingroup}
+    tasks[f'{rail}-hub'] = (rail, dict(width=0.4, bottom=False, vias=False, pads_subset=hub, tag='hub'))
+    for g, refs in groups.items():
+        leg = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] in refs}
+        if not leg: continue
+        near = min(star, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in leg))
+        tasks[f'{rail}-leg-{g}'] = (rail, dict(width=0.4, bottom=False, vias=False, pads_subset=leg | {near}, tag='leg-' + g))
+special = {t[0] for t in tasks.values()}
+for n in b.nets:
+    if not n or n == C.GND or n in special or len(net_pads(n)) < 2: continue
+    own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
+    cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1') else None
+    top_only = n.startswith(('/TAP', '/SNS', '/VREF', '/AWG_', '/DAC0', '/AREF')) or n in ('/SC_VCC',)
+    tasks[n] = (n, dict(width=POWERS.get(n, 0.2), bottom=not top_only, vias=not top_only, net_courtyards=cour))
+critical = ['/A1', '/A0', '/AWG_INV'] + HORD + [k for k in ('/CH2_IN', '/CH1_IN', '/VREF_P') if k in tasks]
+vref = [k for k in tasks if k == 'vsrc' or k.startswith('vb')]
+rails = [k for k in tasks if '-leg-' in k or k.endswith('-hub')]
+plain = [k for k in tasks if k not in critical + vref + rails]
+short = sorted([k for k in plain if k not in POWERS and span(tasks[k][0]) <= 12.0], key=lambda k: span(tasks[k][0]))
+long_ = sorted([k for k in plain if k not in short], key=lambda k: (k in POWERS, span(tasks[k][0])))
+base_order = critical + vref + rails
+PRE = [('/VNEG', 'U401', '6', ('C410', '1'), 'hub'), ('/VNEG', 'C409', '1', ('C410', '1'), 'hub'), ('/+3V3A', 'C407', '1', ('C408', '1'), 'hub'),
+       ('/SNS_BI', 'D501', '3', None, None), ('/+3V3A', 'U401', '11', ('C408', '1'), 'hub'), ('/AREF', 'J606', '8', ('R510', '2'), None),
+       ('/VREF', 'R512', '2', ('U501', '2'), 'vb3')]
+G0 = (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY)
+def fine_window(cx, cy, r, hs=0.05):
+    R.H = hs; R.X0 = cx - r; R.Y0 = cy - r; R.X1 = cx + r; R.Y1 = cy + r
+    R.NX = int((R.X1 - R.X0) / hs) + 1; R.NY = int((R.Y1 - R.Y0) / hs) + 1
+    R.GX = R.X0 + hs * np.arange(R.NX); R.GY = R.Y0 + hs * np.arange(R.NY)
+def coarse():
+    (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY) = G0
+SKIP = {(r, p) for _, r, p, _, _ in PRE}
+FINE = ['U401', 'U101', 'U301', 'U501', 'U502']
+def run(order, verbose=False):
+    B = R.Board(src); fails_by = {}
+    for net, ref, pin, tgt, tag in PRE:
+        j = row[(ref, pin)]
+        others = [k for k in net_pads(net) if k != j and ((b.fp_ref[int(b.p_fp[k])], str(b.p_pin[k])) == tgt if tgt else True)]
+        k2 = min(others, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
+        fine_window((b.p_x[j] + b.p_x[k2]) / 2, (b.p_y[j] + b.p_y[k2]) / 2, max(5.0, math.hypot(b.p_x[j] - b.p_x[k2], b.p_y[j] - b.p_y[k2]) / 2 + 2.5))
+        segs, vs, fl = B.route(net, width=0.2, pads_subset={j, k2}, tag=tag or 'fine')
+        coarse(); B.add(segs, vs)
+        print('PRE', ref, pin, '->', 'ok len %.1f' % L_of(segs) if not fl else 'FAIL', flush=True)
+    def go(key):
+        net, kw = tasks[key]
+        ladder = [dict(), dict(width=0.2), dict(width=0.2, extra_margin=-0.03), dict(bottom_cost=4.0), dict(bottom_cost=4.0, width=0.2), dict(vias=False, bottom=False), dict(vias=False, bottom=False, width=0.2)]
+        best = None
+        for step in ladder:
+            kw2 = dict(kw); kw2.update({k: v for k, v in step.items() if not (k == 'width' and kw.get('width', 0.2) <= v)})
+            if kw.get('bottom') is False and 'bottom' in step: continue
+            segs, vs, fails = B.route(net, **kw2)
+            hop = L_of([s for s in segs if s[1] == 1]) > 2.9 or len(vs) > 2
+            score = (len(fails), hop)
+            if best is None or score < best[2]: best = (segs, vs, score, fails)
+            if not fails and not hop: break
+        segs, vs, score, fails = best
+        B.add(segs, vs)
+        if fails: fails_by[key] = fails
+        if verbose: print('TASK %-18s len %6.1f vias %d fails %s' % (key, L_of(segs), len(vs), fails), flush=True)
+    for key in order: go(key)
+    return B, fails_by
+order = list(base_order); best = None
+for it in range(MAXIT):
+    B, fails_by = run(order, verbose=(it == MAXIT - 1))
+    nf = sum(len(v) for v in fails_by.values())
+    print('ITER', it, 'failing pads', nf, {k: v for k, v in fails_by.items()}, round(time.time() - t0), 's', flush=True)
+    if best is None or nf < best[0]: best = (nf, B, list(order))
+    if nf == 0: break
+    front = [k for k in fails_by if k not in critical]
+    order = critical + front + [k for k in order if k not in critical and k not in front]
+nf, B, order = best
+B.save(os.environ.get('DST', 'whatif/_scratch/fr/stage1b.kicad_pcb'))
+print('STAGE1B failing pads', nf, {k: v for k, v in fails_by.items()})
+_skip = ''': each failing pad to the nearest pad of its own group, 0.05 mm grid, no rule relaxed
+_, fb = run(order)
+for key, fl in fb.items():
+    net, kw = tasks[key]
+    grp = kw.get('pads_subset') or set(net_pads(net))
+    for f_ in fl:
+        ref, pin = f_.split('.'); j = row[(ref, pin)]
+        cand = [k for k in grp if k != j and not any(f2 == '%s.%s' % (b.fp_ref[int(b.p_fp[k])], b.p_pin[k]) for f2 in fl)]
+        if not cand: continue
+        k2 = min(cand, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
+        fine_window((b.p_x[j] + b.p_x[k2]) / 2, (b.p_y[j] + b.p_y[k2]) / 2, max(5.0, math.hypot(b.p_x[j] - b.p_x[k2], b.p_y[j] - b.p_y[k2]) / 2 + 2.5))
+        segs, vs, fl2 = B.route(net, width=0.2, pads_subset={j, k2}, tag='fine')
+        coarse()
+        if not fl2: B.add(segs, vs)
+        print('COMPLETE', f_, '->', 'ok len %.1f' % L_of(segs) if not fl2 else 'FAIL', flush=True)
+B.save(os.environ.get('DST', 'whatif/_scratch/fr/stage1b.kicad_pcb'))
+print('BEST failing pads', nf, 'done', round(time.time() - t0), 's')
+'''

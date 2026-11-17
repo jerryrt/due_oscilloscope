@@ -13,6 +13,9 @@ TMO = sys.argv[4] if len(sys.argv) > 4 else '1500'
 W = 'whatif/_scratch/fr'
 os.makedirs(W, exist_ok=True)
 b = pcbnew.LoadBoard(board)
+if os.environ.get('LOCK'):
+    for t_ in b.GetTracks():
+        t_.SetLocked(True)
 pcbnew.ExportSpecctraDSN(b, W + '/in.dsn')
 t = open(W + '/in.dsn').read()
 bd = boardio.read_board(board)
@@ -30,6 +33,10 @@ import numpy as np
 for k in range(len(bd.fp_ref)):
     if bd.fp_ref[k] in C.ANALOG_REFS and not np.isnan(bd.fp_cx0[k]):
         ko += rect(bd.fp_cx0[k] - 0.45, bd.fp_cy0[k] - 0.45, bd.fp_cx1[k] + 0.45, bd.fp_cy1[k] + 0.45)
+if os.environ.get('BOTNO'):       # strict LR-1: no signal copper on B.Cu at all (the GND vias and zone are added afterwards)
+    ko = rect(-60, -60, 160, 160) if False else '    (keepout "" (rect B.Cu %d %d %d %d))\n' % (X(10), Y(-10), X(125), Y(60))
+if os.environ.get('NOSMD'):
+    t = t.replace('      (clearance 50 (type smd_smd))\n', '')
 t = t.replace('    (via "', ko + '    (via "', 1)
 # classes
 hiz = list(C.HIZ) + ['/A0', '/A1', '/AWG_INV']
@@ -52,7 +59,31 @@ r = subprocess.run(['/work/docker/pcb/freeroute.sh', W + '/in_rules.dsn', W + '/
 print('FREEROUTING exit', r.returncode)
 print((r.stdout + r.stderr)[-1500:])
 if os.path.exists(W + '/out.ses'):
+    if os.environ.get('STRIP'):          # the fixed wiring travels through the DSN and comes back in the SES: do not import it twice
+        for t_ in list(b.GetTracks()):
+            b.RemoveNative(t_)
     ok = pcbnew.ImportSpecctraSES(b, os.path.abspath(W + '/out.ses'))
     print('import', ok)
+    nw = 0
+    if os.environ.get('WIDEN'):
+        for t_ in b.GetTracks():
+            if t_.GetClass() != 'PCB_VIA' and pcbnew.ToMM(t_.GetWidth()) < 0.199:
+                t_.SetWidth(pcbnew.FromMM(0.2)); nw += 1
+    print('widened', nw)
+    if os.environ.get('DEDUP'):          # identical copper twice (same net, layer, width, endpoints either way): drop one copy; nothing is extended or moved
+        seen = {}; dup = []
+        for t_ in list(b.GetTracks()):
+            if t_.GetClass() == 'PCB_VIA':
+                k_ = ('v', t_.GetNetname(), round(pcbnew.ToMM(t_.GetPosition().x), 3), round(pcbnew.ToMM(t_.GetPosition().y), 3))
+            else:
+                a_ = (round(pcbnew.ToMM(t_.GetStart().x), 3), round(pcbnew.ToMM(t_.GetStart().y), 3)); c_ = (round(pcbnew.ToMM(t_.GetEnd().x), 3), round(pcbnew.ToMM(t_.GetEnd().y), 3))
+                k_ = (t_.GetLayer(), t_.GetNetname(), round(pcbnew.ToMM(t_.GetWidth()), 3)) + tuple(sorted((a_, c_)))
+            if k_ in seen: dup.append(t_)
+            else: seen[k_] = t_
+        for t_ in dup: b.RemoveNative(t_)
+        print('DEDUP removed', len(dup))
+    from collections import Counter
+    nar = Counter(t_.GetNetname() for t_ in b.GetTracks() if t_.GetClass() != 'PCB_VIA' and pcbnew.ToMM(t_.GetWidth()) < 0.199)
+    print('NARROW', dict(nar))
     pcbnew.SaveBoard(out, b)
     print('saved', out)
