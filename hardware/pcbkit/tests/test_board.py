@@ -73,13 +73,18 @@ def test_npz_roundtrip(tmp_path):
 
 # ----------------------------------------------------------------------------- the frame
 def test_frame_transform_default_and_given():
-    assert [float(v) for v in B.to_frame(60.0, 140.0)] == [60.0, -140.0]                 # default: KiCad's origin, y up
+    assert [float(v) for v in B.to_frame(60.0, 140.0, B.KICAD_FRAME)] == [60.0, -140.0]      # KICAD_FRAME: KiCad's origin, y flipped to point up
+    assert B.KICAD_FRAME == (0.0, 0.0)
+    with pytest.raises(TypeError):
+        B.to_frame(1.0, 2.0)                                    # no default frame
+    with pytest.raises(TypeError):
+        B.from_frame(1.0, 2.0)
     x, y = B.to_frame(50.0, 150.0, (50.0, 150.0))
     assert (float(x), float(y)) == (0.0, 0.0)
     X, Y = B.to_frame(np.array([88.1, 50.0]), np.array([147.46, 100.0]), (50.0, 150.0))
     assert np.allclose([X[0], Y[0]], [38.1, 2.54]) and np.allclose([X[1], Y[1]], [0.0, 50.0])
     a = np.random.default_rng(1).uniform(0, 200, (50, 2))
-    for fr in (B.DEFAULT_FRAME, (50.0, 150.0), (-3.5, 12.25)):
+    for fr in (B.KICAD_FRAME, (50.0, 150.0), (-3.5, 12.25)):
         bx, by = B.from_frame(*B.to_frame(a[:, 0], a[:, 1], fr), fr)
         assert np.allclose(bx, a[:, 0]) and np.allclose(by, a[:, 1])
     assert B.to_frame(60, 140, (50.0, 150.0))[1] > B.to_frame(60, 145, (50.0, 150.0))[1]      # y points up
@@ -87,7 +92,8 @@ def test_frame_transform_default_and_given():
 
 def test_frame_of_reads_the_configuration_and_refuses_one_without():
     import types
-    assert B.frame_of(None) == B.DEFAULT_FRAME
+    with pytest.raises(ValueError, match='FRAME'):
+        B.frame_of(None)
     assert B.frame_of((50, 150)) == (50.0, 150.0)
     assert B.frame_of({'FRAME': (1, 2)}) == (1.0, 2.0)
     assert B.frame_of(types.SimpleNamespace(FRAME=(3, 4))) == (3.0, 4.0)
@@ -120,11 +126,17 @@ def test_read_board_in_the_given_frame(built):
 
 
 @pytest.mark.pcbnew
-def test_read_board_default_frame_and_no_frame_config(built):
-    b = B.read_board(built)
+def test_read_board_needs_a_frame_and_kicad_frame_is_explicit(built):
+    b = B.read_board(built, B.KICAD_FRAME)
     assert (float(b.fp_x[0]), float(b.fp_y[0])) == (60.0, -140.0)
     with pytest.raises(ValueError, match='FRAME'):
         B.read_board(built, {'NOT_FRAME': 1})
+    with pytest.raises(ValueError, match='FRAME'):
+        B.read_board(built, None)
+    with pytest.raises(ValueError, match='FRAME'):
+        B.read_board_retry(built, None)
+    with pytest.raises(TypeError):
+        B.read_board(built)                                  # no argument at all is not a frame either
 
 
 @pytest.mark.pcbnew
@@ -141,13 +153,13 @@ def test_unreadable_board_raises(pcbnew_mod, tmp_path):
     p = tmp_path / 'junk.kicad_pcb'
     p.write_text('not a board')
     with pytest.raises(Exception):
-        B.read_board(str(p))
+        B.read_board(str(p), B.KICAD_FRAME)
 
 
 @pytest.mark.pcbnew
 def test_board_object_is_released(built):
     import gc
     import weakref
-    B.read_board(built)
+    B.read_board(built, B.KICAD_FRAME)
     gc.collect()
-    assert B.read_board(built).fp_ref == ('R1',)
+    assert B.read_board(built, B.KICAD_FRAME).fp_ref == ('R1',)

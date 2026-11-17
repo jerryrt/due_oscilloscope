@@ -1,5 +1,7 @@
 # Arrays added to `board` after the first release (step 1b)
 
+Frame. Every array is in the frame the configuration's `FRAME = (OX, OY)` names: `board_x = OX + x`, `board_y = OY - y`, so y points up. `FRAME` is required: `read_board` raises, naming it, when it is missing. `board.KICAD_FRAME = (0.0, 0.0)` is KiCad's own origin with y flipped up; a project that wants it passes it explicitly.
+
 All in the configured frame (`FRAME`), mm, y up; boxes are `x0 <= x1`, `y0 <= y1`. Read from pcbnew, never from the file text. A
 field that was not read RAISES. `board.require(b, *fields)` raises `FieldNotRead`, naming the field, unless the read that made `b` filled
 it; `b.read_fields` is the set of added fields a read filled, and an empty array never means "not read". Every pcbkit consumer of an added

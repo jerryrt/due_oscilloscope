@@ -54,8 +54,11 @@ BOARD = [
     ('frame: x offset dropped', "return np.asarray(x, np.float64) - frame[0], frame[1]", "return np.asarray(x, np.float64), frame[1]"),
     ('frame: inverse forgets the offset', "return np.asarray(x, np.float64) + frame[0], frame[1] - np.asarray(y, np.float64)",
      "return np.asarray(x, np.float64), frame[1] - np.asarray(y, np.float64)"),
-    ('read_board ignores the configuration frame', "    frame = frame_of(cfg)\n    import gc", "    frame = DEFAULT_FRAME\n    import gc"),
-    ('a configuration without FRAME falls back to the default', "raise ValueError('the configuration has no FRAME", "return DEFAULT_FRAME; raise ValueError('the configuration has no FRAME"),
+    ('read_board ignores the configuration frame', "    frame = frame_of(cfg)\n    import gc", "    frame = KICAD_FRAME\n    import gc"),
+    ('a configuration without FRAME falls back to the KiCad frame', "raise ValueError('no FRAME = (OX, OY)", "return KICAD_FRAME; raise ValueError('no FRAME = (OX, OY)"),
+    ('no configuration at all is accepted', "    if cfg is None:\n        fr = None\n    elif", "    if cfg is None:\n        return KICAD_FRAME\n    elif"),
+    ('to_frame gets a default frame back', "def to_frame(x, y, frame):", "def to_frame(x, y, frame=KICAD_FRAME):"),
+    ('read_board gets a default config back', "def read_board(path, cfg):", "def read_board(path, cfg=KICAD_FRAME):"),
     ('retry child does not pass the frame', "repr(ox), repr(oy)]", "'0.0', '0.0']"),
 ]
 SILK = [

@@ -1,13 +1,13 @@
 """Board I/O: the only module that imports pcbnew (lazily, inside read_board), and the BoardArrays container.
 
-    read_board(path, cfg=None) -> BoardArrays   loads the board once, copies it into numpy arrays, frees it
+    read_board(path, cfg) -> BoardArrays        loads the board once, copies it into numpy arrays, frees it
     to_frame / from_frame                       the one KiCad-mm <-> board-frame-mm transform, from FRAME = (OX, OY)
     save_npz / load_npz                         cache of a BoardArrays, readable without pcbnew
-    read_board_retry(path, cfg=None)            read_board in a short child process, retried on a start-up segfault
+    read_board_retry(path, cfg)                 read_board in a short child process, retried on a start-up segfault
 
 The frame is the configuration's FRAME = (OX, OY): board_x = OX + x, board_y = OY - y, so x is KiCad's x less OX and y points up.
-Without a configuration the frame is (0.0, 0.0): KiCad's own origin, y flipped to point up. A configuration that is given
-but has no FRAME is refused, never defaulted (a project whose frame is not the default must not get it silently).
+FRAME is a project name and is REQUIRED: a read with no configuration, or one without FRAME, raises ValueError naming FRAME. A project that
+wants KiCad's own origin passes `KICAD_FRAME` = (0.0, 0.0) explicitly (x as KiCad has it, y flipped to point up: board_y = 0 - y).
 
 Conventions (ARRAYS.md): frame mm, y up; float64 rounded to
 1e-6; angles in degrees counter-clockwise (a y flip leaves the visual sense unchanged, so KiCad's value is kept).
@@ -25,7 +25,7 @@ from functools import cached_property
 
 import numpy as np
 
-DEFAULT_FRAME = (0.0, 0.0)  # KiCad board_x = OX + x, board_y = OY - y  (y up in frame mm); a configuration's FRAME replaces it
+KICAD_FRAME = (0.0, 0.0)    # KiCad's own origin: board_x = OX + x, board_y = OY - y with OX = OY = 0, so y points up. Never a default: FRAME is required
 ND = 6                      # decimals: 1e-6 mm
 
 # (name, kind). kinds: f8 i4 i1 u1 i8 ? = numpy dtypes, S = tuple of str, xy = float64 (N,2)
@@ -231,29 +231,30 @@ def text_boxes(b):
 
 
 # ----------------------------------------------------------------------------------------------- the transform
-def frame_of(cfg=None):
-    """the (OX, OY) a configuration names: None -> DEFAULT_FRAME; a 2-sequence is the frame itself; otherwise `cfg.FRAME` or
-    `cfg['FRAME']`. A configuration without FRAME raises ValueError (it never falls back to the default)."""
+def frame_of(cfg):
+    """the (OX, OY) a configuration names: a 2-sequence is the frame itself; otherwise `cfg.FRAME` or `cfg['FRAME']`. No configuration
+    (None) or one without FRAME raises ValueError naming FRAME: there is no default frame (KICAD_FRAME is for a project to pass)."""
     if cfg is None:
-        return DEFAULT_FRAME
-    if isinstance(cfg, (tuple, list)) and len(cfg) == 2:
+        fr = None
+    elif isinstance(cfg, (tuple, list)) and len(cfg) == 2:
         fr = cfg
     elif isinstance(cfg, dict):
         fr = cfg.get('FRAME')
     else:
         fr = getattr(cfg, 'FRAME', None)
     if fr is None:
-        raise ValueError('the configuration has no FRAME = (OX, OY): board.read_board will not guess the project\'s coordinate frame')
+        raise ValueError('no FRAME = (OX, OY) in the configuration: board.read_board does not guess the project\'s coordinate frame '
+                         '(pass pcbkit.board.KICAD_FRAME for KiCad\'s own axes)')
     ox, oy = fr
     return float(ox), float(oy)
 
 
-def to_frame(x, y, frame=DEFAULT_FRAME):
+def to_frame(x, y, frame):
     """KiCad mm -> frame mm (arrays or scalars). The only place the transform is written."""
     return np.asarray(x, np.float64) - frame[0], frame[1] - np.asarray(y, np.float64)
 
 
-def from_frame(x, y, frame=DEFAULT_FRAME):
+def from_frame(x, y, frame):
     """frame mm -> KiCad mm; the inverse of to_frame"""
     return np.asarray(x, np.float64) + frame[0], frame[1] - np.asarray(y, np.float64)
 
@@ -310,7 +311,7 @@ def _init_kinds(pcb):
                          pcb.SHAPE_T_POLY: 'poly'})
 
 
-def read_board(path, cfg=None):
+def read_board(path, cfg):
     """Load `path` with pcbnew once, copy everything into BoardArrays in the configuration's frame, delete the board, return."""
     frame = frame_of(cfg)
     import gc
@@ -494,7 +495,7 @@ def _extract(pcb, b, path, frame):
 LAST_ATTEMPTS = {'n': 0}        # attempts the last read_board_retry used (1 = first try); anything above 1 is a finding to report
 
 
-def read_board_retry(path, cfg=None, tries=3, timeout=120):
+def read_board_retry(path, cfg, tries=3, timeout=120):
     """read_board in a short child process (pcbnew segfaults intermittently at start-up), via an .npz in a scratch dir.
     Retries on a signal death up to `tries` times; raises RuntimeError with the child's stderr otherwise."""
     import tempfile
@@ -521,4 +522,6 @@ def read_board_retry(path, cfg=None, tries=3, timeout=120):
 
 
 if __name__ == '__main__':       # python -m pcbkit.board BOARD.kicad_pcb OUT.npz [OX OY]
-    save_npz(read_board(sys.argv[1], (float(sys.argv[3]), float(sys.argv[4])) if len(sys.argv) > 4 else None), sys.argv[2])
+    if len(sys.argv) < 5:
+        sys.exit('usage: python -m pcbkit.board BOARD.kicad_pcb OUT.npz OX OY (the frame is required)')
+    save_npz(read_board(sys.argv[1], (float(sys.argv[3]), float(sys.argv[4]))), sys.argv[2])
