@@ -21,7 +21,7 @@ OUTPUT: the spec file, and on stdout one line per round (jobs routed, jobs still
     CLUSTER (x, y) [jobs]                              one per distinct place.
 LIMITS: single layer (no vias but the GND ones), one track width, 45-degree grid, no length rules (fix A0/A1, outputs and feedback nodes first), the
 count is geometric, so verify the spliced board with KiCad DRC (tracks_crossing, shorting_items, clearance, unconnected_items)."""
-import sys, math, heapq, time, json, os, importlib
+import sys, math, heapq, time, json, os, importlib, collections
 sys.path.append('/usr/lib/python3/dist-packages')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
@@ -124,7 +124,7 @@ nid = {n: i for i, n in enumerate(names)}
 net_mask = {n: np.zeros((NX, NY), bool) for n in names}
 for p in pads:
     if p['net']:
-        stamp_rect(net_mask[p['net']], *p['bb'], INFL_PAD)
+        stamp_rect(net_mask[p['net']], *p['bb'], (INFL_HIZ - 0.18) if (p['net'] in HIZ and not os.environ.get('PF_NOHIZPAD')) else INFL_PAD)    # a hi-Z pad keeps its 0.6 mm class clearance from every other net's track (half width 0.1)
 for n, ax, ay, bx, by, w in tracks:
     stamp_seg(net_mask[n], ax, ay, bx, by, INFL_HIZ if n in HIZ else INFL)
 for n, x, y, d in vias:
@@ -593,6 +593,20 @@ for k_, e_ in sorted(_agg.items(), key=lambda t: -t[1][0]):
     print('PAIRSUM', k_[0], k_[1], e_[0], round(e_[1] / e_[0], 2), round(e_[2] / e_[0], 2))
 for cl in sorted(clusters, key=lambda c: (round(c[0]), round(c[1]))):
     print('CLUSTER (%.1f, %.1f)' % (cl[0], cl[1]), sorted(cl[2]))
+DROPPED = []
+if not os.environ.get('PF_KEEPCONFLICTS'):                   # a leg that still touches another net's copper is a short: it is not written, and is reported as a gap
+    own_ = lambda nm: nm.split('#')[0]
+    cross = [c for c in confl if own_(c[2]) != own_(c[3])]
+    while cross:
+        cnt = collections.Counter(nm for c in cross for nm in (c[2], c[3]) if nm in paths_of)
+        if not cnt: break
+        worst = cnt.most_common(1)[0][0]; DROPPED.append(worst)
+        cross = [c for c in cross if worst not in (c[2], c[3])]
+    for nm in DROPPED:
+        j_ = [j for j in jobs if j['name'] == nm][0]
+        print('DROPPED leg', nm, 'pads', [k for comp in j_['comps'] for k in comp], 'toward', j_['star'] and j_['star'][:3])
+        paths_of[nm] = []
+print('METRIC dropped_legs', len(DROPPED))
 R = []
 for nm, rs in paths_of.items():
     net = [j for j in jobs if j['name'] == nm][0]['own']

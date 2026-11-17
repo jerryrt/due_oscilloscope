@@ -1,0 +1,28 @@
+iter 13: 93s  routed 28/28  failed []  conflicting 4
+METRIC conflict_segments 7 distinct_clusters 4
+CLUSTER (30.7, 11.0) ['/VNEG#star', '/VNEG#tp.0']
+CLUSTER (41.0, 35.5) ['/+3V3A#adc.4', '/+3V3A#scope.4']
+CLUSTER (62.0, 39.2) ['/+3V3A#scope.4', '/VREF#5.0']
+CLUSTER (89.5, 39.3) ['/+3V3A#scope.0', '/VREF#5.2']
+METRIC dropped_legs 2
+wrote BS4_k_spec.py 32 polylines; failed [] conflicting ['/+3V3A#scope.0', '/+3V3A#scope.4', '/VREF#5.0', '/VREF#5.2']
+DSN export True
+locked nets 18 keep-out shapes 501 top-only nets 93
+last pass: 22.02 (43 unrouted and 3 violations), using 79.48 CPU seconds and the job allocated 84.73 GB of memory so far.
+SES import True
+  lost [] extra []
+LOCKS EXACT: yes
+bottom runs kept: 0 (0.0 mm); in fences: {}
+bottom runs ripped (counted as gaps): 2 Counter({'run 12.0 mm 2 vias': 1, 'run 27.7 mm 4 vias': 1})
+NARROW/STUB track_width Track [/+5V_F] on F.Cu, length 1.0945 mm (83.2239, 133.9761)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 1.6176 mm (75.1438, 123.25)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 2.3056 mm (87.6947, 133.2873)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 1.6953 mm (76.1514, 136.0533)
+NARROW/STUB track_dangling Track [/SCL] on F.Cu, length 26.8230 mm (68.796, 104.7323)
+NARROW/STUB track_dangling Track [/SCL] on F.Cu, length 0.5785 mm (88.7834, 135.2799)
+NARROW/STUB track_dangling Track [/CH2_IN] on F.Cu, length 1.0000 mm (152.0, 122.18)
+NARROW/STUB track_dangling Track [/CH1_IN] on F.Cu, length 1.0000 mm (152.0, 104.4)
+DRC by type {'track_width': 1, 'courtyards_overlap': 2, 'clearance': 11, 'lib_footprint_issues': 4, 'holes_co_located': 1, 'hole_to_hole': 1, 'via_dangling': 2, 'track_dangling': 7} unconnected 44
+UNROUTED by net {'/GND': 1, '/+3V3A': 2, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 1, '/SNS_B': 1, '/AWG_BIN': 2, '/AWG_VO': 4, '/SCL': 2, '/CH2_IN': 2, '/SDA': 2, '/TAP4': 2, '/TAP5': 2, '/TAP1': 1, '/TAP2': 2, '/TAP3': 2, '/LM_CP': 1, '/AWG_OA': 1, '/CH1_IN': 2, '/LM_FBP': 2, '/AWG_OB': 1, '/ADS_TAP': 1, '/ADS_B': 1, '/AREF': 1}
+GAPS by block {'other': 7, 'CH1': 3, 'POWER': 13, 'REFCAL': 13, 'AWG': 7, 'CH2': 1}
+RIPPED [('/SCL', 'run 12.0 mm 2 vias', 12.0, 2, (88.78, 124.72)), ('/+5V_F', 'run 27.7 mm 4 vias', 27.7, 4, (76.07, 135.97))]

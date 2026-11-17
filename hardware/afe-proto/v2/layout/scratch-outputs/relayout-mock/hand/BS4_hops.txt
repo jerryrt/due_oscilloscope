@@ -1,0 +1,60 @@
+GAP CH2 /+3V3A (track end) -> (track end) gap 12.4 mm under C104 BRIDGE-ONLY
+GAP CH1 /+3V3A C104.1 -> D101.2 gap 13.4 mm under R108 BRIDGE-ONLY
+GAP POWER /+5V_DUE R406.1 -> J601.5 gap 16.6 mm hop 16.56 mm BRIDGE-ONLY
+GAP POWER /+5V_F (track end) -> (track end) gap 4.5 mm hop 2.57 mm CLOSABLE
+GAP POWER /+5V_F U401.12 -> U401.8 gap 2.0 mm hop 1.10 mm CLOSABLE
+GAP POWER /+5V_F U401.12 -> U401.3 gap 2.1 mm no legal via site near an end BRIDGE-ONLY
+GAP POWER /+5V_F U401.3 -> C402.1 gap 1.8 mm no legal via site near an end BRIDGE-ONLY
+GAP POWER /+5V_F C401.1 -> (track end) gap 7.8 mm hop 5.18 mm BRIDGE-ONLY
+GAP CH1 /A1 (track end) -> R108.2 gap 0.5 mm under R108 BRIDGE-ONLY
+GAP REFCAL /ADS_B U502.7 -> R511.2 gap 3.4 mm under U502 BRIDGE-ONLY
+GAP REFCAL /ADS_TAP R510.2 -> U502.6 gap 3.2 mm hop 0.45 mm CLOSABLE
+GAP REFCAL /AREF J604.8 -> (track end) gap 37.4 mm under pad J501.1 BRIDGE-ONLY
+GAP AWG /AWG_BIN R307.1 -> U301.3 gap 4.9 mm under U301 BRIDGE-ONLY
+GAP AWG /AWG_BIN (track end) -> R306.2 gap 10.2 mm under U301 BRIDGE-ONLY
+GAP AWG /AWG_OA R308.1 -> U301.1 gap 10.4 mm under R308 BRIDGE-ONLY
+GAP AWG /AWG_OB U301.7 -> R309.1 gap 10.5 mm under R303 BRIDGE-ONLY
+GAP AWG /AWG_VO R303.1 -> C301.1 gap 4.7 mm under R303 BRIDGE-ONLY
+GAP AWG /AWG_VO (track end) -> R308.2 gap 0.8 mm under R308 BRIDGE-ONLY
+GAP AWG /AWG_VO R308.2 -> R309.2 gap 2.4 mm inside an analog fence BRIDGE-ONLY
+GAP AWG /AWG_VO R303.1 -> TP301.1 gap 14.8 mm under U301 BRIDGE-ONLY
+GAP AWG /AWG_VREF R304.2 -> R305.2 gap 15.5 mm inside an analog fence BRIDGE-ONLY
+GAP CH1 /CH1_IN R101.1 -> C101.1 gap 5.1 mm under R101 BRIDGE-ONLY
+GAP OTHER /CH1_IN R101.1 -> (track end) gap 17.1 mm under C102 BRIDGE-ONLY
+GAP CH2 /CH2_IN C201.1 -> R201.1 gap 5.3 mm under R202 BRIDGE-ONLY
+GAP OTHER /CH2_IN R201.1 -> (track end) gap 12.3 mm under R201 BRIDGE-ONLY
+GAP POWER /LM_C1N C409.2 -> U401.9 gap 3.6 mm hop 2.89 mm CLOSABLE
+GAP POWER /LM_C1P C409.1 -> U401.10 gap 2.6 mm hop 1.01 mm CLOSABLE
+GAP POWER /LM_CP C403.1 -> U401.5 gap 1.7 mm hop 0.05 mm CLOSABLE
+GAP POWER /LM_FBP R401.2 -> U401.2 gap 4.3 mm hop 2.21 mm CLOSABLE
+GAP POWER /LM_FBP U401.2 -> R402.1 gap 3.0 mm hop 3.00 mm CLOSABLE
+GAP POWER /SCL (track end) -> (track end) gap 11.6 mm hop 8.64 mm BRIDGE-ONLY
+GAP REFCAL /SCL (track end) -> U502.10 gap 13.0 mm under R514 BRIDGE-ONLY
+GAP REFCAL /SDA R512.2 -> U502.9 gap 19.2 mm under R509 BRIDGE-ONLY
+GAP OTHER /SDA R512.2 -> J604.9 gap 24.4 mm hop 22.05 mm BRIDGE-ONLY
+GAP REFCAL /SNS_B J501.2 -> R511.1 gap 15.6 mm under R503 BRIDGE-ONLY
+GAP REFCAL /TAP1 R501.2 -> J602.6 gap 17.6 mm under R501 BRIDGE-ONLY
+GAP REFCAL /TAP2 R503.1 -> R502.2 gap 12.8 mm under R503 BRIDGE-ONLY
+GAP REFCAL /TAP2 R502.2 -> J602.5 gap 18.2 mm under R502 BRIDGE-ONLY
+GAP REFCAL /TAP3 R503.2 -> J501.3 gap 6.8 mm under R503 BRIDGE-ONLY
+GAP REFCAL /TAP3 R503.2 -> R504.1 gap 22.4 mm under R503 BRIDGE-ONLY
+GAP REFCAL /TAP4 R505.1 -> U502.5 gap 10.5 mm under R505 BRIDGE-ONLY
+GAP REFCAL /TAP4 U502.5 -> R504.2 gap 11.7 mm under U502 BRIDGE-ONLY
+GAP REFCAL /TAP5 R505.2 -> R506.1 gap 22.5 mm under /VREF BRIDGE-ONLY
+GAP OTHER /TAP5 R506.1 -> J602.2 gap 4.2 mm under R506 BRIDGE-ONLY
+GAPS (spanning, non-GND): 44
+SUMMARY AWG hop-closable 0 bridge-only 9
+SUMMARY CH1 hop-closable 0 bridge-only 3
+SUMMARY CH2 hop-closable 0 bridge-only 2
+SUMMARY OTHER hop-closable 0 bridge-only 4
+SUMMARY POWER hop-closable 7 bridge-only 5
+SUMMARY REFCAL hop-closable 1 bridge-only 13
+TOTAL hop-closable 8 bridge-only 36 against a budget of 13
+LENGTHS {'11-33': 18, '3-11': 16, '<3': 9, '>33': 1}
+BRIDGE-ONLY nets that cannot take a bridge: []
+WALL A0/A1 crossings by net: {'/AWG_VO': 1, '/AWG_VREF': 1} total 2
+FENCE-WALL crossings by net: {'/+3V3A': {'CH1': 1, 'CH2': 1}}
+FENCE-WALL crossings total: {'CH1': 1, 'CH2': 1, 'AWG': 0}
+INSIDE CH1 gaps between its own parts 4 hop-closable 0 bridge-only 4 lengths [0.5, 5.1, 13.4, 17.1]
+INSIDE CH2 gaps between its own parts 2 hop-closable 0 bridge-only 2 lengths [5.3, 12.3]
+INSIDE AWG gaps between its own parts 9 hop-closable 0 bridge-only 9 lengths [0.8, 2.4, 4.7, 4.9, 10.2, 10.4, 10.5, 14.8, 15.5]
