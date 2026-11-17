@@ -140,7 +140,7 @@ def kind_of(q):
     q = q[3:] if q.startswith('fn_') else q
     if q.startswith('name_'): return None
     return 'TP' if q.startswith('TP') else q[0]
-def is_anchor(q): return (q[3:] if q.startswith('fn_') else q).startswith(('U', 'J', 'TP'))
+def is_anchor(q): return (q[3:] if q.startswith('fn_') else q).startswith(('U', 'J', 'TP', 'D'))
 def own_label_dist(s):
     """distance from part s (body outline and pads) to its own label; a BNC's designator and function text count as one label"""
     sol = own_solid.get(s, cour[s]); ds = [gap(sol, placed[k]) for k in (s, 'fn_' + s) if k in placed]
@@ -195,7 +195,7 @@ def first_ok(r, anchor=False):
         for k in cands(r):
             if ok(r, k[2], k[3], k[4]): relaxed.add(r); return k
     finally: RELAX = False
-    if RECT_MODE and r.startswith(('U', 'J', 'TP')):   # an IC, a connector or a test point with no place inside its rectangle: outside it, in no other block's
+    if RECT_MODE and r.startswith(('U', 'J', 'TP', 'D')):   # an IC, a connector, a test point or a diode with no place inside its rectangle: outside it, in no other block's
         global FALLBACK
         for rl in (False, True):
             RELAX = rl; FALLBACK = True
@@ -225,7 +225,7 @@ def run(order):
         k = first_ok(r, anchor=r in ANCH)
         if k: put(r, k)
         else: plan[r] = None; kind[r] = 'OFF'
-ANCH = {r for r in cour if r.startswith(('U', 'J', 'TP')) and r not in BNC}
+ANCH = {r for r in cour if r.startswith(('U', 'J', 'TP', 'D')) and r not in BNC}
 MH = [r for r in cour if r.startswith('MH')]
 for r in MH: plan[r] = None; kind[r] = 'OFF'
 EDGEJ = os.environ.get('EDGEJSON', 'kicad/labels/edge.json')
@@ -291,7 +291,7 @@ if os.environ.get('EDGEONLY'):
     json.dump({r: ([plan[r][0], plan[r][1], plan[r][2], kind[r]] if plan.get(r) else None) for r in edge_anch}, open(EDGEJ, 'w')); print('EDGE labels', {r: plan.get(r) for r in edge_anch}); sys.exit(0)
 # (2) the BNC labels, the same offset in every frame
 # (2b) anchors inside the blocks (U, J501, TP): placed before the regions, which then take their labels in
-PRIO = [q for q in os.environ.get('PRIO', 'TP405').split(',') if q]
+PRIO = [q for q in os.environ.get('PRIO', 'TP405,D201,D501,D502,D101').split(',') if q]
 blk_anch = sorted([r for r in ANCH if blk(r) is not None], key=lambda r: (0 if r in PRIO else 1, feas(r)))
 for f in [q for q in os.environ.get('FORCE', '').split(',') if q]:      # FORCE=REF:x:y:angle puts a label at a stated place the candidate grid cannot reach
     rr, fx, fy, fa = f.split(':'); put(rr, (0, 'forced', float(fx), float(fy), int(fa), 0, 0)); blk_anch = [q for q in blk_anch if q != rr]

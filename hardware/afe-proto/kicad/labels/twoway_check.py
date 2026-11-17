@@ -9,7 +9,7 @@ def kind(q):
     q = q[3:] if q.startswith('fn:') else q
     if q.startswith('name:'): return None
     return 'TP' if q.startswith('TP') else q[0]
-anchor = lambda q: q.startswith(('U', 'J', 'TP'))
+anchor = lambda q: q.startswith(('U', 'J', 'TP', 'D'))
 BNCS = ('J101', 'J201', 'J301'); fnof = {'CH1 IN': 'J101', 'CH2 IN': 'J201', 'AWG OUT': 'J301'}
 bad = []
 for r, bx in labs.items():
