@@ -97,6 +97,13 @@ def check_names(cfg):
     return unknown
 
 
+# THE ONE numeric tolerance of the package, declared here once and read by every rule that compares a distance with a threshold (a distance passes when it is within EPS of
+# the threshold). It is coordinate and text-box resolution (KiCad's nm grid, pcbnew's stroke boxes), not a loosened margin; a rule that needs it lists EPS_NAME in its names
+# table. pcbkit.labels reads this same value.
+EPS_DEFAULT = 0.005
+EPS_NAME = tunable('EPS', EPS_DEFAULT, 'mm', 'coordinate and text-box resolution (KiCad nm grid, pcbnew stroke boxes): a distance passes a threshold when it is within EPS of it')
+
+
 def _get(cfg, key):
     if isinstance(cfg, dict):
         return cfg[key] if key in cfg else _REQUIRED

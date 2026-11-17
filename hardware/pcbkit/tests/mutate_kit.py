@@ -200,8 +200,8 @@ DESIG = [
     ('designators: a label inside its own block is foreign', "if blk != home and outlines.in_rects(ctr, rects)[0] and", "if outlines.in_rects(ctr, rects)[0] and"),
     ('designators: foreign waivers ignored', "outlines.in_rects(ctr, rects)[0] and c.DESIGNATOR_FOREIGN_WAIVED.get(ref) != blk:", "outlines.in_rects(ctr, rects)[0]:"),
     ('designators: shared parts judged as foreign', "or ref in c.SHARED_PARTS or ref in c.BLOCK_OVERRIDE", "or ref in c.BLOCK_OVERRIDE"),
-    ('two-way: step 1 without the margin', "if dp + m > dq and (s1 is None or dq - dp < s1[0]):", "if dp > dq and (s1 is None or dq - dp < s1[0]):"),
-    ('two-way: step 2 without the margin', "if own + m > do and (s2 is None or do - own < s2[0]):", "if own > do and (s2 is None or do - own < s2[0]):"),
+    ('two-way: step 1 without the margin', "if dp + m > dq + eps and (s1 is None or dq - dp < s1[0]):", "if dp > dq + eps and (s1 is None or dq - dp < s1[0]):"),
+    ('two-way: step 2 without the margin', "if own + m > do + eps and (s2 is None or do - own < s2[0]):", "if own > do + eps and (s2 is None or do - own < s2[0]):"),
     ('two-way: step 1 compares anchors with every kind', "if q == p or (kinds[p] != 'P' and kinds[q] != kinds[p]):", "if q == p:"),
     ('two-way: step 2 compares anchors with every kind', "if o == p or (kinds[p] != 'P' and kinds[o] != kinds[p]):", "if o == p:"),
     ('two-way: hidden and fab designators are labels', "        if b.r_on_silk[k] and int(b.r_layer[k]) == 0:\n            L, W", "        if True:\n            L, W"),
@@ -210,6 +210,20 @@ DESIG = [
     ('two-way: the fields are not required', "    require(b, 'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1', 't_x0', 't_y0', 't_x1', 't_y1')\n", "    pass\n"),
     ('designators: the two-way test is not part of the rule', "    tw = two_way_test(b, cfg, report)\n", "    tw = {}\n"),
 ]
+EPS_MUT = [
+    ('eps: not applied in step 1', "if dp + m > dq + eps and", "if dp + m > dq and"),
+    ('eps: not applied in step 2', "if own + m > do + eps and", "if own + m > do and"),
+    ('eps: applied to the wrong side in step 1', "if dp + m > dq + eps and", "if dp + m + eps > dq and"),
+    ('eps: applied to the wrong side in step 2', "if own + m > do + eps and", "if own + m + eps > do and"),
+    ('eps: applied twice in step 1', "if dp + m > dq + eps and", "if dp + m > dq + 2 * eps and"),
+    ('eps: applied twice in step 2', "if own + m > do + eps and", "if own + m > do + 2 * eps and"),
+    ('eps: a second hard-coded value in step 1', "if dp + m > dq + eps and", "if dp + m > dq + 0.005 and"),
+    ('eps: a second hard-coded value in step 2', "if own + m > do + eps and", "if own + m > do + 0.005 and"),
+    ('eps: not read from the configuration', "    eps = c.EPS ", "    eps = 0.005; _ = c.EPS "),
+]
+EPS_CFG = [
+    ('eps: the declared default changed', "EPS_DEFAULT = 0.005", "EPS_DEFAULT = 0.05"),
+]
 RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']),
         ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py']),
         ('rules.py', GROUND_PLANE, ['test_ground_plane.py']), ('rules.py', BOTTOM_HOPS, ['test_bottom_hops.py']),
@@ -217,7 +231,8 @@ RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.p
         ('config.py', GUARD, ['test_config_guard.py']), ('rules.py', GUARD_RULES, ['test_config_guard.py']),
         ('rules.py', SENSITIVE, ['test_sensitive_nets.py']), ('rules.py', POUR, ['test_pour_gap.py']), ('rules.py', KEEPOUT, ['test_keepout_ring.py']),
         ('rules.py', DECOUP, ['test_decoupling.py']),
-        ('outlines.py', OUTLINES, ['test_blocks.py']), ('rules.py', TESTPTS, ['test_test_points.py']), ('rules.py', DESIG, ['test_designators.py'])]
+        ('outlines.py', OUTLINES, ['test_blocks.py']), ('rules.py', TESTPTS, ['test_test_points.py']), ('rules.py', DESIG, ['test_designators.py']),
+        ('rules.py', EPS_MUT, ['test_designators.py']), ('config.py', EPS_CFG, ['test_designators.py'])]
 
 
 def _limit():

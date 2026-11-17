@@ -18,7 +18,7 @@ from scipy.spatial import cKDTree
 
 from . import geom, outlines
 from .board import FieldNotRead, require
-from .config import declare, format_report, project, resolve, tunable, check_names
+from .config import EPS_NAME, declare, format_report, project, resolve, tunable, check_names
 
 
 @dataclasses.dataclass
@@ -793,6 +793,7 @@ TWO_WAY_NAMES = (
     tunable('DESIGNATOR_ADVANCE', 0.95, 'fraction of the text height', 'designator box length per character'),
     tunable('DESIGNATOR_INK_H', 1.2, 'fraction of the text height', 'designator box width across the text'),
     tunable('LABEL_TEXTS', {}, 'dict text -> designator', "board silk texts that are part of a part's label (a BNC's function text): the nearer of its designator and these counts"),
+    EPS_NAME,
 )
 
 
@@ -813,7 +814,7 @@ def two_way_test(b, cfg, report=None):
     DESIGNATOR_ADVANCE x height per character by DESIGNATOR_INK_H x height (turned with the text); a LABEL_TEXTS text is pcbnew's box.
     1. FROM THE LABEL: for every label of part P, d(label, P) + READ_MARGIN <= d(label, Q) for every other part Q.
     2. FROM THE PART: for every part P with a label, d(P, its label) + READ_MARGIN <= d(P, any other label).
-    An anchor is compared only against parts / labels of its own kind in both steps; a passive against all. Needs the fields of board.read_board
+    A distance passes when own + READ_MARGIN <= other + EPS (the package's one tolerance, config.EPS_NAME). An anchor is compared only against parts / labels of its own kind in both steps; a passive against all. Needs the fields of board.read_board
     (fp_fab_*, t_x0..; board.require raises naming one that was not read). Returns {ref: (own distance, step 1 failure, step 2 failure)};
     a failure is (margin shortfall as other - own, other part, own, other) or None."""
     c = resolve(cfg, TWO_WAY_NAMES, 'designators', report)
@@ -839,6 +840,7 @@ def two_way_test(b, cfg, report=None):
         if t in c.LABEL_TEXTS and c.LABEL_TEXTS[t] in solid:
             labels.setdefault(c.LABEL_TEXTS[t], []).append((float(b.t_x0[k]), float(b.t_y0[k]), float(b.t_x1[k]), float(b.t_y1[k])))
     m = c.READ_MARGIN
+    eps = c.EPS                                                     # a distance passes when own + margin <= other + EPS
     kinds = {r: _kind(r, c.SILK_REQUIRED_PREFIXES) for r in set(solid) | set(labels)}
 
     def dsolid(p, bx):
@@ -852,14 +854,14 @@ def two_way_test(b, cfg, report=None):
                 continue
             dq = min(_gap(bx, it) for bx in labels[p] for it in solid[q]) if solid[q] else 9e9
             dp = min(_gap(bx, it) for bx in labels[p] for it in solid[p]) if solid[p] else 9e9        # (a part with nothing solid: never nearest)
-            if dp + m > dq and (s1 is None or dq - dp < s1[0]):
+            if dp + m > dq + eps and (s1 is None or dq - dp < s1[0]):
                 s1 = (dq - dp, q, dp, dq)
         s2 = None
         for o, bxs in labels.items():
             if o == p or (kinds[p] != 'P' and kinds[o] != kinds[p]):
                 continue
             do = min(dsolid(p, bx) for bx in bxs)
-            if own + m > do and (s2 is None or do - own < s2[0]):
+            if own + m > do + eps and (s2 is None or do - own < s2[0]):
                 s2 = (do - own, o, own, do)
         out[p] = (own, s1, s2)
     return out

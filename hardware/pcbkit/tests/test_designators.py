@@ -181,6 +181,25 @@ def test_hidden_and_fab_designators_are_not_labels_and_a_part_without_one_is_not
     assert rules.two_way_test(f.build(), TW) == {}
 
 
+def test_the_tolerance_eps_lets_a_shortfall_of_resolution_pass_and_nothing_larger():
+    """a distance passes when own + READ_MARGIN <= other + EPS (EPS the package's one tolerance, 0.005 mm): R1's own label is 0.5 from its body; R3's body at y = 3.1 + d is the
+    rival, 0.6 + d from the label; own + 0.15 = 0.65, so d = -0.002 is a shortfall of 0.002 (inside EPS: passes), d = -0.006 of 0.006 (outside: fails)"""
+    def step1(d, **over):
+        return rules.two_way_test(tw_part(tw_base(), 'R3', 0, 3.1 + d).build(), {**TW, **over})['R1'][1]
+    assert step1(0.0) is not None and step1(0.04) is not None                                        # 0.60 and 0.64 from the label: shortfalls 0.05 and 0.01: fail
+    assert step1(0.048) is None                                                                      # 0.648: shortfall 0.002 (inside EPS)
+    assert step1(0.044) is not None                                                                  # 0.644: shortfall 0.006 (outside EPS)
+    assert step1(0.048, EPS=0.0) is not None                                                         # with EPS = 0 the same board fails: the tolerance matters
+    assert step1(0.044, EPS=0.01) is None and step1(0.038, EPS=0.01) is not None                     # and it is the declared value that is applied, not a copy
+    rep = []
+    rules.two_way_test(tw_base().build(), TW, rep)
+    assert {k: (v, s) for k, v, s in rep}['EPS'] == (0.005, 'default')
+    def step2(d, **over):
+        a = tw_part(tw_base(), 'R4', 0, -3.0 - d, (0, -1.5 - d))                                    # R4's label 0.5 + d from R1's body
+        return rules.two_way_test(a.build(), {**TW, **over})['R1'][2]
+    assert step2(0.0) is not None and step2(0.148) is None and step2(0.144) is not None and step2(0.148, EPS=0.0) is not None
+
+
 def test_the_fields_of_a_pcbkit_read_are_required_and_the_project_names_raise():
     b = tw_base().build().replace(read_fields=frozenset())
     with pytest.raises(K.FieldNotRead, match='fp_fab_x0'):

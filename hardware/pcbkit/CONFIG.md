@@ -28,6 +28,8 @@ transform and its inverse. `board.frame_of(cfg)` accepts a 2-sequence, a mapping
   `GEN` is within 2 of `GND`, and a flat distance of 2 would have raised on its configuration). A declared name never raises, even when it is near another declared name (`config.declared_pairs_near()` lists such pairs).
   On the AFE's configurations (`v2_layout`, `v2`, `v1`, `v1r`, `v1_frozen`) nothing raises (`tests/afe_effective_config.py`). A module that does not declare its names yet (`pinlabels`) is simply not guarded.
 
+* **One numeric tolerance.** `EPS` (tunable, mm, default 0.005) is declared once, in `pcbkit.config` (`config.EPS_NAME`, `config.EPS_DEFAULT`), and every rule that compares a distance with a threshold lists it in its names table and applies it the same way: a distance passes a threshold when it is within `EPS` of it. It is coordinate and text-box resolution (KiCad's nm grid and pcbnew's stroke boxes, a few micrometres), not a loosened margin: it is the rounding allowance, and it is what lets a label that is 1.25 micrometres short of the margin pass. `pcbkit.labels` reads this same declared value (`from pcbkit.config import EPS_NAME, EPS_DEFAULT`), not a copy of its own.
+
 Each rule declares its names in a `*_NAMES` table in `pcbkit/rules.py`; a rule never reads a name it does not list. The sections below give every name, its kind, type, unit and default.
 
 ## Rules (`pcbkit.rules`)
@@ -156,6 +158,7 @@ in `TP_NETS` is on its net. Findings: `block X has no test point` (sorted), then
 | `DESIGNATOR_GAP_ONE_LABEL` | tunable | mm | 0.6 | |
 | `DESIGNATOR_FOREIGN_WAIVED` | tunable | dict ref -> block | `{}` | |
 | `READ_MARGIN` | tunable | mm | 0.15 | the owner's margin (round 5 of the label job) |
+| `EPS` | tunable | mm | 0.005 | **the package's one numeric tolerance** (see Policy): a distance passes the two-way test when `own + READ_MARGIN <= other + EPS` |
 | `LABEL_TEXTS` | tunable | dict text -> designator | `{}` | board silk texts that are part of a part's label (a BNC's function text) |
 | `BLOCK`, `OUTLINE`, `EDGE_BLOCK`, `BLOCK_OVERRIDE`, `SHARED_PARTS` | as blocks | | | foreign labels |
 
