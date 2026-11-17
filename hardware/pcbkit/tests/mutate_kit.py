@@ -75,7 +75,7 @@ SILK = [
     ('reference hide flag dropped', "not r.IsVisible(), _just(pcb, r)))", "False, _just(pcb, r)))"),
     ('justification left reads as right', "pcb.GR_TEXT_H_ALIGN_LEFT: 'left'", "pcb.GR_TEXT_H_ALIGN_LEFT: 'right'"),
     ('pad box right edge is its left edge', "bb.GetRight(), bb.GetBottom(), pd.GetNetCode()", "bb.GetLeft(), bb.GetBottom(), pd.GetNetCode()"),
-    ('added fields not defaulted on a hand-built board', "if name in _ADDED and n and not len(getattr(self, name)):", "if False:"),
+    ('an added field of the wrong length is let through', "if not (n in _ADDED and len(getattr(self, n)) == 0)}\n        if len(ns) > 1:", "if not (n in _ADDED)}\n        if len(ns) > 1:"),
 ]
 RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']), ('board.py', SILK, ['test_board_silk.py'])]
 

@@ -80,12 +80,9 @@ _ALL = [f for g in SPEC.values() for f in g] + _ZGEO
 KIND = dict(_ALL)
 
 # Fields added after the first release of the arrays. A board built by hand, or an npz cache written before them, leaves them
-# empty: they are then filled with these values (NaN = "not measured", never a number a rule could mistake for one) to the length
-# of the group's older fields. A group whose older fields are all empty stays empty.
-_ADDED = {'fp_fab_x0': np.nan, 'fp_fab_y0': np.nan, 'fp_fab_x1': np.nan, 'fp_fab_y1': np.nan,
-          'r_hide': False, 'r_just': 'center',
-          't_ang': 0.0, 't_stroke': np.nan, 't_x0': np.nan, 't_y0': np.nan, 't_x1': np.nan, 't_y1': np.nan, 't_hide': False,
-          't_layer': 0, 't_just': 'center'}
+# EMPTY (length 0), which means "not read": the group-length check lets them be empty, and a consumer that needs one checks len().
+_ADDED = frozenset({'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1', 'r_hide', 'r_just', 't_ang', 't_stroke', 't_x0', 't_y0', 't_x1', 't_y1',
+                    't_hide', 't_layer', 't_just'})
 # every name added after the first release, groups of their own included: a project that must keep its recorded array set (the AFE's
 # cached fixtures hold the first one) filters _ALL, KIND and SPEC by it
 LATER_FIELDS = frozenset(_ADDED) | {n for g in ('fpsilk', 'gsilk') for n, _ in SPEC[g]}
@@ -96,18 +93,12 @@ def _post_init(self):
         object.__setattr__(self, 'z_keepout', np.zeros(len(self.z_layer), bool))
     for name, kind in _ALL:
         object.__setattr__(self, name, _coerce(kind, getattr(self, name)))
-    for g, fields in SPEC.items():                  # fill the added fields of a group whose older fields have rows
-        old = [n for n, _ in fields if n not in _ADDED]
-        n = max((len(getattr(self, o)) for o in old), default=0)
-        for name, kind in fields:
-            if name in _ADDED and n and not len(getattr(self, name)):
-                object.__setattr__(self, name, _coerce(kind, [_ADDED[name]] * n))
     object.__setattr__(self, 'nets', tuple(str(x) for x in self.nets))
     for g, fields in SPEC.items():
         if g == 'outline':
             continue
-        ns = {len(getattr(self, n)) for n, _ in fields}
-        if len(ns) != 1:
+        ns = {len(getattr(self, n)) for n, _ in fields if not (n in _ADDED and len(getattr(self, n)) == 0)}
+        if len(ns) > 1:
             raise ValueError(f'BoardArrays group {g}: fields differ in length: '
                              f'{ {n: len(getattr(self, n)) for n, _ in fields} }')
     nz, nring = len(self.z_layer), len(self.z_vert_off) - 1

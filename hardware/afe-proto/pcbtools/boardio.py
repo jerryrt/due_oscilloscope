@@ -33,14 +33,21 @@ def from_due(x, y):
     return _kit.from_frame(x, y, FRAME)
 
 
+def _first_release(b):
+    """the arrays without the later fields (left empty), so the AFE's array edits (pcbtools.mutate, editor) and its recorded caches see
+    the field set they always had"""
+    return b.replace(**{n: [] for n in _kit.LATER_FIELDS})
+
+
 def read_board(path):
-    """Load `path` with pcbnew once, copy everything into BoardArrays in Due mm, return."""
-    return _kit.read_board(path, FRAME)
+    """Load `path` with pcbnew once, copy everything into BoardArrays in Due mm, return. The later fields are left empty (pcbkit.board
+    has them; read it directly for them)."""
+    return _first_release(_kit.read_board(path, FRAME))
 
 
 def read_board_retry(path, tries=3, timeout=120):
     """pcbkit.board.read_board_retry in the AFE frame"""
-    return _kit.read_board_retry(path, FRAME, tries=tries, timeout=timeout)
+    return _first_release(_kit.read_board_retry(path, FRAME, tries=tries, timeout=timeout))
 
 
 if __name__ == '__main__':       # python -m pcbtools.boardio BOARD.kicad_pcb OUT.npz

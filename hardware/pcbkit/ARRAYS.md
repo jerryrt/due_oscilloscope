@@ -1,7 +1,7 @@
 # Arrays added to `board` after the first release (step 1b)
 
 All in the configured frame (`FRAME`), mm, y up; boxes are `x0 <= x1`, `y0 <= y1`. Read from pcbnew, never from the file text. A
-board built by hand, or an npz cache that predates them, gets NaN (boxes) or the default shown. No configuration name is read.
+board built by hand, or an npz cache that predates them, leaves them empty (length 0 = not read; a consumer that needs one checks `len`). `fp_fab_*` is NaN for a footprint with no F.Fab shape. No configuration name is read.
 
 | fields | one row per | what |
 |---|---|---|

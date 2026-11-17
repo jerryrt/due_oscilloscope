@@ -129,9 +129,12 @@ def test_pad_boxes_equal_pcbnew_bounding_box(rich, pcbnew_mod):
     assert (b.p_by1[r2] - b.p_by0[r2]) == pytest.approx(0.95, abs=0.02)
 
 
-def test_hand_built_board_gets_nan_and_defaults_for_the_added_fields():
+def test_hand_built_board_leaves_the_added_fields_empty():
     b = B.BoardArrays.from_arrays(nets=('',), fp_idx=[0], fp_ref=['A'], fp_x=[0], fp_y=[0], fp_rot=[0], fp_side=[0], fp_cx0=[0], fp_cy0=[0],
                                   fp_cx1=[1], fp_cy1=[1], fp_kind=['K'], t_text=['x'], t_x=[0], t_y=[0], t_h=[1],
                                   r_x=[0], r_y=[0], r_h=[1], r_w=[1], r_t=[.1], r_ang=[0], r_layer=[0], r_on_silk=[1], r_fp=[0])
-    assert np.isnan(b.fp_fab_x0).all() and len(b.fp_fab_x0) == 1 and np.isnan(b.t_x0).all() and b.t_just == ('center',) and not b.t_hide[0]
-    assert not b.r_hide[0] and b.r_just == ('center',) and len(b.fs_fp) == 0 and len(b.g_kind) == 0
+    assert all(len(getattr(b, n)) == 0 for n in B.LATER_FIELDS)                  # empty = not read, and the group check allows it
+    c = b.replace(fp_idx=[], fp_ref=[], fp_x=[], fp_y=[], fp_rot=[], fp_side=[], fp_cx0=[], fp_cy0=[], fp_cx1=[], fp_cy1=[], fp_kind=[])
+    assert len(c.fp_ref) == 0
+    with pytest.raises(ValueError):                                              # a half-filled group is still refused
+        b.replace(fp_fab_x0=[0.0, 1.0])
