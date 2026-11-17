@@ -4,17 +4,17 @@
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-F.Cu-silk.png",
   "link": "../integrated/render/afe-v2-integrated-F.Cu-silk.png",
   "exists": true,
-  "current": false,
-  "why": "made from another board file",
-  "sha256": "f4571624e5acb4e5"
+  "current": true,
+  "why": "",
+  "sha256": "e588e3445397d5bd"
  },
  {
   "view": "bottom (B.Cu)",
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-B.Cu.png",
   "link": "../integrated/render/afe-v2-integrated-B.Cu.png",
   "exists": true,
-  "current": false,
-  "why": "made from another board file",
+  "current": true,
+  "why": "",
   "sha256": "7f65c1baef410c28"
  },
  {
@@ -22,17 +22,17 @@
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d.png",
   "link": "../integrated/render/afe-v2-integrated-3d.png",
   "exists": true,
-  "current": false,
-  "why": "made from another board file",
-  "sha256": "7f6e696279bac940"
+  "current": true,
+  "why": "",
+  "sha256": "c04368de3e85ac1b"
  },
  {
   "view": "3D bottom",
   "file": "hardware/afe-proto/v2/layout/integrated/render/afe-v2-integrated-3d-bottom.png",
   "link": "../integrated/render/afe-v2-integrated-3d-bottom.png",
   "exists": true,
-  "current": false,
-  "why": "made from another board file",
-  "sha256": "2d5d475d11c3d9e1"
+  "current": true,
+  "why": "",
+  "sha256": "2637f460b7a014ba"
  }
 ]

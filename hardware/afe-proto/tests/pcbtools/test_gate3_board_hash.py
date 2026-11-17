@@ -37,8 +37,7 @@ def test_the_committed_package_records_the_boards_hash(name):
     assert [s for s in stale(info, renders, board.read_bytes()) if s.startswith('info.json')] == [], f'regenerate {pkg}: python3 -B -m pcbtools.gate3 (see the table\'s docstring)'
 
 
-@pytest.mark.parametrize('name', [pytest.param('v1'), pytest.param('v2', marks=pytest.mark.xfail(
-    strict=True, reason="v2's four renders were made before the AFE-2 silk labels landed (renders.json: made from another board file); regenerate them and drop this mark"))])
+@pytest.mark.parametrize('name', sorted(PACKAGES))
 def test_the_committed_renders_are_the_boards(name):
     pkg, board, info, renders = load(name)
     assert [s for s in stale(info, renders, board.read_bytes()) if s.startswith('render')] == []
