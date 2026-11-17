@@ -929,7 +929,8 @@ def lr11(b, cfg):
                 if home == blk and _in_rects(P[i:i + 1], [(x0 - margin, y0 - margin, x1 + margin, y1 + margin)
                                                           for x0, y0, x1, y1 in rects])[0]:
                     inside.add(r)
-        want = blocks.get(blk, set())
+        want = blocks.get(blk, set()) - set(getattr(cfg, 'OUTLINE_STRAYS', ()))   # D30 (1c): named parts may sit outside their own
+        inside -= set(getattr(cfg, 'OUTLINE_STRAYS', ())) & blocks.get(blk, set())  # block's rectangle; never inside another's
         if inside != want:
             bad.append(f'{blk}: outline holds {sorted(inside - want)[:5]} extra, lacks {sorted(want - inside)[:5]}')
     inout = {k: _in_rects(P, rects) for k, rects in cfg.OUTLINE.items()}

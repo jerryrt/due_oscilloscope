@@ -456,7 +456,7 @@ def test_lr11():
     assert r.ok, r.detail
     assert r.detail == '1 outlines hold exactly their parts, 3 designators, 8 test points' and r.figures['designators'] == 3
     r = R.lr11(lr11_board(mh_silk=False), C11)
-    assert r.detail == 'MH601: designator not on silk at 0.8 mm or more'
+    assert r.detail == 'MH601: designator not on silk at 0.8 mm or more, and not on F.Fab either'   # MH is not a must-label kind (D30 (1c))
     c = cfg(**{**vars(C11), 'OUTLINE': {'CH1': [(0, 0, 5.5, 10)]}})                      # TP101 (x 6) falls out of the outline
     assert R.lr11(lr11_board(), c).detail == "CH1: outline holds [] extra, lacks ['TP101']"
     c = cfg(**{**vars(C11), 'TP_NETS': {'TP101': '/GND'}})
@@ -547,3 +547,12 @@ def test_touch_rule_via_to_via_and_via_in_pad_box():
 def test_lr11_designators_with_fewer_than_three_digits_belong_to_nobody():
     s = Synth('/A1').part('R101', 5, 5).part('TP101', 6, 5).p('TP101', '1', 6, 5, '/A1').part('MH601', 50, 50).part('R10', 99, 99).text('CH1')
     assert R.lr11(s.build(), C11).ok
+
+
+def test_lr11_a_named_stray_may_sit_outside_its_block_and_no_other():
+    """D30 (1c): a part named in OUTLINE_STRAYS may lie outside its own block's rectangle; an unnamed one still fails, and a named
+    stray inside another block's rectangle still fails that block"""
+    c = cfg(**{**vars(C11), 'OUTLINE': {'CH1': [(0, 0, 5.5, 10)]}})                      # TP101 (x 6) falls out of the outline
+    assert "lacks ['TP101']" in R.lr11(lr11_board(), c).detail
+    assert "lacks" not in R.lr11(lr11_board(), cfg(**{**vars(c), 'OUTLINE_STRAYS': ('TP101',)})).detail
+    assert "lacks ['TP101']" in R.lr11(lr11_board(), cfg(**{**vars(c), 'OUTLINE_STRAYS': ('R101',)})).detail
