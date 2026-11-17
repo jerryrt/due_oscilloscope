@@ -62,19 +62,20 @@ for m in list(re.finditer(r'\n\s*\(wire\b', wtxt))[::-1]:
     nm = re.search(r'\(net ([^\s)]+)', blk)
     if nm and nm.group(1).strip('"') in LOCK | {'/GND_never'}: wtxt = wtxt[:i] + wtxt[j:]
 for m in list(re.finditer(r'\n\s*\(via\b[^\n]*', wtxt))[::-1]:
-    if re.search(r'\(net ([^\s)]+)', wtxt[m.start():m.start() + 200]) and re.search(r'\(net ([^\s)]+)', wtxt[m.start():m.start() + 200]).group(1).strip('"') in LOCK: wtxt = wtxt[:m.start()] + wtxt[m.end():]
+    if re.search(r'\(net ([^\s)]+)', wtxt[m.start():m.start() + 200]) and re.search(r'\(net ([^\s)]+)', wtxt[m.start():m.start() + 200]).group(1).strip('"') in LOCK | {'/GND'}: wtxt = wtxt[:m.start()] + wtxt[m.end():]
 s = s[:wiring] + wtxt + s[wend:]
 s = drop_net_blocks(s, sorted(LOCK))
 # keep-outs: the locked copper on F.Cu, outline + clearance
 ko = ''
 um = lambda v: int(round(mm(v) * 1000))
 for x in locked:
-    if x[1] == '/GND': continue
+    if x[1] == '/GND' and x[0] != 'v': continue
     cle = 600 if x[1] in HIZ else 200
     if x[0] == 't' and x[7] == pcbnew.F_Cu:
         ko += '    (keepout "" (path F.Cu %d  %d %d  %d %d))\n' % (um(x[6]) + 2 * cle, um(x[2]), -um(x[3]), um(x[4]), -um(x[5]))
     elif x[0] == 'v':
         ko += '    (keepout "" (circle F.Cu %d %d %d))\n' % (um(x[4]) + 2 * cle, um(x[2]), -um(x[3]))
+        ko += '    (keepout "" (circle B.Cu %d %d %d))\n' % (um(x[4]) + 2 * cle, um(x[2]), -um(x[3]))
 WIN = [(24.0, 6.0, 40.0, 26.0), (42.0, 20.0, 58.0, 34.0)]           # where a bottom hop may start: the U401 cluster and the REF/CAL north crossings, both outside every fence
 if MODE == 'R': WIN = WIN + FENCE                                       # what-if: the fences too (only the allowed nets can use B.Cu there: every other net is top-only)
 def strips(win, X0=17.0, X1=117.0, Y0=-4.5, Y1=53.34, step=2.0):
@@ -112,10 +113,10 @@ b0 = pcbnew.LoadBoard(T + '_g2.kicad_pcb')
 keep = [t.Duplicate() for t in b0.GetTracks() if t.GetNetname() in LOCK or t.GetNetname() == '/GND']
 b = pcbnew.LoadBoard(T + '_g2.kicad_pcb')
 print('SES import', pcbnew.ImportSpecctraSES(b, T + '.ses'))
-have = {(t.GetClass(), t.GetNetname(), t.GetStart().x if t.GetClass() != 'PCB_VIA' else t.GetPosition().x, t.GetStart().y if t.GetClass() != 'PCB_VIA' else t.GetPosition().y, t.GetEnd().x if t.GetClass() != 'PCB_VIA' else 0) for t in b.GetTracks()}
+for t in [t for t in b.GetTracks() if t.GetNetname() in LOCK or t.GetNetname() == '/GND']:
+    b.Remove(t)
 for t in keep:
-    k = (t.GetClass(), t.GetNetname(), t.GetStart().x if t.GetClass() != 'PCB_VIA' else t.GetPosition().x, t.GetStart().y if t.GetClass() != 'PCB_VIA' else t.GetPosition().y, t.GetEnd().x if t.GetClass() != 'PCB_VIA' else 0)
-    if k not in have: b.Add(t)
+    b.Add(t)
 # ---- 4. LOCKS EXACT
 now = collections.Counter()
 for t in b.GetTracks():

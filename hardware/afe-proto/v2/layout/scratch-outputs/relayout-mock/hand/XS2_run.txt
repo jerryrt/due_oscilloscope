@@ -1,0 +1,13 @@
+METRIC conflict_segments 1 distinct_clusters 1
+DSN export True
+locked nets 18 keep-out shapes 394 top-only nets 93
+last pass: 77.58 (38 unrouted and 3 violations), using 51.80 CPU seconds and the job allocated 51.22 GB of memory so far.
+SES import True
+  lost [] extra []
+LOCKS EXACT: yes
+bottom runs kept: 0 (0.0 mm); in fences: {}
+bottom runs ripped (counted as gaps): 4 Counter({'run 17.3 mm 3 vias': 1, 'run 15.0 mm 2 vias': 1, 'run 14.0 mm 2 vias': 1, 'run 27.8 mm 4 vias': 1})
+DRC by type {'silk_overlap': 4, 'silk_over_copper': 2, 'track_width': 1, 'courtyards_overlap': 2, 'clearance': 17, 'items_not_allowed': 5, 'lib_footprint_issues': 4, 'holes_co_located': 1, 'hole_to_hole': 1, 'via_dangling': 1, 'track_dangling': 11} unconnected 51
+UNROUTED by net {'/GND': 1, '/VNEG': 1, '/+3V3A': 10, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 3, '/SNS_B': 3, '/VREF': 4, '/AWG_BIN': 1, '/AWG_VO': 4, '/SCL': 2, '/SDA': 2, '/TAP4': 2, '/TAP1': 1, '/TAP2': 1, '/TAP3': 1, '/AWG_BNC': 1, '/LM_CP': 1, '/CH1_IN': 1, '/LM_FBP': 2, '/AWG_OB': 1, '/AREF': 1}
+GAPS by block {'other': 3, 'AWG': 13, 'REFCAL': 20, 'CH2': 1, 'CH1': 4, 'POWER': 10}
+RIPPED [('/SDA', 'run 17.3 mm 3 vias', 17.3, 3, (101.13, 117.13)), ('/SCL', 'run 15.0 mm 2 vias', 15.0, 2, (101.2, 124.34)), ('/AREF', 'run 14.0 mm 2 vias', 14.0, 2, (100.19, 125.56)), ('/+5V_F', 'run 27.8 mm 4 vias', 27.8, 4, (84.32, 133.29))]
