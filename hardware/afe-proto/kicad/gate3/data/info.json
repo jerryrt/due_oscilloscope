@@ -1,11 +1,11 @@
 {
  "board": "hardware/afe-proto/kicad/afe-proto.kicad_pcb",
- "sha256": "17689b0a6a074c5f39ed05193395a356d7432ca046c96a4f2e1a716c04b2ee70",
+ "sha256": "044f733e9af7018ab02f454fd6e4b504880e17cddfdcfbaa3940fbd3929555cd",
  "git_head": "unavailable (FileNotFoundError)",
  "git_branch": "unavailable (FileNotFoundError)",
  "git_dirty_files": 1,
  "footprints": 122,
  "nets": 133,
  "segments": 408,
- "vias": 56
+ "vias": 68
 }

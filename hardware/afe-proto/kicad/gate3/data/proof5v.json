@@ -44,6 +44,28 @@
  ],
  "zones": [
   {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "analog edge band",
    "net": "",
    "layers": [
@@ -55,7 +77,601 @@
    "on_net": false
   },
   {
+   "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "far edge band",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "F.Cu GND",
+   "net": "/GND",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": false,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R1A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_R2A",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
    "net": "",
    "layers": [
     "F.Cu"
@@ -280,13 +896,19 @@
     "U401.3"
    ],
    "drc_unconnected": 1,
-   "drc_named_pads": [],
+   "drc_named_pads": [
+    "U401.8"
+   ],
    "drc_items": [
     {
-     "nets": [],
-     "pads": [],
+     "nets": [
+      "/+5V_F"
+     ],
+     "pads": [
+      "U401.8"
+     ],
      "raw": [
-      "Track [/+5V_F] on F.Cu, length 1.0500 mm",
+      "Pad 8 [/+5V_F] of U401 on F.Cu",
       "Track [/+5V_F] on F.Cu, length 1.0500 mm"
      ]
     }
@@ -306,19 +928,13 @@
     "U401.3"
    ],
    "drc_unconnected": 2,
-   "drc_named_pads": [
-    "U401.8"
-   ],
+   "drc_named_pads": [],
    "drc_items": [
     {
-     "nets": [
-      "/+5V_F"
-     ],
-     "pads": [
-      "U401.8"
-     ],
+     "nets": [],
+     "pads": [],
      "raw": [
-      "Pad 8 [/+5V_F] of U401 on F.Cu",
+      "Track [/+5V_F] on F.Cu, length 1.0500 mm",
       "Track [/+5V_F] on F.Cu, length 13.6500 mm"
      ]
     },
@@ -326,8 +942,8 @@
      "nets": [],
      "pads": [],
      "raw": [
-      "Track [/+5V_F] on F.Cu, length 1.0500 mm",
-      "Track [/+5V_F] on F.Cu, length 1.0500 mm"
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm",
+      "Track [/+5V_F] on F.Cu, length 0.3000 mm"
      ]
     }
    ],

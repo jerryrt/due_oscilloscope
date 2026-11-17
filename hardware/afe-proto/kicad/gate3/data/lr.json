@@ -58,7 +58,7 @@
    "fb_mm": 4.3999999999999995,
    "violations": 0.0,
    "gnd_track_gap_AWG_INV_mm": 3.00180995549373,
-   "pour_gap_AWG_INV_mm": Infinity
+   "pour_gap_AWG_INV_mm": 0.5
   }
  },
  {
@@ -143,7 +143,7 @@
   "rule": "LR-11",
   "checker_row": "LR-11",
   "ok": true,
-  "detail": "4 outlines hold exactly their parts, 122 designators, 8 test points, 50 pin labels (1.0 x 1.0 mm, overhang 4.5 mm), identity silk",
+  "detail": "4 outlines hold exactly their parts, 122 designators, 8 test points, 54 passive designators on F.Fab (found through the ibom), 50 pin labels (1.0 x 1.0 mm, overhang 4.5 mm), identity silk",
   "figures": {
    "outlines": 4.0,
    "designators": 122.0,
@@ -155,12 +155,11 @@
   "rule": "LR-10",
   "checker_row": "LR-10",
   "ok": false,
-  "detail": "DRC {'courtyards_overlap': 2, 'silk_overlap': 5, 'lib_footprint_mismatch': 1}; unconnected 0",
+  "detail": "DRC {'courtyards_overlap': 2, 'lib_footprint_mismatch': 1}; unconnected 0",
   "figures": {
-   "violations": 8.0,
+   "violations": 3.0,
    "unconnected": 0.0,
    "courtyards_overlap": 2.0,
-   "silk_overlap": 5.0,
    "lib_footprint_mismatch": 1.0
   }
  }
