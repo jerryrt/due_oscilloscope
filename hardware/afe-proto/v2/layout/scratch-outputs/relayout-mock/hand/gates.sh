@@ -1,7 +1,7 @@
 #!/bin/sh
 # usage (in the image, cwd /work): gates.sh SPEC.py TAG   -> splice onto the committed board, refill zones on the copy, all LR rows, DRC by type, unconnected
 R=hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock
-B=hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb
+B=${BASE:-hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb}
 python3 $R/hand/hr.py $B $R/hand/g_$2.kicad_pcb $1 >/dev/null
 cp hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pro $R/hand/g_$2.kicad_pro
 python3 - $R/hand/g_$2.kicad_pcb $1 $R/hand/pads.json <<'PY'
