@@ -1,0 +1,4 @@
+ROT - (153, 33) ['iter 9: 123s  routed 45/45  failed []  conflicting 29']
+ROT R504 (138, 28) ['iter 9: 123s  routed 45/45  failed []  conflicting 27']
+ROT R504+R502+R508+R403 (163, 32) ['iter 9: 122s  routed 45/45  failed []  conflicting 29']
+ROT R504+R502+R508+R403+R514 (151, 26) ['iter 9: 135s  routed 45/45  failed []  conflicting 30']

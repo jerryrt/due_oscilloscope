@@ -8,5 +8,7 @@ for ref in refs:
     x, y, r = m.group(1), m.group(2), float(m.group(3) or 0)
     new = '(at %s %s %g)' % (x, y, (r + 180) % 360)
     t = t[:m.start()] + new + t[m.end():]
+    pm = re.compile(r'\(property "Reference" "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)' % ref).search(t, s)
+    t = t[:pm.start(1)] + '%g %g' % (-float(pm.group(1)), -float(pm.group(2))) + t[pm.end(2):]      # the label stays where it was: its offset turns with the part
 open(out, 'w').write(t)
 print('turned', refs)
