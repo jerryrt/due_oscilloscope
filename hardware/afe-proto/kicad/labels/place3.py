@@ -50,10 +50,15 @@ def blk(r):
     return {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL'}.get(m.group(1)) if m else None
 BNC = ('J101', 'J201', 'J301'); BNCBLK = {'J101': 'CH1', 'J201': 'CH2', 'J301': 'AWG'}
 BNCFN = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
-BNCEND = {'AWG': (98.5, -0.5, 115.8, 17.4), 'CH2': (98.5, 17.9, 115.8, 36.3), 'CH1': (98.5, 36.8, 115.8, 54.0)}
+BNCEND = {'AWG': (98.5, -0.5, 115.8, 17.4), 'CH2': (98.5, 17.9, 116.4, 36.3), 'CH1': (98.5, 36.8, 115.8, 54.0)}
 DUE = C.DUE_RECT
 def part_block(r): return BNCBLK.get(r) or blk(r)
-placed = {}; own_of = {}; plan = {}; kind = {}; relaxed = set(); RELAX = False
+RECT_MODE = bool(os.environ.get('RECT'))
+_rj = json.load(open(os.environ.get('RJSON', 'kicad/labels/rects.json'))) if os.path.exists(os.environ.get('RJSON', 'kicad/labels/rects.json')) else {}
+if os.environ.get('PX1') and 'POWER' in _rj: _rj['POWER'][2] = float(os.environ['PX1'])
+RECTS = {B: [tuple(_rj[B])] for B in ('POWER', 'REFCAL', 'AWG', 'CH2', 'CH1')}
+RECTS['AWG'].append((98.5, -0.5, 116.4, 17.4)); RECTS['CH2'].append((98.5, 17.9, 116.4, 36.3)); RECTS['CH1'].append((98.5, 36.8, 116.4, 54.0))
+placed = {}; own_of = {}; plan = {}; kind = {}; relaxed = set(); RELAX = False; FALLBACK = False; fallback_used = set(); FALLBACK = False; fallback_used = set()
 REGION_IN = {}; REGION_ANY = None; SAT = {}
 def lab_box(r, x, y, ang):
     L = len(r) * ADV
@@ -99,6 +104,20 @@ def ok_(r, x, y, ang):
         d = gap(L, B)
         if d <= g_own + SMARG: return 'stack'
         if q in own_of and d <= gap(B, own_of[q]) + SMARG: return 'stack2'
+    if RECT_MODE:
+        pb = part_block(r); i = refs.index(r); pc = (float(b.fp_x[i]), float(b.fp_y[i]))
+        own_in = pb in RECTS and any(q[0] <= pc[0] <= q[2] and q[1] <= pc[1] <= q[3] for q in RECTS[pb])
+        if own_in and FALLBACK:
+            lc = ((L[0] + L[2]) / 2, (L[1] + L[3]) / 2)
+            for B2, rs in RECTS.items():
+                if any(q[0] <= lc[0] <= q[2] and q[1] <= lc[1] <= q[3] for q in rs): return 'foreign'
+        elif own_in:
+            if not sat_inside(pb, L): return 'region'
+        else:
+            lc = ((L[0] + L[2]) / 2, (L[1] + L[3]) / 2)
+            for B2, rs in RECTS.items():
+                if any(q[0] <= lc[0] <= q[2] and q[1] <= lc[1] <= q[3] for q in rs): return 'foreign'
+        return True
     if part_block(r) is None: return True if REGION_ANY is None or outside_regions((L[0] - 0.3, L[1] - 0.3, L[2] + 0.3, L[3] + 0.3)) else 'inregion'
     if not region_ok(r, L): return 'region'
     return True
@@ -135,6 +154,17 @@ def first_ok(r, anchor=False):
         for k in cands(r):
             if ok(r, k[2], k[3], k[4]): relaxed.add(r); return k
     finally: RELAX = False
+    if RECT_MODE and r.startswith(('U', 'J')):         # an IC or a connector with no place inside its rectangle: outside it, in no other block's
+        global FALLBACK
+        for rl in (False, True):
+            RELAX = rl; FALLBACK = True
+            try:
+                for k in cands(r):
+                    if ok(r, k[2], k[3], k[4]):
+                        fallback_used.add(r)
+                        if rl: relaxed.add(r)
+                        return k
+            finally: RELAX = False; FALLBACK = False
     return None
 def put(r, k):
     L = lab_box(r, k[2], k[3], k[4]); placed[r] = L; own_of[r] = cour[r]; plan[r] = [round(k[2], 3), round(k[3], 3), k[4]]; kind[r] = k[1]
@@ -147,9 +177,29 @@ def run(order):
 ANCH = {r for r in cour if r.startswith(('U', 'J', 'TP')) and r not in BNC}
 MH = [r for r in cour if r.startswith('MH')]
 for r in MH: plan[r] = None; kind[r] = 'OFF'
+EDGEJ = os.environ.get('EDGEJSON', 'kicad/labels/edge.json')
+if RECT_MODE and not os.path.exists(EDGEJ) and not os.environ.get('EDGEONLY'): sys.exit('run with EDGEONLY=1 first')
+if RECT_MODE:
+    R = {B: RG.union_rects(rs) for B, rs in RECTS.items()}
+    er0 = int(round(0.2 / RG.RES)) * 2 + 1
+    for B, m in R.items(): REGION_IN[B] = ndimage.binary_erosion(m, structure=np.ones((er0, er0), bool)); SAT[B] = mk_sat(REGION_IN[B])
+    OUTSEG = {B: [(q[0], q[1], q[2], q[1]), (q[2], q[1], q[2], q[3]), (q[0], q[3], q[2], q[3]), (q[0], q[1], q[0], q[3])] for B, rs in RECTS.items() for q in rs[:1]}
+    for B, rs in RECTS.items():
+        if len(rs) > 1: OUTSEG[B] = OUTSEG[B] + [(q[0], q[1], q[2], q[1]) for q in rs[1:]] + [(q[2], q[1], q[2], q[3]) for q in rs[1:]] + [(q[0], q[3], q[2], q[3]) for q in rs[1:]] + [(q[0], q[1], q[0], q[3]) for q in rs[1:]]
+    lines = np.array([(min(a, c) - 0.075, min(d, e) - 0.075, max(a, c) + 0.075, max(d, e) + 0.075) for sg in OUTSEG.values() for a, d, c, e in sg]).reshape(-1, 4)
+    silk = np.vstack([silk, lines])
 # (1) the edge connectors
 edge_anch = sorted([r for r in ANCH if blk(r) is None], key=feas)
-run(edge_anch)
+if RECT_MODE and not os.environ.get('EDGEONLY'):
+    ej = json.load(open(EDGEJ))
+    for r in edge_anch:
+        v = ej.get(r)
+        if v: k = (0, v[3], v[0], v[1], v[2], 0, 0); put(r, k); plan[r] = [round(v[0], 3), round(v[1], 3), v[2]]
+        else: plan[r] = None; kind[r] = 'OFF'
+else:
+    run(edge_anch)
+if os.environ.get('EDGEONLY'):
+    json.dump({r: ([plan[r][0], plan[r][1], plan[r][2], kind[r]] if plan.get(r) else None) for r in edge_anch}, open(EDGEJ, 'w')); print('EDGE labels', {r: plan.get(r) for r in edge_anch}); sys.exit(0)
 # (2) the BNC labels, the same offset in every frame
 BNC_OFF, BNC_DX = 8.6, 2.0; fnpos = {}
 for r in BNC:
@@ -157,13 +207,15 @@ for r in BNC:
     L1 = lab_box(r, xd, yd, 0); L2 = (xl, yd - INK / 2, xl + len(BNCFN[r]) * ADV, yd + INK / 2)
     plan[r] = [round(xd, 3), round(yd, 3), 0]; kind[r] = 'bnc'; placed[r] = L1; placed['fn_' + r] = L2; fnpos[BNCFN[r]] = [round(xl, 3), round(yd, 3)]
 # (2b) anchors inside the blocks (U, J501, TP): placed before the regions, which then take their labels in
-blk_anch = sorted([r for r in ANCH if blk(r) is not None], key=feas)
+PRIO = [q for q in os.environ.get('PRIO', 'TP405').split(',') if q]
+blk_anch = sorted([r for r in ANCH if blk(r) is not None], key=lambda r: (0 if r in PRIO else 1, feas(r)))
 run(blk_anch)
 # (2c) block names: one size, each at a corner of its block (the corners of its members' bounding box), the same corner wherever it fits
 SIZE = 1.2; NAMETXT = {'POWER': 'POWER', 'REFCAL': 'REF/CAL', 'AWG': 'AWG', 'CH1': 'CH1', 'CH2': 'CH2'}
 def name_box(t, x, y): return (x - len(t) * ADV * SIZE / 2, y - INK * SIZE / 2, x + len(t) * ADV * SIZE / 2, y + INK * SIZE / 2)
 def name_ok(B, x, y):
     t = name_box(NAMETXT[B], x, y)
+    if RECT_MODE and not sat_inside(B, t): return False
     if t[0] < DUE[0] + EDGE or t[2] > 98.0 or t[1] < DUE[1] + EDGE or t[3] > DUE[3] - EDGE: return False
     if ovl(t, cr, 0.1).any() or ovl(t, pads, CLR).any() or ovl(t, vias, CLR).any() or ovl(t, silk, 0.15).any(): return False
     return not any(lab_clash(t, bx) for bx in placed.values())
@@ -174,6 +226,14 @@ for r, c in cour.items():
     if B and r not in BNC: mem0[B].append(c)
 CORE = {'POWER': (18.0, 4.6, 44.0, 22.0), 'REFCAL': (44.5, 4.6, 64.5, 36.0), 'AWG': (69.8, 4.4, 92.0, 19.4), 'CH2': (69.4, 19.9, 92.0, 33.0), 'CH1': (64.8, 33.5, 92.0, 50.3)}   # the main body of each block (cfg.OUTLINE's first rectangle)
 def corner_spot(B, c):
+    if RECT_MODE:
+        rr = RECTS[B][0]; cx = rr[0] if c[1] == 'L' else rr[2]; cy = rr[3] if c[0] == 'T' else rr[1]; best = None
+        for x in np.arange(cx - 12, cx + 12, 0.25):
+            for y in np.arange(cy - 12, cy + 12, 0.25):
+                d = abs(x - cx) + abs(y - cy)
+                if d > 12 or (best and d >= best[0]): continue
+                if name_ok(B, x, y): best = (d, x, y)
+        return best
     core = [q for q in mem0[B] if CORE[B][0] <= (q[0] + q[2]) / 2 <= CORE[B][2] and CORE[B][1] <= (q[1] + q[3]) / 2 <= CORE[B][3]]
     xs = [q[0] for q in core] + [q[2] for q in core]; ys = [q[1] for q in core] + [q[3] for q in core]
     cx = min(xs) if c[1] == 'L' else max(xs); cy = max(ys) if c[0] == 'T' else min(ys); best = None
@@ -215,18 +275,20 @@ for B in members:
     obst[B] = o
 CLAIMS = {'POWER': [(41.3, 4.5, 44.3, 11.5)]}
 keep = {B: [placed[q] for q in blk_anch if q in placed and part_block(q) == B] for B in members}
+if RECT_MODE: keep = {B: [] for B in members}
 for r in BNC:
     keep[BNCBLK[r]] += [placed[r], placed['fn_' + r]]
 for B2, bx in name_boxes.items(): keep[B2].append(bx)
 keep['REFCAL'].append(ON_BOX)
 keep = {B2: [(q[0] - 0.3, q[1] - 0.3, q[2] + 0.3, q[3] + 0.3) for q in v] for B2, v in keep.items()}
-R = RG.make_regions(members, obst, halo=HALO, lane=LANE, claims=None, keep=keep, lmax=float(os.environ.get('LMAX', '8')))
-er = int(round(0.2 / RG.RES)) * 2 + 1
-for B, m in R.items():
-    REGION_IN[B] = ndimage.binary_erosion(m, structure=np.ones((er, er), bool)); SAT[B] = mk_sat(REGION_IN[B])
-REGION_ANY = ndimage.maximum_filter(np.any(np.stack(list(R.values())), 0), size=3)
-OUTSEG = {}
-for B, m in R.items(): OUTSEG[B] = [tuple(round(float(v), 3) for v in s) for s in RG.boundary_segments(m)]
+if not RECT_MODE:
+    R = RG.make_regions(members, obst, halo=HALO, lane=LANE, claims=None, keep=keep, lmax=float(os.environ.get('LMAX', '8')))
+    er = int(round(0.2 / RG.RES)) * 2 + 1
+    for B, m in R.items():
+        REGION_IN[B] = ndimage.binary_erosion(m, structure=np.ones((er, er), bool)); SAT[B] = mk_sat(REGION_IN[B])
+    REGION_ANY = ndimage.maximum_filter(np.any(np.stack(list(R.values())), 0), size=3)
+    OUTSEG = {}
+    for B, m in R.items(): OUTSEG[B] = [tuple(round(float(v), 3) for v in s) for s in RG.boundary_segments(m)]
 ncomp = {B: ndimage.label(m)[1] for B, m in R.items()}
 print('REGIONS components', ncomp, 'segments', {B: len(v) for B, v in OUTSEG.items()})
 for B, m in R.items():
@@ -245,7 +307,7 @@ for r in list(cour):
     else: byb[B][2].append(r)
 print('placed', sum(1 for r in plan if plan[r]), 'of', len(plan))
 for B, (a, c, offl) in sorted(byb.items()): print('BLOCK', B, a, c, a - c, ' '.join(sorted(offl)))
-print('relaxed anchors', sorted(relaxed)); print('anchors OFF', [r for r in ANCH if plan.get(r) is None])
+print('relaxed anchors', sorted(relaxed)); print('anchors outside their rectangle', sorted(fallback_used)); print('anchors OFF', [r for r in ANCH if plan.get(r) is None])
 print('kinds', collections.Counter(kind.values()))
 for r in [q for q in os.environ.get('DBG', '').split(',') if q]:
     for mode in (False, True):
