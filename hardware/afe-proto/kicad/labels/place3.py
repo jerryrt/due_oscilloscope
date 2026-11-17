@@ -105,13 +105,9 @@ def ok_(r, x, y, ang):
         if min(gap(t, cr[k]) for k in range(len(cr_refs)) if cr_refs[k] != r) - gap(t, own) < silkread.OWN_MARGIN: return 'ownmargin'
     if ovl(L, pads, CLR).any() or ovl(L, vias, CLR).any(): return 'padvia'
     if ovl(L, silk, CLR).any(): return 'silk'
-    g_own = gap(L, own)
     for q, B in placed.items():
-        if q == r: continue
-        if lab_clash(L, B): return 'label'
-        d = gap(L, B)
-        if d <= g_own + SMARG: return 'stack'
-        if q in own_of and d <= gap(B, own_of[q]) + SMARG: return 'stack2'
+        if q != r and lab_clash(L, B): return 'label'
+    if TWOWAY and not two_way_ok(r, L): return 'twoway'
     if RECT_MODE:
         pb = part_block(r); i = refs.index(r); pc = (float(b.fp_x[i]), float(b.fp_y[i]))
         own_in = pb in RECTS and any(q[0] <= pc[0] <= q[2] and q[1] <= pc[1] <= q[3] for q in RECTS[pb])
@@ -128,6 +124,32 @@ def ok_(r, x, y, ang):
         return True
     if part_block(r) is None: return True if REGION_ANY is None or outside_regions((L[0] - 0.3, L[1] - 0.3, L[2] + 0.3, L[3] + 0.3)) else 'inregion'
     if not region_ok(r, L): return 'region'
+    return True
+TWOWAY = bool(os.environ.get('TWOWAY'))
+def kind_of(q):
+    q = q[3:] if q.startswith('fn_') else q
+    if q.startswith('name_'): return None
+    return 'TP' if q.startswith('TP') else q[0]
+def is_anchor(q): return (q[3:] if q.startswith('fn_') else q).startswith(('U', 'J', 'TP'))
+def own_label_dist(s):
+    """distance from part s (body outline and pads) to its own label; a BNC's designator and function text count as one label"""
+    sol = own_solid.get(s, cour[s]); ds = [gap(sol, placed[k]) for k in (s, 'fn_' + s) if k in placed]
+    return min(ds) if ds else None
+def two_way_ok(r, L):
+    """round 9: (2) from every labelled part, its own label is nearer than any other label by SMARG, measured to body and pads; anchors compare only with labels of their own kind.
+    The label-to-part side (1) is the own-margin test above."""
+    sol_r = own_solid.get(r, cour[r]); d_r = gap(sol_r, L)
+    for q, B in placed.items():
+        if q == r or q == 'fn_' + r: continue
+        if is_anchor(r) and kind_of(q) != kind_of(r): pass
+        else:
+            if gap(sol_r, B) <= d_r + SMARG: return False
+        owner = q[3:] if q.startswith('fn_') else q
+        if owner in own_of or owner in BNC:
+            s = owner
+            if is_anchor(s) and kind_of(r) != kind_of(s): continue
+            ds = own_label_dist(s)
+            if ds is not None and gap(own_solid.get(s, cour[s]), L) <= ds + SMARG: return False
     return True
 REASON = collections.Counter()
 def ok(r, x, y, ang):
