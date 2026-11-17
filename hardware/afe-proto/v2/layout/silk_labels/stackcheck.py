@@ -12,7 +12,7 @@ import numpy as np, pcbnew
 from pcbtools import boardio
 
 FUN = {'CH1 IN': 'J101', 'CH2 IN': 'J201', 'AWG OUT': 'J301'}
-def kind(p): return 'TP' if p.startswith('TP') else (p[0] if p[0] in 'UJ' else 'P')
+def kind(p): return 'TP' if p.startswith('TP') else (p[0] if p[0] in 'UJD' else 'P')
 
 
 def run(path):

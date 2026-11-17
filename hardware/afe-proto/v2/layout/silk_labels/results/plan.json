@@ -1,5 +1,35 @@
 {
  "placed": {
+  "J101": [
+   "bnc90",
+   99.2325,
+   42.25,
+   "strict"
+  ],
+  "J201": [
+   "bnc90",
+   99.2325,
+   24.47,
+   "strict"
+  ],
+  "J301": [
+   "bnc90",
+   99.2325,
+   5.540000000000001,
+   "strict"
+  ],
+  "D101": [
+   "above",
+   69.3,
+   35.3,
+   "relaxed"
+  ],
+  "D201": [
+   "east0",
+   76.66799999999999,
+   32.1,
+   "strict"
+  ],
   "J501": [
    "above",
    60.9,
@@ -32,9 +62,9 @@
   ],
   "J605": [
    "above",
-   95.249999,
+   95.2,
    53.2,
-   "strict"
+   "relaxed"
   ],
   "J606": [
    "above",
@@ -125,24 +155,6 @@
    58.77499999999999,
    21.2,
    "relaxed"
-  ],
-  "J101": [
-   "bnc90",
-   99.2325,
-   42.25,
-   "strict"
-  ],
-  "J201": [
-   "bnc90",
-   99.2325,
-   24.47,
-   "strict"
-  ],
-  "J301": [
-   "bnc90",
-   99.2325,
-   5.540000000000001,
-   "strict"
   ],
   "BR401": [
    "east0",
@@ -240,12 +252,6 @@
    39.1,
    "strict"
   ],
-  "D101": [
-   "above",
-   69.77749999999999,
-   35.495,
-   "strict"
-  ],
   "R513": [
    "east0",
    47.475,
@@ -288,12 +294,6 @@
    6.824999999999999,
    "strict"
   ],
-  "D201": [
-   "east0",
-   76.638,
-   32.050000000000004,
-   "strict"
-  ],
   "R401": [
    "above",
    30.8,
@@ -328,12 +328,6 @@
    "west0",
    79.38999899999999,
    27.65,
-   "strict"
-  ],
-  "BR101": [
-   "above",
-   66.83999999999999,
-   37.225,
    "strict"
   ],
   "C401": [
@@ -374,6 +368,7 @@
   ]
  },
  "dropped": [
+  "BR101",
   "BR102",
   "BR501",
   "BR502",
@@ -449,12 +444,17 @@
  ],
  "east_end": [],
  "anchors": {
+  "J101": "bnc vertical, left margin of its box (AFE-1 offsets)",
+  "J201": "bnc vertical, left margin of its box (AFE-1 offsets)",
+  "J301": "bnc vertical, left margin of its box (AFE-1 offsets)",
+  "D101": "relaxed_in_clean above",
+  "D201": "strict east0",
   "J501": "relaxed_in_clean above",
   "J601": "strict west0",
   "J602": "strict above",
   "J603": "relaxed_in_clean above",
   "J604": "strict above",
-  "J605": "strict above",
+  "J605": "relaxed_in above",
   "J606": "strict above",
   "J607": "strict above",
   "TP101": "strict above",
@@ -469,10 +469,7 @@
   "U301": "relaxed_in_clean west0",
   "U401": "relaxed_in_clean east0",
   "U501": "strict west0",
-  "U502": "relaxed_in_clean east0",
-  "J101": "bnc vertical, left margin of its box (AFE-1 offsets)",
-  "J201": "bnc vertical, left margin of its box (AFE-1 offsets)",
-  "J301": "bnc vertical, left margin of its box (AFE-1 offsets)"
+  "U502": "relaxed_in_clean east0"
  },
  "blocked": {},
  "bnc": {
@@ -530,14 +527,14 @@
  },
  "tests": {
   "candidates failing first at each test": {
-   "own body not nearer by 0.25 mm": 69015,
-   "pad or via": 4202,
-   "on another part body": 188576,
-   "own part body/pads": 50348,
-   "own part (body and pads) not nearer than another part by 0.15 mm": 1429,
-   "silk line or outline": 9720,
-   "outside own block outline": 2601,
-   "board text / pin label": 1678
+   "own body not nearer by 0.25 mm": 66317,
+   "pad or via": 3963,
+   "on another part body": 186784,
+   "own part body/pads": 48584,
+   "own part (body and pads) not nearer than another part by 0.15 mm": 1423,
+   "silk line or outline": 8627,
+   "outside own block outline": 1451,
+   "board text / pin label": 1478
   },
   "passives with no static place at all": [
    "BR102",
@@ -591,22 +588,22 @@
    "pad or via": 4
   },
   "dropped passives for which that test alone is the blocker (any place)": {
-   "pad or via": 4,
-   "outside own block outline": 4,
    "own body not nearer by 0.25 mm": 31,
-   "board text / pin label": 2,
    "silk line or outline": 2,
+   "outside own block outline": 4,
+   "pad or via": 4,
+   "board text / pin label": 2,
    "own part (body and pads) not nearer than another part by 0.15 mm": 0
   }
  },
  "kinds": {
-  "above": 27,
-  "west0": 11,
+  "bnc90": 3,
+  "above": 26,
   "east0": 11,
+  "west0": 11,
   "east90": 1,
   "below": 6,
-  "west90": 3,
-  "bnc90": 3
+  "west90": 3
  },
- "iterations": 20090
+ "iterations": 21397
 }

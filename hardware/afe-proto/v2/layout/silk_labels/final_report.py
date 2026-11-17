@@ -34,9 +34,9 @@ print('TOTAL      %6d %10d %14d %14d' % (tot['p'], tot['w'], tot['p'] - tot['w']
 print('without a label (new):', sorted(r for r in refs if r not in sn))
 print('beside set (east/west at 0 degrees):', plan['beside'])
 kinds = collections.Counter(v[0] for v in plan['placed'].values()); print('places used by passives and anchors:', dict(kinds))
-anch = [r for r in refs if r[0] in 'UJ' and not r.startswith('MH') or r.startswith('TP')]
+anch = [r for r in refs if r[0] in 'UJD' and not r.startswith('MH') or r.startswith('TP')]
 bnc = ('J101', 'J201', 'J301')
-print('ANCHORS (U, J, TP):')
+print('ANCHORS (U, J, D, TP):')
 allok = True
 for r in sorted(anch, key=lambda r: (r[0], int(re.sub(r'\D', '', r)))):
     state = plan['anchors'].get(r)

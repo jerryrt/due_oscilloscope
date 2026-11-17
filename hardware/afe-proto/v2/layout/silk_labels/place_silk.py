@@ -216,7 +216,7 @@ def lab_clash(L, B):
     return B[0] - mx < L[2] and L[0] < B[2] + mx and B[1] - 0.2 < L[3] and L[1] < B[3] + 0.2
 
 
-def kind_of(p): return 'TP' if p.startswith('TP') else (p[0] if p[0] in 'UJ' else 'P')
+def kind_of(p): return 'TP' if p.startswith('TP') else (p[0] if p[0] in 'UJD' else 'P')
 def part_of(n): return n[4:] if n.startswith('fun:') else n
 
 
@@ -244,7 +244,7 @@ def pair_ok(r, c, o, oc, gap=None):
 
 def is_mh(r): return re.fullmatch(r'MH\d+', r) is not None
 labelled = [r for r in cour if not is_mh(r) and r not in BNC]
-anchors = sorted([r for r in labelled if r[0] in 'UJ' or r.startswith('TP')], key=lambda r: (r[:1] if not r.startswith('TP') else 'T', int(re.sub(r'\D', '', r))))
+anchors = sorted([r for r in labelled if r[0] in 'UJD' or r.startswith('TP')], key=lambda r: (r[:1] if not r.startswith('TP') else 'T', int(re.sub(r'\D', '', r))))
 passives = [r for r in labelled if r not in anchors]
 
 fixed = {}                                                       # no fixed labels: the BNCs' labels move into their own rectangles (bnc.py), the holes carry none
@@ -252,49 +252,6 @@ P = {}                                                           # ref -> Cand
 
 # ---- anchors first
 anchor_note = {}
-for r in anchors:
-    done = None; how = None
-    for mode in ('strict', 'relaxed_in_clean', 'relaxed_clean', 'relaxed_in', 'relaxed_bare'):
-        for kind in ORDER:
-            for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
-                if mode == 'strict': okp = strict_static(r, kind, x, y)
-                else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
-                if okp and mode in ('strict', 'relaxed_in_clean', 'relaxed_clean') and not own_nearer(r, lbox(r, x, y, ang_of(kind))): okp = False
-                if not okp: continue
-                c = make(r, kind, x, y, mode != 'strict')
-                others = list(P.values()) + list(fixed.values())
-                if mode == 'strict':
-                    good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))
-                else:                                                          # (c): the nearest other label is farther than the part itself
-                    d_own = lgap(sbox(r, x, y, ang_of(kind)), cour[r])
-                    good = all(lgap(c.lb, oc.lb) >= 0.3 - 1e-9 and lgap(c.lb, oc.lb) > d_own for oc in others)
-                if good: done = c; how = mode; break
-            if done: break
-        if done: break
-    if done: P[r] = done; anchor_note[r] = how + ' ' + done.kind
-    else: anchor_note[r] = None
-
-blocked = {}
-for r in [q for q, v in anchor_note.items() if v is None]:
-    j0 = [jj for jj in range(len(b.r_fp)) if refs[row[int(b.r_fp[jj])]] == r][0]               # not a place: it stays visible where main had it, and passives keep clear of it
-    fixed[r] = Cand('above', float(b.r_x[j0]), float(b.r_y[j0]), lbox(r, float(b.r_x[j0]), float(b.r_y[j0]), float(b.r_ang[j0])), frozenset(), 0)
-    why = {}
-    for kind in ORDER:
-        hit = collections.Counter(); n = 0
-        for x, y in slide_cands(r, kind):
-            n += 1; ang = ang_of(kind); sb = sbox(r, x, y, ang); w = set()
-            for k, bd in body.items():
-                if k != r and bd is not None and S._overlap(sb, bd): w.add('body of ' + k)
-            for p, o in zip(pads, owner):
-                if S._overlap(sb, p): w.add('pad of ' + o)
-            if on_silk(sb, board_silk): w.add('outline line')
-            own = lgap(sb, body[r]) if body.get(r) else 0.0
-            pre = 'TP' if r.startswith('TP') else r[0]
-            for k, bd in body.items():
-                if k != r and bd is not None and (('TP' if k.startswith('TP') else k[0]) == pre) and lgap(sb, bd) < own + 0.25 and ('body of ' + k) not in w: w.add('nearer to ' + k + ' than 0.25 mm beyond its own body')
-            for q in w: hit[q] += 1
-        why[kind] = (n, hit.most_common(4))
-    blocked[r] = why
 
 # ---- BNCs (owner, round 6): designator then function label VERTICAL (90 degrees, reading bottom to top) in the LEFT margin of each BNC's own box, between the box's west line and the
 # body; one offset from each footprint origin for all three; the function text bottom-aligned (left-justified in its own direction) so the gap after the designator is identical
@@ -343,9 +300,54 @@ bnc_info['found'] = (BNC_DX, DES_DY, FN_DY)
 for r, lab in BNC_FUN.items():
     x, yd, yb, Lf = bnc_geom(r, lab)
     P[r] = Cand('bnc90', x, yd, lbox(r, x, yd, 90.0), frozenset(), 0, False, dsolid(r, lbox(r, x, yd, 90.0)))
-    fixed['fun:' + r] = Cand('bnc90', x, yb + Lf / 2, lbox(lab, x, yb + Lf / 2, 90.0), frozenset(), 0, False, P[r].gown)
+    fixed['fun:' + r] = Cand('bnc90', x, yb + Lf / 2, (x - 0.85, yb, x + 0.85, yb + Lf + 0.1), frozenset(), 0, False, P[r].gown)          # pcbnew's own box of the turned text is 1.7 mm wide
     bnc_info.setdefault('function_at', {})[r] = (round(x, 3), round(yb, 3))
 anchor_note.update({r: 'bnc vertical, left margin of its box (AFE-1 offsets)' for r in BNC})
+
+for r in anchors:
+    done = None; how = None
+    for mode in ('strict', 'relaxed_in_clean', 'relaxed_clean', 'relaxed_in', 'relaxed_bare'):
+        for kind in ORDER:
+            for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
+                if mode == 'strict': okp = strict_static(r, kind, x, y)
+                else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
+                if okp and mode in ('strict', 'relaxed_in_clean', 'relaxed_clean') and not own_nearer(r, lbox(r, x, y, ang_of(kind))): okp = False
+                if not okp: continue
+                c = make(r, kind, x, y, mode != 'strict')
+                others = list(P.values()) + list(fixed.values())
+                if mode == 'strict':
+                    good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))
+                else:                                                          # (c): the nearest other label is farther than the part itself
+                    d_own = lgap(sbox(r, x, y, ang_of(kind)), cour[r])
+                    good = all(lgap(c.lb, oc.lb) >= 0.3 - 1e-9 and lgap(c.lb, oc.lb) > d_own for oc in others)
+                    if good and mode in ('relaxed_in_clean', 'relaxed_clean'): good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))      # the two-way test first; the later modes drop it
+                if good: done = c; how = mode; break
+            if done: break
+        if done: break
+    if done: P[r] = done; anchor_note[r] = how + ' ' + done.kind
+    else: anchor_note[r] = None
+
+blocked = {}
+for r in [q for q, v in anchor_note.items() if v is None]:
+    j0 = [jj for jj in range(len(b.r_fp)) if refs[row[int(b.r_fp[jj])]] == r][0]               # not a place: it stays visible where main had it, and passives keep clear of it
+    fixed[r] = Cand('above', float(b.r_x[j0]), float(b.r_y[j0]), lbox(r, float(b.r_x[j0]), float(b.r_y[j0]), float(b.r_ang[j0])), frozenset(), 0)
+    why = {}
+    for kind in ORDER:
+        hit = collections.Counter(); n = 0
+        for x, y in slide_cands(r, kind):
+            n += 1; ang = ang_of(kind); sb = sbox(r, x, y, ang); w = set()
+            for k, bd in body.items():
+                if k != r and bd is not None and S._overlap(sb, bd): w.add('body of ' + k)
+            for p, o in zip(pads, owner):
+                if S._overlap(sb, p): w.add('pad of ' + o)
+            if on_silk(sb, board_silk): w.add('outline line')
+            own = lgap(sb, body[r]) if body.get(r) else 0.0
+            pre = 'TP' if r.startswith('TP') else r[0]
+            for k, bd in body.items():
+                if k != r and bd is not None and (('TP' if k.startswith('TP') else k[0]) == pre) and lgap(sb, bd) < own + 0.25 and ('body of ' + k) not in w: w.add('nearer to ' + k + ' than 0.25 mm beyond its own body')
+            for q in w: hit[q] += 1
+        why[kind] = (n, hit.most_common(4))
+    blocked[r] = why
 
 # ---- passives (round 4): AFE-1's tests (kicad/labels/place3.py), first fit in AFE-1's candidate order, most constrained first, random restarts
 GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9, -0.1, -0.2, -0.3, -0.4)               # label to own courtyard; negative = over its own courtyard's edge
