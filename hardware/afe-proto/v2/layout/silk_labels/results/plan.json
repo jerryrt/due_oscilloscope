@@ -127,21 +127,21 @@
    "relaxed"
   ],
   "J101": [
-   "bnc",
-   102.0,
-   36.730000000000004,
+   "bnc90",
+   99.2325,
+   42.25,
    "strict"
   ],
   "J201": [
-   "bnc",
-   102.0,
-   18.950000000000003,
+   "bnc90",
+   99.2325,
+   24.47,
    "strict"
   ],
   "J301": [
-   "bnc",
-   102.0,
-   0.02000000000000135,
+   "bnc90",
+   99.2325,
+   5.540000000000001,
    "strict"
   ],
   "BR401": [
@@ -470,63 +470,61 @@
   "U401": "relaxed_in_clean east0",
   "U501": "strict west0",
   "U502": "relaxed_in_clean east0",
-  "J101": "bnc line below its body",
-  "J201": "bnc line below its body",
-  "J301": "bnc line below its body"
+  "J101": "bnc vertical, left margin of its box (AFE-1 offsets)",
+  "J201": "bnc vertical, left margin of its box (AFE-1 offsets)",
+  "J301": "bnc vertical, left margin of its box (AFE-1 offsets)"
  },
  "blocked": {},
  "bnc": {
   "found": [
-   0.0,
-   -8.87,
-   2.3
+   -2.7674999999999983,
+   -3.35,
+   -0.45
   ],
-  "gaps": {
-   "J301-J201 body to body": 4.13,
-   "J201-J101 body to body": 2.98
-  },
-  "text_height": 1.0,
-  "above": {
+  "margins": {
    "J101": {
-    "body_top": 53.0,
-    "outline_lines_above": [
-     53.69
-    ],
-    "board_edge_above": 57.84
+    "box west line x": 98.51,
+    "body west x": 100.0,
+    "footprint silk west x": 99.88,
+    "clear width between the line and the silk (line half-width 0.075 each)": 1.22,
+    "text height (box) 1.0 / LR-11 box 1.2": 1.0
    },
    "J201": {
-    "body_top": 35.22,
-    "outline_lines_above": [
-     35.69,
-     37.69,
-     53.69
-    ],
-    "board_edge_above": 57.84
+    "box west line x": 98.51,
+    "body west x": 100.0,
+    "footprint silk west x": 99.88,
+    "clear width between the line and the silk (line half-width 0.075 each)": 1.22,
+    "text height (box) 1.0 / LR-11 box 1.2": 1.0
    },
    "J301": {
-    "body_top": 16.29,
-    "outline_lines_above": [
-     16.5,
-     20.19,
-     35.69,
-     37.69,
-     53.69
-    ],
-    "board_edge_above": 57.84
+    "box west line x": 98.51,
+    "body west x": 100.0,
+    "footprint silk west x": 99.88,
+    "clear width between the line and the silk (line half-width 0.075 each)": 1.22,
+    "text height (box) 1.0 / LR-11 box 1.2": 1.0
    }
+  },
+  "angle": 90.0,
+  "dx": -2.7675,
+  "des_dy": -3.35,
+  "fn_dy": -0.45,
+  "conflicts": {
+   "J101": [],
+   "J201": [],
+   "J301": []
   },
   "function_at": {
    "J101": [
-    104.3,
-    36.73
+    99.233,
+    45.15
    ],
    "J201": [
-    104.3,
-    18.95
+    99.233,
+    27.37
    ],
    "J301": [
-    104.3,
-    0.02
+    99.233,
+    8.44
    ]
   }
  },
@@ -593,11 +591,11 @@
    "pad or via": 4
   },
   "dropped passives for which that test alone is the blocker (any place)": {
-   "silk line or outline": 2,
-   "board text / pin label": 2,
-   "own body not nearer by 0.25 mm": 31,
-   "outside own block outline": 4,
    "pad or via": 4,
+   "outside own block outline": 4,
+   "own body not nearer by 0.25 mm": 31,
+   "board text / pin label": 2,
+   "silk line or outline": 2,
    "own part (body and pads) not nearer than another part by 0.15 mm": 0
   }
  },
@@ -608,7 +606,7 @@
   "east90": 1,
   "below": 6,
   "west90": 3,
-  "bnc": 3
+  "bnc90": 3
  },
- "iterations": 20461
+ "iterations": 20090
 }

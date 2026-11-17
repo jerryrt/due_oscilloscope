@@ -1,0 +1,113 @@
+{
+ "input pitch (J101 origin to J201 origin)": 17.78,
+ "silk rectangle height (the BNC footprint silk, along the pitch axis)": 15.04,
+ "margin m = (pitch - silk height)/2, on all four sides": 1.37,
+ "boxes": {
+  "J101": {
+   "old": [
+    98.5,
+    37.69,
+    116.4,
+    53.69
+   ],
+   "new": [
+    98.51,
+    36.71,
+    116.09,
+    54.49
+   ],
+   "footprint silk rectangle": [
+    99.88,
+    38.08,
+    114.72,
+    53.12
+   ],
+   "body (F.Fab)": [
+    100.0,
+    38.2,
+    135.6,
+    53.0
+   ],
+   "margins to the silk rectangle left/right/bottom/top": [
+    1.37,
+    1.37,
+    1.37,
+    1.37
+   ],
+   "right edge to the board edge (x 117.05)": 0.96,
+   "clear width in the left margin (line edge 0.075 to the silk edge)": 1.295
+  },
+  "J201": {
+   "old": [
+    98.5,
+    20.19,
+    116.4,
+    35.69
+   ],
+   "new": [
+    98.51,
+    18.93,
+    116.09,
+    36.71
+   ],
+   "footprint silk rectangle": [
+    99.88,
+    20.3,
+    114.72,
+    35.34
+   ],
+   "body (F.Fab)": [
+    100.0,
+    20.42,
+    135.6,
+    35.22
+   ],
+   "margins to the silk rectangle left/right/bottom/top": [
+    1.37,
+    1.37,
+    1.37,
+    1.37
+   ],
+   "right edge to the board edge (x 117.05)": 0.96,
+   "clear width in the left margin (line edge 0.075 to the silk edge)": 1.295
+  },
+  "J301": {
+   "old": [
+    98.55,
+    0.75,
+    116.4,
+    16.5
+   ],
+   "new": [
+    98.51,
+    0.0,
+    116.09,
+    17.78
+   ],
+   "footprint silk rectangle": [
+    99.88,
+    1.37,
+    114.72,
+    16.41
+   ],
+   "body (F.Fab)": [
+    100.0,
+    1.49,
+    135.6,
+    16.29
+   ],
+   "margins to the silk rectangle left/right/bottom/top": [
+    1.37,
+    1.37,
+    1.37,
+    1.37
+   ],
+   "right edge to the board edge (x 117.05)": 0.96,
+   "clear width in the left margin (line edge 0.075 to the silk edge)": 1.295
+  }
+ },
+ "gaps between neighbouring boxes (top line of the lower to bottom line of the upper; 0 = one shared line)": {
+  "J301-J201": 1.15,
+  "J201-J101": 0.0
+ }
+}

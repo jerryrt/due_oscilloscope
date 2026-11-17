@@ -296,8 +296,8 @@ for r in [q for q, v in anchor_note.items() if v is None]:
         why[kind] = (n, hit.most_common(4))
     blocked[r] = why
 
-# ---- BNCs (owner): designator then function label on ONE line, on the SAME side of each own body (below it: above J101 is the board edge), one offset for all three, no text
-# nearer a neighbouring BNC's body than its own
+# ---- BNCs (owner, round 6): designator then function label VERTICAL (90 degrees, reading bottom to top) in the LEFT margin of each BNC's own box, between the box's west line and the
+# body; one offset from each footprint origin for all three; the function text bottom-aligned (left-justified in its own direction) so the gap after the designator is identical
 BNC_FUN = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 RING = [tuple(p) for p in b.outline]
 def inside_board(px, py):
@@ -306,66 +306,46 @@ def inside_board(px, py):
         (x0, y0), (x1, y1) = RING[i], RING[(i + 1) % n]
         if (y0 > py) != (y1 > py) and px < (x1 - x0) * (py - y0) / (y1 - y0) + x0: c = not c
     return c
-bnc_info = {'found': None, 'gaps': {}}
 bods = {r: body[r] for r in BNC}
-ordered = sorted(BNC, key=lambda r: b.fp_y[fi[r]])
-for lo_, hi_ in zip(ordered, ordered[1:]):
-    bnc_info['gaps']['%s-%s body to body' % (lo_, hi_)] = round(bods[hi_][1] - bods[lo_][3], 2)
-bnc_info['text_height'] = 1.0
-def lines_above(r):
-    out = []
-    for blk, rs in C.OUTLINE.items():
-        for x0, y0, x1, y1 in rs:
-            if x0 <= float(b.fp_x[fi[r]]) <= x1:
-                for yy in (y0, y1):
-                    if yy > bods[r][3] + 0.01: out.append(round(yy, 2))
-    top_edge = max((((x1 - x0) * 0 + y0) for (x0, y0), (x1, y1) in zip(RING, RING[1:] + RING[:1]) if abs(x0 - x1) < 1e-9 and False), default=None)
-    ys = [pt[1] for pt in RING if pt[1] > bods[r][3]]
-    # the board edge above the BNC: the highest edge crossing x = the BNC's x
-    edge = None
-    xr = float(b.fp_x[fi[r]])
-    for (x0, y0), (x1, y1) in zip(RING, RING[1:] + RING[:1]):
-        if (x0 - xr) * (x1 - xr) <= 0 and abs(y1 - y0) < 1e-6 and y0 > bods[r][3]: edge = y0 if edge is None else max(edge, y0)
-    return {'body_top': round(bods[r][3], 2), 'outline_lines_above': sorted(set(out)), 'board_edge_above': (round(edge, 2) if edge else None)}
-bnc_info['above'] = {r: lines_above(r) for r in BNC}
-LAB_GAP = 0.2
-def bnc_ok(dx, dy, fx):
-    for r, lab in BNC_FUN.items():
-        ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
-        db = sbox(r, ox + dx, oy + dy); fb = S.text_box(lab, ox + fx + len(lab) * S.CHAR_ADV / 2, oy + dy, 1.0, H, 0.0)
-        for bx in (db, fb):
-            if bx[3] > bods[r][1] - 0.05: return False                                       # below its own body
-            if not all(inside_board(px, py) for px, py in ((bx[0] - 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[3] + 0.2), (bx[0] - 0.2, bx[3] + 0.2))): return False
-            if any(S._overlap(bx, bd) for bd in body.values() if bd is not None): return False
-            if any(lgap(bx, p) < 0.15 for p in pads): return False
-            gb = (bx[0] - 0.15, bx[1] - 0.15, bx[2] + 0.15, bx[3] + 0.15)                          # silk to silk 0.15 mm here: the gaps between the BNC boxes are 2.0 mm
-            if any(S._on_shape(gb, sh) for sh in silk): return False
-            if any(lgap(bx, t) < 0.4 for t in texts): return False
-            dist_own = lgap(bx, bods[r])
-            if any(dist_own >= lgap(bx, bods[q]) for q in BNC if q != r): return False
-            if any(lgap((bx[0], bx[1], bx[2], bx[3]), oc.lb) < 0.5 for oc in list(P.values()) + list(fixed.values())): return False
-        if any(lab_clash(lbox(r, ox + dx, oy + dy), oc.lb) for oc in list(P.values()) + list(fixed.values())): return False
-        if lgap(db, fb) < 0.4: return False
-    return True
-best_b = None
-for dy in [round(-10.0 + 0.01 * i, 2) for i in range(0, 401)]:
-    for dx in [round(-1.0 + 0.1 * i, 1) for i in range(0, 150)]:
-        fx = dx + len('J000') * S.CHAR_ADV / 2 + 0.5                                  # the function label's LEFT edge, one offset in every frame
-        if bnc_ok(dx, dy, fx):
-            d_own = max(lgap(sbox(r, float(b.fp_x[fi[r]]) + dx, float(b.fp_y[fi[r]]) + dy), bods[r]) for r in BNC)
-            if best_b is None or (d_own, abs(dx)) < best_b[0]: best_b = ((d_own, abs(dx)), dx, dy, fx)
-if best_b:
-    _, dx, dy, fx = best_b
-    bnc_info['found'] = (dx, dy, fx)
-    for r, lab in BNC_FUN.items():
-        ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
-        P[r] = Cand('bnc', ox + dx, oy + dy, lbox(r, ox + dx, oy + dy), frozenset(), 0, False, dsolid(r, lbox(r, ox + dx, oy + dy)))
-        fcx = ox + fx + len(lab) * S.CHAR_ADV / 2
-        fixed['fun:' + r] = Cand('bnc', fcx, oy + dy, lbox(lab, fcx, oy + dy), frozenset(), 0, False, P[r].gown)
-        bnc_info.setdefault('function_at', {})[r] = (round(ox + fx, 3), round(oy + dy, 3))                  # the left edge
-    anchor_note.update({r: 'bnc line below its body' for r in BNC})
-else:
-    for r in BNC: anchor_note[r] = None
+bnc_info = {'found': None, 'margins': {}, 'angle': 90.0}
+def bnc_rect(r):
+    ox_, oy_ = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
+    for q in C.OUTLINE.get(C.BLOCK.get(r), []):
+        if q[0] >= 98.0 and q[0] <= ox_ <= q[2] and q[1] <= oy_ <= q[3]: return q
+    return None
+fp_silk_x0 = {}
+for f in pb.GetFootprints():
+    if f.GetReference() in BNC:
+        xs_ = [mm(g.GetBoundingBox().GetX()) - 50.0 for g in f.GraphicalItems() if g.GetLayer() == pcbnew.F_SilkS]
+        fp_silk_x0[f.GetReference()] = min(xs_) if xs_ else None
+for r in BNC:
+    rc = bnc_rect(r); hi_ = min([bods[r][0]] + ([fp_silk_x0[r]] if fp_silk_x0.get(r) is not None else []))
+    bnc_info['margins'][r] = {'box west line x': rc[0], 'body west x': round(bods[r][0], 3), 'footprint silk west x': (round(fp_silk_x0[r], 3) if fp_silk_x0.get(r) is not None else None),
+                              'clear width between the line and the silk (line half-width 0.075 each)': round(hi_ - 0.075 - (rc[0] + 0.075), 3), 'text height (box) 1.0 / LR-11 box 1.2': 1.0}
+DES_DY, FN_DY = -3.35, -0.45                                  # AFE-1's offsets (round 10/11): the designator's centre and the function text's bottom end, from each footprint origin
+_r0 = 'J101'; _rc = bnc_rect(_r0); _sx0 = fp_silk_x0[_r0]
+BNC_DX = (_rc[0] + 0.075 + _sx0) / 2 - float(b.fp_x[fi[_r0]])  # the centre of the clear width in the left margin
+bnc_info['dx'] = round(BNC_DX, 4); bnc_info['des_dy'] = DES_DY; bnc_info['fn_dy'] = FN_DY
+def bnc_geom(r, lab):
+    ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]]); x = ox + BNC_DX; Lf = len(lab) * S.CHAR_ADV
+    return x, oy + DES_DY, oy + FN_DY, Lf
+bnc_conflicts = {}
+for r, lab in BNC_FUN.items():
+    x, yd, yb, Lf = bnc_geom(r, lab); db = S.text_box(r, x, yd, 1.0, H, 90.0); fb = S.text_box(lab, x, yb + Lf / 2, 1.0, H, 90.0); why = []
+    for nm, bx in (('designator', db), ('function', fb)):
+        if any(S._overlap(bx, bd) for k, bd in body.items() if bd is not None and k != 'zzz'): why.append(nm + ' on a body')
+        if any(lgap((bx[0] - 0.1, bx[1], bx[2] + 0.1, bx[3]), p) < 0.02 for p in pads): why.append(nm + ' on a pad')
+        rc = bnc_rect(r)
+        if bx[0] < rc[0] + 0.075 or bx[2] > fp_silk_x0[r] or bx[1] < rc[1] or bx[3] > rc[3]: why.append(nm + ' not inside the margin / box')
+    bnc_conflicts[r] = why
+bnc_info['conflicts'] = bnc_conflicts
+bnc_info['found'] = (BNC_DX, DES_DY, FN_DY)
+for r, lab in BNC_FUN.items():
+    x, yd, yb, Lf = bnc_geom(r, lab)
+    P[r] = Cand('bnc90', x, yd, lbox(r, x, yd, 90.0), frozenset(), 0, False, dsolid(r, lbox(r, x, yd, 90.0)))
+    fixed['fun:' + r] = Cand('bnc90', x, yb + Lf / 2, lbox(lab, x, yb + Lf / 2, 90.0), frozenset(), 0, False, P[r].gown)
+    bnc_info.setdefault('function_at', {})[r] = (round(x, 3), round(yb, 3))
+anchor_note.update({r: 'bnc vertical, left margin of its box (AFE-1 offsets)' for r in BNC})
 
 # ---- passives (round 4): AFE-1's tests (kicad/labels/place3.py), first fit in AFE-1's candidate order, most constrained first, random restarts
 GAPS0 = (0.15, 0.25, 0.35, 0.5, 0.7, 0.9, -0.1, -0.2, -0.3, -0.4)               # label to own courtyard; negative = over its own courtyard's edge
@@ -485,7 +465,7 @@ if bnc_info['found']:
     for r, lab in BNC_FUN.items():
         fx_, fy_ = bnc_info['function_at'][r]
         g = re.search(r'\(gr_text "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)' % re.escape(lab), t)
-        t = t[:g.start(1)] + '%.3f %.3f 0' % (fx_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
+        t = t[:g.start(1)] + '%.3f %.3f %g' % (fx_ + 50.0, 150.0 - fy_, bnc_info['angle']) + t[g.end(0) - 1:]
         g2 = re.search(r'\(gr_text "%s"(?:(?!\n\t\)).)*?\(effects\s+\(font\s+\(size [\d.]+ [\d.]+\)\s+\(thickness [\d.]+\)\s+\)' % re.escape(lab), t, re.S)
         blk_ = t[g2.start():t.index('\n\t)', g2.start())]
         if '(justify left)' not in blk_: t = t[:g2.end()] + '\n\t\t\t(justify left)' + t[g2.end():]                    # all three function labels left-justified

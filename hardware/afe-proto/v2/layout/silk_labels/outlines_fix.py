@@ -56,6 +56,32 @@ for f in pb.GetFootprints():
         else:
             bx = g.GetBoundingBox(); x0, y1 = due(bx.GetOrigin()); x1, y0 = due(pcbnew.VECTOR2I(bx.GetRight(), bx.GetBottom()))
             for a_, c_ in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))): silk_segs.append((*a_, *c_, w))
+# ---- the BNC boxes, as AFE-1's round 11 (afe1-labels a49fe27f, kicad/labels/place3.py) draws them: ONE margin m on all four sides of every box, measured line centre to the BNC's own footprint
+# silk rectangle, m = (input pitch - silk height) / 2, so the J101 and J201 boxes share one line; the J301 box stands apart
+BNCS = {'J101': 'CH1', 'J201': 'CH2', 'J301': 'AWG'}
+sb_ = {}; org = {}; bd_ = {}
+for f in pb.GetFootprints():
+    if f.GetReference() in BNCS:
+        sx = pcbnew.BOX2I(); bx = pcbnew.BOX2I()
+        for g in f.GraphicalItems():
+            if g.GetLayer() == pcbnew.F_SilkS: sx.Merge(g.GetBoundingBox())
+            if g.GetLayer() == pcbnew.F_Fab: bx.Merge(g.GetBoundingBox())
+        sb_[f.GetReference()] = (mmf(sx.GetX()) - 50.0, 150.0 - mmf(sx.GetBottom()), mmf(sx.GetRight()) - 50.0, 150.0 - mmf(sx.GetY())); org[f.GetReference()] = 150.0 - mmf(f.GetPosition().y)
+        bd_[f.GetReference()] = (mmf(bx.GetX()) - 50.0, 150.0 - mmf(bx.GetBottom()), mmf(bx.GetRight()) - 50.0, 150.0 - mmf(bx.GetY()))
+pitch = abs(org['J101'] - org['J201']); silk_h = sb_['J101'][3] - sb_['J101'][1]
+M = round((pitch - silk_h) / 2, 3)
+box_report = {'input pitch (J101 origin to J201 origin)': round(pitch, 3), 'silk rectangle height (the BNC footprint silk, along the pitch axis)': round(silk_h, 3), 'margin m = (pitch - silk height)/2, on all four sides': M, 'boxes': {}}
+for r, blk in BNCS.items():
+    sx0, sy0, sx1, sy1 = sb_[r]
+    old_ = [q for q in new[blk] if q[0] >= 98.0 and q[1] <= org[r] <= q[3]][0]
+    nb = (round(sx0 - M, 3), round(sy0 - M, 3), round(sx1 + M, 3), round(sy1 + M, 3))
+    new[blk] = [nb if q == old_ else q for q in new[blk]]
+    box_report['boxes'][r] = {'old': list(old_), 'new': list(nb), 'footprint silk rectangle': [round(v, 3) for v in sb_[r]], 'body (F.Fab)': [round(v, 3) for v in bd_[r]],
+                              'margins to the silk rectangle left/right/bottom/top': [round(sx0 - nb[0], 3), round(nb[2] - sx1, 3), round(sy0 - nb[1], 3), round(nb[3] - sy1, 3)],
+                              'right edge to the board edge (x 117.05)': round(117.05 - nb[2], 3), 'clear width in the left margin (line edge 0.075 to the silk edge)': round(sx0 - (nb[0] + 0.075), 3)}
+ob = sorted(box_report['boxes'], key=lambda r: box_report['boxes'][r]['new'][1])
+box_report['gaps between neighbouring boxes (top line of the lower to bottom line of the upper; 0 = one shared line)'] = {'%s-%s' % (a_, b_): round(box_report['boxes'][b_]['new'][1] - box_report['boxes'][a_]['new'][3], 3) for a_, b_ in zip(ob, ob[1:])}
+json.dump(box_report, open(rects_out.replace('.json', '_boxes.json'), 'w'), indent=1)
 CLEAR = 0.2
 
 
@@ -73,7 +99,7 @@ def blocked(px, py):
     return False
 
 
-add = ''; reopened = 0
+add = ''; reopened = 0; drawn_ = set()
 for blk, rs in new.items():
     for ri, (x0, y0, x1, y1) in enumerate(rs):
         for ei, (p, q) in enumerate((((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)))):
@@ -85,7 +111,10 @@ for blk, rs in new.items():
                 if not free[k]: k += 1; continue
                 j = k
                 while j + 1 < n and free[j + 1]: j += 1
-                if math.hypot(pts[j][0] - pts[k][0], pts[j][1] - pts[k][1]) >= 0.3:
+                key_ = (round(pts[k][0], 3), round(pts[k][1], 3), round(pts[j][0], 3), round(pts[j][1], 3))
+                key_ = key_ if key_[:2] <= key_[2:] else key_[2:] + key_[:2]
+                if math.hypot(pts[j][0] - pts[k][0], pts[j][1] - pts[k][1]) >= 0.3 and key_ not in drawn_:
+                    drawn_.add(key_)
                     (px, py), (qx, qy) = B(*pts[k]), B(*pts[j])
                     add += '\n\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)' % (
                         round(px, 4), round(py, 4), round(qx, 4), round(qy, 4), uuid.uuid5(uuid.NAMESPACE_URL, 'outline/%s/%d/%d/%d' % (blk, ri, ei, piece)))

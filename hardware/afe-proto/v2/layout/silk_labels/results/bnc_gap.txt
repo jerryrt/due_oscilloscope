@@ -1,3 +1,3 @@
-J101 designator right edge 103.935, function text left edge 104.300 -> gap 0.365 mm; function left edge offset from origin 2.300; designator offset (0.000); justify=-1
-J201 designator right edge 103.935, function text left edge 104.300 -> gap 0.365 mm; function left edge offset from origin 2.300; designator offset (0.000); justify=-1
-J301 designator right edge 103.935, function text left edge 104.300 -> gap 0.365 mm; function left edge offset from origin 2.300; designator offset (0.000); justify=-1
+J101 designator angle 90, top end y 44.185; function angle 90, bottom end y 45.150 -> gap 0.965 mm; x of designator box 98.384..100.081, function box 98.385..100.081; function bottom offset from origin -0.450
+J201 designator angle 90, top end y 26.405; function angle 90, bottom end y 27.370 -> gap 0.965 mm; x of designator box 98.384..100.081, function box 98.385..100.081; function bottom offset from origin -0.450
+J301 designator angle 90, top end y 7.475; function angle 90, bottom end y 8.440 -> gap 0.965 mm; x of designator box 98.384..100.081, function box 98.385..100.081; function bottom offset from origin -0.450

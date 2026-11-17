@@ -31,9 +31,9 @@ def _box(block):
 RECTS = {
     'POWER': [(17.9, 4.6, 43.6, 26.0)],
     'REFCAL': [(44.2, 4.6, 64.4, 27.8), (64.6, 18.6, 68.9, 26.0)],      # the second rectangle stops 0.1 mm short of CH2's (it was 70.2 and overlapped it)
-    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), _box('CH1')],
-    'CH2': [(69.0, 19.75, 93.0, 32.9), _box('CH2')],
-    'AWG': [(70.4, 4.55, 92.3, 19.25), (98.55, 0.75, 116.4, 16.5)],
+    'CH1': [(63.9, 33.0, 93.0, 50.0), (60.4, 34.6, 64.0, 36.8), (98.51, 36.71, 116.09, 54.49)],      # the BNC boxes: one margin on all four sides of the BNC's footprint silk, (input pitch - silk height)/2, the two inputs sharing one line
+    'CH2': [(69.0, 19.75, 93.0, 32.9), (98.51, 18.93, 116.09, 36.71)],
+    'AWG': [(70.4, 4.55, 92.3, 19.25), (98.51, 0.0, 116.09, 17.78)],
 }
 
 # The AWG's BNC outline (the last AWG rectangle) was a bracket on the board, a left side with two stubs; its right side and bottom
