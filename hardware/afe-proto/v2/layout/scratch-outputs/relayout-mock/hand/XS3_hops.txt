@@ -1,0 +1,58 @@
+GAP POWER /+5V_DUE R406.1 -> J601.5 gap 16.6 mm no legal via site near an end BRIDGE-ONLY
+GAP POWER /+5V_F (track end) -> (track end) gap 4.5 mm hop 2.55 mm CLOSABLE
+GAP POWER /+5V_F U401.12 -> U401.8 gap 2.0 mm hop 1.10 mm CLOSABLE
+GAP POWER /+5V_F U401.12 -> U401.3 gap 2.1 mm no legal via site near an end BRIDGE-ONLY
+GAP POWER /+5V_F U401.3 -> C402.1 gap 1.8 mm no legal via site near an end BRIDGE-ONLY
+GAP POWER /+5V_F C401.1 -> (track end) gap 7.8 mm hop 5.18 mm BRIDGE-ONLY
+GAP CH1 /A1 (track end) -> R108.2 gap 0.5 mm inside an analog fence BRIDGE-ONLY
+GAP REFCAL /ADS_B U502.7 -> R511.2 gap 4.5 mm under U502 BRIDGE-ONLY
+GAP REFCAL /ADS_TAP R510.2 -> U502.6 gap 4.9 mm under R510 BRIDGE-ONLY
+GAP OTHER /AREF (track end) -> (track end) gap 14.8 mm under R501 BRIDGE-ONLY
+GAP AWG /AWG_BIN R307.1 -> U301.3 gap 6.9 mm under R307 BRIDGE-ONLY
+GAP AWG /AWG_BIN (track end) -> R306.2 gap 10.1 mm inside an analog fence BRIDGE-ONLY
+GAP AWG /AWG_BNC R507.1 -> R302.2 gap 28.8 mm under R507 BRIDGE-ONLY
+GAP AWG /AWG_OB U301.7 -> R309.1 gap 10.5 mm under U301 BRIDGE-ONLY
+GAP AWG /AWG_VO R303.1 -> C301.1 gap 4.7 mm under R303 BRIDGE-ONLY
+GAP AWG /AWG_VO C301.1 -> R308.2 gap 2.4 mm under R308 BRIDGE-ONLY
+GAP AWG /AWG_VO R308.2 -> R309.2 gap 2.4 mm under R309 BRIDGE-ONLY
+GAP AWG /AWG_VO R309.2 -> R302.1 gap 3.8 mm under R309 BRIDGE-ONLY
+GAP AWG /AWG_VREF R304.2 -> R305.2 gap 8.8 mm under R304 BRIDGE-ONLY
+GAP AWG /AWG_VREF R305.2 -> C304.1 gap 2.2 mm under R305 BRIDGE-ONLY
+GAP AWG /AWG_VREF R305.2 -> C303.1 gap 9.8 mm under R305 BRIDGE-ONLY
+GAP CH1 /CH1_IN R101.1 -> C101.1 gap 5.1 mm under C102 BRIDGE-ONLY
+GAP OTHER /CH1_IN R101.1 -> (track end) gap 17.1 mm inside an analog fence BRIDGE-ONLY
+GAP CH2 /CH2_IN C201.1 -> R201.1 gap 5.3 mm inside an analog fence BRIDGE-ONLY
+GAP OTHER /CH2_IN R201.1 -> (track end) gap 12.3 mm under R201 BRIDGE-ONLY
+GAP POWER /LM_C1N C409.2 -> U401.9 gap 3.6 mm hop 2.89 mm CLOSABLE
+GAP POWER /LM_C1P C409.1 -> U401.10 gap 2.6 mm hop 1.01 mm CLOSABLE
+GAP POWER /LM_CP C403.1 -> U401.5 gap 1.7 mm hop 0.05 mm CLOSABLE
+GAP POWER /LM_FBP R401.2 -> U401.2 gap 4.3 mm hop 2.24 mm CLOSABLE
+GAP POWER /LM_FBP U401.2 -> R402.1 gap 3.0 mm hop 3.00 mm CLOSABLE
+GAP REFCAL /SCL R513.2 -> U502.10 gap 13.5 mm under R513 BRIDGE-ONLY
+GAP REFCAL /SCL (track end) -> (track end) gap 10.4 mm under R512 BRIDGE-ONLY
+GAP REFCAL /SDA R512.2 -> U502.9 gap 5.1 mm under R512 BRIDGE-ONLY
+GAP OTHER /SDA (track end) -> (track end) gap 9.9 mm hop 6.90 mm BRIDGE-ONLY
+GAP REFCAL /SNS_B J501.2 -> R511.1 gap 8.6 mm under /VREF BRIDGE-ONLY
+GAP REFCAL /TAP1 R501.2 -> R502.1 gap 22.1 mm under R511 BRIDGE-ONLY
+GAP REFCAL /TAP2 (track end) -> R502.2 gap 3.5 mm under /VREF BRIDGE-ONLY
+GAP REFCAL /TAP3 R504.1 -> J501.3 gap 5.3 mm under R504 BRIDGE-ONLY
+GAP REFCAL /TAP4 R505.1 -> (track end) gap 2.4 mm under /VREF BRIDGE-ONLY
+GAP REFCAL /TAP4 R504.2 -> J501.1 gap 4.0 mm under R504 BRIDGE-ONLY
+GAP REFCAL /TAP4 J501.1 -> U502.5 gap 4.2 mm under /VREF BRIDGE-ONLY
+GAP REFCAL /TAP5 R505.2 -> R506.1 gap 7.2 mm under /VREF BRIDGE-ONLY
+GAPS (spanning, non-GND): 42
+SUMMARY AWG hop-closable 0 bridge-only 11
+SUMMARY CH1 hop-closable 0 bridge-only 2
+SUMMARY CH2 hop-closable 0 bridge-only 1
+SUMMARY OTHER hop-closable 0 bridge-only 4
+SUMMARY POWER hop-closable 7 bridge-only 4
+SUMMARY REFCAL hop-closable 0 bridge-only 13
+TOTAL hop-closable 7 bridge-only 35 against a budget of 13
+LENGTHS {'11-33': 7, '3-11': 24, '<3': 11}
+BRIDGE-ONLY nets that cannot take a bridge: []
+WALL A0/A1 crossings by net: {'/AWG_BNC': 1} total 1
+FENCE-WALL crossings by net: {'/AWG_BNC': {'AWG': 1}}
+FENCE-WALL crossings total: {'CH1': 0, 'CH2': 0, 'AWG': 1}
+INSIDE CH1 gaps between its own parts 3 hop-closable 0 bridge-only 3 lengths [0.5, 5.1, 17.1]
+INSIDE CH2 gaps between its own parts 2 hop-closable 0 bridge-only 2 lengths [5.3, 12.3]
+INSIDE AWG gaps between its own parts 10 hop-closable 0 bridge-only 10 lengths [2.2, 2.4, 2.4, 3.8, 4.7, 6.9, 8.8, 9.8, 10.1, 10.5]

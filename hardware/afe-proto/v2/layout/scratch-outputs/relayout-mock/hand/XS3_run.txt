@@ -1,0 +1,33 @@
+iter 12: 77s  routed 28/28  failed []  conflicting 4
+iter 13: 82s  routed 28/28  failed []  conflicting 4
+METRIC conflict_segments 6 distinct_clusters 4
+CLUSTER (30.7, 11.0) ['/VNEG#star', '/VNEG#tp.0']
+CLUSTER (50.9, 11.4) ['/+3V3A#adc.0', '/+3V3A#adc.1']
+CLUSTER (54.6, 11.1) ['/+3V3A#adc.5', '/VREF#0.0']
+CLUSTER (72.5, 46.7) ['/+3V3A#scope.0', '/VREF#5.0']
+wrote XS3_k_spec.py 34 polylines; failed [] conflicting ['/+3V3A#scope.0', '/+3V3A#adc.5', '/VREF#0.0', '/VREF#5.0']
+DSN export True
+locked nets 18 keep-out shapes 659 top-only nets 93
+last pass: 99.80 (45 unrouted and 3 violations), using 58.39 CPU seconds and the job allocated 61.71 GB of memory so far.
+SES import True
+  lost [] extra []
+LOCKS EXACT: yes
+bottom runs kept: 0 (0.0 mm); in fences: {}
+bottom runs ripped (counted as gaps): 4 Counter({'run 10.3 mm 2 vias': 1, 'run 11.1 mm 2 vias': 1, 'run 16.0 mm 2 vias': 1, 'run 27.8 mm 4 vias': 1})
+NARROW/STUB track_width Track [/+5V_F] on F.Cu, length 1.1298 mm (83.2489, 133.9511)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 1.6176 mm (75.1438, 123.25)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 2.3056 mm (87.6947, 133.2873)
+NARROW/STUB track_dangling Track [/+5V_F] on F.Cu, length 1.6953 mm (76.1514, 136.0533)
+NARROW/STUB track_dangling Track [/VREF] on F.Cu, length 0.5657 mm (98.6, 128.6)
+NARROW/STUB track_dangling Track [/SCL] on F.Cu, length 7.9822 mm (96.4999, 118.9217)
+NARROW/STUB track_dangling Track [/SCL] on F.Cu, length 1.0383 mm (103.6593, 126.4676)
+NARROW/STUB track_dangling Track [/CH2_IN] on F.Cu, length 1.0000 mm (152.0, 122.18)
+NARROW/STUB track_dangling Track [/SDA] on F.Cu, length 0.1518 mm (101.1273, 123.3291)
+NARROW/STUB track_dangling Track [/SDA] on F.Cu, length 3.8394 mm (93.3037, 117.3283)
+NARROW/STUB track_dangling Track [/CH1_IN] on F.Cu, length 1.0000 mm (152.0, 104.4)
+NARROW/STUB track_dangling Track [/AREF] on F.Cu, length 2.6052 mm (92.8358, 115.5546)
+NARROW/STUB track_dangling Track [/AREF] on F.Cu, length 2.2619 mm (99.7256, 128.6508)
+DRC by type {'silk_overlap': 4, 'silk_over_copper': 2, 'track_width': 1, 'courtyards_overlap': 2, 'clearance': 55, 'tracks_crossing': 1, 'shorting_items': 1, 'items_not_allowed': 3, 'lib_footprint_issues': 4, 'holes_co_located': 1, 'hole_to_hole': 1, 'via_dangling': 1, 'track_dangling': 12} unconnected 44
+UNROUTED by net {'/GND': 2, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 3, '/SNS_B': 1, '/VREF': 1, '/AWG_BIN': 2, '/AWG_VO': 4, '/SCL': 2, '/CH2_IN': 2, '/SDA': 2, '/TAP4': 3, '/TAP5': 1, '/TAP1': 1, '/TAP2': 1, '/TAP3': 1, '/AWG_BNC': 1, '/LM_CP': 1, '/CH1_IN': 2, '/LM_FBP': 2, '/AWG_OB': 1, '/ADS_TAP': 1, '/ADS_B': 1, '/AREF': 1}
+GAPS by block {'other': 7, 'POWER': 11, 'AWG': 11, 'REFCAL': 13, 'CH2': 1, 'CH1': 1}
+RIPPED [('/SDA', 'run 10.3 mm 2 vias', 10.3, 2, (99.3, 123.33)), ('/SCL', 'run 11.1 mm 2 vias', 11.1, 2, (97.58, 118.92)), ('/AREF', 'run 16.0 mm 2 vias', 16.0, 2, (92.75, 121.68)), ('/+5V_F', 'run 27.8 mm 4 vias', 27.8, 4, (84.32, 133.29))]

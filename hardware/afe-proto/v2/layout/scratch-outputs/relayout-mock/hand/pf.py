@@ -195,14 +195,18 @@ for n, groups in GROUPS.items():
     for gname, gp in groups.items():
         ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == n]
         if not ks: continue
-        jobs.append(dict(name=n + '#' + gname, own=n, comps=[ks], star=stars))
+        if os.environ.get('PF_NOCHAIN'): jobs.append(dict(name=n + '#' + gname, own=n, comps=[ks], star=stars))
+        else:                                                  # every pad of the group is its own leg to the star or to an earlier pad of the group: all of them complete
+            for i_, k_ in enumerate(ks): jobs.append(dict(name='%s#%s.%d' % (n, gname, i_), own=n, comps=[[k_]], star=stars + ks[:i_]))
 for kn, kspec in KELVIN.items():
     ksrc = [tuple(s.split('.')) for s in kspec['src']]
     jobs.append(dict(name=kn + '#src', own=kn, comps=[[k] for k in ksrc if k in key], star=None))
     for gi, gp in enumerate(kspec['groups']):
         ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == kn]
         if ks:
-            jobs.append(dict(name='%s#%d' % (kn, gi), own=kn, comps=[ks], star=ksrc))
+            if os.environ.get('PF_NOCHAIN'): jobs.append(dict(name='%s#%d' % (kn, gi), own=kn, comps=[ks], star=ksrc))
+            else:
+                for i_, k_ in enumerate(ks): jobs.append(dict(name='%s#%d.%d' % (kn, gi, i_), own=kn, comps=[[k_]], star=ksrc + ks[:i_]))
 if os.environ.get('PF_ONLY'):
     import re as _re
     jobs = [j for j in jobs if _re.search(os.environ['PF_ONLY'], j['name'])]            # a subset of the jobs (a cluster what-if): the others stay unrouted and are no obstacle
@@ -567,7 +571,7 @@ for i, (n1, o1, a, b_) in enumerate(SEGS):
         if max(min(a[0], b_[0]), min(c[0], d[0])) - min(max(a[0], b_[0]), max(c[0], d[0])) > 0.45 or max(min(a[1], b_[1]), min(c[1], d[1])) - min(max(a[1], b_[1]), max(c[1], d[1])) > 0.45: continue
         if o1 == o2:                      # groups of one supply / Kelvin net meet legitimately at their star or source pads
             mx_, my_ = (a[0] + b_[0]) / 2, (a[1] + b_[1]) / 2
-            sp = [key[tuple(q.split('.'))] for q in (STAR.get(o1, []) + KELVIN.get(o1, {}).get('src', [])) if tuple(q.split('.')) in key]
+            sp = [key[tuple(q.split('.'))] for q in (STAR.get(o1, []) + KELVIN.get(o1, {}).get('src', [])) if tuple(q.split('.')) in key] if os.environ.get('PF_NOCHAIN') else [p_ for p_ in pads if p_['net'] == o1]
             if any(math.hypot(mx_ - (p_['bb'][0] + p_['bb'][2]) / 2, my_ - (p_['bb'][1] + p_['bb'][3]) / 2) < 1.5 for p_ in sp):
                 continue
         lim = 0.9 if (o2 in HIZ or o1 in HIZ) else 0.37

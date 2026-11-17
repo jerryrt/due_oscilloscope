@@ -24,7 +24,7 @@ FIXALLOW = {'/+5V_F', '/+3V3A', '/VNEG', '/SDA', '/SCL'}                 # R: bo
 # ---- 1. board with the fixed copper and pf's star legs
 shell = 'cd /work/%s && cp %s %s_g0.kicad_pcb && cp S1.kicad_pro %s_g0.kicad_pro && python3 hr.py %s_g0.kicad_pcb %s_g1.kicad_pcb fixed_noGND.py > /dev/null && cp S1.kicad_pro %s_g1.kicad_pro' % ('hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand', BOARD, T, T, T, T, T)
 sh(shell)
-print(sh("PF_ONLY='^/(\\+3V3A|VNEG|VREF)' python3 -u pf.py %s_g1.kicad_pcb %s_k_spec.py 14 600 2>&1 | grep METRIC" % (T, T)).strip())
+print(sh("PF_ONLY='^/(\\+3V3A|VNEG|VREF)' python3 -u pf.py %s_g1.kicad_pcb %s_k_spec.py 14 600 2>&1 | grep -E 'METRIC|CLUSTER|conflicting' | tail -8" % (T, T)).strip())
 sh("python3 hr.py %s_g1.kicad_pcb %s_g2.kicad_pcb %s_k_spec.py > /dev/null; cp S1.kicad_pro %s_g2.kicad_pro" % (T, T, T, T))
 d = json.load(open('S1.kicad_pro')); ns = d.setdefault('net_settings', {}); cl = ns.setdefault('classes', []); base = dict(cl[0]) if cl else {}
 cl.append(dict(base, name='HIZ', clearance=0.6, track_width=0.2)); ns['netclass_patterns'] = [{'netclass': 'HIZ', 'pattern': n} for n in HIZ]
@@ -176,6 +176,9 @@ sh('cp %s_g2.kicad_pro %s_r.kicad_pro' % (T, T))
 sh("python3 -c \"import sys; sys.path.insert(0,'/work/hardware/afe-proto'); from pcbtools.editor import edit\nwith edit('%s_r.kicad_pcb') as e: e.fill_zones()\"" % T)
 sh('kicad-cli pcb drc --severity-all --format json -o %s_r_drc.json %s_r.kicad_pcb > /dev/null 2>&1' % (T, T))
 dd = json.load(open(T + '_r_drc.json'))
+for v in dd['violations']:
+    if v['type'] in ('track_width', 'track_dangling'):
+        it = v['items'][0]; print('NARROW/STUB', v['type'], it.get('description', '')[:60], (it['pos']['x'], it['pos']['y']))
 print('DRC by type', dict(collections.Counter(v['type'] for v in dd['violations'])), 'unconnected', len(dd.get('unconnected_items', [])))
 nets, where = collections.Counter(), collections.defaultdict(list)
 for u in dd.get('unconnected_items', []):

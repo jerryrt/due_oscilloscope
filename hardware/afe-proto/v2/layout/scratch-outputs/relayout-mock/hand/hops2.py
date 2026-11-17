@@ -136,3 +136,34 @@ for blk, (c, x) in sorted(agg.items()): print('SUMMARY', blk, 'hop-closable', c,
 print('TOTAL hop-closable', sum(v[0] for v in agg.values()), 'bridge-only', sum(v[1] for v in agg.values()), 'against a budget of 13')
 print('LENGTHS', dict(lens))
 print('BRIDGE-ONLY nets that cannot take a bridge:', [x for x in bo if x[2] != 'can take a bridge'])
+# ---- step-1 analysis: wall crossings per net and gaps inside each fence block (the straight line between the two loose ends)
+WALL = (65.2, 2.54, 69.4, 38.0)
+def seg_hits(a, c, r):
+    t0, t1 = 0.0, 1.0
+    for ax, cx, lo, hi in ((a[0], c[0], r[0], r[2]), (a[1], c[1], r[1], r[3])):
+        d = cx - ax
+        if abs(d) < 1e-12:
+            if ax < lo or ax > hi: return False
+        else:
+            u, v = (lo - ax) / d, (hi - ax) / d
+            if u > v: u, v = v, u
+            t0, t1 = max(t0, u), min(t1, v)
+            if t0 > t1: return False
+    return True
+def inside(p, r): return r[0] <= p[0] <= r[2] and r[1] <= p[1] <= r[3]
+wallx = defaultdict(int); fcross = defaultdict(lambda: defaultdict(int)); inblk = defaultdict(lambda: [0, 0, 0])
+for n, pa, pb, d, best, why, blk in rows:
+    ok = best is not None and best[0] <= 3.0
+    if seg_hits(pa, pb, WALL) and not (inside(pa, WALL) and inside(pb, WALL)) and (pa[0] < WALL[0] or pb[0] < WALL[0]) and (pa[0] > WALL[2] or pb[0] > WALL[2]): wallx[n] += 1
+    for fb in ('CH1', 'CH2', 'AWG'):
+        rs = OUT.get(fb, [])
+        ia = any(inside(pa, r) for r in rs); ib = any(inside(pb, r) for r in rs)
+        if ia != ib or (not ia and not ib and any(seg_hits(pa, pb, r) for r in rs)): fcross[n][fb] += 1
+        if ia and ib:
+            e = inblk[fb]; e[0] += 1; e[1 if ok else 2] += 1
+print('WALL A0/A1 crossings by net:', dict(wallx), 'total', sum(wallx.values()))
+print('FENCE-WALL crossings by net:', {n: dict(v) for n, v in fcross.items()})
+print('FENCE-WALL crossings total:', {fb: sum(v.get(fb, 0) for v in fcross.values()) for fb in ('CH1', 'CH2', 'AWG')})
+for fb in ('CH1', 'CH2', 'AWG'):
+    e = inblk[fb]; sh = [d for n, pa, pb, d, best, why, blk in rows if any(inside(pa, r) for r in OUT.get(fb, [])) and any(inside(pb, r) for r in OUT.get(fb, []))]
+    print('INSIDE', fb, 'gaps between its own parts', e[0], 'hop-closable', e[1], 'bridge-only', e[2], 'lengths', sorted(round(x, 1) for x in sh))
