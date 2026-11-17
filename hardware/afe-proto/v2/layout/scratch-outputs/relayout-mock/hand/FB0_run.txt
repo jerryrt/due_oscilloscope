@@ -1,0 +1,35 @@
+METRIC conflict_segments 1 distinct_clusters 1
+DSN export True
+B.Cu keep-out added over the board
+freerouting exit 0
+2026-11-17 09:43:26.907 INFO   [D6AE1E\11B5E4] Job 'D6AE1E\11B5E4' finished with state: COMPLETED (elapsed: 2 minutes 14.57 seconds, finished at UTC: 2026-11-17T09:43:26.906542802Z).
+2026-11-17 09:43:26.911 INFO   Saving output file '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/FB0.ses' (SES)...
+2026-11-17 09:43:26.913 INFO   Successfully saved output file '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/FB0.ses' (24067 bytes).
+SES import True
+DRC by type {'track_width': 2, 'courtyards_overlap': 2, 'clearance': 9, 'lib_footprint_issues': 4, 'hole_to_hole': 1, 'holes_co_located': 1, 'track_dangling': 2} unconnected 50
+UNROUTED by net {'/GND': 1, '/+3V3A': 4, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 1, '/SNS_B': 2, '/VREF': 4, '/AWG_BIN': 1, '/AWG_VO': 5, '/SCL': 2, '/SNS_T0': 1, '/SDA': 1, '/TAP4': 4, '/TAP5': 2, '/TAP1': 2, '/TAP2': 2, '/TAP3': 2, '/LM_CP': 2, '/LM_FBP': 2, '/AWG_OB': 1, '/ADS_TAP': 1, '/ADS_B': 1, '/AREF': 1}
+   /GND [(17.0, 53.4)]
+   /+3V3A [(42.9, 36.3), (45.7, 5.9), (50.4, 3.8), (78.9, 36.5)]
+   /+5V_DUE [(37.7, 19.1)]
+   /+5V_F [(24.0, 30.6), (28.9, 15.0), (32.5, 15.2), (32.5, 15.2)]
+   /LM_C1P [(32.1, 16.8)]
+   /LM_C1N [(30.5, 16.8)]
+   /AWG_VREF [(74.0, 5.2)]
+   /SNS_B [(41.4, 30.5), (55.5, 23.8)]
+   /VREF [(48.8, 5.6), (55.1, 37.5), (63.1, 14.2), (75.1, 21.0)]
+   /AWG_BIN [(77.2, 7.2)]
+   /AWG_VO [(75.5, 14.2), (75.5, 14.2), (80.2, 14.2), (84.0, 16.2)]
+   /SCL [(46.5, 6.5), (49.9, 21.4)]
+   /SNS_T0 [(57.9, 28.7)]
+   /SDA [(50.4, 21.4)]
+   /TAP4 [(51.9, 17.2), (52.7, 5.5), (54.1, 27.5), (54.1, 27.5)]
+   /TAP5 [(50.5, 5.6), (55.8, 27.5)]
+   /TAP1 [(46.3, 15.2), (48.2, 11.2)]
+   /TAP2 [(47.9, 15.2), (51.7, 27.5)]
+   /TAP3 [(50.0, 27.5), (50.0, 27.5)]
+   /LM_CP [(27.8, 19.1), (28.9, 12.8)]
+   /LM_FBP [(28.6, 17.0), (30.5, 14.8)]
+   /AWG_OB [(75.9, 12.2)]
+   /ADS_TAP [(51.9, 21.4)]
+   /ADS_B [(51.4, 21.4)]
+   /AREF [(23.9, 50.8)]

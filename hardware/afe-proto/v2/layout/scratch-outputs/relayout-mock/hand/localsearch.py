@@ -11,7 +11,7 @@ base, start, tag, rounds, secs, seed = sys.argv[1:7]
 rounds, secs, seed = int(rounds), float(secs), int(seed)
 random.seed(seed)
 ONLY = os.environ.get('ONLYRE', r'^/(TAP|SNS|ADS|VREF|SDA|SCL|AREF|AWG_BNC|AWG_VREF)|3V3A#adc')
-REGION = (44.6, 3.4, 65.0, 42.0)               # Due mm: no part's courtyard leaves it (REF/CAL fence west, the A1 lane east)
+REGION = tuple(float(v) for v in os.environ.get('REGBOX', '44.6,3.4,65.0,42.0').split(','))               # Due mm: no part's courtyard leaves it (REF/CAL fence west, the A1 lane east)
 LANES = [(65.3, 4.6, 66.8, 18.4), (67.9, 4.6, 69.3, 18.4)]
 MOV = [r for r in 'C501 C502 C503 J501 R501 R502 R503 R504 R505 R506 R507 R508 R509 R510 R511 R512 R513 R514 TP501 U502 TP301 C303 C304 R305'.split()]
 AWGW = ('TP301', 'C303', 'C304', 'R305')           # the AWG block's west spill sits in the REF/CAL region: it may move, within the AWG-side box
@@ -42,14 +42,47 @@ def courts(brd):
     for f in b.GetFootprints():
         for p in f.Pads():
             pads[(f.GetReference(), p.GetNumber())] = (mm(p.GetPosition().x) - 50, 150 - mm(p.GetPosition().y), p.GetNetname())
-    return d, pads
+    padbox = {}
+    labs = {}
+    for f in b.GetFootprints():
+        for p in f.Pads():
+            bb = p.GetBoundingBox(); padbox.setdefault(f.GetReference(), []).append((mm(bb.GetX()) - 50, 150 - mm(bb.GetBottom()), mm(bb.GetRight()) - 50, 150 - mm(bb.GetY())))
+        r = f.Reference(); labs[f.GetReference()] = (mm(r.GetPosition().x) - 50, 150 - mm(r.GetPosition().y), mm(r.GetTextWidth()), mm(r.GetTextHeight()), r.GetTextAngleDegrees())
+    return d, pads, padbox, labs
 OVTOL = float(os.environ.get('OVTOL', '0.05'))
 def ov(a, c, m=None):
     m = OVTOL if m is None else m
     return min(a[2], c[2]) - max(a[0], c[0]) > m and min(a[3], c[3]) - max(a[1], c[1]) > m
+sys.path.insert(0, '/work/hardware/afe-proto')
+from pcbtools import silkread
+import re as _re
+BESIDE_OK = set(eval(_re.search(r'BESIDE = (\{.*?\})\n', open('/work/hardware/afe-proto/tests/pcbtools/test_silkread.py').read(), _re.S).group(1))['v2/layout/integrated/afe-v2-integrated.kicad_pcb'])
+def label_violations(brd, d, padbox, labs, moved):
+    silk = silkread.read_silk(open(brd).read())
+    allpads = [p for ps in padbox.values() for p in ps]
+    fixed = {}
+    for r, (x, y, w, h, a) in labs.items():
+        if r not in moved and not r.startswith('MH'):
+            fixed[r] = silkread.text_box(r, x, y, w, h, a)
+    placed = {}; v = []
+    def gap(a, c): return silkread._gap(a, c)
+    for r in sorted(moved):
+        c = d[r]; w = len(r) * silkread.CHAR_ADV; h = 1.0; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; ok = False
+        cs = [(cx + dx, c[3] + g + h / 2) for g in (0.3, 0.0, 0.6) for dx in (0.0, -0.15, 0.15, -0.3, 0.3)]
+        if not os.environ.get('LABELS_ABOVE') or r in BESIDE_OK:
+            cs += [((c[2] + g + w / 2) if sd > 0 else (c[0] - g - w / 2), cy + dy) for sd in (1, -1) for g in (0.3, 0.0, 0.6) for dy in (0.0, 0.15, -0.15, 0.3, -0.3)]
+        for (x, y) in cs:
+            bx = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+            if any(silkread._overlap(bx, cc) for cc in d.values()): continue
+            if any(silkread._overlap(bx, p) for p in allpads): continue
+            if any(silkread._on_shape(bx, sh) for sh in silk): continue
+            if any(gap(bx, o) < silkread.LABEL_GAP for o in list(fixed.values()) + list(placed.values())): continue
+            placed[r] = bx; ok = True; break
+        if not ok: v.append('label ' + r)
+    return v
 SENSP = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')
 def violations(brd, moved):
-    d, pads = courts(brd); v = []
+    d, pads, padbox, labs = courts(brd); v = []
     for r in moved:
         c = d[r]
         rg = REGION_AWG if r in AWGW else REGION
@@ -69,6 +102,8 @@ def violations(brd, moved):
             if k[0] == r and min(math.hypot(p[0] - g[0], p[1] - g[1]) for g in gen) < 10.0: v.append('LR-2 ' + r); break
     for k, p in pads.items():
         if p[2].startswith(SENSP) and min(math.hypot(p[0] - g[0], p[1] - g[1]) for g in gen) < 10.0: v.append('LR-5 %s.%s' % k)
+    if os.environ.get('LABELS'):
+        v += label_violations(brd, d, padbox, labs, [r for r in moved])
     return sorted(set(v))
 def score(pl, tagn):
     brd = '%s_cand.kicad_pcb' % tag

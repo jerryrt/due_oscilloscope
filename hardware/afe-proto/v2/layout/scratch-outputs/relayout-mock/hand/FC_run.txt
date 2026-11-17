@@ -1,0 +1,33 @@
+METRIC conflict_segments 1 distinct_clusters 1
+DSN export True
+B.Cu keep-out added over the board
+freerouting exit 0
+2026-11-17 09:55:01.341 INFO   [BBA5D4\CC9ECE] Job 'BBA5D4\CC9ECE' finished with state: COMPLETED (elapsed: 1 minute 36.40 seconds, finished at UTC: 2026-11-17T09:55:01.340555802Z).
+2026-11-17 09:55:01.384 INFO   Saving output file '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/FC.ses' (SES)...
+2026-11-17 09:55:01.388 INFO   Successfully saved output file '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/FC.ses' (30505 bytes).
+SES import True
+DRC by type {'silk_overlap': 4, 'silk_over_copper': 2, 'track_width': 6, 'courtyards_overlap': 2, 'clearance': 10, 'items_not_allowed': 5, 'lib_footprint_issues': 4, 'hole_to_hole': 1, 'holes_co_located': 1} unconnected 41
+UNROUTED by net {'/GND': 1, '/VNEG': 1, '/+3V3A': 5, '/+5V_DUE': 1, '/+5V_F': 5, '/LM_C1P': 1, '/LM_C1N': 1, '/AWG_VREF': 3, '/SNS_B': 2, '/VREF': 3, '/AWG_BIN': 1, '/AWG_VO': 4, '/SCL': 2, '/SDA': 1, '/TAP4': 1, '/TAP1': 1, '/TAP2': 1, '/TAP3': 1, '/AWG_BNC': 1, '/LM_CP': 1, '/LM_FBP': 2, '/AWG_OB': 1, '/AREF': 1}
+   /GND [(17.0, 53.4)]
+   /VNEG [(79.7, 6.8)]
+   /+3V3A [(48.4, 1.4), (57.1, 24.6), (61.0, 9.8), (72.4, 25.7)]
+   /+5V_DUE [(37.7, 19.1)]
+   /+5V_F [(30.4, 21.1), (30.5, 14.2), (32.5, 15.2), (32.5, 13.2)]
+   /LM_C1P [(32.1, 16.8)]
+   /LM_C1N [(30.5, 16.8)]
+   /AWG_VREF [(75.8, 17.1), (81.8, 9.4), (83.9, 8.9)]
+   /SNS_B [(61.8, 16.8), (64.5, 19.5)]
+   /VREF [(56.3, 8.9), (75.1, 21.0), (75.1, 21.0)]
+   /AWG_BIN [(69.3, 7.5)]
+   /AWG_VO [(75.5, 14.2), (81.7, 16.2), (84.0, 16.2), (87.8, 16.3)]
+   /SCL [(56.5, 21.8), (62.7, 9.8)]
+   /SDA [(21.3, 50.8)]
+   /TAP4 [(55.8, 8.8)]
+   /TAP1 [(63.5, 2.5)]
+   /TAP2 [(61.0, 2.5)]
+   /TAP3 [(56.4, 6.8)]
+   /AWG_BNC [(90.7, 16.3)]
+   /LM_CP [(28.0, 13.7)]
+   /LM_FBP [(28.6, 17.0), (30.5, 14.8)]
+   /AWG_OB [(75.9, 12.2)]
+   /AREF [(23.9, 50.8)]

@@ -1,7 +1,7 @@
 """python3 labelplace.py IN.kicad_pcb OUT.kicad_pcb REF[,REF...]   (in the image)
 Silk-only re-placement of the named designators under D30 (silkread.py): horizontal, above and centred (rule 1) when that leaves no finding, otherwise beside, east or west
 (rule 2b, the ref is then added to the beside set and printed). Greedy over the whole board's silkread findings, several passes. Writes the property offsets by text splice."""
-import sys, re, math, itertools
+import sys, re, math, itertools, os
 sys.path.insert(0, '/work/hardware/afe-proto'); sys.path.append('/usr/lib/python3/dist-packages')
 import numpy as np, pcbnew
 from pcbtools import boardio, silkread
@@ -32,12 +32,18 @@ def cands(r):
     for g in (0.3, 0.45, 0.6, 0.15, 0.0):
         for dx in (0.0, -0.15, 0.15, -0.3, 0.3):
             yield ('above', cx + dx, c[3] + g + h / 2)
+    if os.environ.get('ABOVE_ONLY') and r not in BES:
+        return
     for side in (1, -1):
         for g in (0.3, 0.45, 0.6, 0.15):
             for dy in (0.0, 0.15, -0.15, 0.3, -0.3):
                 yield ('beside', (c[2] + g + w / 2) if side > 0 else (c[0] - g - w / 2), cy + dy)
 placed = {}
-for p in range(3):
+if os.environ.get('LABELS_JSON'):
+    import json as _j
+    for r, (x, y) in _j.load(open(os.environ['LABELS_JSON'])).items():
+        j = rowof[r]; b.r_x[j], b.r_y[j], b.r_ang[j] = x, y, 0.0; placed[r] = ('above', x, y)
+for p in range(0 if os.environ.get('LABELS_JSON') else 3):
     for r in refs:
         j = rowof[r]; best = None
         for kind, x, y in cands(r):
