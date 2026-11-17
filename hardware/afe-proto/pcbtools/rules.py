@@ -303,10 +303,13 @@ def lr2(b, cfg):
                pos(b, ch['riso'])[0], pad_c(b, *ch['adc_pad'])[0]]
         if not all(x > y for x, y in zip(seq, seq[1:])):
             bad.append(f"{ch['name']}: x does not fall {cfg.CH_FLOW_TEXT}: {[round(float(x), 1) for x in seq]}")
+        # LR-2: the channel's long run is on the output side, never the divider side. The divider side is several short
+        # high-impedance nets (each capped by LR-3), so its long run is its longest net, not their sum: a sum of five
+        # 5 mm nets is no long run, and padding the output to beat it would only add LR-4's capacitance
         outl = sum(length_of(b, n) for n in ch['out_nets'])
-        hiz = sum(length_of(b, n) for n in ch['hiz_nets'])
+        hiz = max((length_of(b, n) for n in ch['hiz_nets']), default=0.0)
         if outl <= hiz:
-            bad.append(f"{ch['name']}: output run {outl:.1f} mm is not longer than the divider side {hiz:.1f} mm")
+            bad.append(f"{ch['name']}: output run {outl:.1f} mm is not longer than the divider side's longest net {hiz:.1f} mm")
     g = pos(b, cfg.GEN[0])
     d5 = float(np.hypot(*(g - pad_c(b, *cfg.FEED_PAD))))
     if d5 > 15:

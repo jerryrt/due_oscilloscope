@@ -396,4 +396,4 @@ def test_an_arc_joins_what_its_chords_touch():
 def test_lr2_checks_every_channel_of_the_config():
     from test_rules_synthetic import lr2_board
     r = R.lr2(lr2_board(), cfg())                                                # the two-channel v2 table; the board has no CH2 copper
-    assert 'CH2: output run 0.0 mm is not longer than the divider side 0.0 mm' in r.detail
+    assert "CH2: output run 0.0 mm is not longer than the divider side's longest net 0.0 mm" in r.detail
