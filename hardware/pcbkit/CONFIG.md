@@ -186,3 +186,65 @@ test is the label job's `stackcheck.py`, now `pcbkit.rules.two_way_test`).
 These take their identity as arguments, not configuration: `fab.build(board, outdir, bom, cpl, ident, stem)` (`ident` the member prefix, `stem` kicad-cli's file stem), `render.render(board, out, side, width,
 height, quality)`, `ibom.run(board, extra, home)` (`IBOM_HOME` in the environment), `proof.digest(path)`, `proof.compare`, `proof.netdiff`. Environment: `IBOM_HOME`, `KICAD_FOOTPRINT_DIR` (tests),
 `PCBKIT_ROOT`, `PCBKIT_REQUIRE_PCBNEW`.
+
+## labels (`pcbkit.labels.place`, `check_two_way`)
+
+| name | type | default | meaning |
+|---|---|---|---|
+| `SILK_REQUIRED_PREFIXES` | tuple of str | required | reference prefixes of the anchors; an anchor goes through `ANCHOR_TIERS`, is placed before passives and is compared only with parts and labels of its own kind (longest matching prefix) |
+| `NO_LABEL_PREFIXES` | tuple of str | required | parts that carry no designator |
+| `DESIGNATOR_ADVANCE` | float | 0.95 | label box length per character, per character (box length = characters x this) |
+| `DESIGNATOR_INK_H` | float | 1.2 | label box width across the text, a fraction of the text height |
+| `DESIGNATOR_H` | float (mm) | 1.0 | the designators' text height |
+| `SILK_CHAR_ADV`, `SILK_TEXT_H` | float | 0.9, 1.0 | the text box the silk readers use (own-part test) |
+| `READ_MARGIN` | float | 0.15 | two-way nearest test: own part (or own label) nearer than any other by this, measured to bodies and pads |
+| `OWN_MARGIN` | float | 0.25 | search preference of the placer (not part of `validate`): the silk text box nearer its own part's courtyard (body in the relaxed tiers) than any other's by this |
+| `LABEL_GAP` | float | 0.2 | clearance between two labels |
+| `DESIGNATOR_GAP_ONE_LABEL` | float | 0.6 | clearance between two labels on one baseline |
+| `PAD_CLEAR` | float | 0.10 | label box to any pad, via or silk |
+| `ANCHOR_PAD_CLEAR` | float | 0.05 | label box to a pad, for an anchor (an IC, connector or test point with little room); a passive uses `PAD_CLEAR` |
+| `OUTLINE_CLEAR` | float | 0.05 | label box to a block-outline line (board-level silk line) |
+| `VIA_CLEAR` | float or None | None | label box to a via; None = a label may lie over a via (the board tents its vias, DRC allows it, both approved boards have labels over them) |
+| `EPS` | float | `pcbkit.config.EPS_DEFAULT` | the package's one resolution allowance (declared once in `pcbkit.config`), applied in `validate` |
+| `OUTLINE_STRAYS` | tuple of ref | `()` | parts that may sit outside their block's rectangle and in no other; their labels are inside their block's rectangle or at least in no other block's |
+| `TEXT_CLEAR` | float | 0.4 | label box to a board text |
+| `EDGE_CLEAR` | float | 0.4 | label box to `LABEL_AREA` edge |
+| `OWN_SOLID_CLEAR` | float | 0.05 | label box to its own part's body and pads |
+| `GAPS` | tuple | `(0.15,0.25,0.35,0.5,0.7,0.9,-0.1,-0.2,-0.3,-0.4)` | gaps from the courtyard in search order; negative = over the courtyard's edge |
+| `GAPS_OUTSIDE` | tuple | `(1.2,1.6,2.0,2.5,3.0)` | extra gaps for the `out` tiers |
+| `SLIDE` | float | 0.1 | step of the sliding coordinate |
+| `REGION_MARGIN` | float | 0.1 | a label inside a block's rectangle keeps this from its lines |
+| `LABEL_AREA` | box or None | board outline box | where labels may sit (before `EDGE_CLEAR`) |
+| `BLOCK` | dict or callable | required | reference -> block name |
+| `OUTLINE` | dict | required | block -> list of rectangles (x0, y0, x1, y1); a part whose origin is inside its block's rectangles keeps its label inside; any other label stays out of every block's rectangles |
+| `PRIORITY` | tuple of ref | `()` | anchors placed first, in this order |
+| `FORCE` | dict ref -> (x, y, angle) | `{}` | a label at a stated place, tier `forced`, not tested (the owner's call) |
+| `FIXED_LABELS` | dict ref -> (x, y, angle) | `{}` | labels that stay as they are (a BNC's vertical designator), placed first as obstacles |
+| `PASSIVE_TEST` | `'courtyard'` or `'body'` | `'courtyard'` | the strict test for a passive: against other courtyards (AFE-1, D30) or other bodies (AFE-2) |
+| `ANCHOR_TIERS` | tuple of (test, where) | strict/in, relaxed/in, strict/out, relaxed/out, samekind/in, samekind/out | tests an anchor goes through; `relaxed` judges bodies, `samekind` compares only same-kind bodies, `out` = outside every rectangle with the longer gaps |
+
+`validate(labelboard, plan, cfg, skip)` checks a finished board with the hard tests only (label area, own part, pads, footprint silk, outline lines, board texts, label spacing, the two-way test in
+three directions, the region rules); the owner's reading standard is the two-way test with `READ_MARGIN`, so `OWN_MARGIN` and the courtyard tests only steer the search.
+
+## labels: connector boxes (`bnc_layout`), block names (`place_names`), outline lines (`outline_segments`)
+
+| name | type | default | meaning |
+|---|---|---|---|
+| `BNC` | dict ref -> text | required by `bnc_layout` | the connectors that get a box and a turned designator plus function text; the text is the function label |
+| `BNC_MARGIN` | float or None | None | box margin on all four sides of each connector's silk; None = (pitch - silk height) / 2 so neighbouring boxes share a line |
+| `BNC_DES_DY`, `BNC_FN_DY` | float | -3.35, -0.45 | designator centre and function-text bottom, from each connector's origin (same for all) |
+| `BNC_LINE` | float | 0.075 | half the outline line width, used to centre the labels in the left margin |
+| `BLOCK_NAMES` | dict block -> text | required by `place_names` | the block names to place, one size, at a rectangle corner |
+| `NAME_SIZE` | float | 1.2 | text height of a block name |
+| `NAME_AREA` | box or None | `LABEL_AREA` | where names may sit |
+| `NAME_CLEAR_BODY`, `NAME_CLEAR_PAD`, `NAME_CLEAR_SILK` | float | 0.05, 0.10, 0.08 | clearances of a name |
+| `NAME_REACH`, `NAME_STEP` | float | 12.0, 0.25 | search distance from the corner and step |
+| `OUTLINE_BREAK_CLEAR` | float | 0.2 | an outline line is broken this far each side of a pad, footprint silk or forced label |
+| `OUTLINE_IGNORE` | list of boxes | `()` | boxes holding other drawn lines (not outline lines) that `validate_outline` skips |
+| `NAME_OUTSIDE_GAPS` | tuple | (0.3, 0.5) | gaps of the outside tier of a block name (flush with a rectangle corner, just outside its side) |
+| `NAME_CORNER_MAX` | float | 12.0 | how far (manhattan, box corner to rectangle corner) a name inside its rectangle may be from the nearest corner |
+| `OUTLINE_LINE_HALF` | float | 0.075 | half the outline line width |
+
+`validate_names(labelboard, boxes, cfg, others)` and `validate_outline(labelboard, drawn_segments, cfg)` check the block names (one size, at a corner inside the rectangle or flush
+with a corner just outside, clear of bodies, pads, silk and labels) and the outline lines (every edge closed except at pad, footprint-silk or forced-label breaks, each break 0.2 mm
+clear, a shared line drawn once, no line across anything, none off the rectangles). A forced label may touch a line; only crossing it counts.

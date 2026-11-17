@@ -1,0 +1,55 @@
+effective configuration (v1):
+ANCHOR_PAD_CLEAR             default   0.05
+ANCHOR_TIERS                 default   (('strict', 'in'), ('relaxed', 'in'), ('strict', 'out'), ('relaxed', 'out'), ('samekind', 'in'), ('samekind', 'out'))
+BLOCK                        project   {'R408': 'POWER', 'R410': 'POWER', 'R411': 'POWER', 'R412': 'POWER', 'R413': 'POWER', 'C403': 'POWER', 'C404': 'POWER', 'C401': 'POWER', 'U401': 'POWER', 'C402': 'POWER', 'C405': 'POWER', 'C406': 'POWER', 'C407': 'POWER', 'C408': 'POWER', 'C409': 'POWER', 'C410': 'POWER', 'R406': 'POWER', 'R409': 'POWER', 'R401': 'POWER', 'R402': 'POWER', 'R403': 'POWER', 'R404': 'POWER', 'R405': 'POWER', 'R407': 'POWER', 'J101': 'SCOPE', 'R102': 'SCOPE', 'R103': 'SCOPE', 'C101': 'SCOPE', 'R105': 'SCOPE', 'R101': 'SCOPE', 'R104': 'SCOPE', 'C102': 'SCOPE', 'R106': 'SCOPE', 'C105': 'SCOPE', 'U101': 'SCOPE', 'R108': 'SCOPE', 'C104': 'SCOPE', 'C103': 'SCOPE', 'R107': 'SCOPE', 'D101': 'SCOPE', 'J201': 'SCOPE', 'R202': 'SCOPE', 'R203': 'SCOPE', 'C201': 'SCOPE', 'R205': 'SCOPE', 'R201': 'SCOPE', 'R204': 'SCOPE', 'C202': 'SCOPE', 'R206': 'SCOPE', 'C203': 'SCOPE', 'R207': 'SCOPE', 'D201': 'SCOPE', 'R305': 'AWG', 'R308': 'AWG', 'R301': 'AWG', 'C304': 'AWG', 'R303': 'AWG', 'C301': 'AWG', 'R302': 'AWG', 'R307': 'AWG', 'C305': 'AWG', 'C306': 'AWG', 'C302': 'AWG', 'R110': 'SCOPE', 'R515': 'REFCAL', 'R111': 'SCOPE', 'R113': 'SCOPE', 'R112': 'SCOPE', 'R516': 'REFCAL', 'C303': 'AWG', 'U301': 'AWG', 'R304': 'AWG', 'R306': 'AWG', 'J301': 'AWG', 'U501': 'REFCAL', 'C501': 'REFCAL', 'C505': 'REFCAL', 'C503': 'REFCAL', 'C504': 'REFCAL', 'R503': 'REFCAL', 'R504': 'REFCAL', 'R505': 'REFCAL', 'R506': 'REFCAL', 'R507': 'REFCAL', 'R508': 'REFCAL', 'R510': 'REFCAL', 'R309': 'AWG', 'R310': 'AWG', 'R501': 'REFCAL', 'R502': 'REFCAL', 'R512': 'REFCAL', 'R520': 'REFCAL', 'R513': 'REFCAL', 'R514': 'REFCAL', 'D502': 'REFCAL', 'D501': 'REFCAL', 'J501': 'REFCAL', 'U502': 'REFCAL', 'C502': 'REFCAL', 'R509': 'REFCAL', 'R511': 'REFCAL', 'R517': 'REFCAL', 'R518': 'REFCAL', 'R519': 'REFCAL', 'J601': 'EDGE', 'J602': 'EDGE', 'J603': 'EDGE', 'J604': 'EDGE', 'J605': 'EDGE', 'J606': 'EDGE', 'J607': 'EDGE', 'MH601': 'EDGE', 'MH602': 'EDGE', 'TP401': 'POWER', 'TP402': 'POWER', 'TP403': 'POWER', 'TP404': 'POWER', 'TP405': 'POWER', 'TP501': 'REFCAL', 'TP101': 'SCOPE', 'TP201': 'SCOPE', 'TP301': 'AWG'}
+BNC_DES_DY                   default   -3.35
+BNC_FN_DY                    default   -0.45
+BNC_LINE                     default   0.075
+BNC_MARGIN                   default   None
+DESIGNATOR_ADVANCE           default   0.95
+DESIGNATOR_GAP_ONE_LABEL     default   0.6
+DESIGNATOR_H                 default   1.0
+DESIGNATOR_INK_H             default   1.2
+EDGE_CLEAR                   default   0.4
+EPS                          default   0.005
+FIXED_LABELS                 project   {'J101': (99.232, 41.1, 90.0), 'J201': (99.232, 23.32, 90.0), 'J301': (99.232, 4.05, 90.0)}
+FORCE                        project   {'TP401': (39.6, 6.5, 90), 'TP201': (76.6, 25.6, 90)}
+GAPS                         default   (0.15, 0.25, 0.35, 0.5, 0.7, 0.9, -0.1, -0.2, -0.3, -0.4)
+GAPS_OUTSIDE                 default   (1.2, 1.6, 2.0, 2.5, 3.0)
+LABEL_AREA                   project   (17.0, 0.0, 117.0, 53.34)
+LABEL_GAP                    default   0.2
+NAME_AREA                    default   None
+NAME_CLEAR_BODY              default   0.05
+NAME_CLEAR_PAD               default   0.1
+NAME_CLEAR_SILK              default   0.08
+NAME_CORNER_MAX              default   12.0
+NAME_OUTSIDE_GAPS            default   (0.3, 0.5)
+NAME_REACH                   default   12.0
+NAME_SIZE                    default   1.2
+NAME_STEP                    default   0.25
+NO_LABEL_PREFIXES            project   ('MH',)
+OUTLINE                      project   {'POWER': [(18.1, 4.05, 44.3, 22.9)], 'REFCAL': [(44.7, 4.8, 64.55, 31.3)], 'SCOPE': [(64.3, 33.9, 92.0, 46.4), (75.5, 22.4, 92.0, 32.0), (98.51, 17.78, 116.09, 35.56), (98.51, 35.56, 116.09, 53.34)], 'AWG': [(69.8, 4.15, 92.0, 19.4), (98.51, -1.49, 116.09, 16.29)]}
+OUTLINE_BREAK_CLEAR          default   0.2
+OUTLINE_CLEAR                default   0.05
+OUTLINE_IGNORE               default   ()
+OUTLINE_LINE_HALF            default   0.075
+OUTLINE_STRAYS               project   ('R411', 'R412', 'R413', 'R515', 'R516', 'D201', 'R111', 'R309', 'R310')
+OWN_MARGIN                   default   0.25
+OWN_SOLID_CLEAR              default   0.05
+PAD_CLEAR                    default   0.1
+PASSIVE_TEST                 project   'courtyard'
+PRIORITY                     project   ('TP405', 'D201', 'D501', 'D502', 'D101')
+READ_MARGIN                  default   0.15
+REGION_MARGIN                default   0.1
+SILK_CHAR_ADV                default   0.9
+SILK_REQUIRED_PREFIXES       project   ('U', 'J', 'TP', 'D')
+SILK_TEXT_H                  default   1.0
+SLIDE                        default   0.1
+TEXT_CLEAR                   default   0.4
+VIA_CLEAR                    default   None
+v1 approved labels 68 failing validate 0 | the placer's plan 73 labels, failing validate 0
+v1 names placed {'POWER': 'TL', 'REFCAL': 'TL', 'AWG': 'TL', 'CH1': 'TL', 'CH2': 'TL'} missing []
+v1 block names: approved failing [] | plan failing []
+v1 outline: approved problems 0 | plan problems 0
+v1 accepted findings [] | NEW [] | ACCEPTED BUT GONE [] | plan failures []
+FIXTURE PASS

@@ -39,6 +39,8 @@ import re
 import sys
 import uuid
 
+from .config import ConfigError, declare
+
 import numpy as np
 
 
@@ -80,7 +82,7 @@ class PinCfg:
         if not any(hasattr(cfg, k) for k in OPTIONAL):
             miss.append('BASE_RECT')
         if miss:
-            raise ValueError('the configuration has no %s (project-specific: no default)' % ', '.join(miss))
+            raise ConfigError('the configuration has no %s (project-specific: no default)' % ', '.join(miss))
         object.__setattr__(self, '_v', {}); object.__setattr__(self, '_s', {})
         for k in list(REQUIRED) + [k for k in OPTIONAL if hasattr(cfg, k)] + list(TUNABLES):
             self._s[k] = 'project' if hasattr(cfg, k) else 'default'
@@ -96,6 +98,9 @@ class PinCfg:
 
     def effective(self):
         return [(k, self._v[k], self._s[k]) for k in sorted(self._v) if k != 'PIN_LABEL_INK']
+
+
+declare('pinlabels', list(REQUIRED) + list(OPTIONAL) + list(TUNABLES))
 
 
 def _c(cfg):
