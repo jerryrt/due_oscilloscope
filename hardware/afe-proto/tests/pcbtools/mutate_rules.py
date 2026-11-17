@@ -102,7 +102,7 @@ MUTANTS = [
     (R, 'graph: B.Cu tracks ignored (finding 3)', "srow = np.flatnonzero(np.isin(b.s_net, ids) & (b.s_layer < 2))", "srow = np.flatnonzero(np.isin(b.s_net, ids) & (b.s_layer < 1))"),
     (R, 'graph: tracks of two layers touch (finding 3)', " & (SL[:, None] == SL[None, :])", ""),
     (R, 'graph: pad layer mask ignored (finding 3)', " & (((PM[None, :] >> SL[:, None]) & 1) > 0)", ""),
-    (R, 'graph: zone fills ignored (finding 3)', "if b.z_filled[z] and b.z_net[z] in ids and b.z_layer[z] < 2]", "if False]"),
+    (R, 'graph: zone fills ignored (finding 3)', "if b.z_filled[z] and not b.z_keepout[z] and b.z_net[z] in ids and b.z_layer[z] < 2]", "if False]"),
     (R, 'graph: zone holes ignored (finding 3)', "off - off[0], hole=b.z_ring_hole[r0:r1]) if len(pts)", "off - off[0], hole=None) if len(pts)"),
     (R, 'graph: a zone joins items of every layer (finding 3)', "                m &= (layer_ok == b.z_layer[z]) | (layer_ok == -1)\n", "                pass\n"),
     (R, 'graph: an arc is dropped', "    if len(arow):                                          # an arc", "    if False:                                              # an arc"),
@@ -114,7 +114,7 @@ MUTANTS = [
     (R, 'LR-9 own parts not excused', "hit &= ~own", "hit &= hit"),
     (R, 'LR-9 courtyard margin dropped', "hit = geom.seg_in_box(segs(b)[rows], boxes, pad=cfg.ZONE_PAD + b.s_w[rows] / 2)", "hit = geom.seg_in_box(segs(b)[rows], boxes, pad=b.s_w[rows] / 2)"),
     (R, 'LR-11 outline membership test inverted', "if inside != want:", "if inside == want:"),
-    (R, 'LR-11 designator height test inverted', "or b.r_h[k] < cfg.DESIGNATOR_MIN_H:", "or b.r_h[k] > cfg.DESIGNATOR_MIN_H:"),
+    (R, 'LR-11 designator height test inverted', "b.r_on_silk[k] and b.r_h[k] >= cfg.DESIGNATOR_MIN_H", "b.r_on_silk[k] and b.r_h[k] < cfg.DESIGNATOR_MIN_H"),
     (R, 'LR-11 designators with two digits owned', "if len(digits) >= 3 else None", "if len(digits) >= 2 else None"),
     (R, 'LR-11 test point net test dropped', "or pad_net(b, r, cfg.TP_PIN) != n:", "or False:"),
     # config-driven rules: a rule that stops reading its config field must fail
