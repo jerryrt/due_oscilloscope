@@ -1,0 +1,16 @@
+[    2.5s] 9/33 /AWG_OA: 2.1 s, 1 failed
+[    2.8s] 11/33 /AWG_BIN: 0.2 s, 1 failed
+[    3.1s] 16/33 /AWG_VREF: 0.2 s, 1 failed
+[    4.5s] 18/33 /AWG_VO: 0.8 s, 1 failed
+[    5.1s] 19/33 /TAP2: 0.6 s, 2 failed
+[    5.9s] 20/33 /TAP3: 0.7 s, 2 failed
+[    7.7s] 21/33 /TAP4: 1.9 s, 3 failed
+[    8.0s] 23/33 /SDA: 0.2 s, 1 failed
+[   17.5s] 24/33 /SCL: 9.6 s, 2 failed
+[   26.6s] 25/33 /AWG_BNC: 9.1 s, 1 failed
+[   53.5s] 26/33 /VREF: 26.9 s, 3 failed
+[   53.6s] 28/33 /LM_C1N: 0.1 s, 1 failed
+[   54.4s] 31/33 /+5V_F: 0.7 s, 3 failed
+[   74.5s] 32/33 /VNEG: 20.2 s, 5 failed
+[  137.2s] 33/33 /+3V3A: 62.6 s, 17 failed
+[  137.2s] first pass: 44 connections not routed
