@@ -36,11 +36,16 @@ SPEC = {
     'arcs': [('a_idx', 'i4')] + [(n, _F) for n in ('a_x0', 'a_y0', 'a_xm', 'a_ym', 'a_x1', 'a_y1', 'a_w')] + [('a_layer', 'i1'), ('a_net', 'i4')],
     'vias': [('v_idx', 'i4')] + [(n, _F) for n in ('v_x', 'v_y', 'v_dia', 'v_drill')] + [('v_net', 'i4')],
     'footprints': [('fp_idx', 'i4'), ('fp_ref', 'S')] + [(n, _F) for n in ('fp_x', 'fp_y', 'fp_rot')] + [('fp_side', 'i1')]
-                  + [(n, _F) for n in ('fp_cx0', 'fp_cy0', 'fp_cx1', 'fp_cy1')] + [('fp_kind', 'S')],
+                  + [(n, _F) for n in ('fp_cx0', 'fp_cy0', 'fp_cx1', 'fp_cy1')] + [('fp_kind', 'S')]
+                  + [(n, _F) for n in ('fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1')],
+    'fpsilk': [('fs_fp', 'i4')] + [(n, _F) for n in ('fs_x0', 'fs_y0', 'fs_x1', 'fs_y1')] + [('fs_kind', 'S')],
+    'gsilk': [(n, _F) for n in ('g_x0', 'g_y0', 'g_x1', 'g_y1')] + [('g_kind', 'S')],
     'pads': [('p_fp', 'i4'), ('p_pin', 'S')] + [(n, _F) for n in ('p_x', 'p_y', 'p_bx0', 'p_by0', 'p_bx1', 'p_by1')]
             + [('p_net', 'i4'), ('p_smd', '?'), ('p_rot', _F), ('p_shape', 'i1'), ('p_sx', _F), ('p_sy', _F), ('p_layer_mask', 'u1')],
-    'reftext': [(n, _F) for n in ('r_x', 'r_y', 'r_h', 'r_w', 'r_t', 'r_ang')] + [('r_layer', 'i1'), ('r_on_silk', '?'), ('r_fp', 'i4')],
-    'silk': [('t_text', 'S')] + [(n, _F) for n in ('t_x', 't_y', 't_h')],
+    'reftext': [(n, _F) for n in ('r_x', 'r_y', 'r_h', 'r_w', 'r_t', 'r_ang')] + [('r_layer', 'i1'), ('r_on_silk', '?'), ('r_fp', 'i4'),
+                                                                                     ('r_hide', '?'), ('r_just', 'S')],
+    'silk': [('t_text', 'S')] + [(n, _F) for n in ('t_x', 't_y', 't_h')]
+            + [(n, _F) for n in ('t_ang', 't_stroke', 't_x0', 't_y0', 't_x1', 't_y1')] + [('t_hide', '?'), ('t_layer', 'i1'), ('t_just', 'S')],
     'zones': [('z_layer', 'i1'), ('z_net', 'i4'), ('z_filled', '?'), ('z_keepout', '?')],
 }
 # zone geometry: z_xy (V,2), z_ring_off (nz+1) int64 zone -> ring, z_vert_off (nring+1) int64 ring -> vertex,
@@ -74,12 +79,29 @@ def _coerce(kind, v):
 _ALL = [f for g in SPEC.values() for f in g] + _ZGEO
 KIND = dict(_ALL)
 
+# Fields added after the first release of the arrays. A board built by hand, or an npz cache written before them, leaves them
+# empty: they are then filled with these values (NaN = "not measured", never a number a rule could mistake for one) to the length
+# of the group's older fields. A group whose older fields are all empty stays empty.
+_ADDED = {'fp_fab_x0': np.nan, 'fp_fab_y0': np.nan, 'fp_fab_x1': np.nan, 'fp_fab_y1': np.nan,
+          'r_hide': False, 'r_just': 'center',
+          't_ang': 0.0, 't_stroke': np.nan, 't_x0': np.nan, 't_y0': np.nan, 't_x1': np.nan, 't_y1': np.nan, 't_hide': False,
+          't_layer': 0, 't_just': 'center'}
+# every name added after the first release, groups of their own included: a project that must keep its recorded array set (the AFE's
+# cached fixtures hold the first one) filters _ALL, KIND and SPEC by it
+LATER_FIELDS = frozenset(_ADDED) | {n for g in ('fpsilk', 'gsilk') for n, _ in SPEC[g]}
+
 
 def _post_init(self):
     if len(self.z_keepout) == 0 and len(self.z_layer):          # a cache or a hand-built board from before z_keepout: no zone is a rule area
         object.__setattr__(self, 'z_keepout', np.zeros(len(self.z_layer), bool))
     for name, kind in _ALL:
         object.__setattr__(self, name, _coerce(kind, getattr(self, name)))
+    for g, fields in SPEC.items():                  # fill the added fields of a group whose older fields have rows
+        old = [n for n, _ in fields if n not in _ADDED]
+        n = max((len(getattr(self, o)) for o in old), default=0)
+        for name, kind in fields:
+            if name in _ADDED and n and not len(getattr(self, name)):
+                object.__setattr__(self, name, _coerce(kind, [_ADDED[name]] * n))
     object.__setattr__(self, 'nets', tuple(str(x) for x in self.nets))
     for g, fields in SPEC.items():
         if g == 'outline':
@@ -234,12 +256,31 @@ def _layer(pcb, lay, name_map=None):
     return 2
 
 
+_JUST = {}
+
+
+def _just(pcb, t):
+    """horizontal justification of a text as 'left' | 'center' | 'right'"""
+    if not _JUST:
+        _JUST.update({pcb.GR_TEXT_H_ALIGN_LEFT: 'left', pcb.GR_TEXT_H_ALIGN_CENTER: 'center', pcb.GR_TEXT_H_ALIGN_RIGHT: 'right'})
+    return _JUST.get(t.GetHorizJustify(), 'center')
+
+
+_SHAPE_KINDS = {}
+
+
+def _init_kinds(pcb):
+    _SHAPE_KINDS.update({pcb.SHAPE_T_SEGMENT: 'segment', pcb.SHAPE_T_RECT: 'rect', pcb.SHAPE_T_ARC: 'arc', pcb.SHAPE_T_CIRCLE: 'circle',
+                         pcb.SHAPE_T_POLY: 'poly'})
+
+
 def read_board(path, cfg=None):
     """Load `path` with pcbnew once, copy everything into BoardArrays in the configuration's frame, delete the board, return."""
     frame = frame_of(cfg)
     import gc
     import pcbnew as pcb
     assert pcb.pcbIUScale.IU_PER_MM == 1e6
+    _init_kinds(pcb)
     b = pcb.LoadBoard(str(path))
     if b is None:
         raise IOError(f'pcbnew cannot load {path}')
@@ -293,7 +334,9 @@ def _extract(pcb, b, path, frame):
         kw.update(v_idx=V[:, 0], v_x=_r(x), v_y=_r(y), v_dia=_r(V[:, 3] * U), v_drill=_r(V[:, 4] * U), v_net=V[:, 5])
 
     # footprints, pads, reference text
-    FP, PD, RT = [], [], []
+    FP, PD, RT, FS = [], [], [], []
+    BOX = lambda bb: (bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom())      # KiCad nm, y down
+    fab_box = []
     shape_map = {pcb.PAD_SHAPE_CIRCLE: 0, pcb.PAD_SHAPE_RECTANGLE: 1, pcb.PAD_SHAPE_OVAL: 2, pcb.PAD_SHAPE_ROUNDRECT: 3}
     for i, f in enumerate(b.GetFootprints()):
         side = 0 if f.GetLayer() == pcb.F_Cu else 1
@@ -306,6 +349,14 @@ def _extract(pcb, b, path, frame):
             box = (np.nan,) * 4
         p = f.GetPosition()
         FP.append((str(f.GetReference()), p.x, p.y, f.GetOrientationDegrees(), side) + box + (str(f.GetFPID().GetLibItemName()),))
+        fab = pcb.BOX2I()                              # the body: every F.Fab SHAPE (the text on that layer is a label, not the part)
+        for g in f.GraphicalItems():
+            lay_ = g.GetLayer()
+            if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':
+                fab.Merge(g.GetBoundingBox())
+            elif lay_ == pcb.F_SilkS:
+                FS.append((i, _SHAPE_KINDS.get(g.GetShape(), 'other') if g.GetClass() == 'PCB_SHAPE' else 'text') + BOX(g.GetBoundingBox()))
+        fab_box.append(BOX(fab) if fab.GetWidth() or fab.GetHeight() else (np.nan,) * 4)
         for pd in f.Pads():
             q, bb, sz = pd.GetPosition(), pd.GetBoundingBox(), pd.GetSize(pcb.F_Cu)
             mask = (1 if pd.IsOnLayer(pcb.F_Cu) else 0) | (2 if pd.IsOnLayer(pcb.B_Cu) else 0)
@@ -317,7 +368,7 @@ def _extract(pcb, b, path, frame):
         lay = 0 if rl == pcb.F_SilkS else 1 if rl == pcb.B_SilkS else 2 if rl == pcb.F_Fab else 3
         rp = r.GetPosition()
         RT.append((rp.x, rp.y, r.GetTextHeight(), r.GetTextWidth(), r.GetTextThickness(), r.GetTextAngleDegrees(), lay,
-                   rl == pcb.F_SilkS and r.IsVisible(), i))
+                   rl == pcb.F_SilkS and r.IsVisible(), i, not r.IsVisible(), _just(pcb, r)))
     if FP:
         c = lambda k: np.array([row[k] for row in FP], np.float64)
         x, y = to_f(c(1) * U, c(2) * U)
@@ -325,6 +376,10 @@ def _extract(pcb, b, path, frame):
         cx1, cy0 = to_f(c(7) * U, c(8) * U)
         kw.update(fp_idx=np.arange(len(FP)), fp_ref=[row[0] for row in FP], fp_x=_r(x), fp_y=_r(y), fp_rot=_r(c(3)),
                   fp_side=c(4), fp_cx0=_r(cx0), fp_cy0=_r(cy0), fp_cx1=_r(cx1), fp_cy1=_r(cy1), fp_kind=[row[9] for row in FP])
+        fb = np.array(fab_box, np.float64) * U
+        fx0, fy1 = to_f(fb[:, 0], fb[:, 1])
+        fx1, fy0 = to_f(fb[:, 2], fb[:, 3])
+        kw.update(fp_fab_x0=_r(fx0), fp_fab_y0=_r(fy0), fp_fab_x1=_r(fx1), fp_fab_y1=_r(fy1))
     if PD:
         c = lambda k: np.array([row[k] for row in PD], np.float64)
         x, y = to_f(c(2) * U, c(3) * U)
@@ -337,14 +392,35 @@ def _extract(pcb, b, path, frame):
         c = lambda k: np.array([row[k] for row in RT], np.float64)
         x, y = to_f(c(0) * U, c(1) * U)
         kw.update(r_x=_r(x), r_y=_r(y), r_h=_r(c(2) * U), r_w=_r(c(3) * U), r_t=_r(c(4) * U), r_ang=_r(c(5)), r_layer=c(6),
-                  r_on_silk=c(7), r_fp=c(8))
+                  r_on_silk=c(7), r_fp=c(8), r_hide=c(9), r_just=[row[10] for row in RT])
 
-    # board-level silk text
-    T = [(str(d.GetText()), d.GetPosition().x, d.GetPosition().y, d.GetTextHeight()) for d in b.Drawings()
-         if d.GetClass() == 'PCB_TEXT' and d.GetLayer() == pcb.F_SilkS]
+    if FS:
+        a = np.array([row[2:] for row in FS], np.float64) * U
+        x0, y1 = to_f(a[:, 0], a[:, 1])
+        x1, y0 = to_f(a[:, 2], a[:, 3])
+        kw.update(fs_fp=[row[0] for row in FS], fs_x0=_r(x0), fs_y0=_r(y0), fs_x1=_r(x1), fs_y1=_r(y1), fs_kind=[row[1] for row in FS])
+
+    # board-level silk text: position, height, angle, stroke, justification, hide flag, layer and the rendered box
+    T = [(str(d.GetText()), d.GetPosition().x, d.GetPosition().y, d.GetTextHeight(), d.GetTextAngleDegrees(), d.GetTextThickness(),
+          not d.IsVisible(), _just(pcb, d)) + BOX(d.GetBoundingBox())
+         for d in b.Drawings() if d.GetClass() == 'PCB_TEXT' and d.GetLayer() == pcb.F_SilkS]
     if T:
         x, y = to_f(np.array([t[1] for t in T]) * U, np.array([t[2] for t in T]) * U)
-        kw.update(t_text=[t[0] for t in T], t_x=_r(x), t_y=_r(y), t_h=_r(np.array([t[3] for t in T]) * U))
+        a = np.array([t[8:] for t in T], np.float64) * U
+        x0, y1 = to_f(a[:, 0], a[:, 1])
+        x1, y0 = to_f(a[:, 2], a[:, 3])
+        kw.update(t_text=[t[0] for t in T], t_x=_r(x), t_y=_r(y), t_h=_r(np.array([t[3] for t in T]) * U), t_ang=_r([t[4] for t in T]),
+                  t_stroke=_r(np.array([t[5] for t in T]) * U), t_hide=[t[6] for t in T], t_layer=[0] * len(T), t_just=[t[7] for t in T],
+                  t_x0=_r(x0), t_y0=_r(y0), t_x1=_r(x1), t_y1=_r(y1))
+
+    # board-level silk graphics (gr_line, gr_rect, gr_poly, gr_arc, gr_circle): bounding box with the stroke, as pcbnew gives it
+    G = [({'segment': 'line'}.get(_SHAPE_KINDS.get(d.GetShape(), 'other'), _SHAPE_KINDS.get(d.GetShape(), 'other')),) + BOX(d.GetBoundingBox())
+         for d in b.Drawings() if d.GetClass() == 'PCB_SHAPE' and d.GetLayer() == pcb.F_SilkS]
+    if G:
+        a = np.array([g[1:] for g in G], np.float64) * U
+        x0, y1 = to_f(a[:, 0], a[:, 1])
+        x1, y0 = to_f(a[:, 2], a[:, 3])
+        kw.update(g_x0=_r(x0), g_y0=_r(y0), g_x1=_r(x1), g_y1=_r(y1), g_kind=[g[0] for g in G])
 
     # zones: filled outlines and their holes, as rings
     zl, zn, zf, zk, xy, roff, voff, rhole = [], [], [], [], [], [0], [0], []

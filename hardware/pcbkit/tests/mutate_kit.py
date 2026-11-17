@@ -58,7 +58,26 @@ BOARD = [
     ('a configuration without FRAME falls back to the default', "raise ValueError('the configuration has no FRAME", "return DEFAULT_FRAME; raise ValueError('the configuration has no FRAME"),
     ('retry child does not pass the frame', "repr(ox), repr(oy)]", "'0.0', '0.0']"),
 ]
-RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py'])]
+SILK = [
+    ('fab box reads the silk layer', "if lay_ == pcb.F_Fab and g.GetClass() == 'PCB_SHAPE':", "if lay_ == pcb.F_SilkS and g.GetClass() == 'PCB_SHAPE':"),
+    ('fab box of a footprint without one is 0, not NaN', "else (np.nan,) * 4)\n", "else (0.0,) * 4)\n"),
+    ('fab box top edge taken from the wrong corner', "fx1, fy0 = to_f(fb[:, 2], fb[:, 3])", "fx1, fy0 = to_f(fb[:, 2], fb[:, 1])"),
+    ('footprint silk reads the fab layer', "elif lay_ == pcb.F_SilkS:", "elif lay_ == pcb.F_Fab:"),
+    ('footprint silk owner always row 0', "FS.append((i, ", "FS.append((0, "),
+    ('segment kind named rect', "pcb.SHAPE_T_SEGMENT: 'segment'", "pcb.SHAPE_T_SEGMENT: 'rect'"),
+    ('board silk graphics from every layer', "d.GetClass() == 'PCB_SHAPE' and d.GetLayer() == pcb.F_SilkS]", "d.GetClass() == 'PCB_SHAPE']"),
+    ('board silk graphics: y edges swapped', "g_y0=_r(y0), g_x1=_r(x1), g_y1=_r(y1)", "g_y0=_r(y1), g_x1=_r(x1), g_y1=_r(y0)"),
+    ('board texts from every layer', "if d.GetClass() == 'PCB_TEXT' and d.GetLayer() == pcb.F_SilkS]", "if d.GetClass() == 'PCB_TEXT']"),
+    ('text angle dropped', "t_ang=_r([t[4] for t in T])", "t_ang=_r([0.0 for t in T])"),
+    ('text stroke is its height', "t_stroke=_r(np.array([t[5] for t in T]) * U)", "t_stroke=_r(np.array([t[3] for t in T]) * U)"),
+    ('text justification always centre', "t_just=[t[7] for t in T]", "t_just=['center' for t in T]"),
+    ('text box x edges swapped', "t_x0=_r(x0), t_y0=_r(y0), t_x1=_r(x1), t_y1=_r(y1))", "t_x0=_r(x1), t_y0=_r(y0), t_x1=_r(x0), t_y1=_r(y1))"),
+    ('reference hide flag dropped', "not r.IsVisible(), _just(pcb, r)))", "False, _just(pcb, r)))"),
+    ('justification left reads as right', "pcb.GR_TEXT_H_ALIGN_LEFT: 'left'", "pcb.GR_TEXT_H_ALIGN_LEFT: 'right'"),
+    ('pad box right edge is its left edge', "bb.GetRight(), bb.GetBottom(), pd.GetNetCode()", "bb.GetLeft(), bb.GetBottom(), pd.GetNetCode()"),
+    ('added fields not defaulted on a hand-built board', "if name in _ADDED and n and not len(getattr(self, name)):", "if False:"),
+]
+RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.py']), ('board.py', BOARD, ['test_board.py']), ('board.py', SILK, ['test_board_silk.py'])]
 
 
 def _limit():

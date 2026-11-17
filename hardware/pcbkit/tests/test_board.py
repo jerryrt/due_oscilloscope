@@ -67,7 +67,7 @@ def test_npz_roundtrip(tmp_path):
     c = B.load_npz(p)
     for n, k in B._ALL:
         u, v = getattr(b, n), getattr(c, n)
-        assert (u == v) if k == 'S' else np.array_equal(u, v) and u.dtype == v.dtype, n
+        assert (u == v) if k == 'S' else np.array_equal(u, v, equal_nan=(u.dtype.kind == 'f')) and u.dtype == v.dtype, n
     assert c.nets == b.nets and c.copper_layers == 2 and c.path == b.path
 
 

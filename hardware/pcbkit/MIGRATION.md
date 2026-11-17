@@ -7,6 +7,7 @@ the fab manifests, silkread counts) do not move in any step; a step that moves o
 | step | from (afe-proto) | to (pcbkit) | what changes on the way | status |
 |---|---|---|---|---|
 | 1 | `pcbtools/boardio.py`, `geom.py`, `shapes.py` | `board`, `geom` | the Due frame (`OX, OY`) becomes `FRAME` in the configuration; `shapes` joins `geom` | moved (branch `pcbkit-step1`) |
+| 1b | (new reads in `board`, from the label and silk tools' own parsing of the file text) | `board` | F.Fab body boxes, footprint and board silk graphics, text angle, justification, stroke, box, hide flag: the arrays in `ARRAYS.md`. No AFE figure moves | moved (branch `pcbkit-step1b`) |
 | 2 | `pcbtools/rules.py`: `lr1`, `bottom_runs`, `bottom_crossings` | `rules.ground_plane`, `rules.bottom_hops` | fences and sensitive nets come from the configuration by name | to do |
 | 3 | `rules.py`: `lr3`, `lr4`'s via and length terms, `pour_gaps`, `lr5`, `lr12` | `rules.sensitive_nets`, `rules.pour_gap`, `rules.keepout_ring`, `rules.decoupling` | the AFE's channel tables stay in the AFE layer and are turned into these lists there | to do |
 | 4 | `rules.py`: `lr11`'s outline, designator, test-point and legibility terms, `designator_findings`, `one_label_pairs`, `foreign_labels` | `rules.blocks`, `rules.designators`, `rules.test_points`, `outlines` | the two-way test joins `designators` (today it lives only in the team scripts) | to do |
@@ -16,3 +17,4 @@ the fab manifests, silkread counts) do not move in any step; a step that moves o
 What stays in `afe-proto/pcbtools`: `lr2` (signal flow through the channels), `lr4`'s inverting-node and isolation-resistor terms,
 `lr6` (the supply stars), `lr7`, `lr8` (the VREF Kelvin branches), `lr9`, the board configurations and their arms, the gate-3
 tables, the schematic and SPICE tools, and `cap.py` and `planar.py`.
+| 7 | the AFE's importers of `pcbtools.boardio`, `geom`, `shapes` (and of every later moved module) | `pcbkit` directly | rewrite the importers to pcbkit, pass `FRAME` explicitly, delete the bindings and aliases (`pcbtools/boardio.py`, `geom.py`, `shapes.py`), and drop the duplicate tests: the AFE copies of `test_geom.py`, `mutate_geom.py` and their golden | to do |

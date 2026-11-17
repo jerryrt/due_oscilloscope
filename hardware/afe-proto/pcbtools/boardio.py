@@ -10,6 +10,15 @@ from pcbkit.board import *      # noqa: F401,F403  (public names)
 
 globals().update({k: v for k, v in vars(_kit).items() if not k.startswith('__')})     # and the private ones (_ALL, _r, ...)
 
+# The AFE's recorded arrays (tests/fixtures/arrays) hold the first release's field set; the kit has since added the fields in
+# LATER_FIELDS (footprint fab boxes and silk items, board graphics, text angle/stroke/justification/box). They are in the arrays
+# read_board returns, and the AFE's own views of the field set (_ALL, KIND, SPEC, used by the npz cache and the equality tests)
+# stay the first release's, so no AFE figure or comparison moves.
+_ALL = [f for f in _kit._ALL if f[0] not in _kit.LATER_FIELDS]
+KIND = dict(_ALL)
+SPEC = {g: [f for f in fs if f[0] not in _kit.LATER_FIELDS] for g, fs in _kit.SPEC.items()}
+SPEC = {g: fs for g, fs in SPEC.items() if fs}
+
 FRAME = (50.0, 150.0)           # the same as boards/v2.py's FRAME (tests/pcbtools/test_frame.py holds them equal)
 OX, OY = FRAME
 
