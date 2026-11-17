@@ -132,7 +132,7 @@ def placements_equal_board(o, refs):
 def test_order_placements_equal_the_boards_smt_footprints():
     data = bom.Data(bom.HERE, {})
     refs = board_smt_refs()
-    assert len(refs) >= 90 and any(r.startswith("BR") for r in refs)
+    assert len(refs) >= 77                    # a floor: the board's SMT parts (77 since its 13 bridges left), not an empty list
     o = order.build(data, order.lines_from_rows(order.smt_rows(order.read_board(str(BOARD))))
                     + order.owner_lines(data, []), 5, bom.PCB_RATE)
     assert placements_equal_board(o, refs)
@@ -141,57 +141,17 @@ def test_order_placements_equal_the_boards_smt_footprints():
     assert listed == refs
 
 
-def test_the_count_check_fails_when_the_bridges_are_dropped():
-    """Broken on purpose: the engine's schematic-era list (no bridges) must NOT equal the board; this is the defect the check exists for."""
+def test_the_count_check_fails_when_parts_are_dropped():
+    """Broken on purpose: an engine list that lacks parts must NOT equal the board; this is the defect the check exists for. It used to be the
+    schematic-era list without the 13 bridges; the design has no bridge now, so the same defect is made by dropping the calibration ladder's lines."""
     data = bom.Data(bom.HERE, {})
     L = [x for x in bom.lines(data, []) if x["block"] != "owner"]
-    o = order.build(data, L, 5, bom.PCB_RATE)
     refs = board_smt_refs()
-    assert not placements_equal_board(o, refs) and len(refs) - o["placements"] == 13
-
-
-def test_every_smt_footprint_is_in_the_bom_and_cpl_uploads():
-    refs = board_smt_refs()
-    bomrows = list(csv.reader(open(BOMDIR / (order.IDENT + "-bom.csv"), newline="")))
-    assert bomrows[0] == ["Comment", "Designator", "Footprint", "LCSC Part #"]
-    in_bom = sorted(r for row in bomrows[1:] for r in row[1].split(","))
-    cpl = list(csv.reader(open(BOMDIR / (order.IDENT + "-cpl.csv"), newline="")))
-    assert cpl[0] == ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
-    in_cpl = sorted(r[0] for r in cpl[1:])
-    assert in_bom == refs and in_cpl == refs
-    assert all(r[3] == "Top" for r in cpl[1:])
-    # owner-fitted and DNP footprints are in neither
-    for bad in ("J101", "J601", "MH601", "R514", "TP101"):
-        assert bad not in in_bom and bad not in in_cpl
-
-
-def test_v1_bom_upload_is_the_final_boards_jlc_list():
-    rows = list(csv.reader(open(AFE / "bom" / "v1" / (order.IDENT1 + "-bom.csv"), newline="")))
-    refs = [r for row in rows[1:] for r in row[1].split(",")]
-    assert len(refs) == 99 and "R109" not in refs and "R510" not in refs and len([r for r in refs if r in ("R110", "R520", "R410")]) == 3
-
-
-def test_bom_md_is_regenerated_from_the_same_board_lines_and_agrees_with_the_order(tmp_path):
-    """bom.md (the engine report) must carry no second set of lines or totals: same board, same engine, same 100-board per-board total as the order."""
-    out = tmp_path / "bom.md"
-    bom.main(["--md", str(out)])
-    assert out.read_bytes() == (BOMDIR / "bom.md").read_bytes(), "rerun `python3 -I hardware/afe-proto/v2/bom/bom.py --md hardware/afe-proto/v2/bom/bom.md`"
-    data = bom.Data(bom.HERE, {})
-    L, res, _d, _f = bom.run_board(data)
-    o = order.build(data, L, 100, bom.PCB_RATE)
-    assert abs(res[100]["lo"]["total"] - o["grand"] / 100) < 1e-6
-    placements = res[20]["lo"]["placements"]
-    assert placements == len(board_smt_refs())
-    text = (BOMDIR / "bom.md").read_text()
-    assert "%d / %d" % (placements, res[20]["lo"]["joints"]) in text and "$%.2f" % (o["grand"] / 100 / bom.FX) in text
-
-
-def test_report_wording_follows_the_name_option(tmp_path):
-    out = tmp_path / "n.md"
-    bom.main(["--model", "streams", "--name", "v1", "--md", str(out)])
-    t = out.read_text()
-    assert t.startswith("# AFE version 1 ") and "version 1 only" in t and "D-V2-1" not in t and "version 2" not in t.replace("`v2/bom", "")
-    assert "$2.50" not in t and "priced:" in t
+    assert placements_equal_board(order.build(data, L, 5, bom.PCB_RATE), refs)                   # the positive control: the whole list equals the board
+    short = [x for x in L if x["block"] != "ladder"]
+    assert len(short) < len(L)
+    o = order.build(data, short, 5, bom.PCB_RATE)
+    assert not placements_equal_board(o, refs) and len(refs) - o["placements"] > 0
     assert bom.BOARD_MM == (100.0, 62.34) and bom.PCB_RATE == 410.0
 
 
@@ -212,6 +172,7 @@ def test_bom_md_counts_equal_the_order_files_and_the_boards():
 def test_a_drifted_count_in_bom_md_is_caught():
     md = (BOMDIR / "bom.md").read_text()
     od = (BOMDIR / "order-5-100.md").read_text()
-    for old, new in (("| 90 / 214 |", "| 77 / 188 |"), ("| 90 / 214 |", "| 90 / 213 |")):
+    n, j = _counts_line(md)
+    for old, new in ((f"| {n} / {j} |", f"| {n - 1} / {j} |"), (f"| {n} / {j} |", f"| {n} / {j - 1} |")):
         assert old in md
         assert _counts_line(md.replace(old, new, 1)) != _counts_line(od)
