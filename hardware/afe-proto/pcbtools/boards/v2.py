@@ -2,8 +2,9 @@
 module-level names so a test can build a config from plain values (a types.SimpleNamespace with the same names works).
 
 Values that already exist in design.py / floorplan.py / layout.py are imported from them, not copied: `_load_sources()` is
-the ONE place that knows where those files are (the frozen fixture folder of commit 8a1f7ac, relative to this package);
-it will switch to the live v2/kicad files later. The tables that lived only inside lr_check.py / fence_check.py / route.py
+the ONE place that knows where those files are. design.py is the live v2/kicad/design.py (the release authority, which has no 0 ohm
+bridges: the layout adds one only where a net must cross a line); floorplan.py and layout.py are still the frozen fixture folder of
+commit 8a1f7ac (relative to this package), which the live tree has no copy of. The tables that lived only inside lr_check.py / fence_check.py / route.py
 are written here, each with its origin.
 """
 import importlib.util
@@ -27,17 +28,19 @@ IDENT = dict(name=(23.7, 45.3, 2.0), line=(24.84, 42.38, 1.2), sn_label=(19.43, 
              jlc=(29.7, 27.6, 1.0))
 HERE = os.path.dirname(os.path.abspath(__file__))
 # pcbtools/boards -> pcbtools -> hardware/afe-proto
-SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v2-8a1f7ac'))
+SOURCE_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'tests', 'fixtures', 'v2-8a1f7ac'))     # floorplan.py, layout.py
+DESIGN_DIR = os.path.normpath(os.path.join(HERE, '..', '..', 'v2', 'kicad'))                         # design.py: the live netlist
 
 
 def _load_sources():
-    """import design, floorplan and layout from SOURCE_DIR under private module names (nothing is put on sys.path)"""
+    """import design (from DESIGN_DIR), floorplan and layout (from SOURCE_DIR) under private module names (nothing is put on sys.path)"""
     mods = {}
     keep = sys.dont_write_bytecode
     sys.dont_write_bytecode = True               # the fixture folder is frozen: importing it must not leave __pycache__ in it
     try:
         for name in ('design', 'floorplan', 'layout'):
-            spec = importlib.util.spec_from_file_location(f'_pcbtools_v2_{name}', os.path.join(SOURCE_DIR, name + '.py'))
+            where = DESIGN_DIR if name == 'design' else SOURCE_DIR
+            spec = importlib.util.spec_from_file_location(f'_pcbtools_v2_{name}', os.path.join(where, name + '.py'))
             m = importlib.util.module_from_spec(spec)
             sys.modules[spec.name] = m
             spec.loader.exec_module(m)
@@ -74,9 +77,11 @@ GENERATOR_BLOCK = frozenset(p['ref'] for p in _design.PARTS if p['block'] == 'PO
 ANALOG_FENCE = ('CH1', 'CH2', 'AWG')          # LR-1: layout.OUTLINE rectangles of these blocks
 OUTLINE = {k: list(v) for k, v in _layout.OUTLINE.items()}                         # LR-11 (silk outlines)
 BRIDGE_PADS = list(_layout.BRIDGE_PADS)       # (ref, pin, ref, pin): the part joins its two pads (LR-6, LR-8)
-# design.BRIDGES: every 0 ohm bridge part (ref, net a, net b). The nets a bridge joins are ONE electrical net for the supply and
-# reference rules (LR-6, LR-8), and the part's pads 1 and 2 are joined in the copper graph
-BRIDGES = [(ref, '/' + na, '/' + nb) for ref, na, nb, _blk, _why in _design.BRIDGES]
+# every 0 ohm bridge part (ref, net a, net b). The nets a bridge joins are ONE electrical net for the supply and reference rules
+# (LR-6, LR-8), and the part's pads 1 and 2 are joined in the copper graph. The live design.py has none (a BRIDGES list is read if a
+# later design adds one back, rows (ref, net a, net b, block, justification)); the first bridge the layout needs goes in design.py.
+BRIDGE_ROWS = list(getattr(_design, 'BRIDGES', []))
+BRIDGES = [(ref, '/' + na, '/' + nb) for ref, na, nb, _blk, _why in BRIDGE_ROWS]
 
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/AREF', '/AWG_FB', '/AWG_BIN', '/CH1_NP', '/CH2_NP',
          '/CH1_N', '/CH2_N', '/CH1_M', '/CH2_M', '/CH1_IN', '/CH2_IN')               # LR-1: bottom copper forbidden under
@@ -94,16 +99,16 @@ POUR_INFO_NODES = ('/CH1_OUT', '/CH2_OUT')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/ADS_', '/CH1_N', '/CH2_N')   # LR-5
 HIZ = ('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP', '/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')   # LR-3
 DIGITAL = ('/SDA', '/SCL')                    # LR-9
-GROUPS = {'/+3V3A': {'scope': {'U101', 'C104', 'C105', 'BR101', 'BR102', 'D201', 'D101'},
-                     'awg': {'U301', 'C305'}, 'adc': {'U501', 'C502', 'U502', 'C503', 'R512', 'R513', 'BR507'}},
-          '/VNEG_G': {'awg': {'U301', 'C306', 'BR401'}}}                               # LR-6 consumer groups
+GROUPS = {'/+3V3A': {'scope': {'U101', 'C104', 'C105', 'D201', 'D101'},
+                     'awg': {'U301', 'C305'}, 'adc': {'U501', 'C502', 'U502', 'C503', 'R512', 'R513'}},
+          '/VNEG': {'awg': {'U301', 'C306'}}}                               # LR-6 consumer groups
 STAR = {'/+3V3A': [('U401', '11'), ('C405', '1'), ('C406', '1'), ('R401', '1'), ('TP401', '1'), ('R407', '1')],
-        '/VNEG_G': [('U401', '6'), ('C407', '1'), ('C408', '1'), ('R403', '1')]}      # LR-6 star pads, cut out
+        '/VNEG': [('U401', '6'), ('C407', '1'), ('C408', '1'), ('R403', '1')]}      # LR-6 star pads, cut out
 # LR-8: route.KELVIN['VREF'] of commit 8a1f7ac (route.py imports pcbnew, so it cannot be imported here): the source pads cut
 # out of the VREF net, and the named branches, each a list of 'REF.PIN'
 VREF_SOURCE = [('U501', '2'), ('C501', '1')]
 VREF_BRANCHES = [[('J602', '1')], [('U502', '4')], [('R514', '1')], [('TP501', '1')], [('R305', '1')],
-                 [('R106', '2'), ('R509', '2'), ('BR503', '1')]]
+                 [('R106', '2'), ('R509', '2'), ('R206', '2')]]      # the shared centring leg: both channels' R and the REFCAL one
 # LR-11
 LR_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL', '6': 'EDGE'}
 TEST_BLOCKS = ('CH1', 'CH2', 'AWG', 'POWER', 'REFCAL')
@@ -124,7 +129,7 @@ CHANNELS = (
     dict(name='CH1', bnc=('J101', '1'), prot='R101', rnp='R107', opamp='U101', riso='R108', out_pin=('U101', '7'),
          adc_pad=('J602', '7'), out_nets=('/A1', '/CH1_OUT'), hiz_nets=('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP')),
     dict(name='CH2', bnc=('J201', '1'), prot='R201', rnp='R207', opamp='U101', riso='R208', out_pin=('U101', '1'),
-         adc_pad=('J602', '8'), out_nets=('/A0', '/CH2_OUT', '/CH2_RISO'), hiz_nets=('/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')))                                 # LR-2, LR-4: one record per scope channel
+         adc_pad=('J602', '8'), out_nets=('/A0', '/CH2_OUT'), hiz_nets=('/CH2_N', '/CH2_M1', '/CH2_M2', '/CH2_M3', '/CH2_NP')))                                 # LR-2, LR-4: one record per scope channel
 DIVIDER_GROUPS = (('/CH1_N', '/CH1_NP', '/CH1_IN'), ('/CH2_N', '/CH2_NP', '/CH2_IN'))     # LR-2: the channels' divider pads, kept apart
 CH_FLOW_TEXT = 'BNC > R1 > Rnp > U101 > Riso > ADC pad'                              # LR-2's message
 AWG = dict(name='AWG', dac_net='/DAC0', fb_net='/AWG_FB', back_term=('R301', 'R302'), bnc='J301', shell_pin='2')     # LR-4, LR-7

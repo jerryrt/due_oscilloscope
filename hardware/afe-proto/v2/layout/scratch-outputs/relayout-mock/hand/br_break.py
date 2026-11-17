@@ -6,11 +6,11 @@ from pcbtools import boardio, rules
 from pcbtools.boards import v2_layout as C
 H = '/work/hardware/afe-proto/v2/layout/scratch-outputs/relayout-mock/hand/'
 def splice(spec, out):
-    subprocess.run(['python3', H + 'hr.py', H + 'nobr.kicad_pcb', out, spec], check=True, capture_output=True)
-    shutil.copy(H + 'nobr.kicad_pro', out.replace('.kicad_pcb', '.kicad_pro'))
+    subprocess.run(['python3', H + 'hr.py', '/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', out, spec], check=True, capture_output=True)
+    shutil.copy('/work/hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pro', out.replace('.kicad_pcb', '.kicad_pro'))
 def cfgp(patched):
     c = types.SimpleNamespace(**{k: getattr(C, k) for k in dir(C) if not k.startswith('__')})
-    if patched:
+    if patched and '/VNEG_G' in c.GROUPS:
         c.GROUPS = dict(c.GROUPS); c.STAR = dict(c.STAR)
         c.GROUPS['/VNEG'] = c.GROUPS.pop('/VNEG_G'); c.STAR['/VNEG'] = c.STAR.pop('/VNEG_G')
         c.VREF_BRANCHES = [b for b in c.VREF_BRANCHES if ('R106', '2') not in b] + [[('R106', '2'), ('R509', '2'), ('R206', '2')]]
