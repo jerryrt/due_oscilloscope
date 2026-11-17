@@ -40,7 +40,7 @@ if os.path.exists(extra_p):
         res = res[:m.start()] + blk + res[end:]
     add = ''
     for text, (x, y) in ex['bncfn'].items():               # the BNC function labels, outside the bodies
-        add += '\t(gr_text "%s"\n\t\t(at %s %s 0)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1 1)\n\t\t\t\t(thickness 0.15)\n\t\t\t)\n\t\t\t(justify left)\n\t\t)\n\t)\n' % (text, kx(x), ky(y), uuid.uuid4())
+        add += '\t(gr_text "%s"\n\t\t(at %s %s %d)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1 1)\n\t\t\t\t(thickness 0.15)\n\t\t\t)\n\t\t\t(justify left)\n\t\t)\n\t)\n' % (text, kx(x), ky(y), ex.get('bncfn_angle', 0), uuid.uuid4())
     for blk, segs in ex['outline'].items():                # each block's full outline
         for x0, y0, x1, y1 in segs:
             add += '\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.15)\n\t\t\t(type default)\n\t\t)\n\t\t(layer "F.SilkS")\n\t\t(uuid "%s")\n\t)\n' % (kx(x0), ky(y0), kx(x1), ky(y1), uuid.uuid4())

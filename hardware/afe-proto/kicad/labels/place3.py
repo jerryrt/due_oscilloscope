@@ -253,6 +253,12 @@ if RECT_MODE:
     print('OUTLINE pieces', {B: len(v) for B, v in OUTSEG.items()})
     lines = np.array([(min(a, c) - 0.075, min(d, e) - 0.075, max(a, c) + 0.075, max(d, e) + 0.075) for sg in OUTSEG.values() for a, d, c, e in sg]).reshape(-1, 4)
     silk = np.vstack([silk, lines])
+# (0) the BNC labels, fixed, placed first so every other label is judged against them
+BNC_X, DES_DY, FN_DY = 99.23, -3.35, -0.45; fnpos = {}; fnang = 90   # round 10: on the LEFT of each BNC, vertical, reading bottom to top, between the box's west line and the body; one offset in every frame
+for r in BNC:
+    i = refs.index(r); cx, cy = float(b.fp_x[i]), float(b.fp_y[i]); xd, yd = BNC_X, cy + DES_DY; ys = cy + FN_DY
+    L1 = lab_box(r, xd, yd, 90); L2 = (xd - INK / 2, ys, xd + INK / 2, ys + len(BNCFN[r]) * ADV)
+    plan[r] = [round(xd, 3), round(yd, 3), 90]; kind[r] = 'bnc'; placed[r] = L1; placed['fn_' + r] = L2; fnpos[BNCFN[r]] = [round(xd, 3), round(ys, 3)]
 # (1) the edge connectors
 edge_anch = sorted([r for r in ANCH if blk(r) is None], key=feas)
 if RECT_MODE and not os.environ.get('EDGEONLY'):
@@ -266,11 +272,6 @@ else:
 if os.environ.get('EDGEONLY'):
     json.dump({r: ([plan[r][0], plan[r][1], plan[r][2], kind[r]] if plan.get(r) else None) for r in edge_anch}, open(EDGEJ, 'w')); print('EDGE labels', {r: plan.get(r) for r in edge_anch}); sys.exit(0)
 # (2) the BNC labels, the same offset in every frame
-BNC_OFF, BNC_DX = 8.6, 2.0; fnpos = {}
-for r in BNC:
-    i = refs.index(r); cx, cy = float(b.fp_x[i]), float(b.fp_y[i]); xd, yd = cx + BNC_DX, cy + BNC_OFF; xl = cx + 7.0
-    L1 = lab_box(r, xd, yd, 0); L2 = (xl, yd - INK / 2, xl + len(BNCFN[r]) * ADV, yd + INK / 2)
-    plan[r] = [round(xd, 3), round(yd, 3), 0]; kind[r] = 'bnc'; placed[r] = L1; placed['fn_' + r] = L2; fnpos[BNCFN[r]] = [round(xl, 3), round(yd, 3)]
 # (2b) anchors inside the blocks (U, J501, TP): placed before the regions, which then take their labels in
 PRIO = [q for q in os.environ.get('PRIO', 'TP405').split(',') if q]
 blk_anch = sorted([r for r in ANCH if blk(r) is not None], key=lambda r: (0 if r in PRIO else 1, feas(r)))
@@ -367,7 +368,7 @@ for B, m in R.items():
 rest = sorted([r for r in cour if r not in ANCH and r not in BNC and r not in MH], key=feas)
 run(rest)
 json.dump(plan, open(out, 'w'))
-json.dump(dict(names=names_plan, bncfn=fnpos, outline={B: [list(s) for s in v] for B, v in OUTSEG.items()}), open(out.replace('.json', '_extra.json'), 'w'))
+json.dump(dict(names=names_plan, bncfn=fnpos, outline={B: [list(s) for s in v] for B, v in OUTSEG.items()}, bncfn_angle=90), open(out.replace('.json', '_extra.json'), 'w'))
 byb = collections.defaultdict(lambda: [0, 0, []])
 for r in list(cour):
     B = part_block(r) or 'EDGE'; byb[B][0] += 1
