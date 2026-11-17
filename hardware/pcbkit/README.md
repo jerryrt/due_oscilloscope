@@ -29,10 +29,10 @@ installed into another repository as it stands.
 |---|---|---|
 | `ground_plane` | one plane on the given layer; every SMD ground pad has its own via | `GND`, `PLANE_LAYER`, `COPPER_LAYERS`, `GND_VIA_REACH` |
 | `bottom_hops` | signal copper on the plane layer is short hops only, outside the fenced areas, never under a keep-out part or a sensitive net | `GND`, `PLANE_LAYER`, `HOP_FENCES`, `HOP_SENSITIVE`, `HOP_KEEPOUT_PARTS`, `HOP_MAX`, `HOP_MAX_VIAS`, and the tolerances in `CONFIG.md` |
-| `sensitive_nets` | the listed nets: no via, length limit, no foreign track beside them within a gap | `SENSITIVE` (net, max length, gap) |
-| `pour_gap` | no copper pour within a distance of the listed nodes | `POUR_NODES`, `POUR_KEEP_BACK` |
-| `keepout_ring` | listed nets stay a distance from listed parts | `KEEPOUT_RINGS` |
-| `decoupling` | each listed capacitor within a distance of its IC pin | `DECOUPLING` |
+| `sensitive_nets` | the listed nets: no via, no copper on the other layer, length limit, no foreign track beside them within a gap | `GND`, `SENSITIVE_NETS` (net, no_via, no_bottom, max_length, gap) |
+| `pour_gap` | no copper pour within a distance of the listed nodes | `GND`, `POUR_NODES`, `POUR_KEEP_BACK`, `POUR_INFO_NODES` |
+| `keepout_ring` | listed nets stay a distance from listed parts | `KEEPOUT_PARTS`, `KEEPOUT_NETS`, `KEEPOUT_EXEMPT_PARTS`, `KEEPOUT_DIST` |
+| `decoupling` | each listed capacitor within a distance of its IC pin | `DECOUPLING`, `DECOUPLING_MAX` |
 | `blocks` | each block's parts inside its rectangle, named strays excepted, no part inside another block's | `BLOCK`, `OUTLINE`, `OUTLINE_STRAYS` |
 | `designators` | the always-labelled kinds are on silk; every other designator is on silk and reads without doubt, or is on the fab layer | `SILK_REQUIRED_PREFIXES`, `DESIGNATOR_MIN_H`, `READ_MARGIN` |
 | `test_points` | each listed block has a test point on its listed net | `TEST_BLOCKS`, `TP_NETS` |

@@ -37,7 +37,7 @@ class Arr:
     def p(self, ref, pin, x, y, net, smd=True, size=0.8):
         k = [f[0] for f in self.fp].index(ref)
         h = size / 2
-        self.pad.append((k, pin, x, y, x - h, y - h, x + h, y + h, self.n(net), smd))
+        self.pad.append((k, pin, x, y, x - h, y - h, x + h, y + h, self.n(net), smd, size))
         return self
 
     def build(self):
@@ -56,7 +56,7 @@ class Arr:
         if P:
             kw.update(p_fp=[q[0] for q in P], p_pin=[q[1] for q in P], p_x=[q[2] for q in P], p_y=[q[3] for q in P], p_bx0=[q[4] for q in P],
                       p_by0=[q[5] for q in P], p_bx1=[q[6] for q in P], p_by1=[q[7] for q in P], p_net=[q[8] for q in P], p_smd=[q[9] for q in P],
-                      p_rot=[0] * len(P), p_shape=[1] * len(P), p_sx=[0.8] * len(P), p_sy=[0.8] * len(P), p_layer_mask=[1] * len(P))
+                      p_rot=[0] * len(P), p_shape=[1] * len(P), p_sx=[q[10] for q in P], p_sy=[q[10] for q in P], p_layer_mask=[1] * len(P))
         if self.zone:
             xy, roff, voff, rhole = [], [0], [0], []
             for _, _, _, _, rings in self.zone:

@@ -4,12 +4,13 @@
 defaults, and `report`, a list, receives the effective configuration as (name, value, source) rows). The names each rule reads are in
 its `*_NAMES` table here and in CONFIG.md. A rule never reads a name it does not list.
 
-Rules in this module: ground_plane, bottom_hops. `*_parts` return the same findings as lists, for a caller that must interleave
+Rules in this module: ground_plane, bottom_hops, sensitive_nets, pour_gap, keepout_ring, decoupling. `*_parts` return the same findings as lists, for a caller that must interleave
 them with its own (the AFE's LR-1 keeps its printed order that way).
 """
 from __future__ import annotations
 
 import dataclasses
+import math
 import weakref
 
 import numpy as np
@@ -346,8 +347,228 @@ def bottom_hops(b, cfg, report=None):
     return Result(not bad, '; '.join(bad[:6]) or f'{int(fig["runs"])} runs on the plane layer, none too long, fenced or under a sensitive net', fig)
 
 
+# ----------------------------------------------------------------------------------------------------- sensitive_nets
+SENSITIVE_NETS_NAMES = (
+    project('GND', 'net name', 'copper of this net never counts as a foreign track'),
+    project('SENSITIVE_NETS', 'list of dicts', "one per net: 'net' (name), 'no_via' (default True), 'no_bottom' (default False: no copper on the "
+            "other layer), 'max_length' (mm of top track, default None = no limit), 'gap' (mm, default None = no neighbour test)"),
+)
+_ENTRY_KEYS = ('net', 'no_via', 'no_bottom', 'max_length', 'gap')
+
+
+@dataclasses.dataclass(frozen=True)
+class Finding:
+    """kind 'via' | 'bottom' | 'length' | 'beside'; net; value (length mm for 'length', the gap for 'beside'); other (the neighbouring net)"""
+    kind: str
+    net: str
+    value: float = 0.0
+    other: str = ''
+
+
+def _entries(c):
+    from .config import ConfigError
+    out = []
+    for e in c.SENSITIVE_NETS:
+        bad = sorted(set(e) - set(_ENTRY_KEYS))
+        if bad or 'net' not in e:
+            raise ConfigError(f"sensitive_nets: an entry of SENSITIVE_NETS needs 'net' and may carry only {_ENTRY_KEYS}; got {sorted(e)}"
+                              + (f' (unknown: {bad})' if bad else ''))
+        out.append({**dict(no_via=True, no_bottom=False, max_length=None, gap=None), **e})
+    return out
+
+
+def sensitive_nets_parts(b, cfg, report=None):
+    """(findings, figures): for each listed net in order a via, copper on the other layer, a length over its limit; then every top
+    segment of a net with a gap that has another net's top track (the plane net excluded) nearer than gap + half the two widths"""
+    c = resolve(cfg, SENSITIVE_NETS_NAMES, 'sensitive_nets', report)
+    ents = _entries(c)
+    out = []
+    for e in ents:
+        n = e['net']
+        if e['no_via'] and (b.v_net == nid(b, n)).any():
+            out.append(Finding('via', n))
+        if e['no_bottom'] and ((b.s_net == nid(b, n)) & (b.s_layer == 1)).any():
+            out.append(Finding('bottom', n))
+        L = length_of(b, n)
+        if e['max_length'] is not None and L > e['max_length']:
+            out.append(Finding('length', n, L))
+    gap_of = {nid(b, e['net']): e['gap'] for e in ents if e['gap'] is not None}
+    hz = np.flatnonzero(np.isin(b.s_net, list(gap_of)) & (b.s_layer == 0)) if gap_of else np.zeros(0, np.int64)
+    gnd = nid(b, c.GND)
+    ot = np.flatnonzero((b.s_layer == 0) & (b.s_net != gnd))
+    nclose = 0
+    if len(hz) and len(ot):
+        S = segs(b)
+        step = 64
+        for a in range(0, len(hz), step):
+            ia = hz[a:a + step]
+            D = geom.seg_seg_dist(S[ia], S[ot])
+            g = np.array([gap_of[int(n)] for n in b.s_net[ia]])
+            lim = g[:, None] + (b.s_w[ia][:, None] + b.s_w[ot][None, :]) / 2
+            close = (D < lim) & (b.s_net[ia][:, None] != b.s_net[ot][None, :])
+            any_, first = _first_true(close)
+            for i in np.flatnonzero(any_):
+                out.append(Finding('beside', b.nets[b.s_net[ia[i]]], float(g[i]), b.nets[b.s_net[ot[first[i]]]]))
+                nclose += 1
+    longest = max([length_of(b, e['net']) for e in ents], default=0.0)
+    return out, dict(nets=float(len(ents)), longest_mm=longest, tracks_too_close=float(nclose))
+
+
+def _finding_text(f):
+    return {'via': lambda: f'{f.net}: a via', 'bottom': lambda: f'{f.net}: bottom copper', 'length': lambda: f'{f.net}: {f.value:.1f} mm of track',
+            'beside': lambda: f'{f.net} track within {f.value:g} mm of {f.other} track'}[f.kind]()
+
+
+def sensitive_nets(b, cfg, report=None):
+    fnd, fig = sensitive_nets_parts(b, cfg, report)
+    bad = [_finding_text(f) for f in fnd]
+    fig['violations'] = float(len(bad))
+    return Result(not bad, '; '.join(sorted(set(bad))[:6]) or f'{int(fig["nets"])} sensitive nets: no via, short, no track beside', fig)
+
+
+# ----------------------------------------------------------------------------------------------------- pour_gap
+POUR_GAP_NAMES = (
+    project('GND', 'net name', 'the ground net whose top tracks and fills are measured'),
+    project('POUR_NODES', 'list of net names', 'nodes judged: ground copper must keep POUR_KEEP_BACK from them'),
+    project('POUR_KEEP_BACK', 'mm', 'the design keep-back distance'),
+    tunable('POUR_INFO_NODES', (), 'list of net names', 'nodes measured and reported but not judged'),
+)
+
+
+def _node_copper(b, net):
+    """top copper of one node as exact outlines: its F.Cu tracks and the pads that reach F.Cu"""
+    n_id = nid(b, net)
+    rows = np.flatnonzero((b.s_net == n_id) & (b.s_layer == 0))
+    pt = pads(b)
+    prow = pt.rows[(pt.net == n_id) & ((b.p_layer_mask[pt.rows] & 1) > 0)] if len(pt.rows) else np.zeros(0, np.int64)
+    return geom.join(geom.track_copper(b, rows), geom.pad_copper(b, prow))
+
+
+def _pour_gaps(b, c):
+    gnd = nid(b, c.GND)
+    gt = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0))
+    zi = [z for z in range(len(b.z_layer)) if b.z_layer[z] == 0 and b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]
+    out = []
+    for net in tuple(c.POUR_NODES) + tuple(c.POUR_INFO_NODES):
+        cu = _node_copper(b, net)
+        if not len(cu.C):
+            out.append((net, math.inf, math.inf))
+            continue
+        trk = math.inf
+        if len(gt):
+            G = segs(b)[gt]
+            wg = b.s_w[gt] / 2
+            for a in range(0, len(gt), 1024):
+                D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None] - wg[None, a:a + 1024]
+                trk = min(trk, float(np.maximum(D, 0.0).min()))
+        pour = math.inf
+        for z in zi:
+            r0, r1 = b.z_ring_off[z], b.z_ring_off[z + 1]
+            off = b.z_vert_off[r0:r1 + 1]
+            pour = min(pour, float(cu.gap_to_fill(b.z_xy[off[0]:off[-1]], off - off[0], b.z_ring_hole[r0:r1]).min()))
+        out.append((net, trk, pour))
+    return out
+
+
+def pour_gaps(b, cfg, report=None):
+    """[(node net, gap to top GND tracks, gap to top GND pour fills)] for every POUR_NODES and POUR_INFO_NODES node: the exact copper-edge to
+    copper-edge distance (tracks as capsules, pads by size and rotation), +inf when there is nothing to measure to. A pour is measured to
+    the EDGES of its filled outline and hole rings, and is 0 where the node's copper lies on the fill (an even-odd, hole-aware test)."""
+    return _pour_gaps(b, resolve(cfg, POUR_GAP_NAMES, 'pour_gap', report))
+
+
+def pour_gap_parts(b, cfg, report=None):
+    """(gaps, near): `gaps` as pour_gaps; `near` lists (node, 'track' | 'pour') for every judged node (POUR_NODES) whose ground track or pour is
+    nearer than POUR_KEEP_BACK"""
+    c = resolve(cfg, POUR_GAP_NAMES, 'pour_gap', report)
+    gaps = _pour_gaps(b, c)
+    near = []
+    for net, g_trk, g_pour in gaps:
+        if net not in c.POUR_NODES:
+            continue                                           # reported, not judged (POUR_INFO_NODES)
+        if g_trk < c.POUR_KEEP_BACK:
+            near.append((net, 'track'))
+        if g_pour < c.POUR_KEEP_BACK:
+            near.append((net, 'pour'))
+    return gaps, near
+
+
+def pour_gap(b, cfg, report=None):
+    c = resolve(cfg, POUR_GAP_NAMES, 'pour_gap', report)
+    gaps, near = pour_gap_parts(b, cfg)
+    bad = [f'{n}: ground {k} within {c.POUR_KEEP_BACK} mm' for n, k in near]
+    fig = {f'gnd_track_gap_{n}_mm': trk for n, trk, _ in gaps}
+    fig.update({f'pour_gap_{n}_mm': pour for n, _, pour in gaps})
+    fig['violations'] = float(len(bad))
+    return Result(not bad, '; '.join(bad[:6]) or f'no ground copper within {c.POUR_KEEP_BACK} mm of {", ".join(c.POUR_NODES)}', fig)
+
+
+# ----------------------------------------------------------------------------------------------------- keepout_ring
+KEEPOUT_RING_NAMES = (
+    project('KEEPOUT_PARTS', 'list of designators', 'the parts (their courtyards) that sensitive copper keeps away from'),
+    project('KEEPOUT_NETS', 'list of net-name prefixes', 'the sensitive nets'),
+    project('KEEPOUT_EXEMPT_PARTS', 'list of designators', 'pads of these parts are not judged (the keep-out parts own block)'),
+    project('KEEPOUT_DIST', 'mm', 'the design distance, measured from the copper\'s edge'),
+)
+
+
+def keepout_ring(b, cfg, report=None):
+    """sensitive copper keeps KEEPOUT_DIST from the courtyards of KEEPOUT_PARTS, measured from the copper's EDGE: a track as a capsule (centre
+    line less half its width), a pad by its size and rotation, to the courtyard box"""
+    c = resolve(cfg, KEEPOUT_RING_NAMES, 'keepout_ring', report)
+    gen = [box(b, r) for r in c.KEEPOUT_PARTS]
+    near, dmin = [], math.inf
+    sens = net_prefix(b, c.KEEPOUT_NETS)
+    rows = np.flatnonzero((b.s_layer == 0) & sens[b.s_net])
+    if len(rows):
+        cu = geom.track_copper(b, rows)
+        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
+        dmin = min(dmin, float(d.min()))
+        for i in np.flatnonzero(d < c.KEEPOUT_DIST):
+            near.append(f'{b.nets[b.s_net[rows[i]]]} {d[i]:.1f} mm')
+    pt = pads(b)
+    js = [j for j in np.flatnonzero(sens[pt.net]) if pt.keys[j][0] not in c.KEEPOUT_EXEMPT_PARTS]
+    if js:
+        prow = pt.rows[js]
+        cu = geom.pad_copper(b, prow)
+        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
+        dmin = min(dmin, float(d.min()))
+        for i in np.flatnonzero(d < c.KEEPOUT_DIST):
+            k = pt.keys[js[i]]
+            near.append(f'{b.nets[b.p_net[prow[i]]]} pad {k[0]}.{k[1]} {d[i]:.1f} mm')
+    return Result(not near, '; '.join(sorted(set(near))[:6]) or f'sensitive copper >= {c.KEEPOUT_DIST} mm from {"/".join(c.KEEPOUT_PARTS)}',
+                  dict(min_distance_mm=dmin, violations=float(len(near))))
+
+
+# ----------------------------------------------------------------------------------------------------- decoupling
+DECOUPLING_NAMES = (
+    project('DECOUPLING', 'list of (capacitor, ic, pin)', 'each capacitor must sit near the supply pin it decouples'),
+    project('DECOUPLING_MAX', 'mm', 'the design distance, capacitor pad to IC pin'),
+)
+
+
+def decoup_dist(b, cap, ic, pin):
+    """distance from the IC pin to the nearer pad of the capacitor that is on the pin's net (pad 1 when neither is)"""
+    net = pad_net(b, ic, pin)
+    ks = [k for k in ('1', '2') if pad_net(b, cap, k) == net] or ['1']
+    return min(float(np.hypot(*(pad_c(b, cap, k) - pad_c(b, ic, pin)))) for k in ks)
+
+
+def decoupling(b, cfg, report=None):
+    c = resolve(cfg, DECOUPLING_NAMES, 'decoupling', report)
+    bad, fig, figs = [], [], {}
+    for cap, ic, pin in c.DECOUPLING:
+        d = decoup_dist(b, cap, ic, pin)
+        figs[f'{cap}>{ic}.{pin}'] = d
+        fig.append(f'{cap}>{ic}.{pin} {d:.1f}')
+        if d > c.DECOUPLING_MAX:
+            bad.append(f'{cap} is {d:.1f} mm from {ic} pin {pin} (limit {c.DECOUPLING_MAX})')
+    return Result(not bad, '; '.join(bad) or f'{len(c.DECOUPLING)} caps within {c.DECOUPLING_MAX} mm: ' + ', '.join(fig), figs)
+
+
 # ----------------------------------------------------------------------------------------------------- the effective configuration
-RULES = {'ground_plane': GROUND_PLANE_NAMES, 'bottom_hops': BOTTOM_HOPS_NAMES}
+RULES = {'ground_plane': GROUND_PLANE_NAMES, 'bottom_hops': BOTTOM_HOPS_NAMES, 'sensitive_nets': SENSITIVE_NETS_NAMES, 'pour_gap': POUR_GAP_NAMES,
+         'keepout_ring': KEEPOUT_RING_NAMES, 'decoupling': DECOUPLING_NAMES}
 for _r, _n in RULES.items():
     declare(_r, _n)
 

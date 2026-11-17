@@ -26,3 +26,12 @@ for name in ('v2_layout', 'v2', 'v1', 'v1r', 'v1_frozen'):
     print(f'{name}: {len(KC.config_names(cfg))} upper-case names, {len(unknown)} unrecognised, no near-miss raised')
     if name in ('v2_layout', 'v1'):
         print('  unrecognised:', ', '.join(unknown))
+
+# step 3: the effective configuration of the moved rules, as one AFE run on the integrated board reports them (names, source, value)
+from pcbkit.config import format_report   # noqa: E402
+b = __import__('pcbtools.boardio', fromlist=['x']).read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb')
+for fn in (R.lr3, R.lr4, R.lr5, R.lr12):
+    rep = []
+    fn(b, C, rep)
+    print()
+    print(format_report([(k, (str(v)[:70] + '...') if len(str(v)) > 73 else v, s) for k, v, s in rep], fn.__name__))

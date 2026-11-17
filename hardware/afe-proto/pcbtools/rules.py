@@ -114,95 +114,34 @@ def lr2(b, cfg):
 
 
 # ----------------------------------------------------------------------------------------------------- LR-3
-def lr3(b, cfg):
+def lr3(b, cfg, report=None):
+    """LR-3 = pcbkit.rules.sensitive_nets on the divider nets: no via, at most 14 mm of top track, no other net's top track within 0.6 mm"""
+    fnd, fig = _kit.sensitive_nets_parts(b, dict(GND=cfg.GND, SENSITIVE_NETS=[dict(net=n, no_via=True, max_length=14, gap=0.6) for n in cfg.HIZ]), report)
     bad = []
-    for n in cfg.HIZ:
-        net = n
-        if (b.v_net == nid(b, net)).any():
-            bad.append(f'{net}: a via')
-        L = length_of(b, net)
-        if L > 14:
-            bad.append(f'{net}: {L:.1f} mm of track')
-    ids = [nid(b, n) for n in cfg.HIZ]
-    hz = np.flatnonzero(np.isin(b.s_net, ids) & (b.s_layer == 0))
-    gnd = nid(b, cfg.GND)
-    ot = np.flatnonzero((b.s_layer == 0) & (b.s_net != gnd))
-    nclose = 0
-    if len(hz) and len(ot):
-        S = segs(b)
-        step = 64
-        for a in range(0, len(hz), step):
-            ia = hz[a:a + step]
-            D = geom.seg_seg_dist(S[ia], S[ot])
-            lim = 0.6 + (b.s_w[ia][:, None] + b.s_w[ot][None, :]) / 2
-            close = (D < lim) & (b.s_net[ia][:, None] != b.s_net[ot][None, :])
-            any_, first = _first_true(close)
-            for i in np.flatnonzero(any_):
-                bad.append(f'{b.nets[b.s_net[ia[i]]]} track within 0.6 mm of {b.nets[b.s_net[ot[first[i]]]]} track')
-                nclose += 1
-    longest = max([length_of(b, n) for n in cfg.HIZ], default=0.0)
+    for f in fnd:
+        bad.append({'via': f'{f.net}: a via', 'length': f'{f.net}: {f.value:.1f} mm of track',
+                    'beside': f'{f.net} track within 0.6 mm of {f.other} track'}[f.kind])
     return Result(not bad, '; '.join(sorted(set(bad))[:6]) or f'{len(cfg.HIZ)} divider nets: no via, short, no track beside',
-                  dict(nets=float(len(cfg.HIZ)), longest_mm=longest, tracks_too_close=float(nclose)))
+                  dict(nets=fig['nets'], longest_mm=fig['longest_mm'], tracks_too_close=fig['tracks_too_close']))
 
 
 # ----------------------------------------------------------------------------------------------------- LR-4
-def _has_via(b, net):
-    return bool((b.v_net == nid(b, net)).any())
-
-
-def _has_bottom(b, net):
-    return bool(((b.s_net == nid(b, net)) & (b.s_layer == 1)).any())
-
-
 POUR_KEEP_BACK = 0.5      # LR-4: the top ground pour stays at least this far from an inverting node's copper (a design value, afe.md)
 
 
-def _node_copper(b, net):
-    """top copper of one node as exact outlines: its F.Cu tracks and the pads that reach F.Cu"""
-    n_id = nid(b, net)
-    rows = np.flatnonzero((b.s_net == n_id) & (b.s_layer == 0))
-    pt = pads(b)
-    prow = pt.rows[(pt.net == n_id) & ((b.p_layer_mask[pt.rows] & 1) > 0)] if len(pt.rows) else np.zeros(0, np.int64)
-    return shapes.join(shapes.track_copper(b, rows), shapes.pad_copper(b, prow))
+def _pour_cfg(cfg):
+    return dict(GND=cfg.GND, POUR_NODES=cfg.POUR_NODES, POUR_INFO_NODES=getattr(cfg, 'POUR_INFO_NODES', ()), POUR_KEEP_BACK=POUR_KEEP_BACK)
 
 
 def pour_gaps(b, cfg):
-    """[(node net, gap to top GND tracks, gap to top GND pour fills)] for every cfg.POUR_NODES node (and POUR_INFO_NODES) on the board: the exact
-    copper-edge to copper-edge distance (tracks as capsules, pads by size and rotation), +inf when there is nothing to
-    measure to. A pour is measured to the EDGES of its filled outline and hole rings, and is 0 where the node's copper lies
-    on the fill (an even-odd, hole-aware point test)."""
-    gnd = nid(b, cfg.GND)
-    gt = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0))
-    zi = [z for z in range(len(b.z_layer)) if b.z_layer[z] == 0 and b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]
-    out = []
-    for net in tuple(cfg.POUR_NODES) + tuple(getattr(cfg, 'POUR_INFO_NODES', ())):
-        cu = _node_copper(b, net)
-        if not len(cu.C):
-            out.append((net, math.inf, math.inf))
-            continue
-        trk = math.inf
-        if len(gt):
-            G = segs(b)[gt]
-            wg = b.s_w[gt] / 2
-            for a in range(0, len(gt), 1024):
-                D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None] - wg[None, a:a + 1024]
-                trk = min(trk, float(np.maximum(D, 0.0).min()))
-        pour = math.inf
-        for z in zi:
-            r0, r1 = b.z_ring_off[z], b.z_ring_off[z + 1]
-            off = b.z_vert_off[r0:r1 + 1]
-            pour = min(pour, float(cu.gap_to_fill(b.z_xy[off[0]:off[-1]], off - off[0], b.z_ring_hole[r0:r1]).min()))
-        out.append((net, trk, pour))
-    return out
+    """[(node net, gap to top GND tracks, gap to top GND pour fills)] for every cfg.POUR_NODES node (and POUR_INFO_NODES): pcbkit.rules.pour_gaps"""
+    return _kit.pour_gaps(b, _pour_cfg(cfg))
 
 
-def lr4(b, cfg):
+def lr4(b, cfg, report=None):
     bad = []
-    for net in cfg.ADC_NETS:
-        if _has_via(b, net):
-            bad.append(f'{net}: a via')
-        if _has_bottom(b, net):
-            bad.append(f'{net}: bottom copper')
+    for f in _kit.sensitive_nets_parts(b, dict(GND=cfg.GND, SENSITIVE_NETS=[dict(net=n, no_via=True, no_bottom=True) for n in cfg.ADC_NETS]), report)[0]:
+        bad.append(f'{f.net}: a via' if f.kind == 'via' else f'{f.net}: bottom copper')
     for ch in cfg.CHANNELS:
         if float(np.hypot(*(pad_c(b, ch['riso'], '1') - pad_c(b, *ch['out_pin'])))) > 5:
             bad.append(f"{ch['riso']} not at the output pin")
@@ -210,25 +149,19 @@ def lr4(b, cfg):
         d = float(np.hypot(*(pad_c(b, cap, '1') - pad_c(b, ic, pin))))
         if d > 12:
             bad.append(f'{cap} {d:.0f} mm from its supply pin')
-    for net in cfg.INV_NODES:
-        if _has_via(b, net):
-            bad.append(f'{net}: inverting node has a via')
-        if _has_bottom(b, net):
-            bad.append(f'{net}: inverting node has bottom copper')
+    for f in _kit.sensitive_nets_parts(b, dict(GND=cfg.GND, SENSITIVE_NETS=[dict(net=n, no_via=True, no_bottom=True) for n in cfg.INV_NODES]), report)[0]:
+        bad.append(f'{f.net}: inverting node has a via' if f.kind == 'via' else f'{f.net}: inverting node has bottom copper')
     fb_net = cfg.AWG['fb_net']
     L = length_of(b, fb_net)
-    if L > cfg.FB_MAX:
+    if _kit.sensitive_nets_parts(b, dict(GND=cfg.GND, SENSITIVE_NETS=[dict(net=fb_net, no_via=False, max_length=cfg.FB_MAX)]), report)[0]:
         bad.append(f'AWG inverting node {L:.1f} mm of track (limit {cfg.FB_MAX})')
     near, gaps = set(), {}
-    for net, g_trk, g_pour in pour_gaps(b, cfg):
+    pgaps, pnear = _kit.pour_gap_parts(b, _pour_cfg(cfg), report)
+    for net, g_trk, g_pour in pgaps:
         gaps[net[1:]] = (g_trk, g_pour)
-        if net not in cfg.POUR_NODES:
-            continue                                           # reported, not judged (POUR_INFO_NODES)
+    for net, kind in pnear:
         tag = '' if net == fb_net else ' ' + net[1:]
-        if g_trk < POUR_KEEP_BACK:
-            near.add('GND track' + tag)
-        if g_pour < POUR_KEEP_BACK:
-            near.add('top pour' + tag)
+        near.add(('GND track' if kind == 'track' else 'top pour') + tag)
     if near:
         bad.append(f'top ground copper within {POUR_KEEP_BACK} mm of the inverting node ({sorted(near)})')
     lens = [length_of(b, n) for n in cfg.ADC_NETS]
@@ -251,49 +184,19 @@ def lr4_inv(b, cfg):
 
 
 # ----------------------------------------------------------------------------------------------------- LR-12
-def decoup_dist(b, cap, ic, pin):
-    net = pad_net(b, ic, pin)
-    ks = [k for k in ('1', '2') if pad_net(b, cap, k) == net] or ['1']
-    return min(float(np.hypot(*(pad_c(b, cap, k) - pad_c(b, ic, pin)))) for k in ks)
+from pcbkit.rules import decoup_dist                       # noqa: E402,F401  (re-exported)
 
 
-def lr12(b, cfg):
-    bad, fig, figs = [], [], {}
-    for cap, ic, pin in cfg.DECOUP:
-        d = decoup_dist(b, cap, ic, pin)
-        figs[f'{cap}>{ic}.{pin}'] = d
-        fig.append(f'{cap}>{ic}.{pin} {d:.1f}')
-        if d > cfg.DECOUP_MAX:
-            bad.append(f'{cap} is {d:.1f} mm from {ic} pin {pin} (limit {cfg.DECOUP_MAX})')
-    return Result(not bad, '; '.join(bad) or f'{len(cfg.DECOUP)} caps within {cfg.DECOUP_MAX} mm: ' + ', '.join(fig), figs)
+def lr12(b, cfg, report=None):
+    """LR-12 = pcbkit.rules.decoupling on the AFE's DECOUP table"""
+    return _kit.decoupling(b, dict(DECOUPLING=cfg.DECOUP, DECOUPLING_MAX=cfg.DECOUP_MAX), report)
 
 
 # ----------------------------------------------------------------------------------------------------- LR-5
-def lr5(b, cfg):
-    """sensitive copper keeps cfg.KEEPOUT from the generator's courtyards, measured from the copper's EDGE: a track as a
-    capsule (centre line less half its width), a pad by its size and rotation (pcbtools.shapes), to the courtyard box"""
-    gen = [box(b, r) for r in cfg.GEN]
-    near, dmin = [], math.inf
-    sens = net_prefix(b, cfg.SENSITIVE)
-    rows = np.flatnonzero((b.s_layer == 0) & sens[b.s_net])
-    if len(rows):
-        cu = shapes.track_copper(b, rows)
-        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
-        dmin = min(dmin, float(d.min()))
-        for i in np.flatnonzero(d < cfg.KEEPOUT):
-            near.append(f'{b.nets[b.s_net[rows[i]]]} {d[i]:.1f} mm')
-    pt = pads(b)
-    js = [j for j in np.flatnonzero(sens[pt.net]) if pt.keys[j][0] not in cfg.GENERATOR_BLOCK]
-    if js:
-        prow = pt.rows[js]
-        cu = shapes.pad_copper(b, prow)
-        d = np.min([cu.gap_to_box(g) for g in gen], axis=0)
-        dmin = min(dmin, float(d.min()))
-        for i in np.flatnonzero(d < cfg.KEEPOUT):
-            k = pt.keys[js[i]]
-            near.append(f'{b.nets[b.p_net[prow[i]]]} pad {k[0]}.{k[1]} {d[i]:.1f} mm')
-    return Result(not near, '; '.join(sorted(set(near))[:6]) or f'sensitive copper >= {cfg.KEEPOUT} mm from {"/".join(cfg.GEN)}',
-                  dict(min_distance_mm=dmin, violations=float(len(near))))
+def lr5(b, cfg, report=None):
+    """LR-5 = pcbkit.rules.keepout_ring: sensitive copper keeps cfg.KEEPOUT from the generator's courtyards"""
+    return _kit.keepout_ring(b, dict(KEEPOUT_PARTS=cfg.GEN, KEEPOUT_NETS=cfg.SENSITIVE, KEEPOUT_EXEMPT_PARTS=cfg.GENERATOR_BLOCK,
+                                     KEEPOUT_DIST=cfg.KEEPOUT), report)
 
 
 # ----------------------------------------------------------------------------------------------------- pieces of copper

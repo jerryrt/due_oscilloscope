@@ -135,6 +135,43 @@ GUARD = [
     ('guard: lower-case names are configuration names', "isinstance(k, str) and k.isupper()", "isinstance(k, str)"),
     ('guard: the edit distance counts substitutions as free', "prev[j - 1] + (ca != cb)", "prev[j - 1]"),
 ]
+SENSITIVE = [
+    ('sensitive_nets: no_via False ignored', "if e['no_via'] and (b.v_net == nid(b, n)).any():", "if (b.v_net == nid(b, n)).any():"),
+    ('sensitive_nets: no_bottom False ignored', "if e['no_bottom'] and ((b.s_net == nid(b, n)) & (b.s_layer == 1)).any():", "if ((b.s_net == nid(b, n)) & (b.s_layer == 1)).any():"),
+    ('sensitive_nets: length > becomes >=', "if e['max_length'] is not None and L > e['max_length']:", "if e['max_length'] is not None and L >= e['max_length']:"),
+    ('sensitive_nets: length counts both layers', "        L = length_of(b, n)\n        if e['max_length']", "        L = length_of(b, n, top_only=False)\n        if e['max_length']"),
+    ('sensitive_nets: widths not added to the gap', "lim = g[:, None] + (b.s_w[ia][:, None] + b.s_w[ot][None, :]) / 2", "lim = g[:, None]"),
+    ('sensitive_nets: the plane net is a foreign track', "ot = np.flatnonzero((b.s_layer == 0) & (b.s_net != gnd))", "ot = np.flatnonzero((b.s_layer == 0))"),
+    ('sensitive_nets: a net is its own neighbour', "close = (D < lim) & (b.s_net[ia][:, None] != b.s_net[ot][None, :])", "close = (D < lim)"),
+    ('sensitive_nets: every net uses one gap', "g = np.array([gap_of[int(n)] for n in b.s_net[ia]])", "g = np.full(len(ia), 0.6)"),
+    ('sensitive_nets: unknown entry keys accepted', "if bad or 'net' not in e:", "if False:"),
+]
+POUR = [
+    ('pour_gap: track keep-back halved', "if g_trk < c.POUR_KEEP_BACK:", "if g_trk < c.POUR_KEEP_BACK / 2:"),
+    ('pour_gap: pour keep-back halved', "if g_pour < c.POUR_KEEP_BACK:", "if g_pour < c.POUR_KEEP_BACK / 2:"),
+    ('pour_gap: info nodes are judged', "if net not in c.POUR_NODES:\n            continue", "if False:\n            continue"),
+    ('pour_gap: ground track half width dropped', "D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None] - wg[None, a:a + 1024]", "D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None]"),
+    ('pour_gap: node copper radius dropped', "D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - cu.r[:, None] - wg[None, a:a + 1024]", "D = geom.seg_seg_dist(cu.C, G[a:a + 1024]) - wg[None, a:a + 1024]"),
+    ('pour_gap: an unfilled zone is a pour', "b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]", "b.z_net[z] == gnd and not b.z_keepout[z]]"),
+    ('pour_gap: a keep-out area is a pour', "b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]", "b.z_net[z] == gnd and b.z_filled[z]]"),
+    ('pour_gap: a bottom zone is a pour', "b.z_layer[z] == 0 and b.z_net[z] == gnd", "b.z_net[z] == gnd"),
+    ('pour_gap: a bottom ground track counts', "gt = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0))", "gt = np.flatnonzero((b.s_net == gnd))"),
+    ('pour_gap: the info nodes are not measured', "for net in tuple(c.POUR_NODES) + tuple(c.POUR_INFO_NODES):", "for net in tuple(c.POUR_NODES):"),
+]
+KEEPOUT = [
+    ('keepout_ring: a bottom track counts', "rows = np.flatnonzero((b.s_layer == 0) & sens[b.s_net])", "rows = np.flatnonzero(sens[b.s_net])"),
+    ('keepout_ring: exempt parts are judged', "if pt.keys[j][0] not in c.KEEPOUT_EXEMPT_PARTS]", "if True]"),
+    ('keepout_ring: the farthest part counts for a track', "d = np.min([cu.gap_to_box(g) for g in gen], axis=0)\n        dmin = min(dmin, float(d.min()))\n        for i in np.flatnonzero(d < c.KEEPOUT_DIST):\n            near.append(f'{b.nets[b.s_net[rows[i]]]}", "d = np.max([cu.gap_to_box(g) for g in gen], axis=0)\n        dmin = min(dmin, float(d.min()))\n        for i in np.flatnonzero(d < c.KEEPOUT_DIST):\n            near.append(f'{b.nets[b.s_net[rows[i]]]}"),
+    ('keepout_ring: the farthest part counts for a pad', "d = np.min([cu.gap_to_box(g) for g in gen], axis=0)\n        dmin = min(dmin, float(d.min()))\n        for i in np.flatnonzero(d < c.KEEPOUT_DIST):\n            k = pt.keys[js[i]]", "d = np.max([cu.gap_to_box(g) for g in gen], axis=0)\n        dmin = min(dmin, float(d.min()))\n        for i in np.flatnonzero(d < c.KEEPOUT_DIST):\n            k = pt.keys[js[i]]"),
+    ('keepout_ring: the track radius is not subtracted', "cu = geom.track_copper(b, rows)", "cu = geom.join(geom.track_copper(b, rows))\n        cu.r[:] = 0.0"),
+    ('keepout_ring: the distance is not enforced for pads', "        for i in np.flatnonzero(d < c.KEEPOUT_DIST):\n            k = pt.keys[js[i]]", "        for i in np.flatnonzero(d < 0):\n            k = pt.keys[js[i]]"),
+]
+DECOUP = [
+    ('decoupling: limit > becomes >=', "if d > c.DECOUPLING_MAX:", "if d >= c.DECOUPLING_MAX:"),
+    ('decoupling: always pad 1', "ks = [k for k in ('1', '2') if pad_net(b, cap, k) == net] or ['1']", "ks = ['1']"),
+    ('decoupling: the farther pad on the net counts', "return min(float(np.hypot(*(pad_c(b, cap, k) - pad_c(b, ic, pin)))) for k in ks)", "return max(float(np.hypot(*(pad_c(b, cap, k) - pad_c(b, ic, pin)))) for k in ks)"),
+    ('decoupling: capacitors judged one short', "    for cap, ic, pin in c.DECOUPLING:\n        d = decoup_dist", "    for cap, ic, pin in list(c.DECOUPLING)[:1]:\n        d = decoup_dist"),
+]
 GUARD_RULES = [
     ('guard: effective_config does not list the unrecognised', "if unknown:\n        text +=", "if False:\n        text +="),
 ]
@@ -142,7 +179,9 @@ RUNS = [('geom.py', GEOM, ['test_geom.py']), ('geom.py', COPPER, ['test_copper.p
         ('board.py', SILK, ['test_board_silk.py']), ('board.py', REQUIRE, ['test_require.py']),
         ('rules.py', GROUND_PLANE, ['test_ground_plane.py']), ('rules.py', BOTTOM_HOPS, ['test_bottom_hops.py']),
         ('config.py', CONFIG, ['test_ground_plane.py', 'test_bottom_hops.py']),
-        ('config.py', GUARD, ['test_config_guard.py']), ('rules.py', GUARD_RULES, ['test_config_guard.py'])]
+        ('config.py', GUARD, ['test_config_guard.py']), ('rules.py', GUARD_RULES, ['test_config_guard.py']),
+        ('rules.py', SENSITIVE, ['test_sensitive_nets.py']), ('rules.py', POUR, ['test_pour_gap.py']), ('rules.py', KEEPOUT, ['test_keepout_ring.py']),
+        ('rules.py', DECOUP, ['test_decoupling.py'])]
 
 
 def _limit():

@@ -30,6 +30,8 @@ transform and its inverse. `board.frame_of(cfg)` accepts a 2-sequence, a mapping
 
 Each rule declares its names in a `*_NAMES` table in `pcbkit/rules.py`; a rule never reads a name it does not list. The sections below give every name, its kind, type, unit and default.
 
+## Rules (`pcbkit.rules`)
+
 ### rules.ground_plane
 
 | name | kind | type, unit | default | meaning |
@@ -59,6 +61,52 @@ may be at most `HOP_MAX` long with at most `HOP_MAX_VIAS` vias at its ends, may 
 
 The AFE's `pcbtools.rules.lr1` builds these names from its own tables (`GND`, `ANALOG_FENCE` and `OUTLINE`, `XSENS`, `ANALOG_REFS`, `ZONE_PAD`, `HOP_MAX`,
 `HOP_MAX_VIAS`) in `kit_cfg_lr1` and keeps every tunable not named there at the default above, which is the value LR-1 always used.
+
+### rules.sensitive_nets
+
+For each listed net, in order: a via on it, copper on the other layer, top track over a length limit; then every top segment of a net that has a gap with another net's top
+track (the plane net `GND` and the segment's own net excluded) nearer than `gap` plus half the two widths. Findings are `Finding(kind, net, value, other)`; `sensitive_nets_parts`
+returns them so a caller can word them itself (the AFE's LR-3 and LR-4 do).
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `GND` | project | net name | required | never a foreign track |
+| `SENSITIVE_NETS` | project | list of dicts | required | one per net: `net` (required), `no_via` (True), `no_bottom` (False: no copper on the other layer), `max_length` (None: mm of top track), `gap` (None: mm); a key not in this list raises `ConfigError` |
+
+### rules.pour_gap
+
+Exact copper-edge to copper-edge distance from each node's top copper (tracks as capsules, pads by size and rotation) to top ground tracks and to the edges of filled, hole-aware top ground fills
+(a keep-out area is not a fill); 0 where the node lies on a fill, +inf when there is nothing to measure to. The judged nodes (`POUR_NODES`) fail when either gap is under `POUR_KEEP_BACK`.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `GND` | project | net name | required | the ground net |
+| `POUR_NODES` | project | list of net names | required | judged nodes |
+| `POUR_KEEP_BACK` | project | mm | required | the design keep-back distance (no default: it is a design value, not a tolerance) |
+| `POUR_INFO_NODES` | tunable | list of net names | `()` | measured and reported, not judged |
+
+### rules.keepout_ring
+
+Sensitive top copper keeps `KEEPOUT_DIST` from the courtyards of `KEEPOUT_PARTS`, measured from the copper's edge (a track as a capsule, a pad by size and rotation).
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `KEEPOUT_PARTS` | project | list of designators | required | their courtyards (a part without one raises `KeyError`) |
+| `KEEPOUT_NETS` | project | list of net-name prefixes | required | the sensitive nets |
+| `KEEPOUT_EXEMPT_PARTS` | project | list of designators | required | their pads are not judged (may be empty) |
+| `KEEPOUT_DIST` | project | mm | required | the design distance |
+
+### rules.decoupling
+
+Each listed capacitor's pad on the pin's net (pad 1 when neither is) is within `DECOUPLING_MAX` of the IC pin.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `DECOUPLING` | project | list of (capacitor, ic, pin) | required | |
+| `DECOUPLING_MAX` | project | mm | required | the design distance (no default: a design value) |
+
+The AFE's `lr3`, `lr4` (via, bottom copper, FB length and pour terms), `lr5` and `lr12` build these names from `HIZ`, `ADC_NETS`, `INV_NODES`, `AWG['fb_net']`/`FB_MAX`, `POUR_NODES`/`POUR_INFO_NODES`
+(and the module constant `POUR_KEEP_BACK`), `GEN`/`SENSITIVE`/`GENERATOR_BLOCK`/`KEEPOUT`, `DECOUP`/`DECOUP_MAX`; LR-4's output-resistor and supply-capacitor terms stay in the AFE.
 
 ## pinlabels (`pcbkit.pinlabels`)
 
