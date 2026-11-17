@@ -154,7 +154,7 @@ def first_ok(r, anchor=False):
         for k in cands(r):
             if ok(r, k[2], k[3], k[4]): relaxed.add(r); return k
     finally: RELAX = False
-    if RECT_MODE and r.startswith(('U', 'J')):         # an IC or a connector with no place inside its rectangle: outside it, in no other block's
+    if RECT_MODE and r.startswith(('U', 'J', 'TP')):   # an IC, a connector or a test point with no place inside its rectangle: outside it, in no other block's
         global FALLBACK
         for rl in (False, True):
             RELAX = rl; FALLBACK = True
@@ -186,6 +186,26 @@ if RECT_MODE:
     OUTSEG = {B: [(q[0], q[1], q[2], q[1]), (q[2], q[1], q[2], q[3]), (q[0], q[3], q[2], q[3]), (q[0], q[1], q[0], q[3])] for B, rs in RECTS.items() for q in rs[:1]}
     for B, rs in RECTS.items():
         if len(rs) > 1: OUTSEG[B] = OUTSEG[B] + [(q[0], q[1], q[2], q[1]) for q in rs[1:]] + [(q[2], q[1], q[2], q[3]) for q in rs[1:]] + [(q[0], q[3], q[2], q[3]) for q in rs[1:]] + [(q[0], q[1], q[0], q[3]) for q in rs[1:]]
+    def cut(sg):
+        out = []
+        obs = np.vstack([np.array(silk_fp).reshape(-1, 4), pads])
+        for (a, d_, c, e) in sg:
+            horiz = abs(d_ - e) < 1e-9; lo, hi = (min(a, c), max(a, c)) if horiz else (min(d_, e), max(d_, e)); fixed = d_ if horiz else a
+            ivs = []
+            for ob in obs:
+                if horiz: hit = ob[1] - 0.03 < fixed + 0.075 and fixed - 0.075 < ob[3] + 0.03 and ob[0] - 0.03 < hi and lo < ob[2] + 0.03; iv = (ob[0] - 0.2, ob[2] + 0.2)
+                else: hit = ob[0] - 0.03 < fixed + 0.075 and fixed - 0.075 < ob[2] + 0.03 and ob[1] - 0.03 < hi and lo < ob[3] + 0.03; iv = (ob[1] - 0.2, ob[3] + 0.2)
+                if hit: ivs.append(iv)
+            ivs.sort(); cur = lo; pieces = []
+            for (p0, p1) in ivs:
+                if p0 > cur: pieces.append((cur, min(p0, hi)))
+                cur = max(cur, p1)
+            if cur < hi: pieces.append((cur, hi))
+            for (p0, p1) in pieces:
+                if p1 - p0 > 0.05: out.append((p0, fixed, p1, fixed) if horiz else (fixed, p0, fixed, p1))
+        return out
+    OUTSEG = {B: cut(sg) for B, sg in OUTSEG.items()}
+    print('OUTLINE pieces', {B: len(v) for B, v in OUTSEG.items()})
     lines = np.array([(min(a, c) - 0.075, min(d, e) - 0.075, max(a, c) + 0.075, max(d, e) + 0.075) for sg in OUTSEG.values() for a, d, c, e in sg]).reshape(-1, 4)
     silk = np.vstack([silk, lines])
 # (1) the edge connectors
@@ -217,7 +237,8 @@ def name_ok(B, x, y):
     t = name_box(NAMETXT[B], x, y)
     if RECT_MODE and not sat_inside(B, t): return False
     if t[0] < DUE[0] + EDGE or t[2] > 98.0 or t[1] < DUE[1] + EDGE or t[3] > DUE[3] - EDGE: return False
-    if ovl(t, cr, 0.1).any() or ovl(t, pads, CLR).any() or ovl(t, vias, CLR).any() or ovl(t, silk, 0.15).any(): return False
+    BA = np.array([body[q] for q in body]).reshape(-1, 4)
+    if ovl(t, BA, 0.05).any() or ovl(t, pads, CLR).any() or ovl(t, vias, CLR).any() or ovl(t, silk, 0.08).any(): return False
     return not any(lab_clash(t, bx) for bx in placed.values())
 CORN = ('TL', 'TR', 'BL', 'BR')
 mem0 = {B: [] for B in NAMETXT}
