@@ -100,18 +100,19 @@ def cands(r, kind, c=None):
 
 
 def slide_cands(r, kind):
-    """anchors: every place along the side of the part, in 0.1 mm steps, the label keeping at least 0.3 mm of its length beside the part; nearest the centre first"""
+    """every place along the side of the part: the sliding coordinate in 0.1 mm steps on an absolute grid (so two parts of one row can share a label line), the label keeping at least
+    0.3 mm of its length beside the part; nearest the centre first, then nearest the part"""
     c = cour[r]; cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2; ang = ang_of(kind); Lt = len(r) * S.CHAR_ADV
-    gs = (0.03, 0.2, 0.4, 0.57); o = []
+    gs = (0.03, 0.3, 0.57); o = []
     if kind in ('above', 'below'):
-        lo, hi = c[0] + 0.3 - Lt / 2, c[2] - 0.3 + Lt / 2; k = 0
-        for xv in [lo + 0.1 * i for i in range(int((hi - lo) / 0.1) + 1)]:
-            for g in gs:
-                o.append((abs(xv - cx), g, xv, (c[3] + g + H / 2) if kind == 'above' else (c[1] - g - H / 2)))
+        lo, hi = c[0] + 0.3 - Lt / 2, c[2] - 0.3 + Lt / 2
+        ylo, yhi = ((c[3] + 0.03 + H / 2, c[3] + 0.57 + H / 2) if kind == 'above' else (c[1] - 0.57 - H / 2, c[1] - 0.03 - H / 2))
+        for xv in ygrid(lo, hi):
+            for yv in ygrid(ylo, yhi): o.append((abs(xv - cx), abs(yv - (ylo if kind == 'above' else yhi)), xv, yv))
     else:
         w = Lt if ang == 0.0 else H; hh = H if ang == 0.0 else Lt
         lo, hi = c[1] + 0.3 - hh / 2, c[3] - 0.3 + hh / 2
-        for yv in [lo + 0.1 * i for i in range(int((hi - lo) / 0.1) + 1)]:
+        for yv in ygrid(lo, hi):
             for g in gs:
                 o.append((abs(yv - cy), g, ((c[2] + g + w / 2) if kind.startswith('east') else (c[0] - g - w / 2)), yv))
     return [(x, y) for _, _, x, y in sorted(o, key=lambda t: (round(t[0], 3), t[1]))]
@@ -136,9 +137,13 @@ def inside_blk(sb, r):
     return True if not rs else any(x0 - 0.005 <= sb[0] and sb[2] <= x1 + 0.005 and y0 - 0.005 <= sb[1] and sb[3] <= y1 + 0.005 for x0, y0, x1, y1 in rs)
 
 
-def strict_static(r, kind, x, y):
+def strict_static(r, kind, x, y, passive=False):
     ang = ang_of(kind); sb, lb = sbox(r, x, y, ang), lbox(r, x, y, ang)
-    if any(S._overlap(sb, c) for c in cour.values()): return False
+    if passive:                                                  # AFE-1's fix: keep off part BODIES (F.Fab), not whole courtyards; nearer to the own body than to any other by 0.25 mm
+        if any(S._overlap(sb, bd) for bd in body.values() if bd is not None): return False
+        own_ = lgap(sb, body[r]) if body.get(r) else 0.0
+        if any(lgap(sb, bd) < own_ + 0.25 for k, bd in body.items() if k != r and bd is not None): return False
+    elif any(S._overlap(sb, c) for c in cour.values()): return False
     if any(lgap(lb, p) < 0.02 for p in pads): return False
     if any(S._overlap(sb, v) for v in vias): return False
     if on_silk(sb, silk): return False
@@ -271,6 +276,22 @@ ordered = sorted(BNC, key=lambda r: b.fp_y[fi[r]])
 for lo_, hi_ in zip(ordered, ordered[1:]):
     bnc_info['gaps']['%s-%s body to body' % (lo_, hi_)] = round(bods[hi_][1] - bods[lo_][3], 2)
 bnc_info['text_height'] = 1.0
+def lines_above(r):
+    out = []
+    for blk, rs in C.OUTLINE.items():
+        for x0, y0, x1, y1 in rs:
+            if x0 <= float(b.fp_x[fi[r]]) <= x1:
+                for yy in (y0, y1):
+                    if yy > bods[r][3] + 0.01: out.append(round(yy, 2))
+    top_edge = max((((x1 - x0) * 0 + y0) for (x0, y0), (x1, y1) in zip(RING, RING[1:] + RING[:1]) if abs(x0 - x1) < 1e-9 and False), default=None)
+    ys = [pt[1] for pt in RING if pt[1] > bods[r][3]]
+    # the board edge above the BNC: the highest edge crossing x = the BNC's x
+    edge = None
+    xr = float(b.fp_x[fi[r]])
+    for (x0, y0), (x1, y1) in zip(RING, RING[1:] + RING[:1]):
+        if (x0 - xr) * (x1 - xr) <= 0 and abs(y1 - y0) < 1e-6 and y0 > bods[r][3]: edge = y0 if edge is None else max(edge, y0)
+    return {'body_top': round(bods[r][3], 2), 'outline_lines_above': sorted(set(out)), 'board_edge_above': (round(edge, 2) if edge else None)}
+bnc_info['above'] = {r: lines_above(r) for r in BNC}
 LAB_GAP = 0.2
 def bnc_ok(dx, dy, fx):
     for r, lab in BNC_FUN.items():
@@ -314,8 +335,8 @@ base = {}
 for r in passives:
     cs = []
     for kind in ORDER:
-        for x, y in cands(r, kind):
-            if strict_static(r, kind, x, y): cs.append(make(r, kind, x, y))
+        for x, y in slide_cands(r, kind):
+            if strict_static(r, kind, x, y, passive=True): cs.append(make(r, kind, x, y))
     base[r] = cs
 fixed_all = dict(P); fixed_all.update(fixed)
 start = {r: [c for c in cs if all(pair_ok(r, c, o, oc) for o, oc in fixed_all.items())] for r, cs in base.items()}

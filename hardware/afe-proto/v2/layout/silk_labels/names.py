@@ -57,6 +57,9 @@ for corner in ORDER:                                         # try the same corn
         if not found: ok_all = False; break
         trial[t] = tbox(t, found[0], found[1]); choice[t] = (corner, found)
     if ok_all: placed = dict(choice); report['all_blocks_at'] = corner; break
+REFCAL_ABOVE = True                                          # owner: REF / CAL sits above the top-left corner of its (main) rectangle, touching it
+if not placed and REFCAL_ABOVE:
+    pass
 if not placed:                                               # per block: the first corner that has room
     for t, blk in NAMES.items():
         rs = RECTS[blk]; x0, y0, x1, y1 = max(rs, key=lambda r: (r[2] - r[0]) * (r[3] - r[1])); L = len(t) * 0.95 * SIZE; got = None
@@ -91,6 +94,9 @@ if not placed.get('REF / CAL'):                      # the four corners of both 
 
 t_ = txt
 for t, v in placed.items():
+    if not v and t == 'REF / CAL':                              # owner: above the top-left corner of its rectangle, touching it (0.3 mm clear of the line)
+        x0_, y0_, x1_, y1_ = max(RECTS['REFCAL'], key=lambda r: (r[2] - r[0]) * (r[3] - r[1])); L_ = len(t) * 0.95 * SIZE
+        v = ('above the NW corner', (round(x0_ + L_ / 2, 3), round(y1_ + 0.075 + 0.3 + SIZE * 0.5, 3))); report['placed'][t] = ['above NW corner', list(v[1])]
     if not v:
         mm_ = re.search(r'\(gr_text "%s"\s+\(at ([-\d.]+) ([-\d.]+)' % re.escape(t), t_); v = ('kept', (float(mm_.group(1)) - 50.0, 150.0 - float(mm_.group(2))))
     (x, y) = v[1][0], v[1][1]
