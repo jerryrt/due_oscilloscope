@@ -53,5 +53,5 @@ test of a rule breaks the board once on purpose and watches the rule fail.
 
 ## Status
 
-Skeleton. The modules are being moved out of `hardware/afe-proto/pcbtools` one at a time; until a module is listed as moved
+Skeleton, with `board` and `geom` moved in (the package is `hardware/pcbkit/pcbkit`; `CONFIG.md` lists the configuration names; tests are `hardware/pcbkit/tests`, run in the pinned PCB image). The modules are being moved out of `hardware/afe-proto/pcbtools` one at a time; until a module is listed as moved
 in `MIGRATION.md`, the AFE copy is the one in use.

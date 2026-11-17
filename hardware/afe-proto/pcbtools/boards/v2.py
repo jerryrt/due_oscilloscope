@@ -10,6 +10,7 @@ import importlib.util
 import os
 import sys
 
+FRAME = (50.0, 150.0)                           # the Due's frame: KiCad board_x = 50 + x, board_y = 150 - y (pcbkit.board)
 # the board's identity: the one source of the silk, the package title and the fabrication and assembly file names (docs/afe-v2.md D-V2-18; same
 # fields as boards/v1.py, so pcbtools/identity.py holds either board to its config). The revision letter steps on any change to fabrication data;
 # ASSY_REV marks a BOM- or value-only change and is '' for the first assembly of a revision.

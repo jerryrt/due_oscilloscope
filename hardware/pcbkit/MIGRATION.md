@@ -6,7 +6,7 @@ the fab manifests, silkread counts) do not move in any step; a step that moves o
 
 | step | from (afe-proto) | to (pcbkit) | what changes on the way | status |
 |---|---|---|---|---|
-| 1 | `pcbtools/boardio.py`, `geom.py`, `shapes.py` | `board`, `geom` | the Due frame (`OX, OY`) becomes `FRAME` in the configuration | to do |
+| 1 | `pcbtools/boardio.py`, `geom.py`, `shapes.py` | `board`, `geom` | the Due frame (`OX, OY`) becomes `FRAME` in the configuration; `shapes` joins `geom` | moved (branch `pcbkit-step1`) |
 | 2 | `pcbtools/rules.py`: `lr1`, `bottom_runs`, `bottom_crossings` | `rules.ground_plane`, `rules.bottom_hops` | fences and sensitive nets come from the configuration by name | to do |
 | 3 | `rules.py`: `lr3`, `lr4`'s via and length terms, `pour_gaps`, `lr5`, `lr12` | `rules.sensitive_nets`, `rules.pour_gap`, `rules.keepout_ring`, `rules.decoupling` | the AFE's channel tables stay in the AFE layer and are turned into these lists there | to do |
 | 4 | `rules.py`: `lr11`'s outline, designator, test-point and legibility terms, `designator_findings`, `one_label_pairs`, `foreign_labels` | `rules.blocks`, `rules.designators`, `rules.test_points`, `outlines` | the two-way test joins `designators` (today it lives only in the team scripts) | to do |
