@@ -1,0 +1,18 @@
+round 0 bridges 0 METRIC ('130', '22')
+  bridge BR501 net /TAP5 over /VREF at (56.91, 18.64) pair conflicts 12
+BRIDGES = [{'ref': 'BR501', 'x': 56.91, 'y': 18.64, 'rot': 180.0, 'a': 'TAP5', 'b': 'TAP5_BR501', 'move': {'R505.2': 'TAP5_BR501'}}]
+round 1 bridges 1 METRIC ('204', '31')
+  bridge BR301 net /AWG_BNC over /+3V3A at (61.98, 40.16) pair conflicts 31
+BRIDGES = [{'ref': 'BR301', 'x': 61.98, 'y': 40.16, 'rot': 225.0, 'a': 'AWG_BNC', 'b': 'AWG_BNC_BR301', 'move': {'R507.1': 'AWG_BNC_BR301'}}]
+round 2 bridges 2 METRIC ('192', '30')
+  bridge BR401 net /LM_C1P over /+3V3A at (33.08, 14.8) pair conflicts 12
+BRIDGES = [{'ref': 'BR401', 'x': 33.08, 'y': 14.8, 'rot': 270.0, 'a': 'LM_C1P', 'b': 'LM_C1P_BR401', 'move': {'U401.10': 'LM_C1P_BR401'}}]
+round 3 bridges 3 METRIC ('130', '20')
+  bridge BR502 net /SDA over /SNS_B at (44.83, 36.61) pair conflicts 15
+BRIDGES = [{'ref': 'BR502', 'x': 44.83, 'y': 36.61, 'rot': 315.0, 'a': 'SDA', 'b': 'SDA_BR502', 'move': {'U502.9': 'SDA_BR502'}}]
+round 4 bridges 4 METRIC ('164', '20')
+  bridge BR503 net /AREF over /VREF at (47.24, 21.02) pair conflicts 20
+BRIDGES = [{'ref': 'BR503', 'x': 47.24, 'y': 21.02, 'rot': 315.0, 'a': 'AREF', 'b': 'AREF_BR503', 'move': {'R514.2': 'AREF_BR503'}}]
+round 5 bridges 5 METRIC ('112', '22')
+  bridge BR504 net /AREF over /TAP3 at (44.71, 22.38) pair conflicts 17
+BRIDGES = [{'ref': 'BR504', 'x': 44.71, 'y': 22.38, 'rot': 0.0, 'a': 'AREF', 'b': 'AREF_BR504', 'move': {'BR503.1': 'AREF_BR504'}}]

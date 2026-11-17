@@ -1,0 +1,49 @@
+start 123.1 (31, 12)
+accept J501 shift +1,+0 103.8 (38, 10) 113
+reject R504 shift +0,+0.5 123.9
+reject J501 jump to 62.0,7.6 ['court J501/R502', 'court J501/R508', 'court J501/TP301', 'court R502/J501', 'court R508/J501', 'court TP301/J501', 'lane J501', 'region J501']
+reject C502 turn 90 ['court C502/R503', 'court C502/U501', 'court R503/C502']
+reject R503 shift +0,-0.5 103.8
+reject R514 shift +0,-0.5 ['court R514/TP501', 'court TP501/R514']
+reject TP301 jump to 77.4,12.6 ['court TP301/C301', 'court TP301/R303', 'court TP301/U301']
+reject TP501 turn 180 103.8
+reject R502 shift +0,-2 ['court R502/J602']
+reject R507 turn 180 145.2
+accept R503 shift -1,+0 93.2 (32, 9) 400
+reject C503 shift +0,+1 ['LR-12 C503 3.1']
+reject R508 shift -1,+0 ['court R502/R508', 'court R508/R502']
+reject swap R505 R514 103.0
+reject R305 shift +0,-1 ['court J501/R305', 'court R305/J501']
+reject C503 turn 270 ['court C503/R504', 'court R504/C503']
+reject TP301 shift -2,+0 ['court R510/TP301', 'court TP301/R510']
+reject TP501 shift +0,-0.5 93.2
+reject C503 shift +0,-0.5 ['court C503/U502', 'court U502/C503']
+reject C503 shift +0,-0.5 ['court C503/U502', 'court U502/C503']
+reject R509 shift +1,+0 123.6
+reject TP301 turn 180 93.2
+reject R508 shift -1,+0 ['court R502/R508', 'court R508/R502']
+reject C303 shift +1,+0 105.7
+reject C303 jump to 75.0,16.3 114.9
+reject R514 shift +0,-2 ['court R514/TP501', 'court TP501/R514']
+reject R502 shift +0,-1 114.6
+reject R505 turn 270 113.8
+reject R514 shift -1,+0 93.2
+reject R504 shift +0.5,+0 97.3
+reject R509 shift +1,+0 123.6
+reject R503 shift -2,+0 115.1
+reject R507 shift +0,-1 123.6
+reject TP301 turn 180 93.2
+reject R505 shift +0,+0.5 ['court R505/R513', 'court R513/R505']
+reject R305 shift +2,+0 ['lane R305']
+reject swap R505 R513 114.3
+reject swap R510 R511 104.3
+reject R508 turn 90 ['court R502/R508', 'court R508/R502', 'lane R508', 'region R508']
+reject R513 shift +0,-1 ['court R505/R513', 'court R513/R505']
+reject C502 shift -0.5,+0 93.2
+reject TP301 shift +0,+0.5 93.6
+reject R510 shift +0,+1 ['court J501/R510', 'court R510/J501']
+reject U502 turn 180 ['LR-12 C503 6.1']
+reject swap R505 R510 123.9
+reject C303 shift +0,-2 ['court C303/R509', 'court C303/R512', 'court R509/C303', 'court R512/C303']
+reject C303 shift +2,+0 103.2
+reject TP301 shift -1,+0 ['court R510/TP301', 'court TP301/R510']

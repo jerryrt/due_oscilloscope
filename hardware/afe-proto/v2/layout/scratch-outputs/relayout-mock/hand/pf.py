@@ -203,6 +203,9 @@ for kn, kspec in KELVIN.items():
         ks = [tuple(s.split('.')) for s in gp if tuple(s.split('.')) in key and key[tuple(s.split('.'))]['net'] == kn]
         if ks:
             jobs.append(dict(name='%s#%d' % (kn, gi), own=kn, comps=[ks], star=ksrc))
+if os.environ.get('PF_ONLY'):
+    import re as _re
+    jobs = [j for j in jobs if _re.search(os.environ['PF_ONLY'], j['name'])]            # a subset of the jobs (a cluster what-if): the others stay unrouted and are no obstacle
 print('jobs', len(jobs), [j['name'] for j in jobs])
 
 # per-job static mask: other nets' fixed copper (own net's removed), star pads of the same family are neutral
@@ -400,7 +403,7 @@ for k, p in sorted(key.items()):                # the rule (rules.lr1): greedy i
     else:
         _nov.append(k)
 print('GND pads without their own via:', _nov)
-for k in _nov:
+for k in ([] if os.environ.get('PF_NOGND') else _nov):
     p = key[k]
     blkg = ((total - net_mask[GND].astype(np.int16)) > 0) | static
     pc = pad_cells(k)
@@ -578,6 +581,12 @@ for x, y, n1, n2 in confl:
     else:
         clusters.append([x, y, {n1, n2}])
 print('METRIC conflict_segments', len(confl), 'distinct_clusters', len(clusters))
+_agg = {}
+for x_, y_, n1_, n2_ in confl:
+    k_ = tuple(sorted((n1_, n2_)))
+    e_ = _agg.setdefault(k_, [0, 0.0, 0.0]); e_[0] += 1; e_[1] += x_; e_[2] += y_
+for k_, e_ in sorted(_agg.items(), key=lambda t: -t[1][0]):
+    print('PAIRSUM', k_[0], k_[1], e_[0], round(e_[1] / e_[0], 2), round(e_[2] / e_[0], 2))
 for cl in sorted(clusters, key=lambda c: (round(c[0]), round(c[1]))):
     print('CLUSTER (%.1f, %.1f)' % (cl[0], cl[1]), sorted(cl[2]))
 R = []

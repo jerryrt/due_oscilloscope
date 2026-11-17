@@ -1,0 +1,6 @@
+PERM cur (130, 22)
+PERM p1 (127, 20)
+PERM p2 (121, 23)
+PERM p7 (113, 20)
+PERM p1b (127, 22)
+PERM p1c (119, 20)
