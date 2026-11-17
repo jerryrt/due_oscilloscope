@@ -753,7 +753,7 @@ def route(board):
     t0 = time.time()
     job = Job(board)
     nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1),
-                              key=lambda n: (job.names[n].lstrip('/') not in HIZ, job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
+                              key=lambda n: (job.names[n].lstrip('/') not in HIZ | {'CH1_OUT', 'CH2_OUT'}, job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
     ONLY = os.environ.get('ONLYNETS')
     if ONLY:
         keep = {x for x in ONLY.split(',')}
