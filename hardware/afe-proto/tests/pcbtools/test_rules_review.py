@@ -105,6 +105,7 @@ def test_lr8_a_board_without_the_source_part_has_nothing_to_reach():
 
 
 def test_the_real_integrated_board_resolves_the_scope_group():
+    from pcbtools.boards import v2_fixture as v2        # the frozen fixture board (with its bridges and split nets) is judged by the frozen config
     b = boardio.load_npz(os.path.join(ARR, 'v2-integrated-990d4b03.npz'))
     assert {'/+3V3A', '/+3V3A_K', '/+3V3A_S', '/+3V3A_U', '/+3V3A_R'} == R.family(v2, '/+3V3A')
     pt = R.pads(b)

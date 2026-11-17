@@ -31,7 +31,7 @@ import numpy as np
 import pytest
 
 from pcbtools import boardio, fence, mutate as M, rules as R
-from pcbtools.boards import v2, v2_arms
+from pcbtools.boards import v2_fixture as v2, v2_arms          # the frozen fixture boards are judged by the frozen config
 import pcbtools.check as CK
 import known_improvements as KI
 
@@ -229,7 +229,7 @@ def test_cli_prints_the_old_lines(capsys):
     """the row lines are the old tool's, except LR-4 (finding 9, known_improvements); the LR-10 row and the summary say that DRC did
     not run, and the run is not a pass"""
     npz = os.path.join(ARR, 'v2-integrated-990d4b03.npz')
-    rc = CK.main([npz, '--config', 'v2'])
+    rc = CK.main([npz, '--config', 'v2_fixture'])
     out = capsys.readouterr().out.splitlines()
     old = json.load(open(os.path.join(GOLD, 'v2-integrated-990d4b03.lr_check.json')))['raw'].splitlines()
     assert rc == 1
