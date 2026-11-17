@@ -1,0 +1,9 @@
+killed    fab_keeps_the_plot_time
+killed    ibom_keeps_the_noise
+killed    proof_ignores_net
+killed    fab_accepts_any_outline
+killed    pinlabels_ignores_the_frame
+killed    render_skips_the_missing_check
+killed    ibom_swallows_a_missing_plugin
+killed    pinlabels_ignores_the_height
+killed    proof_ignores_via_drill
