@@ -293,6 +293,11 @@ INV_LEN_NODES = ('/AWG_INV',)
 POUR_NODES = ('/AWG_INV',)
 POUR_INFO_NODES = ()
 HIZ = tuple(_n(x) for x in ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A'))
+# Placement proxies for LR-3 (spec lead's rulings, afe.md D30 / LR-3): half-perimeter wirelength limits, mm, per divider-net kind. They gate PLACEMENT only;
+# a routed LR-3 (track length <= 14 mm, no via, no track beside) is the real gate.
+HPWL_MAX_N = 8.0      # the divider node (CH1_N, CH2_N)
+HPWL_MAX_NP = 12.0    # the follower's input node (CH1_NP, CH2_NP)
+HPWL_MAX_OTHER = 10.0  # every other divider net (R1A, R2A)
 DIGITAL = ('/SDA1', '/SCL1')
 
 

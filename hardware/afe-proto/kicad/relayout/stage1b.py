@@ -18,8 +18,8 @@ ANALOG = [r for r in b.fp_ref if C.BLOCK.get(r) in ('AWG', 'SCOPE', 'REFCAL') an
 HORD = ['/CH1_N', '/CH1_NP', '/CH1_R1A', '/CH1_R2A', '/CH2_R1A', '/CH2_N', '/CH2_NP', '/CH2_R2A']
 # ---- tasks: (key, net, kwargs)
 tasks = {}
-for n in ('/A1', '/A0', '/AWG_INV'): tasks[n] = (n, dict(width=0.2))
-for n in HORD: tasks[n] = (n, dict(width=0.2))
+for n in ('/A1', '/A0', '/AWG_INV'): tasks[n] = (n, dict(width=0.2, extra_margin=-0.03))
+for n in HORD: tasks[n] = (n, dict(width=0.2, extra_margin=-0.03))
 vp = net_pads('/VREF'); src_rows = {row[k] for k in C.VREF_SOURCE}
 brs = []
 for br in C.VREF_BRANCHES:
@@ -28,27 +28,27 @@ for br in C.VREF_BRANCHES:
     brs.append(st)
 for j in [j for j in vp if j not in src_rows and not any(j in br for br in brs)]:
     k = min(range(len(brs)), key=lambda q: min(math.hypot(b.p_x[j] - b.p_x[m], b.p_y[j] - b.p_y[m]) for m in brs[q])); brs[k].add(j)
-tasks['vsrc'] = ('/VREF', dict(width=0.3, bottom=False, vias=False, pads_subset=src_rows, tag='vsrc'))
+tasks['vsrc'] = ('/VREF', dict(width=0.3, extra_margin=-0.02, bottom=False, vias=False, pads_subset=src_rows, tag='vsrc'))
 for q, br in enumerate(brs):
     near = min(src_rows, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in br))
-    tasks[f'vb{q}'] = ('/VREF', dict(width=0.3, bottom=False, vias=False, pads_subset=set(br) | {near}, tag=f'vb{q}'))
+    tasks[f'vb{q}'] = ('/VREF', dict(width=0.3, extra_margin=-0.02, bottom=False, vias=False, pads_subset=set(br) | {near}, tag=f'vb{q}'))
 for rail in ('/+3V3A', '/VNEG'):
     star = {row[tuple(k)] for k in C.STAR[rail]}
     groups = C.GROUPS[rail]; ingroup = set().union(*groups.values())
     onrail = net_pads(rail)
     hub = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] not in ingroup}
-    tasks[f'{rail}-hub'] = (rail, dict(width=0.4, bottom=False, vias=False, pads_subset=hub, tag='hub'))
+    tasks[f'{rail}-hub'] = (rail, dict(width=0.4, extra_margin=-0.02, bottom=False, vias=False, pads_subset=hub, tag='hub'))
     for g, refs in groups.items():
         leg = {j for j in onrail if b.fp_ref[int(b.p_fp[j])] in refs}
         if not leg: continue
         near = min(star, key=lambda s: min(math.hypot(b.p_x[s] - b.p_x[m], b.p_y[s] - b.p_y[m]) for m in leg))
-        tasks[f'{rail}-leg-{g}'] = (rail, dict(width=0.4, bottom=False, vias=False, pads_subset=leg | {near}, tag='leg-' + g))
+        tasks[f'{rail}-leg-{g}'] = (rail, dict(width=0.4, extra_margin=-0.02, bottom=False, vias=False, pads_subset=leg | {near}, tag='leg-' + g))
 special = {t[0] for t in tasks.values()}
 for n in b.nets:
     if not n or n == C.GND or n in special or len(net_pads(n)) < 2: continue
     own = {b.fp_ref[int(b.p_fp[j])] for j in net_pads(n)}
     cour = [r for r in ANALOG if r not in own] if n in ('/SDA1', '/SCL1') else None
-    top_only = n.startswith(('/TAP', '/SNS', '/VREF', '/AWG_', '/DAC0', '/AREF')) or n in ('/SC_VCC',)
+    top_only = n.startswith(('/TAP', '/SNS', '/VREF', '/AWG_', '/DAC0', '/AREF', '/CH')) or n in ('/SC_VCC',)
     tasks[n] = (n, dict(width=POWERS.get(n, 0.2), bottom=not top_only, vias=not top_only, net_courtyards=cour))
 critical = ['/A1', '/A0', '/AWG_INV'] + HORD + [k for k in ('/CH2_IN', '/CH1_IN', '/VREF_P') if k in tasks]
 vref = [k for k in tasks if k == 'vsrc' or k.startswith('vb')]
@@ -76,7 +76,7 @@ def run(order, verbose=False):
         others = [k for k in net_pads(net) if k != j and ((b.fp_ref[int(b.p_fp[k])], str(b.p_pin[k])) == tgt if tgt else True)]
         k2 = min(others, key=lambda k: math.hypot(b.p_x[k] - b.p_x[j], b.p_y[k] - b.p_y[j]))
         fine_window((b.p_x[j] + b.p_x[k2]) / 2, (b.p_y[j] + b.p_y[k2]) / 2, max(5.0, math.hypot(b.p_x[j] - b.p_x[k2], b.p_y[j] - b.p_y[k2]) / 2 + 2.5))
-        segs, vs, fl = B.route(net, width=0.2, pads_subset={j, k2}, tag=tag or 'fine')
+        segs, vs, fl = B.route(net, width=0.2, extra_margin=-0.04, pads_subset={j, k2}, tag=tag or 'fine')
         coarse(); B.add(segs, vs)
         print('PRE', ref, pin, '->', 'ok len %.1f' % L_of(segs) if not fl else 'FAIL', flush=True)
     def go(key):

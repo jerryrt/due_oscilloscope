@@ -1,7 +1,8 @@
 #!/bin/bash
 cd /work/hardware/afe-proto && export PYTHONPATH=.
-python3 whatif/_scratch/stage2_gnd.py whatif/_scratch/base_final.kicad_pcb whatif/_scratch/fr/gnd.kicad_pcb 2>&1 | grep -v Debug | tail -3
-SRC=whatif/_scratch/fr/gnd.kicad_pcb DST=whatif/_scratch/fr/pre.kicad_pcb MAXIT=1 python3 whatif/_scratch/stage1b.py 2>&1 | grep -v Debug | grep STAGE1B | cut -c1-300
+python3 whatif/_scratch/stage0_lanes.py whatif/_scratch/base_final.kicad_pcb whatif/_scratch/fr/lanes.kicad_pcb 2>&1 | grep LANES
+LANENETS=/VREF,/+3V3A,/VNEG python3 whatif/_scratch/stage2_gnd.py whatif/_scratch/fr/lanes.kicad_pcb whatif/_scratch/fr/gnd.kicad_pcb 2>&1 | grep -v Debug | tail -3
+LANENETS=/VREF,/+3V3A,/VNEG SRC=whatif/_scratch/fr/gnd.kicad_pcb DST=whatif/_scratch/fr/pre.kicad_pcb MAXIT=1 python3 whatif/_scratch/stage1b.py 2>&1 | grep -v Debug | grep STAGE1B | cut -c1-300
 for M in $1; do
   python3 kicad/relayout/fr_run2.py $M whatif/_scratch/fr/pre.kicad_pcb whatif/_scratch/fr/out$M.kicad_pcb 40 1800 2>&1 | grep -v Debug | grep "LOCKED\|FREEROUTING\|import\|POST\|BOTTOM\|saved\|Error\|Trace"
   python3 - <<P

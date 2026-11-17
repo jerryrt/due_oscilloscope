@@ -28,7 +28,7 @@ for n, j in enumerate(pads):
     while pq:
         g, c = heapq.heappop(pq)
         if g > best.get(c, 1e18) + 1e-9: continue
-        if c not in start and via_ok[c] and math.hypot(R.GX[c[0]] - px, R.GY[c[1]] - py) <= 2.9:
+        if c not in start and via_ok[c] and math.hypot(R.GX[c[0]] - px, R.GY[c[1]] - py) <= 2.98:
             goal = c; break
         if g > 4.0: break
         for di, dk, w in DIRS:

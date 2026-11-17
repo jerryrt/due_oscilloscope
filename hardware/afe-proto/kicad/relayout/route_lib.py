@@ -7,8 +7,9 @@ from pcbtools import boardio
 from pcbtools.boards import v1 as C
 from pcbtools.editor import edit
 H = 0.1
+LANENETS = set(x for x in os.environ.get('LANENETS', '').split(',') if x)   # nets with exact pre-placed lane copper in the board file (stage0_lanes.py)
 X0, Y0, X1, Y1 = C.BOARD_RECT
-X0 += 0.4; Y0 += 0.4; X1 -= 0.4; Y1 -= 0.4
+X0 += 0.65; Y0 += 0.65; X1 -= 0.65; Y1 -= 0.65      # copper to board edge >= 0.5 (+ half the track): DRC edge clearance
 NX = int((X1 - X0) / H) + 1; NY = int((Y1 - Y0) / H) + 1
 GX = X0 + H * np.arange(NX); GY = Y0 + H * np.arange(NY)
 CLR = 0.2           # copper clearance, mm
@@ -46,7 +47,7 @@ class Board:
                 x = p0[0] + t * (p1[0] - p0[0]); y = p0[1] + t * (p1[1] - p0[1])
                 box(mask, x - r, y - r, x + r, y + r)
         for k in range(len(b.s_idx)):
-            if int(b.s_net[k]) == net_id and tag is None: continue
+            if int(b.s_net[k]) == net_id and (tag is None or b.nets[net_id] in LANENETS): continue
             seg(masks[int(b.s_layer[k])], (b.s_x0[k], b.s_y0[k]), (b.s_x1[k], b.s_y1[k]), b.s_w[k], hiz=(int(b.s_net[k]) in hiz_ids) or mine_hiz)
         for tr in extra_tracks:
             net, layer, p0, p1, w = tr[:5]; ttag = tr[5] if len(tr) > 5 else None
@@ -84,8 +85,8 @@ class Board:
         masks = self.copper_masks(nid, self.tracks, self.vias, tag=tag, pad_subset=set(pads), net_courtyards=net_courtyards)
         # clearance maps (distance from foreign copper)
         dist = [ndimage.distance_transform_edt(~m) * H for m in masks]
-        trk_ok = [d >= CLR + width / 2 + 0.03 + extra_margin for d in dist]
-        via_ok = [d >= CLR + VIA_D / 2 + 0.03 + extra_margin for d in dist]
+        trk_ok = [d >= CLR + width / 2 + 0.08 + extra_margin for d in dist]
+        via_ok = [d >= CLR + VIA_D / 2 + 0.08 + extra_margin for d in dist]
         via_ok = via_ok[0] & via_ok[1]
         trk_ok[1] = trk_ok[1] & ~self._court_bottom
         trk_ok[0] = trk_ok[0] & ~self._keep_top
@@ -118,17 +119,25 @@ class Board:
         if tag is None:
             for k_ in range(len(b.s_idx)):
                 if int(b.s_net[k_]) == nid: own_cells |= seg_cells(int(b.s_layer[k_]), (b.s_x0[k_], b.s_y0[k_]), (b.s_x1[k_], b.s_y1[k_]))
+        lane_cells = set()
+        if net in LANENETS and tag is not None:        # the exact lane copper in the file is the root of the tree: every pad joins it
+            for k_ in range(len(b.s_idx)):
+                if int(b.s_net[k_]) == nid: lane_cells |= seg_cells(int(b.s_layer[k_]), (b.s_x0[k_], b.s_y0[k_]), (b.s_x1[k_], b.s_y1[k_]))
+            own_cells |= lane_cells
         for c_ in own_cells: trk_ok[c_[0]][c_[1], c_[2]] = True
         # an own track that touches the first pad is already part of the tree
         tree |= own_cells
+        lane_pts = np.array([[GX[c_[1]], GY[c_[2]]] for c_ in list(lane_cells)[::4]]) if lane_cells else None
+        if lane_cells: tree = set(lane_cells); done = set()
         segs = []; vs = []; fails = []
         for L, i, k in tree: trk_ok[L][i, k] = True
         while len(done) < len(pads):
             cand = [j for j in pads if j not in done]
-            j = min(cand, key=lambda q: min(math.hypot(b.p_x[q] - b.p_x[d], b.p_y[q] - b.p_y[d]) for d in done))
+            if lane_pts is not None and not done: j = min(cand, key=lambda q: float(np.min(np.hypot(lane_pts[:, 0] - b.p_x[q], lane_pts[:, 1] - b.p_y[q]))))
+            else: j = min(cand, key=lambda q: min(math.hypot(b.p_x[q] - b.p_x[d], b.p_y[q] - b.p_y[d]) for d in done))
             start = pad_cells(j)
             for L, i, k in start: trk_ok[L][i, k] = True
-            tx = np.array([[b.p_x[d], b.p_y[d]] for d in done])
+            tx = np.array([[b.p_x[d], b.p_y[d]] for d in done] + ([] if lane_pts is None else lane_pts.tolist()))
             def hf(i, k): return float(np.min(np.hypot(GX[i] - tx[:, 0], GY[k] - tx[:, 1]))) 
             pq = []; g = {}; came = {}
             for s in start: g[s] = 0.0; heapq.heappush(pq, (hf(s[1], s[2]), 0.0, s))
@@ -171,7 +180,7 @@ class Board:
         self._tag = None
         masks = self.copper_masks(nid, self.tracks, self.vias, tag=None, pad_subset={j})
         dist_m = [ndimage.distance_transform_edt(~m) * H for m in masks]
-        ok = (dist_m[0] >= CLR + width / 2 + 0.03 + extra_margin) & ~self._keep_top
+        ok = (dist_m[0] >= CLR + width / 2 + 0.08 + extra_margin) & ~self._keep_top
         i_ = b.ref_index(ref); bx = (b.fp_cx0[i_], b.fp_cy0[i_], b.fp_cx1[i_], b.fp_cy1[i_])
         # distance from the courtyard box
         dx = np.maximum(np.maximum(bx[0] - GX[:, None], 0), GX[:, None] - bx[2]); dy = np.maximum(np.maximum(bx[1] - GY[None, :], 0), GY[None, :] - bx[3])
