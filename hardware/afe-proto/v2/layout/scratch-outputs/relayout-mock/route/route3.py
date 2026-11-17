@@ -791,6 +791,7 @@ def route(board):
     def _key(n):
         nm = job.names[n].lstrip('/')
         hz = nm in HIZ | {'CH1_OUT', 'CH2_OUT'}
+        if _mode == 'powerlast': return (nm not in _first, not hz, nm in POWER, job.span(n), nm)
         if _mode == 'long': return (nm not in _first, not hz, -job.span(n), nm)
         return (nm not in _first, not hz, nm not in POWER, job.span(n), nm)
     nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1), key=_key)
