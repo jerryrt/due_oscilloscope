@@ -306,23 +306,22 @@ anchor_note.update({r: 'bnc vertical, left margin of its box (AFE-1 offsets)' fo
 
 for r in anchors:
     done = None; how = None
-    for mode in ('strict', 'relaxed_in_clean', 'relaxed_clean', 'relaxed_in', 'relaxed_bare'):
-        for kind in ORDER:
-            for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
-                if mode == 'strict': okp = strict_static(r, kind, x, y)
-                else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
-                if okp and mode in ('strict', 'relaxed_in_clean', 'relaxed_clean') and not own_nearer(r, lbox(r, x, y, ang_of(kind))): okp = False
-                if not okp: continue
-                c = make(r, kind, x, y, mode != 'strict')
-                others = list(P.values()) + list(fixed.values())
-                if mode == 'strict':
-                    good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))
-                else:                                                          # (c): the nearest other label is farther than the part itself
-                    d_own = lgap(sbox(r, x, y, ang_of(kind)), cour[r])
-                    good = all(lgap(c.lb, oc.lb) >= 0.3 - 1e-9 and lgap(c.lb, oc.lb) > d_own for oc in others)
-                    if good and mode in ('relaxed_in_clean', 'relaxed_clean'): good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))      # the two-way test first; the later modes drop it
-                if good: done = c; how = mode; break
-            if done: break
+    kind_sets = [['below'], ORDER] if r == 'J605' else [ORDER]            # J605 (owner): its label at the SOUTH end of the header (low Due y), below its last pin row, first
+    for mode, kind in [(m_, k_) for KS_ in kind_sets for m_ in (('strict', 'relaxed_in_clean', 'relaxed_clean') if (r == 'J605' and KS_ == ['below']) else ('strict', 'relaxed_in_clean', 'relaxed_clean', 'relaxed_in', 'relaxed_bare')) for k_ in KS_]:      # the south place only with the two-way test
+        for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
+            if mode == 'strict': okp = strict_static(r, kind, x, y)
+            else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
+            if okp and mode in ('strict', 'relaxed_in_clean', 'relaxed_clean') and not own_nearer(r, lbox(r, x, y, ang_of(kind))): okp = False
+            if not okp: continue
+            c = make(r, kind, x, y, mode != 'strict')
+            others = list(P.values()) + list(fixed.values())
+            if mode == 'strict':
+                good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))
+            else:                                                          # (c): the nearest other label is farther than the part itself
+                d_own = lgap(sbox(r, x, y, ang_of(kind)), cour[r])
+                good = all(lgap(c.lb, oc.lb) >= 0.3 - 1e-9 and lgap(c.lb, oc.lb) > d_own for oc in others)
+                if good and mode in ('relaxed_in_clean', 'relaxed_clean'): good = all(pair_ok(r, c, o, oc) for o, oc in list(P.items()) + list(fixed.items()))      # the two-way test first; the later modes drop it
+            if good: done = c; how = mode; break
         if done: break
     if done: P[r] = done; anchor_note[r] = how + ' ' + done.kind
     else: anchor_note[r] = None
