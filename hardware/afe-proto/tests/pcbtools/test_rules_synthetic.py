@@ -489,7 +489,7 @@ def test_lr11():
 # ----------------------------------------------------------------------------- LR-2 (the flow rule, small geometry)
 C2 = cfg(CHANNELS=(dict(name='CH1', bnc=('J101', '1'), prot='R101', rnp='R107', opamp='U101', riso='R108', out_pin=('U101', '7'),
                         adc_pad=('J602', '7'), out_nets=('/A1', '/CH1_OUT'), hiz_nets=('/CH1_N', '/CH1_M1', '/CH1_M2', '/CH1_M3', '/CH1_NP')),))
-def lr2_board(x_r1=90.0, outl_extra=0.0, gen=(20, 20), pad2_y=40.0):
+def lr2_board(x_r1=90.0, outl_extra=0.0, gen=(20, 20), pad2_y=40.0, extra_hiz=()):
     s = Synth('/A1', '/A0', '/CH1_OUT', '/CH2_OUT', '/CH2_RISO', '/CH1_N', '/CH1_NP', '/CH1_IN', '/CH2_N', '/CH2_NP', '/CH2_IN', '/CH1_M1')
     for ch, base, bnc, adc, y in ((1, 100, 'J101', '7', 40.0), (2, 200, 'J201', '8', 20.0)):
         s.part(bnc, 102, y).p(bnc, '1', 102, y)
@@ -501,6 +501,8 @@ def lr2_board(x_r1=90.0, outl_extra=0.0, gen=(20, 20), pad2_y=40.0):
         s.part(r, x, 45, box=(x - 1, 44, x + 1, 46))
     s.p('U101', '1', 60, 30, '/CH1_N').p('U101', '2', 60, pad2_y, '/CH2_N')
     s.s('/A1', 'F', 0, 0, 10 + outl_extra, 0).s('/CH1_M1', 'F', 0, 0, 2, 0)
+    for k, n in enumerate(extra_hiz):                                  # more divider-side nets, each n mm long
+        s.s(('/CH1_N', '/CH1_NP')[k], 'F', 0, 5 + k, n, 5 + k)
     return s.build()
 
 
@@ -510,7 +512,11 @@ def test_lr2_flow_generator_and_separation():
     assert 'x does not fall' not in r.detail
     # channel 1 divider side: 2 mm of CH1_M1; the output (A1) run 10 mm is longer: no complaint
     assert 'not longer' not in r.detail
-    assert R.lr2(lr2_board(outl_extra=-9.0), c).detail.startswith('CH1: output run 1.0 mm is not longer than the divider side 2.0 mm')
+    assert R.lr2(lr2_board(outl_extra=-9.0), c).detail.startswith("CH1: output run 1.0 mm is not longer than the divider side's longest net 2.0 mm")
+    # several short divider nets summing past the output run are no long run on the divider side (LR-2's long run);
+    # one divider net longer than the output run is
+    assert 'not longer' not in R.lr2(lr2_board(extra_hiz=(4.0, 5.0)), c).detail          # 2 + 4 + 5 = 11 > 10, longest 5
+    assert "divider side's longest net 11.0 mm" in R.lr2(lr2_board(extra_hiz=(11.0,)), c).detail
     r = R.lr2(lr2_board(x_r1=60.0), c)
     assert r.detail.startswith('CH1: x does not fall BNC > R1 > Rnp > U101 > Riso > ADC pad: [102.0, 60.0, 80.0, 75.0, 70.0, 60.0]')
     assert r.figures['generator_to_J101_mm'] == pytest.approx(np.hypot(82, 20.0 - 40.0))
@@ -537,7 +543,7 @@ def test_lr2_boundaries():
     assert R.lr2(lr2_board(pad2_y=35.0), c).figures['divider_gap_mm'] == 5.0 and 'apart' not in detail(pad2_y=35.0)
     assert "divider pads only 4.9 mm apart" in detail(pad2_y=34.9)
     # the output run must be strictly longer than the divider side: equal fails
-    assert 'not longer than the divider side 2.0 mm' in detail(outl_extra=-8.0) and 'not longer' not in detail(outl_extra=-7.9)
+    assert "not longer than the divider side's longest net 2.0 mm" in detail(outl_extra=-8.0) and 'not longer' not in detail(outl_extra=-7.9)
     # x must strictly fall along the chain: R1 at the same x as Rnp fails
     assert 'x does not fall' in detail(x_r1=80.0) and 'x does not fall' not in detail(x_r1=80.1)
 
