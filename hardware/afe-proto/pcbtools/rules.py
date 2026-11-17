@@ -741,6 +741,10 @@ def lr8(b, cfg):
             bad.append(f'VREF: source pads {gone} are not on the net')
         else:
             ok = _reached(b, cfg, cfg.VREF_NET, cut)
+            named = {tuple(k) for g in cfg.VREF_BRANCHES for k in g}
+            stale = sorted(k for k in named if k not in onnet)            # a branch pad the config names but the net lacks
+            if stale:
+                bad.append(f'VREF: branch pads {_names(stale)} are not on the net (a stale VREF_BRANCHES)')
             for i, g in enumerate(cfg.VREF_BRANCHES):
                 ks = [tuple(k) for k in g if tuple(k) in onnet]
                 lost = [k for k in ks if not ok[k]]

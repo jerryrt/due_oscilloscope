@@ -401,6 +401,15 @@ def test_lr8_branches():
     r = R.lr8(board(True), c)
     assert not r.ok and r.detail == "VREF: branches [0, 1] share copper (['R1', 'R2'])"
 
+    # a branch pad the net lacks is a stale config, not a branch to skip in silence
+    def board2(r2_net='/VREF'):
+        s = Synth('/VREF', '/X').part('U1', 0, 0).p('U1', '1', 0, 0, '/VREF').part('R1', 10, 0).p('R1', '1', 10, 0, '/VREF')
+        s.part('R2', 0, 10).p('R2', '1', 0, 10, r2_net).s('/VREF', 'F', 0.2, 0, 10, 0).s('/VREF', 'F', 0, 0.2, 0, 10)
+        return s.build()
+    assert R.lr8(board2(), c).ok
+    r = R.lr8(board2('/X'), c)
+    assert not r.ok and 'VREF: branch pads R2.1 are not on the net' in r.detail, r.detail
+
 
 # ----------------------------------------------------------------------------- LR-7
 def lr7_board(dac0=12.0, shells=3, r302=(0, 0)):
