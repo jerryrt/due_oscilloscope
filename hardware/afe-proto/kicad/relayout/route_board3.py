@@ -57,7 +57,8 @@ short = sorted([k for k in plain if k not in POWERS and span(tasks[k][0]) <= 12.
 long_ = sorted([k for k in plain if k not in short], key=lambda k: (k in POWERS, span(tasks[k][0])))
 base_order = critical + short + vref + rails + long_
 PRE = [('/VNEG', 'U401', '6', ('C410', '1'), 'hub'), ('/VNEG', 'C409', '1', ('C410', '1'), 'hub'), ('/+3V3A', 'C407', '1', ('C408', '1'), 'hub'),
-       ('/SNS_BI', 'D501', '3', None, None)]
+       ('/SNS_BI', 'D501', '3', None, None), ('/+3V3A', 'U401', '11', ('C408', '1'), 'hub'), ('/AREF', 'J606', '8', ('R510', '2'), None),
+       ('/VREF', 'R512', '2', ('U501', '2'), 'vb3')]
 G0 = (R.H, R.X0, R.Y0, R.X1, R.Y1, R.NX, R.NY, R.GX, R.GY)
 def fine_window(cx, cy, r, hs=0.05):
     R.H = hs; R.X0 = cx - r; R.Y0 = cy - r; R.X1 = cx + r; R.Y1 = cy + r

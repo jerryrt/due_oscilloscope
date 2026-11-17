@@ -13,4 +13,6 @@ R305,51k 1%,C23196,Rbin: DAC0 series resistor and the divider's upper arm,1
 R306,100 1% 1206,C17901,"series 50 ohm (AW-4), part 2",1
 R307,100 1%,C22775,"offset filter, series 100 ohm: hides the AWG current from the REF output impedance (SC-9)",1
 R308,51k 1%,C23196,"Rbpl, part 1 (51k + 75k = 126k to GND)",1
+R309,0R 1%,C21189,"wall bridge over A1 (AWG_BNC sense tap, west-bound), part 1 of 2",1
+R310,0R 1%,C21189,"wall bridge over A0 (AWG_BNC sense tap, west-bound), part 2 of 2",1
 U301,TPH2502-SR,C118223,"half B the gain stage (pins 5-7: +IN, -IN, OUT); half A the spare: +IN to GND, follower (V2-2). At 270 degrees the stage's pins face the DAC0 pin and its OUT the BNC",1

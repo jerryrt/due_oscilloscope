@@ -38,6 +38,11 @@ R511,4.7k 1%,C23162,"I2C pull-up, SCL1",1
 R512,1k 1%,C21190,Rd: the default tie of B to VREF (wire off),1
 R513,3.9k 1%,C23018,Rs: T0 to AIN2,1
 R514,13k 1%,C22797,Rm: B to AIN3 (source impedance matched to AIN2),1
+R515,0R 1%,C21189,"wall bridge over A1 (the CH2 leg of VREF), part 1 of 2",1
+R516,0R 1%,C21189,"wall bridge over A0 (the CH2 leg of VREF), part 2 of 2",1
+R517,0R 1%,C21189,"bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)",1
+R518,0R 1%,C21189,bridge over a VREF leg: SDA to the ADS,1
+R519,0R 1%,C21189,bridge over a VREF leg: SCL to the ADS,1
 U401,LM27762DSSR,C473398,"EN+ / EN- from VIN; PGOOD unused, to GND (SNVSAF7C table 4-1)",1
 U501,REF3030EAIDBZR,C54120492,drives the ladder and REFP0 directly,1
 U502,ADS1115IDGSR,C37593,"ADDR to GND (0x48); AIN0 VREF (a check), AIN1 TAP3, AIN2 / AIN3 the sense tap T0 and the bottom end B read as a differential pair; RDY unused",1
