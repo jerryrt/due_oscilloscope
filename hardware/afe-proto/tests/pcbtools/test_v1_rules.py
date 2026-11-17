@@ -129,7 +129,7 @@ def test_a_mutant_is_not_prepared_twice(board):
     """_a preps before the mutation and the wrapper must not prep the mutant again (which would undo, e.g., the silk arm)"""
     name, rule, arm = next(a for a in v1_arms.ARMS if a[0] == 'LR-11 designator under 0.8 mm / not on silk')
     m = arm(board, v1)
-    assert 'R101: designator not on silk' in rule(m, v1).detail
+    assert 'U101: designator not on silk' in rule(m, v1).detail
 
 
 # ---------------------------------------------------------------------------------------------------- the routed board

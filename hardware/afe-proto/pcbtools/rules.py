@@ -953,11 +953,20 @@ def lr11(b, cfg):
     refrow = {int(f): i for i, f in enumerate(b.r_fp)}
     ndes = 0
     nwaived = 0
-    for i, r in enumerate(refs):
+    noff = 0
+    required = getattr(cfg, 'SILK_REQUIRED_PREFIXES', None)   # D30 (owner, 2026-11-17): only these must carry a silk designator;
+    for i, r in enumerate(refs):                              # any other part may move its designator to F.Fab, found through the ibom
         ndes += 1
         k = refrow.get(i)
-        if k is None or not b.r_on_silk[k] or b.r_h[k] < cfg.DESIGNATOR_MIN_H:
-            bad.append(f'{r}: designator not on silk at 0.8 mm or more')
+        on = k is not None and b.r_on_silk[k] and b.r_h[k] >= cfg.DESIGNATOR_MIN_H
+        if on:
+            continue
+        anchor = required is None or r.rstrip('0123456789') in required
+        if not anchor and k is not None and int(b.r_layer[k]) == 2:      # 2: boardio.R_LAYERS['F.Fab']
+            noff += 1
+            continue
+        bad.append(f'{r}: designator not on silk at 0.8 mm or more'
+                   + ('' if anchor else ', and not on F.Fab either'))
     for r, n in cfg.TP_NETS.items():
         if (r, cfg.TP_PIN) not in pt.lookup or pad_net(b, r, cfg.TP_PIN) != n:
             bad.append(f'{r}: missing or not on {n}')
@@ -1005,6 +1014,8 @@ def lr11(b, cfg):
         if w not in names:
             bad.append(f'silk word {w!r} missing')
     note = f', {nwaived} designator pairs under the gap on their recorded floors' if nwaived else ''
+    if noff:
+        note += f', {noff} passive designators on F.Fab (found through the ibom)'
     return Result(not bad, '; '.join(bad[:8]) or f'{len(cfg.OUTLINE)} outlines hold exactly their parts, {ndes} designators, 8 test points{note}' + (f', {npin} pin labels{pinsize}' if npin else '') + nid,
                   dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad)), waived_pairs=float(nwaived)))
 

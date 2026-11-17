@@ -304,9 +304,9 @@ def mut11_bridge(b, cfg):
     return M.move_footprint(b, 'R515', x=30.0, y=40.0)
 
 
-def mut11_silk(b, cfg):
+def mut11_silk(b, cfg):                                 # an IC: D30 (1c) lets a passive's designator leave the silk, never an IC's
     r_h, on = b.r_h.copy(), b.r_on_silk.copy()
-    k = int(np.flatnonzero(b.r_fp == b.ref_index('R101'))[0])
+    k = int(np.flatnonzero(b.r_fp == b.ref_index('U101'))[0])
     r_h[k], on[k] = 0.5, False
     return b.replace(r_h=r_h, r_on_silk=on)
 
@@ -376,7 +376,7 @@ ARMS = [
     _a('LR-9 SDA1 through U101', R.lr9, 'through U101', mut9_ana),
     _a('LR-11 part out of its fence', R.lr11, "'R201'", mut11_out, prep_silk),
     _a('LR-11 bridge away from its floorplan point', R.lr11, "'R515'", mut11_bridge, prep_silk),
-    _a('LR-11 designator under 0.8 mm / not on silk', R.lr11, 'R101: designator', mut11_silk, prep_silk),
+    _a('LR-11 designator under 0.8 mm / not on silk', R.lr11, 'U101: designator', mut11_silk, prep_silk),
     _a('LR-11 missing test point (AWG_OUT)', R.lr11, 'TP301', mut11_tp, prep_silk),
     _a('LR-11 wrong-numbered designator', R.lr11, 'R399', mut11_num, prep_silk),
     _a('LR-11 block without a test point', R.lr11, 'REFCAL has no test point', mut11_noblock, prep_silk),
