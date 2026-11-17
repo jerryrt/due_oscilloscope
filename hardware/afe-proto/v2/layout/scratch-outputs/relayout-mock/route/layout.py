@@ -1,6 +1,6 @@
 import os
 _ns = {}
-exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'hand', 'routes_pre.py')).read(), _ns)
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'hand', os.environ.get('PREFILE', 'routes_pre2.py'))).read(), _ns)
 PREROUTE = _ns['ROUTES']
 PREEND = []
 PREVIA = []
