@@ -62,6 +62,10 @@ for f in pb.GetFootprints():                                     # the F.Fab out
     body[r] = (mm(bx.GetX()) - 50.0, 150.0 - mm(bx.GetBottom()), mm(bx.GetRight()) - 50.0, 150.0 - mm(bx.GetY())) if n else cour.get(r)
 pads = [(x0, y0, x1, y1) for x0, y0, x1, y1 in zip(b.p_bx0, b.p_by0, b.p_bx1, b.p_by1)]
 owner = [refs[int(f)] for f in b.p_fp]
+solid_items = collections.defaultdict(list)                       # a part's solid: its body outline box (F.Fab) and each of its pad boxes
+for p_, o_ in zip(pads, owner): solid_items[o_].append(p_)
+for r_, bd_ in body.items():
+    if bd_ is not None: solid_items[r_].append(bd_)
 vias = [(x - d / 2 - S.VIA_CLEAR, y - d / 2 - S.VIA_CLEAR, x + d / 2 + S.VIA_CLEAR, y + d / 2 + S.VIA_CLEAR) for x, y, d in zip(b.v_x, b.v_y, b.v_drill)]
 LEFT_JUSTIFIED = {m_.group(1) for m_ in re.finditer(r'\(gr_text "([^"]+)"(?:(?!\n\t\)).)*?\(justify left\)', txt, re.S)}       # a left-justified text starts at its position
 texts = [(lambda L, xc: (xc - L / 2, y - L / 2, xc + L / 2, y + L / 2))(max(len(t.decode() if isinstance(t, bytes) else t) * 0.95 * h, h), x + (max(len(t.decode() if isinstance(t, bytes) else t) * 0.95 * h, h) / 2 if (t.decode() if isinstance(t, bytes) else t) in LEFT_JUSTIFIED else 0.0)) for t, x, y, h in zip(b.t_text, b.t_x, b.t_y, b.t_h)]   # pin labels may be turned: a square of the longer side
@@ -121,6 +125,10 @@ def slide_cands(r, kind):
 
 
 def in_rects(p, rs): return any(x0 <= p[0] <= x1 and y0 <= p[1] <= y1 for x0, y0, x1, y1 in rs)
+
+
+def dsolid(r, box):
+    return min(lgap(box, it) for it in solid_items[r]) if solid_items.get(r) else 9e9
 
 
 def lgap(a, c):
@@ -187,7 +195,7 @@ class Cand:
 
 def make(r, kind, x, y, relaxed=False):
     ang = ang_of(kind); lb_ = lbox(r, x, y, ang)
-    return Cand(kind, x, y, lb_, frozenset(o for o, c in cour.items() if o != r and S._places(sbox(r, x, y, ang), c)), ORDER.index(kind), relaxed, lgap(lb_, cour[r]) if r in cour else 0.0)
+    return Cand(kind, x, y, lb_, frozenset(o for o, c in cour.items() if o != r and S._places(sbox(r, x, y, ang), c)), ORDER.index(kind), relaxed, dsolid(r, lb_) if r in cour else 0.0)
 
 
 PASSIVE = re.compile(r'(?:R|C|BR|L|FB)(\d)\d\d$')
@@ -208,11 +216,30 @@ def lab_clash(L, B):
     return B[0] - mx < L[2] and L[0] < B[2] + mx and B[1] - 0.2 < L[3] and L[1] < B[3] + 0.2
 
 
+def kind_of(p): return 'TP' if p.startswith('TP') else (p[0] if p[0] in 'UJ' else 'P')
+def part_of(n): return n[4:] if n.startswith('fun:') else n
+
+
+def own_nearer(r, lb):
+    """FROM THE LABEL (owner's two-way test, margin 0.15 plus 0.01 for the text's rounding): its own part, body and pads, is nearer than any other part; an anchor compares only against parts of its own kind"""
+    d_own = dsolid(r, lb); kr = kind_of(r)
+    for q in solid_items:
+        if q == r or (kr != 'P' and kind_of(q) != kr): continue
+        if d_own + 0.16 > dsolid(q, lb): return False
+    return True
+
+
 def pair_ok(r, c, o, oc, gap=None):
-    """no clash, and no stacking: each label's own part is nearer than the other label, by 0.15 mm (the owner's "reads without doubt" test)"""
+    """AFE-1's spacing (0.6 mm on a shared baseline, 0.2 mm otherwise) and the owner's two-way nearest test, margin 0.15 mm. From the label (its own part nearer than any other part) is
+    the static body test. From the PART: its own label is nearer than any other label, measured to body and pads. An anchor compares only against labels of its own kind; a passive
+    against all. A BNC's designator and function text are one label"""
+    pr, po = part_of(r), part_of(o)
+    if pr == po: return True
     if lab_clash(c.lb, oc.lb): return False
-    d = lgap(c.lb, oc.lb)
-    return d > c.gown + 0.15 and d > oc.gown + 0.15
+    kr, ko = kind_of(pr), kind_of(po)
+    if (kr == 'P' or kr == ko) and c.gown + 0.16 > dsolid(pr, oc.lb): return False
+    if (ko == 'P' or ko == kr) and oc.gown + 0.16 > dsolid(po, c.lb): return False
+    return True
 
 
 def is_mh(r): return re.fullmatch(r'MH\d+', r) is not None
@@ -232,6 +259,7 @@ for r in anchors:
             for x, y in (cands(r, kind) if mode == 'strict' else slide_cands(r, kind)):
                 if mode == 'strict': okp = strict_static(r, kind, x, y)
                 else: okp = relaxed_static(r, kind, x, y, need_inside=('_in' in mode), clean=('clean' in mode))
+                if okp and mode in ('strict', 'relaxed_in_clean', 'relaxed_clean') and not own_nearer(r, lbox(r, x, y, ang_of(kind))): okp = False
                 if not okp: continue
                 c = make(r, kind, x, y, mode != 'strict')
                 others = list(P.values()) + list(fixed.values())
@@ -304,7 +332,7 @@ LAB_GAP = 0.2
 def bnc_ok(dx, dy, fx):
     for r, lab in BNC_FUN.items():
         ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
-        db = sbox(r, ox + dx, oy + dy); fb = S.text_box(lab, ox + fx, oy + dy, 1.0, H, 0.0)
+        db = sbox(r, ox + dx, oy + dy); fb = S.text_box(lab, ox + fx + len(lab) * S.CHAR_ADV / 2, oy + dy, 1.0, H, 0.0)
         for bx in (db, fb):
             if bx[3] > bods[r][1] - 0.05: return False                                       # below its own body
             if not all(inside_board(px, py) for px, py in ((bx[0] - 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[1] - 0.2), (bx[2] + 0.2, bx[3] + 0.2), (bx[0] - 0.2, bx[3] + 0.2))): return False
@@ -322,7 +350,7 @@ def bnc_ok(dx, dy, fx):
 best_b = None
 for dy in [round(-10.0 + 0.01 * i, 2) for i in range(0, 401)]:
     for dx in [round(-1.0 + 0.1 * i, 1) for i in range(0, 150)]:
-        fx = dx + len('J000') * S.CHAR_ADV / 2 + 0.5 + len('AWG OUT') * S.CHAR_ADV / 2
+        fx = dx + len('J000') * S.CHAR_ADV / 2 + 0.5                                  # the function label's LEFT edge, one offset in every frame
         if bnc_ok(dx, dy, fx):
             d_own = max(lgap(sbox(r, float(b.fp_x[fi[r]]) + dx, float(b.fp_y[fi[r]]) + dy), bods[r]) for r in BNC)
             if best_b is None or (d_own, abs(dx)) < best_b[0]: best_b = ((d_own, abs(dx)), dx, dy, fx)
@@ -331,9 +359,10 @@ if best_b:
     bnc_info['found'] = (dx, dy, fx)
     for r, lab in BNC_FUN.items():
         ox, oy = float(b.fp_x[fi[r]]), float(b.fp_y[fi[r]])
-        P[r] = Cand('bnc', ox + dx, oy + dy, lbox(r, ox + dx, oy + dy), frozenset(), 0)
-        fixed['fun:' + r] = Cand('bnc', ox + fx, oy + dy, lbox(lab, ox + fx, oy + dy), frozenset(), 0)
-        bnc_info.setdefault('function_at', {})[r] = (round(ox + fx, 3), round(oy + dy, 3))
+        P[r] = Cand('bnc', ox + dx, oy + dy, lbox(r, ox + dx, oy + dy), frozenset(), 0, False, dsolid(r, lbox(r, ox + dx, oy + dy)))
+        fcx = ox + fx + len(lab) * S.CHAR_ADV / 2
+        fixed['fun:' + r] = Cand('bnc', fcx, oy + dy, lbox(lab, fcx, oy + dy), frozenset(), 0, False, P[r].gown)
+        bnc_info.setdefault('function_at', {})[r] = (round(ox + fx, 3), round(oy + dy, 3))                  # the left edge
     anchor_note.update({r: 'bnc line below its body' for r in BNC})
 else:
     for r in BNC: anchor_note[r] = None
@@ -385,6 +414,7 @@ def passive_fails(r, kind, x, y, stop=2):
     if len(f) < stop and on_silk(t, silk, 0.15): f.append('silk line or outline')
     if len(f) < stop and any(lgap(L, tx) < 0.4 for tx in texts): f.append('board text / pin label')
     if len(f) < stop and not inside_blk(t, r): f.append('outside own block outline')
+    if len(f) < stop and not f and not own_nearer(r, L): f.append('own part (body and pads) not nearer than another part by 0.15 mm')
     return f
 
 
@@ -455,8 +485,9 @@ if bnc_info['found']:
     for r, lab in BNC_FUN.items():
         fx_, fy_ = bnc_info['function_at'][r]
         g = re.search(r'\(gr_text "%s"\s+\(at ([\-\d.]+) ([\-\d.]+)(?: ([\-\d.]+))?\)' % re.escape(lab), t)
-        gtxt = t[g.start():g.start() + 600].split('\n\t)')[0]
-        fxs_ = fx_ - len(lab) * S.CHAR_ADV / 2 if '(justify left)' in gtxt else fx_            # a left-justified text starts at its position
-        t = t[:g.start(1)] + '%.3f %.3f 0' % (fxs_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
+        t = t[:g.start(1)] + '%.3f %.3f 0' % (fx_ + 50.0, 150.0 - fy_) + t[g.end(0) - 1:]
+        g2 = re.search(r'\(gr_text "%s"(?:(?!\n\t\)).)*?\(effects\s+\(font\s+\(size [\d.]+ [\d.]+\)\s+\(thickness [\d.]+\)\s+\)' % re.escape(lab), t, re.S)
+        blk_ = t[g2.start():t.index('\n\t)', g2.start())]
+        if '(justify left)' not in blk_: t = t[:g2.end()] + '\n\t\t\t(justify left)' + t[g2.end():]                    # all three function labels left-justified
 open(out, 'w').write(t)
 print('wrote', out)

@@ -19,10 +19,10 @@
    "strict"
   ],
   "J603": [
-   "west90",
-   71.315,
-   2.3,
-   "strict"
+   "above",
+   81.3,
+   5.4,
+   "relaxed"
   ],
   "J604": [
    "above",
@@ -79,9 +79,9 @@
    "strict"
   ],
   "TP403": [
-   "above",
-   26.998746,
-   24.7,
+   "west90",
+   25.172494,
+   22.6,
    "strict"
   ],
   "TP404": [
@@ -144,10 +144,10 @@
    0.02000000000000135,
    "strict"
   ],
-  "C409": [
+  "BR401": [
    "east0",
-   38.324999999999996,
-   14.55,
+   38.949999999999996,
+   7.800000000000001,
    "strict"
   ],
   "R207": [
@@ -168,16 +168,10 @@
    41.91,
    "strict"
   ],
-  "BR508": [
-   "east0",
-   61.72,
-   14.9,
-   "strict"
-  ],
-  "BR401": [
-   "above",
-   35.55,
-   9.175,
+  "C407": [
+   "below",
+   28.05,
+   8.075,
    "strict"
   ],
   "R301": [
@@ -198,28 +192,10 @@
    12.2,
    "strict"
   ],
-  "C407": [
+  "R509": [
    "below",
-   28.25,
-   8.075,
-   "strict"
-  ],
-  "R304": [
-   "west0",
-   78.45,
-   5.489999999999999,
-   "strict"
-  ],
-  "BR503": [
-   "west90",
-   63.665,
-   23.9,
-   "strict"
-  ],
-  "R514": [
-   "west0",
-   48.675000000000004,
-   19.9,
+   61.525,
+   15.274999000000001,
    "strict"
   ],
   "C104": [
@@ -228,16 +204,22 @@
    35.125,
    "strict"
   ],
-  "C103": [
-   "east0",
-   87.95000000000002,
-   39.1,
+  "R308": [
+   "above",
+   74.5,
+   15.499999999999998,
+   "strict"
+  ],
+  "BR503": [
+   "west90",
+   63.665,
+   23.9,
    "strict"
   ],
   "C306": [
    "east0",
    89.57500000000002,
-   5.375001,
+   5.475001000000001,
    "strict"
   ],
   "R309": [
@@ -252,46 +234,22 @@
    17.55,
    "strict"
   ],
+  "C103": [
+   "east0",
+   87.95000000000002,
+   39.1,
+   "strict"
+  ],
   "D101": [
    "above",
-   69.6775,
+   69.77749999999999,
    35.495,
    "strict"
   ],
-  "R108": [
-   "west90",
-   80.689999,
-   38.575,
-   "strict"
-  ],
-  "C405": [
-   "above",
-   34.85,
-   20.345,
-   "strict"
-  ],
-  "C303": [
-   "west0",
-   74.32499999999999,
-   9.350000000000001,
-   "strict"
-  ],
-  "BR507": [
-   "below",
-   48.4,
-   8.225,
-   "strict"
-  ],
-  "R506": [
-   "west0",
-   49.245000000000005,
-   6.725,
-   "strict"
-  ],
-  "C203": [
-   "above",
-   85.075,
-   28.765001,
+  "R513": [
+   "east0",
+   47.475,
+   19.425001,
    "strict"
   ],
   "C503": [
@@ -300,10 +258,34 @@
    24.275000000000002,
    "strict"
   ],
-  "R406": [
+  "C203": [
    "above",
-   38.875,
-   7.525,
+   87.375,
+   28.765001,
+   "strict"
+  ],
+  "C405": [
+   "above",
+   34.85,
+   20.345,
+   "strict"
+  ],
+  "R406": [
+   "east0",
+   40.849999999999994,
+   6.0,
+   "strict"
+  ],
+  "BR507": [
+   "below",
+   48.0,
+   8.225,
+   "strict"
+  ],
+  "R506": [
+   "west0",
+   49.245000000000005,
+   6.824999999999999,
    "strict"
   ],
   "D201": [
@@ -312,10 +294,10 @@
    32.050000000000004,
    "strict"
   ],
-  "R403": [
-   "west0",
-   28.250000000000004,
-   6.5,
+  "R401": [
+   "above",
+   30.8,
+   21.05,
    "strict"
   ],
   "R305": [
@@ -324,46 +306,40 @@
    7.525,
    "strict"
   ],
-  "R206": [
-   "above",
-   80.36500000000001,
-   23.835,
-   "strict"
-  ],
   "R402": [
    "above",
    27.525,
    18.125,
    "strict"
   ],
-  "R401": [
-   "above",
-   29.0,
-   21.3,
+  "R403": [
+   "west0",
+   28.250000000000004,
+   6.6,
    "strict"
   ],
-  "R308": [
+  "R206": [
    "above",
-   74.5,
-   15.499999999999998,
+   80.36500000000001,
+   23.835,
+   "strict"
+  ],
+  "R208": [
+   "west0",
+   79.38999899999999,
+   27.65,
    "strict"
   ],
   "BR101": [
    "above",
-   66.74,
+   66.83999999999999,
    37.225,
    "strict"
   ],
   "C401": [
    "above",
-   24.2,
+   24.099999999999998,
    16.315,
-   "strict"
-  ],
-  "R208": [
-   "west0",
-   79.13999899999999,
-   27.65,
    "strict"
   ],
   "C408": [
@@ -378,21 +354,21 @@
    40.35,
    "strict"
   ],
+  "C406": [
+   "above",
+   38.85,
+   19.545001,
+   "strict"
+  ],
   "R407": [
    "above",
    41.525000000000006,
    24.525,
    "strict"
   ],
-  "C406": [
-   "east0",
-   38.724999999999994,
-   17.050001,
-   "strict"
-  ],
   "R106": [
    "above",
-   81.165,
+   80.86500000000001,
    46.555,
    "strict"
   ]
@@ -403,6 +379,7 @@
   "BR502",
   "BR504",
   "BR506",
+  "BR508",
   "BR509",
   "BR511",
   "C101",
@@ -410,9 +387,11 @@
   "C201",
   "C202",
   "C301",
+  "C303",
   "C304",
   "C402",
   "C403",
+  "C409",
   "C501",
   "C502",
   "R101",
@@ -420,6 +399,7 @@
   "R103",
   "R104",
   "R105",
+  "R108",
   "R201",
   "R202",
   "R203",
@@ -427,6 +407,7 @@
   "R205",
   "R302",
   "R303",
+  "R304",
   "R306",
   "R307",
   "R404",
@@ -438,31 +419,27 @@
   "R505",
   "R507",
   "R508",
-  "R509",
   "R510",
   "R511",
-  "R513"
+  "R514"
  ],
  "beside": [
-  "BR508",
+  "BR401",
   "C103",
   "C104",
-  "C303",
   "C306",
   "C404",
-  "C406",
   "C408",
-  "C409",
   "C503",
   "D201",
   "J601",
   "R107",
   "R207",
   "R208",
-  "R304",
   "R403",
+  "R406",
   "R506",
-  "R514",
+  "R513",
   "TP201",
   "TP404",
   "U301",
@@ -475,7 +452,7 @@
   "J501": "relaxed_in_clean above",
   "J601": "strict west0",
   "J602": "strict above",
-  "J603": "strict west90",
+  "J603": "relaxed_in_clean above",
   "J604": "strict above",
   "J605": "strict above",
   "J606": "strict above",
@@ -485,7 +462,7 @@
   "TP301": "strict east90",
   "TP401": "strict below",
   "TP402": "strict above",
-  "TP403": "strict above",
+  "TP403": "strict west90",
   "TP404": "strict east0",
   "TP501": "strict west90",
   "U101": "relaxed_in_clean above",
@@ -502,7 +479,7 @@
   "found": [
    0.0,
    -8.87,
-   5.449999999999999
+   2.3
   ],
   "gaps": {
    "J301-J201 body to body": 4.13,
@@ -540,15 +517,15 @@
   },
   "function_at": {
    "J101": [
-    107.45,
+    104.3,
     36.73
    ],
    "J201": [
-    107.45,
+    104.3,
     18.95
    ],
    "J301": [
-    107.45,
+    104.3,
     0.02
    ]
   }
@@ -559,6 +536,7 @@
    "pad or via": 4202,
    "on another part body": 188576,
    "own part body/pads": 50348,
+   "own part (body and pads) not nearer than another part by 0.15 mm": 1429,
    "silk line or outline": 9720,
    "outside own block outline": 2601,
    "board text / pin label": 1678
@@ -605,9 +583,7 @@
    "R510"
   ],
   "dropped with static places but lost to label spacing or stacking": [
-   "R509",
-   "R511",
-   "R513"
+   "R514"
   ],
   "dropped with no static place, by the single test whose removal alone would give a place": {
    "own body not nearer by 0.25 mm": 31,
@@ -617,21 +593,22 @@
    "pad or via": 4
   },
   "dropped passives for which that test alone is the blocker (any place)": {
-   "outside own block outline": 4,
+   "silk line or outline": 2,
    "board text / pin label": 2,
    "own body not nearer by 0.25 mm": 31,
+   "outside own block outline": 4,
    "pad or via": 4,
-   "silk line or outline": 2
+   "own part (body and pads) not nearer than another part by 0.15 mm": 0
   }
  },
  "kinds": {
-  "above": 28,
-  "west0": 14,
-  "west90": 4,
+  "above": 27,
+  "west0": 11,
   "east0": 11,
   "east90": 1,
-  "below": 5,
+  "below": 6,
+  "west90": 3,
   "bnc": 3
  },
- "iterations": 14639
+ "iterations": 20461
 }

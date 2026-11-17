@@ -1,0 +1,14 @@
+parts with a label 62 ; failing either step 2
+  FAIL J101   step1(label: own part 0.62, but J201 at 0.66) 
+  FAIL J201    step2(part: own label 0.62, other label of J101 at 0.66)
+  R305: d(part,own label) 0.45; step1 ok; step2 ok
+  BR510: d(part,own label) 0.10; step1 ok; step2 ok
+  BR507: d(part,own label) 0.45; step1 ok; step2 ok
+  R506: d(part,own label) 0.45; step1 ok; step2 ok
+  C407: d(part,own label) 0.45; step1 ok; step2 ok
+  R403: d(part,own label) 0.45; step1 ok; step2 ok
+  R301: d(part,own label) 0.45; step1 ok; step2 ok
+  C306: d(part,own label) 0.45; step1 ok; step2 ok
+  R308: d(part,own label) 0.12; step1 ok; step2 ok
+  C305: d(part,own label) 0.45; step1 ok; step2 ok
+  TP101: d(part,own label) 0.00; step1 ok; step2 ok
