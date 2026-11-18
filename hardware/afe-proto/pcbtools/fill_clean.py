@@ -320,4 +320,5 @@ if __name__ == '__main__':
     outl = [tuple(r) for rs in cfg.OUTLINE.values() for r in rs]
     skip = {'--top-width', '--bottom-width', '--clearance', '--spoke', '--gap', '--big', '--grid', '--join', '--config'}
     args = [a for k, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and not (k > 1 and sys.argv[k - 1] in skip)]
+    fills.SHELL_SKIP.update((str(e[0]), str(e[1])) for e in getattr(cfg, 'FILL_SHELL_EXCEPTIONS', ()))
     run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))

@@ -597,7 +597,7 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
     def px(x, y):
         return ((x - rp.x0) * k, (rp.y1 - y) * k)
     for n_, i in enumerate(rows):
-        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)):
+        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)) and (str(b.fp_ref[b.p_fp[i]]), str(b.p_pin[i])) not in SHELL_SKIP:
             continue                                         # a connector's own ground pins are kept in the pour: their arcs are not a defect
         m = cu.owner == n_
         C, R = cu.C[m], cu.r[m]
@@ -673,12 +673,15 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
 
 
 
+SHELL_SKIP = set()           # {(ref, pin)}: connector GND pins listed as named exceptions: fill_clean neither protects them nor exempts them from the rough test
+
+
 def pin_protect(b, r, net, prefixes, layer=0, reach=1.0):
     """a bool mask on the raster `r`: round each through-hole pad of `net` on `layer` of a part whose designator starts with one of `prefixes`, the box of the pad grown by `reach` mm"""
     m = np.zeros_like(r.mask)
     k = r.ppmm
     for h in range(len(b.p_net)):
-        if b.p_net[h] != net or b.p_smd[h] or not (b.p_layer_mask[h] & (1 << layer)) or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)):
+        if b.p_net[h] != net or b.p_smd[h] or not (b.p_layer_mask[h] & (1 << layer)) or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)) or (str(b.fp_ref[b.p_fp[h]]), str(b.p_pin[h])) in SHELL_SKIP:
             continue
         x0 = int(np.floor((b.p_bx0[h] - reach - r.x0) * k)); x1 = int(np.ceil((b.p_bx1[h] + reach - r.x0) * k))
         y0 = int(np.floor((r.y1 - b.p_by1[h] - reach) * k)); y1 = int(np.ceil((r.y1 - b.p_by0[h] + reach) * k))
