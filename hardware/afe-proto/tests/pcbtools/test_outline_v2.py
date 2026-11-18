@@ -129,7 +129,10 @@ def test_the_band_of_the_integrated_board_holds_no_copper(pcbnew_required):
     b = KB.read_board(BOARD, FRAME)
     for _, band in L.KEEPOUTS:
         assert band_copper(b, band) == []
-    assert b.z_keepout.sum() == 3 and (b.outline[:, 1].min(), b.outline[:, 1].max()) == pytest.approx((L.BOARD_RECT[1], L.BOARD_RECT[3]), abs=1e-5)   # two bands + the unnamed 5V_F rule area
+    # the fill's own rule areas (named 'fillkeep', one per carved spot, written by pcbtools.fill_clean) are rule areas too but are not the board's keep-outs: count the others
+    names = [re.search(r'\(name "([^"]*)"', blk).group(1) if '(name "' in blk else '' for blk in re.findall(r'\n\t\(zone\n(.*?)\n\t\)(?=\n)', BOARD.read_text(), re.S) if '(keepout' in blk]
+    assert len(names) == b.z_keepout.sum() and [n for n in names if n != 'fillkeep'] != [] and len([n for n in names if n != 'fillkeep']) == 3
+    assert (b.outline[:, 1].min(), b.outline[:, 1].max()) == pytest.approx((L.BOARD_RECT[1], L.BOARD_RECT[3]), abs=1e-5)   # two bands + the unnamed 5V_F rule area
 
 
 @pcbnew_mark
