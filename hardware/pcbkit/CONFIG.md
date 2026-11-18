@@ -124,6 +124,26 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 | `FILL_ROUGH_LAYERS` | tunable | layer letters | `('F',)` | layers whose pour edge must not be a row of clearance arcs: two or more pads or vias in a row (of any net, the net's own when they stand half out of the pour) that the edge hugs; one alone may show its arc |
 | `FILL_ROUGH_TOL` | tunable | mm | `0.15` | an item hugs the edge when pour lies within the zone clearance plus this of it |
 | `FILL_ROUGH_LINK` | tunable | mm | `2.0` | hugging items closer than this are a row |
+| `TRACK_MAX_TURN` | tunable | degrees | `180.0` | a run between its two ends (pads, vias, junctions) changes its heading by this much or more, net, within any TRACK_TURN_WINDOW of its length: a hook or U-turn (a dog-leg is 90, a lane change 0) |
+| `TRACK_STAIR_MAX` | tunable | mm | `1.5` | a Z of two opposite 90 degree bends with a middle leg shorter than this, where a single 45 degree leg would fit (both legs either side at least half of it), is a stair |
+| `TRACK_KINK_OFFSET` | tunable | mm | `0.6` | a V kink or bump: bends adding up to 180 degrees in all (45 down, 90 up, 45 level) that come back to the heading they left within this lateral offset of the line they left |
+| `TRACK_TURN_WINDOW` | tunable | mm | `3.0` | the stretch of a run over which its turning is added up |
+| `TRACK_DETOUR_RATIO` | tunable | x | `1.5` | a run is no longer than this times the shortest octilinear (0/45/90) path between its two ends |
+| `TRACK_DETOUR_MIN_LEN` | tunable | mm | `1.0` | runs shorter than this are not judged for detour (a 0.3 mm run has no room to be one) |
+| `TRACK_SPUR_MIN` | tunable | mm | `0.6` | a spur that ends on the body of another track of its net (a T) is at least this long |
+| `TRACK_SPUR_CLEAR` | tunable | mm | `0.6` | and its junction is at least this far from a bend, another junction or a pad on the trunk (those read as blobs and bars) |
+| `TRACK_NET_WIDTHS` | tunable | {net: mm} | `{}` | the width rule of each net (key "*" for the rest): no segment is wider; a net with no entry and no "*" is not judged |
+| `TRACK_WIDTH_TOL` | tunable | mm | `0.001` | how far over its width rule a segment may be |
+| `FILL_SHELL_PREFIXES` | tunable | designator prefixes | `()` | the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN) |
+| `FILL_GNDPAD_VIA_GAP` | tunable | mm | `0.05` | a GND via whose annulus is within this of the pad edge is at the edge (no visible stub) |
+| `FILL_NOTCH_WIDTH` | tunable | mm | `0.0` | a bare inlet of the top pour no wider than this (the pour minimum width and the raster tolerance; 0 = not checked), that is neither a clearance ring of another net nor explained, is a notch |
+| `FILL_NOTCH_AREA` | tunable | mm2 | `0.1` | a notch piece smaller than this is a raster corner, not an inlet |
+| `FILL_GNDPAD_STUB` | tunable | mm | `0.05` | a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour) |
+| `FILL_GNDPAD_TIE` | tunable | mm | `0.6` | or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad) |
+| `FILL_GNDPAD_MIN` | tunable | fraction | `0.2` | every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them |
+| `FILL_SHELL_EXCEPTIONS` | tunable | [(ref, pin, reason)] | `[]` | named exceptions: this connector GND pin stays on the bottom plane (a reason is required); each must match exactly one shell finding, or it is a stale_exception finding and the check fails |
+| `FILL_GNDPAD_EXCEPTIONS` | tunable | [(ref, pin, reason)] | `[]` | named exceptions: this SMD GND pad is neither in the pour nor given a via at its edge (a reason is required); each must match exactly one gndpad finding or it is a stale_exception |
+| `FILL_SHELL_MIN` | tunable | fraction | `0.3` | the part of the ring from the zone clearance out to 0.6 mm further that is pour, at least, round such a pin |
 | `FILL_THERMAL_LAYERS` | tunable | layer letters | `('F',)` | zones that must use thermal reliefs on SMD GND pads |
 | `FILL_SOLID_LAYERS` | tunable | layer letters | `('B',)` | zones that must connect pads solid |
 

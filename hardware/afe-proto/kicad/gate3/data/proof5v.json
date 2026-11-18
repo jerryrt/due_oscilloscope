@@ -55,17 +55,6 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
    "net": "",
    "layers": [
@@ -121,40 +110,18 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -231,51 +198,29 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway AWG_INV",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -319,17 +264,6 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_N",
    "net": "",
    "layers": [
@@ -374,7 +308,51 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -462,62 +440,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -605,29 +528,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -671,6 +572,39 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway CH2_R1A",
    "net": "",
    "layers": [
@@ -682,29 +616,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway AWG_INV",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -748,6 +660,83 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway AWG_INV",
    "net": "",
    "layers": [
@@ -760,6 +749,28 @@
   },
   {
    "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -847,51 +858,40 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -969,6 +969,39 @@
   },
   {
    "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1034,29 +1067,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1133,105 +1144,6 @@
    "on_net": false
   },
   {
-   "name": "keepaway CH2_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "keepaway CH1_NP",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "keepaway CH1_NP",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "fillkeep",
    "net": "",
    "layers": [
@@ -1266,6 +1178,138 @@
   },
   {
    "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH1_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_N",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1353,40 +1397,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1496,29 +1507,73 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1606,6 +1661,50 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway CH1_R2A",
    "net": "",
    "layers": [
@@ -1628,17 +1727,6 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
    "net": "",
    "layers": [
@@ -1650,73 +1738,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_N",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1783,6 +1805,50 @@
   },
   {
    "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -1881,29 +1947,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_NP",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -2101,6 +2145,72 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway CH1_NP",
    "net": "",
    "layers": [
@@ -2167,40 +2277,18 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -2255,28 +2343,6 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway AWG_INV",
    "net": "",
    "layers": [
@@ -2310,40 +2376,29 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH1_N",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -2420,6 +2475,17 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway CH2_NP",
    "net": "",
    "layers": [
@@ -2431,40 +2497,7 @@
    "on_net": false
   },
   {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway CH2_R2A",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -2537,73 +2570,62 @@
    ],
    "keepout": true,
    "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "keepaway CH2_NP",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
    "vertices": 8,
-   "on_net": false
-  },
-  {
-   "name": "keepaway CH2_NP",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "keepaway CH2_NP",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "fillkeep",
-   "net": "",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": true,
-   "priority": 0,
-   "vertices": 4,
    "on_net": false
   },
   {
@@ -2663,7 +2685,7 @@
   }
  ],
  "zones_on_net": 0,
- "length_mm": 82.04122366364085,
+ "length_mm": 82.04122366364086,
  "path_u401_3": [
   {
    "item": "U401.3",
