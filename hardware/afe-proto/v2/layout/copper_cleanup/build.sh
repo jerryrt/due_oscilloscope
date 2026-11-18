@@ -16,9 +16,13 @@ python3 $W/cc_edits.py $T/3.kicad_pcb $T/4.kicad_pcb cc_fix_data > $T/4.log
 python3 $W/cc_reroute.py $T/4.kicad_pcb $T/5.kicad_pcb --kinds detour --max-legs 4 --skip-nets /GND --grid > $T/5.log
 python3 $W/cc_edits.py $T/5.kicad_pcb $T/5b.kicad_pcb cc_fix2_data > $T/5b.log
 python3 $W/cc_gndedge.py $T/5b.kicad_pcb $T/6.kicad_pcb > $T/6.log
-python3 $W/cc_keepouts.py $T/6.kicad_pcb $T/7.kicad_pcb > $T/7.log
+if [ -n "$CC_NO_POURKEEP" ]; then cp $T/6.kicad_pcb $T/7.kicad_pcb; else python3 $W/cc_keepouts.py $T/6.kicad_pcb $T/7.kicad_pcb > $T/7.log; fi          # CC_NO_POURKEEP=1 skips our own pour keep-out: the pour guard must then refuse (the proof that it is needed)
 cp $T/7.kicad_pcb $B
-(cd $A && python3 -m pcbtools.fill_clean v2/layout/integrated/afe-v2-integrated.kicad_pcb v2/layout/integrated/.fillclean.out.kicad_pcb --config v2_layout > $T/4.log)
+# the pour guard compares the fill with the pour gaps of the REFERENCE: main's board at f0845ddf (afe-v2-integrated.reference.kicad_pcb, the last accepted pour, CH1_OUT 2.078 mm), not the
+# board of record, whose stored fill is the pre-cleanup one (CH1_OUT 0.171 mm: any fill would pass), and not the pre-fill input, which carries that stale fill
+(cd $A && python3 -m pcbtools.fill_clean v2/layout/integrated/afe-v2-integrated.kicad_pcb v2/layout/integrated/.fillclean.out.kicad_pcb --config v2_layout --reference v2/layout/copper_cleanup/afe-v2-integrated.reference.kicad_pcb > $T/fc.log 2>&1) || { rc=$?; grep -i "refus" $T/fc.log; echo "fill_clean exit code $rc"; exit $rc; }
+echo "fill_clean exit code 0"
+
 mv $A/v2/layout/integrated/.fillclean.out.kicad_pcb $B
 rm -f $A/v2/layout/integrated/*.tmp.kicad_pro $A/v2/layout/integrated/.fillclean.out.kicad_pro
 python3 $W/cc_normalize.py $W/afe-v2-integrated.before.kicad_pcb $B

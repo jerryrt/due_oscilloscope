@@ -40,6 +40,11 @@ def test_the_board_of_record_is_held_by_hash():
     assert hashlib.sha256((CC / 'afe-v2-integrated.before.kicad_pcb').read_bytes()).hexdigest() == BEFORE_SHA256
 
 
+def test_the_pour_reference_is_mains_board_at_f0845ddf():
+    """the pour guard of the build compares the fill with the pour gaps of this board (CH1_OUT 2.078 mm), the last accepted pour; the board of record's own stored fill is the pre-cleanup one"""
+    assert hashlib.sha256((CC / 'afe-v2-integrated.reference.kicad_pcb').read_bytes()).hexdigest() == '5b10e901fd653d39cc5339d3dd168bb874cd7ca5fbeda18dac1ce84d61080dff'
+
+
 def test_every_hand_edit_polyline_is_on_the_angle_step():
     n = 0
     for net, pl in edit_polylines():
