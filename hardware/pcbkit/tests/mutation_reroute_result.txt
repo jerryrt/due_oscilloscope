@@ -1,0 +1,17 @@
+killed    entry_any_direction
+killed    final_leg_unconstrained
+killed    neck_start_not_cut
+killed    legs_unconstrained
+killed    neck_not_recorded
+killed    tap_not_recognised
+killed    neck_goal_not_cut
+killed    neck_width_is_track_width
+killed    chain_not_followed
+killed    own_pads_not_blocked
+killed    entry_lateral_y_ignored
+killed    no_clearance
+killed    spur_has_no_goal
+killed    no_neck_down
+killed    other_nets_pads_overlapped
+killed    end_pads_overlapped
+killed    entry_lateral_x_ignored
