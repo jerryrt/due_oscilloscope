@@ -44,6 +44,11 @@ FILL_RASTER = 40.0
 FILL_MIN_AREA = 0.02
 FILL_SHELL_PREFIXES = ('J',)                           # every connector's through-hole GND pins (BNC shells, Due headers) stay in the top pour
 FILL_GNDPAD_MIN = 0.2
+FILL_SHELL_EXCEPTIONS = [('J601', '6', "the Due header row: a 2.54 mm pitch leaves a 0.24 mm web between two pins, under the 1.0 mm minimum width of the top pour. On 1dae3dc9 the pin was in the 0.2 mm pour and the owner's 1.0 standard removed it; the pin is on the bottom plane through its hole"), ('J601', '7', "the Due header row: a 2.54 mm pitch leaves a 0.24 mm web between two pins, under the 1.0 mm minimum width of the top pour. On 1dae3dc9 the pin was in the 0.2 mm pour and the owner's 1.0 standard removed it; the pin is on the bottom plane through its hole"), ('J607', '35', "the Due header row: a 2.54 mm pitch leaves a 0.24 mm web between two pins, under the 1.0 mm minimum width of the top pour. On 1dae3dc9 the pin was in the 0.2 mm pour and the owner's 1.0 standard removed it; the pin is on the bottom plane through its hole")]
+FILL_GNDPAD_EXCEPTIONS = [
+    ('U502', '3', 'VSSOP pin 3: a via whose annulus touches the pad edge needs 0.16 mm to the corners of the pads either side (U502.2, U502.4), not the 0.2 mm; the 0.225 mm track to the via at (59.8, 16.6) is the copper that fits (measured by hand, 2x crop sent to montreal5)'),
+]
+
 FILL_ROUGH_LAYERS = ('F',)                             # no row of clearance arcs along the top pour's edge
 FILL_ROUGH_TOL = 0.15
 FILL_ROUGH_LINK = 2.0
@@ -56,6 +61,7 @@ GEOMETRY_EXCEPTIONS = [            # (rule, net, pad_or_ref, reason): each waive
     ('over_pad', 'A0', 'TP201.1', 'the same, A0 through TP201 (montreal5)'),
     ('over_pad', 'A1', 'D101.3', 'the same, A1 through D101 (montreal5)'),
     ('over_pad', 'A1', 'TP101.1', 'the same, A1 through TP101 (montreal5)'),
+    ('detour', 'VREF', (52.07, 1.39), 'the VREF branch from U501.2 to R515 runs south under the TAP1-5 row (y 3.25-7.85 verticals and the TAP pads) and back up: 37.7 mm against a 22.2 mm octilinear shortest path (1.7x); the shorter path crosses the five TAP tracks, which it may not (montreal5: a named exception, not a shorter wrong route)'),
     ('jog', 'VREF', (57.4, 14.375), 'VREF into U502.4: between the R520/R514 pads (track y 14.32-14.58) and the channel under U502 above R502.2 (y 14.18-14.32) the step is 0.39 mm, a 45 degree leg of 0.55 mm; no leg of 0.6 fits without moving a part'),
 ]
 

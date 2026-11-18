@@ -18,6 +18,7 @@ from pcbkit import board as kb, rules, geom
 from pcbtools.frame import FRAME
 
 VIA_D, VIA_DRILL = 0.6, 0.3
+EDGE_GAP = 0.05                                    # a via whose annulus is this near the pad edge is at the edge: FILL_GNDPAD_VIA_GAP's default
 MIN_CLEAR = 0.2
 
 
@@ -25,8 +26,10 @@ def failing(path, gndpad_min=0.2, radius=3.0, shells=()):
     """(pads, trouble): the SMD GND pads the pour does not touch, and the SMD GND pads within `radius` of a place where the filled pour is rough or has a dead-end finger (their ring is what makes it so)"""
     b = kb.read_board(path, {'FRAME': FRAME})
     parts, _ = rules.fill_quality_parts(b, {'GND': '/GND', 'FILL_LAYERS': ('F',), 'FILL_ROUGH_LAYERS': ('F',), 'FILL_SHELL_PREFIXES': shells, 'FILL_GNDPAD_MIN': gndpad_min})
-    out, spots = [], []
+    out, spots, shell = [], [], []
     for kind, text, x, y in parts:
+        if kind == 'shell':
+            shell.append((x, y))
         if kind == 'gndpad':
             ref, _, rest = text.partition(' pin ')
             out.append((ref, rest.split(' ')[0], x, y))
@@ -41,6 +44,7 @@ def failing(path, gndpad_min=0.2, radius=3.0, shells=()):
             key = (b.fp_ref[b.p_fp[i]], pins[i])
             if key not in have:
                 near.append((key[0], key[1], float(b.p_x[i]), float(b.p_y[i])))
+    failing.shell = shell                                      # the connector GND pins the pour does not touch (their strips are drawn by fill_clean)
     return out, near
 
 
@@ -109,6 +113,8 @@ def relocate(src, dst, pads):
             skipped.append((ref, pin, 'pad not found'))
             continue
         h = rows[0]
+        if len(b.v_x) and any(b.v_net[i] == g and math.hypot(max(b.p_bx0[h] - b.v_x[i], b.v_x[i] - b.p_bx1[h], 0), max(b.p_by0[h] - b.v_y[i], b.v_y[i] - b.p_by1[h], 0)) - b.v_dia[i] / 2 <= EDGE_GAP for i in range(len(b.v_x))):
+            continue                                                       # a via is at its edge already: nothing to move
         ch = _chain(b, g, h, None)
         if ch is None:
             skipped.append((ref, pin, 'no track run to a via of its own'))
@@ -138,3 +144,24 @@ def relocate(src, dst, pads):
         if new:
             e.add_vias('GND', [p[0] for p in new], [p[1] for p in new], VIA_D, VIA_DRILL)
     return done, skipped
+
+
+BOARD = (17.0, -4.5, 117.0, 57.84)
+
+
+def strip_rects(pins, length=3.0, half=1.0, board=BOARD):
+    """for each connector GND pin the pour does not touch (Due mm): a rectangle from just behind the pin to `length` mm towards the board interior (away from its nearest edge), 2 x `half` wide.
+    A GND strip zone of its own (a narrower minimum width than the top pour's) fills it, so the pin sits in copper the 1.0 mm rule would not allow between the pins of a 2.54 mm row."""
+    out = []
+    for x, y in pins:
+        d = {'s': y - board[1], 'n': board[3] - y, 'w': x - board[0], 'e': board[2] - x}
+        edge = min(d, key=d.get)
+        if edge == 's':
+            out.append((x - half, y - 0.6, x + half, y + length))
+        elif edge == 'n':
+            out.append((x - half, y - length, x + half, y + 0.6))
+        elif edge == 'w':
+            out.append((x - 0.6, y - half, x + length, y + half))
+        else:
+            out.append((x - length, y - half, x + 0.6, y + half))
+    return out

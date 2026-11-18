@@ -29,16 +29,14 @@ class Result:
 
 
 class PadTable:
-    """pads as the old loader saw them: dict keyed (ref, pin), the last pad of a repeated key wins, in first-seen order"""
+    """every pad of the board in file order, as (part, pin) keys that repeat where a part has several pads of one number (an exposed pad with via-in-pad squares) or unnumbered pads.
+    `lookup[(ref, pin)]` is the LAST pad of a key, which is what a single-pad question ('the pad R1.2') gets; it used to be the only one the table held, so a rule judged a partial pad"""
 
     def __init__(self, b):
         refs = [b.fp_ref[i] for i in b.p_fp]
-        last = {}
-        for row, (r, p) in enumerate(zip(refs, b.p_pin)):
-            last[(r, p)] = row
-        self.keys = list(last)
-        self.rows = np.array(list(last.values()), np.int64)
-        self.lookup = last
+        self.keys = list(zip(refs, b.p_pin))
+        self.rows = np.arange(len(refs), dtype=np.int64)
+        self.lookup = {k: row for row, k in enumerate(self.keys)}
         self.net = b.p_net[self.rows] if len(self.rows) else np.zeros(0, np.int32)
 
     def row(self, ref, pin):
@@ -159,6 +157,55 @@ GROUND_PLANE_NAMES = (
 )
 
 
+def _gnd_components(b, gnd, pad_rows, gv, tht_rows):
+    """connected-copper component ids of the given GND pads and of the GND vias/plated holes `gv`: pads, vias and top-layer GND tracks that touch (copper to copper) are one component"""
+    nv = len(gv)
+    allpads = [r for r in range(len(b.p_net)) if b.p_net[r] == gnd]
+    P = list(dict.fromkeys(list(pad_rows) + allpads))
+    nP = len(P)
+    S = np.column_stack([b.s_x0, b.s_y0, b.s_x1, b.s_y1])
+    sg = np.flatnonzero((b.s_net == gnd) & (b.s_layer == 0)) if len(b.s_x0) else np.zeros(0, np.int64)
+    n = nP + nv + len(sg)
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, c):
+        parent[find(a)] = find(c)
+    cu = geom.pad_copper(b, np.array(P, np.int64)) if nP else None
+    vr = np.concatenate([b.v_dia[b.v_net == gnd] / 2, np.array([max(b.p_sx[r], b.p_sy[r]) / 2 for r in tht_rows])]) if nv else np.zeros(0)
+    if nP and nv:                                                           # a via or plated hole overlapping a pad
+        pts = np.column_stack([gv, gv])
+        D = geom.seg_seg_dist(cu.C, pts) - cu.r[:, None]
+        M = np.full((nP, nv), np.inf)
+        np.minimum.at(M, cu.owner, D)
+        for a, c_ in zip(*np.nonzero(M - vr[None, :] <= 1e-6)):
+            union(a, nP + c_)
+    if len(sg):
+        SG = S[sg]
+        W = b.s_w[sg]
+        T = geom.seg_seg_dist(SG, SG) - (W[:, None] + W[None, :]) / 2
+        for a, c_ in zip(*np.nonzero(np.triu(T <= 1e-6, 1))):
+            union(nP + nv + a, nP + nv + c_)
+        if nP:
+            D = geom.seg_seg_dist(cu.C, SG) - cu.r[:, None] - W[None, :] / 2
+            M = np.full((nP, len(sg)), np.inf)
+            np.minimum.at(M, cu.owner, D)
+            for a, c_ in zip(*np.nonzero(M <= 1e-6)):
+                union(a, nP + nv + c_)
+        if nv:
+            pts = np.column_stack([gv, gv])
+            D = geom.seg_seg_dist(pts, SG) - vr[:, None] - W[None, :] / 2
+            for a, c_ in zip(*np.nonzero(D <= 1e-6)):
+                union(nP + a, nP + nv + c_)
+    pos = {r: i for i, r in enumerate(P)}
+    return np.array([find(pos[r]) for r in pad_rows], np.int64), np.array([find(nP + i) for i in range(nv)], np.int64)
+
+
 def ground_plane_parts(b, cfg, report=None):
     """(plane problems, via problems, figures): one plane on PLANE_LAYER, GND, filled, one piece, no other net's zone there; every SMD
     ground pad has a via of its own within GND_VIA_REACH, greedily in (ref, pin) order, each via used once"""
@@ -190,12 +237,16 @@ def ground_plane_parts(b, cfg, report=None):
     sel = [j for j in range(len(pt.keys)) if pt.net[j] == gnd and b.p_smd[pt.rows[j]]]
     sel.sort(key=lambda j: pt.keys[j])
     gv = np.column_stack([b.v_x, b.v_y])[b.v_net == gnd]
+    tht = [r for r in range(len(b.p_net)) if b.p_net[r] == gnd and not b.p_smd[r]]       # a plated hole of the same net (a thermal via inside an exposed pad) is a via of its own
+    if tht:
+        gv = np.vstack([gv.reshape(-1, 2), np.column_stack([b.p_x[tht], b.p_y[tht]])])
+    comp_pad, comp_via = _gnd_components(b, gnd, [pt.rows[j] for j in sel], gv, tht)
     used = np.zeros(len(gv), bool)
     nov = []
-    for j in sel:
+    for jj, j in enumerate(sel):
         r = pt.rows[j]
         d = np.hypot(gv[:, 0] - b.p_x[r], gv[:, 1] - b.p_y[r]) if len(gv) else np.zeros(0)
-        d = np.where(used, np.inf, d)
+        d = np.where(used | (comp_via != comp_pad[jj]), np.inf, d)                     # its own: joined to the pad by copper (its own track, or lying in the pad)
         i = int(np.argmin(d)) if len(d) else -1
         if i >= 0 and d[i] <= c.GND_VIA_REACH:
             used[i] = True
@@ -211,7 +262,7 @@ def ground_plane(b, cfg, report=None):
     plane, vias, fig = ground_plane_parts(b, cfg, report)
     bad = plane + vias
     fig['violations'] = float(len(bad))
-    ok_text = f'{int(fig["layers"])} layers, one plane, {int(fig["gnd_pads"])} GND pads each with its own via'
+    ok_text = f'{int(fig["layers"])} layers, one plane, {int(fig["gnd_pads"])} GND pads each with its own via (a plated hole of the pad counts)'
     return Result(not bad, '; '.join(bad[:6]) or ok_text, fig)
 
 
@@ -1463,12 +1514,47 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_ROUGH_TOL', 0.15, 'mm', 'an item hugs the pour edge when pour lies within the zone clearance plus this of it'),
     tunable('FILL_ROUGH_LINK', 2.0, 'mm', 'hugging items closer than this (copper to copper) are a row'),
     tunable('FILL_SHELL_PREFIXES', (), 'designator prefixes', 'the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN)'),
+    tunable('FILL_GNDPAD_VIA_GAP', 0.05, 'mm', 'a GND via whose annulus is within this of the pad edge is at the edge (no visible stub)'),
+    tunable('FILL_GNDPAD_TIE', 0.6, 'mm', 'or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad)'),
     tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
+    tunable('FILL_SHELL_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this connector GND pin stays on the bottom plane (a reason is required); each must match exactly one shell finding, or it is a stale_exception finding and the check fails'),
+    tunable('FILL_GNDPAD_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this SMD GND pad is neither in the pour nor given a via at its edge (a reason is required); each must match exactly one gndpad finding or it is a stale_exception'),
     tunable('FILL_SHELL_MIN', 0.3, 'fraction', 'the part of the ring from the zone clearance out to 0.6 mm further that is pour, at least, round such a pin'),
     tunable('FILL_THERMAL_LAYERS', ('F',), 'layer letters', 'the layers whose zone must connect SMD GND pads through thermal reliefs'),
     tunable('FILL_SOLID_LAYERS', ('B',), 'layer letters', 'the layers whose zone must connect pads solid (a plane)'),
 )
 THERMAL, SOLID = 1, 2            # pcbnew's ZONE_CONNECTION_THERMAL and ZONE_CONNECTION_FULL
+
+
+def _has_hole(b, gnd, j):
+    """a plated hole or a GND via lies in the pad j"""
+    def inside(x, y):
+        return b.p_bx0[j] <= x <= b.p_bx1[j] and b.p_by0[j] <= y <= b.p_by1[j]
+    return any(b.p_net[m] == gnd and not b.p_smd[m] and inside(b.p_x[m], b.p_y[m]) for m in range(len(b.p_net))) or any(b.v_net[m] == gnd and inside(b.v_x[m], b.v_y[m]) for m in range(len(b.v_x)))
+
+
+def _tied_to_holed_pad(b, gnd, h, reach):
+    """the SMD GND pad h is tied by a GND track, visible for at most `reach` mm between the two pads, to another GND pad of its part that has a plated hole or a GND via in it"""
+    def box_dist(i, j):
+        dx = max(b.p_bx0[i] - b.p_bx1[j], b.p_bx0[j] - b.p_bx1[i], 0.0)
+        dy = max(b.p_by0[i] - b.p_by1[j], b.p_by0[j] - b.p_by1[i], 0.0)
+        return math.hypot(dx, dy)
+
+    def inside(i, x, y, tol):
+        return b.p_bx0[i] - tol <= x <= b.p_bx1[i] + tol and b.p_by0[i] - tol <= y <= b.p_by1[i] + tol
+    for k in range(len(b.s_x0)):
+        if b.s_net[k] != gnd or b.s_layer[k] != 0:
+            continue
+        ends = ((b.s_x0[k], b.s_y0[k]), (b.s_x1[k], b.s_y1[k]))
+        for (ea, eb) in (ends, ends[::-1]):
+            if not inside(h, ea[0], ea[1], b.s_w[k] / 2):
+                continue
+            for j in range(len(b.p_net)):
+                if j == h or b.p_net[j] != gnd or b.p_fp[j] != b.p_fp[h] or not (b.p_layer_mask[j] & 1) or not inside(j, eb[0], eb[1], b.s_w[k] / 2) or box_dist(h, j) > reach:
+                    continue
+                if _has_hole(b, gnd, j):
+                    return True
+    return False
 
 
 def fill_quality_parts(b, cfg, report=None):
@@ -1558,7 +1644,9 @@ def fill_quality_parts(b, cfg, report=None):
                 if float((ring & zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:
                     continue
                 vd = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - b.v_x, b.v_x - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - b.v_y, b.v_y - b.p_by1[h]), 0)) - b.v_dia / 2 if len(b.v_x) else np.array([9.0])
-                if len(b.v_x) and ((vd <= 0.05) & (b.v_net == gnd)).any():
+                if len(b.v_x) and ((vd <= c.FILL_GNDPAD_VIA_GAP) & (b.v_net == gnd)).any():
+                    continue
+                if _has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):
                     continue
                 bad_pads += 1
                 out.append(('gndpad', '%s pin %s (SMD GND) is outside the top pour and has no via at its edge' % (b.fp_ref[b.p_fp[h]], b.p_pin[h]), float(b.p_x[h]), float(b.p_y[h])))
@@ -1575,12 +1663,35 @@ def fill_quality_parts(b, cfg, report=None):
                 out.append(('thermal', '%s zone connects its %d SMD GND pads %s, not by thermal reliefs' % (lay, len(smd), 'solid' if conn == SOLID else 'not at all'), 0.0, 0.0))
             if lay in c.FILL_SOLID_LAYERS and conn != SOLID:
                 out.append(('solid', '%s zone does not connect pads solid' % lay, 0.0, 0.0))
+    from .config import ConfigError
+    waived_shell = 0
+    for e in list(c.FILL_SHELL_EXCEPTIONS):
+        if len(e) != 3 or not str(e[2]).strip():
+            raise ConfigError('FILL_SHELL_EXCEPTIONS entries are (ref, pin, reason) with a reason; got %r' % (e,))
+        hit = [f for f in out if f[0] == 'shell' and f[1].startswith('%s pin %s ' % (e[0], e[1]))]
+        if len(hit) == 1:
+            out.remove(hit[0])
+            waived_shell += 1
+        else:
+            out.append(('stale_exception', '%s.%s matches %d shell findings, not exactly one (%s)' % (e[0], e[1], len(hit), e[2]), 0.0, 0.0))
+    waived_pad = 0
+    for e in list(c.FILL_GNDPAD_EXCEPTIONS):
+        if len(e) != 3 or not str(e[2]).strip():
+            raise ConfigError('FILL_GNDPAD_EXCEPTIONS entries are (ref, pin, reason) with a reason; got %r' % (e,))
+        hit = [f for f in out if f[0] == 'gndpad' and f[1].startswith('%s pin %s ' % (e[0], e[1]))]
+        if len(hit) == 1:
+            out.remove(hit[0])
+            waived_pad += 1
+        else:
+            out.append(('stale_exception', '%s.%s matches %d gndpad findings, not exactly one (%s)' % (e[0], e[1], len(hit), e[2]), 0.0, 0.0))
+    figs['F_shell_waived'] = waived_shell
+    figs['F_gndpad_waived'] = waived_pad
     return out, figs
 
 
 def fill_quality(b, cfg, report=None):
     parts, figs = fill_quality_parts(b, cfg, report)
-    kinds = ('narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid')
+    kinds = ('narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid', 'stale_exception')
     fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig.update({k: float(v) for k, v in figs.items()})
     fig['violations'] = float(len(parts))

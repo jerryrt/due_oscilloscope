@@ -22,6 +22,14 @@ def apply(path, out, routes):
     b = kb.read_board(path, {'FRAME': FRAME})
     names = [n.lstrip('/') for n in b.nets]
     remove = []
+    vrm, vadd = [], []
+    for r in routes:
+        for (vx, vy) in r.get('vias_rm', ()):
+            hit = [k for k in range(len(b.v_x)) if abs(b.v_x[k] - vx) < 2e-3 and abs(b.v_y[k] - vy) < 2e-3]
+            if len(hit) != 1:
+                raise SystemExit('%s: via (%s, %s) matches %d vias, not one' % (r.get('why', ''), vx, vy, len(hit)))
+            vrm.append(int(b.v_idx[hit[0]]))
+        vadd += [(r['net'], x, y) for x, y in r.get('vias_add', ())]
     for r in routes:
         net = r['net'].lstrip('/')
         for ent in r.get('rm', ()):
@@ -35,6 +43,9 @@ def apply(path, out, routes):
             remove += [int(b.s_idx[k]) for k in hit]
     with edit(path, out) as e:
         e.remove_tracks(remove)
+        e.remove_vias(vrm)
+        for net, x, y in vadd:
+            e.add_vias(net, [x], [y], 0.6, 0.3)
         for r in routes:
             for w, pts in r.get('add', ()):
                 for p, q in zip(pts, pts[1:]):

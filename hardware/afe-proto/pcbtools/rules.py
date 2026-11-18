@@ -70,7 +70,7 @@ def lr1(b, cfg, report=None):
     fig = dict(layers=gfig['layers'], bottom_pieces=gfig['plane_pieces'], bottom_runs=hfig['runs'], max_run_mm=hfig['max_run_mm'],
                max_run_vias=hfig['max_run_vias'], gnd_pads=gfig['gnd_pads'], pads_without_via=gfig['pads_without_via'],
                violations=float(len(bad)))
-    return Result(not bad, '; '.join(bad[:6]) or f'2 layers, one bottom plane, {int(hfig["runs"])} bottom runs, {int(gfig["gnd_pads"])} GND pads each with its own via', fig)
+    return Result(not bad, '; '.join(bad[:6]) or f'2 layers, one bottom plane, {int(hfig["runs"])} bottom runs, {int(gfig["gnd_pads"])} GND pads each with its own via (a plated hole of the pad counts)', fig)
 
 
 # ----------------------------------------------------------------------------------------------------- LR-2

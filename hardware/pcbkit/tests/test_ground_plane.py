@@ -10,7 +10,7 @@ PLANE = [(False, rect(0, 0, 50, 50))]
 
 
 def good():
-    a = Arr('GND', 'SIG').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').p('C1', '2', 12, 10, 'SIG').v('GND', 11, 11)
+    a = Arr('GND', 'SIG').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').p('C1', '2', 12, 10, 'SIG').v('GND', 11, 11).s('GND', 0, 10, 10, 11, 11)       # its own via, joined by its own track
     return a
 
 
@@ -21,7 +21,7 @@ def run(a, **over):
 def test_a_good_board_passes_and_says_so():
     r = run(good())
     assert r.ok and r.figures['plane_pieces'] == 1 and r.figures['gnd_pads'] == 1 and r.figures['pads_without_via'] == 0
-    assert r.detail == '2 layers, one plane, 1 GND pads each with its own via'
+    assert r.detail == '2 layers, one plane, 1 GND pads each with its own via (a plated hole of the pad counts)'
 
 
 @pytest.mark.parametrize('what,build,detail', [
@@ -62,7 +62,7 @@ def test_every_smd_ground_pad_needs_a_via_of_its_own():
     assert not r.ok and '1 SMD ground pads without a via of their own' in r.detail and 'C2.1' in r.detail
     b = good().v('GND', 21, 11)
     assert run(b).ok
-    two = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').p('C1', '2', 12, 10, 'GND').v('GND', 11, 10.5)
+    two = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').p('C1', '2', 12, 10, 'GND').v('GND', 11, 10.5).s('GND', 0, 10, 10, 11, 10.5).s('GND', 0, 12, 10, 11, 10.5)
     r2 = run(two)
     assert not r2.ok and '1 SMD ground pads without a via' in r2.detail          # one via within reach of both pads serves only one
     assert run(good().v('SIG', 21, 11)).ok is True                                    # a via of another net changes nothing for C1
@@ -73,8 +73,8 @@ def test_every_smd_ground_pad_needs_a_via_of_its_own():
 
 
 def test_via_reach_is_a_tunable_with_a_default_of_3_mm():
-    near = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').v('GND', 13.0, 10)
-    far = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').v('GND', 13.01, 10)
+    near = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').v('GND', 13.0, 10).s('GND', 0, 10, 10, 13.0, 10)
+    far = Arr('GND').z('GND', 1, PLANE).part('C1', 10, 10).p('C1', '1', 10, 10, 'GND').v('GND', 13.01, 10).s('GND', 0, 10, 10, 13.01, 10)
     assert run(near).ok and not run(far).ok
     assert run(far, GND_VIA_REACH=3.5).ok and not run(near, GND_VIA_REACH=2.5).ok
 

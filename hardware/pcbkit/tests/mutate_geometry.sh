@@ -85,6 +85,18 @@ declare -A M=(
   [gndpad_any_net_via]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 0.05)).any()"
   [gndpad_via_far]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 2.0) \& (b.v_net == gnd)).any()"
   [gndpad_min_ignored]="rules.py|                if float((ring \& zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:|                if True:"
+  [own_via_any_via]="rules.py|        d = np.where(used \| (comp_via != comp_pad[jj]), np.inf, d)|        d = np.where(used, np.inf, d)"
+  [own_via_track_ignored]="rules.py|        for a, c_ in zip(*np.nonzero(np.triu(T <= 1e-6, 1))):|        for a, c_ in []:"
+  [own_via_pad_track_ignored]="rules.py|            for a, c_ in zip(*np.nonzero(M <= 1e-6)):|            for a, c_ in []:"
+  [own_via_via_track_ignored]="rules.py|            for a, c_ in zip(*np.nonzero(D <= 1e-6)):|            for a, c_ in []:"
+  [own_via_overlap_ignored]="rules.py|        for a, c_ in zip(*np.nonzero(M - vr[None, :] <= 1e-6)):|        for a, c_ in []:"
+  [own_via_hole_ignored]="rules.py|    if tht:\n        gv = np.vstack|    if False:\n        gv = np.vstack"
+  [own_via_reused]="rules.py|            used[i] = True\n        else:\n            nov.append|            pass\n        else:\n            nov.append"
+  [gndpad_hole_ignored]="rules.py|                if _has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):|                if _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):"
+  [gndpad_tie_ignored]="rules.py|                if _has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):|                if _has_hole(b, gnd, h):"
+  [gndpad_tie_reach_ignored]="rules.py|or box_dist(h, j) > reach:|or False:"
+  [gndpad_via_gap_ignored]="rules.py|((vd <= c.FILL_GNDPAD_VIA_GAP) \& (b.v_net == gnd)).any()|((vd <= 0.05) \& (b.v_net == gnd)).any()"
+  [gndpad_tie_any_part]="rules.py|or b.p_fp[j] != b.p_fp[h] or not (b.p_layer_mask[j] \& 1)|or not (b.p_layer_mask[j] \& 1)"
 )
 fail=0
 for name in "${!M[@]}"; do

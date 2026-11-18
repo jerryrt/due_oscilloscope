@@ -139,3 +139,39 @@ def test_an_smd_ground_pad_outside_the_pour_needs_a_via_at_its_edge():
     assert 'gndpad' not in kinds(out, FILL_GNDPAD_MIN=0.0)                                         # switched off
     th = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, False)])
     assert 'gndpad' not in kinds(th)                                                              # a through-hole pin is the shell's business
+
+
+def test_a_named_shell_or_gndpad_exception_waives_exactly_one_finding_and_a_stale_one_fails():
+    import pytest
+    from pcbkit.config import ConfigError
+    carved = _pins(rect(0, 0, 5, 20), [('J1', 10, 10, False)])
+    assert 'shell' in kinds(carved, FILL_SHELL_PREFIXES=('J',))
+    assert kinds(carved, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_EXCEPTIONS=[('J1', '1', 'a header row')]) == []
+    assert kinds(carved, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_EXCEPTIONS=[('J1', '9', 'x')]) == ['shell', 'stale_exception']
+    assert kinds(carved, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_EXCEPTIONS=[('J1', '1', 'a'), ('J1', '1', 'b')]) == ['stale_exception']        # the second finds nothing left
+    out = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)])
+    assert 'gndpad' in kinds(out) and 'gndpad' not in kinds(out, FILL_GNDPAD_EXCEPTIONS=[('U1', '1', 'no room')])
+    assert kinds(out, FILL_GNDPAD_EXCEPTIONS=[('U1', '2', 'x')]) == ['gndpad', 'stale_exception']
+    with pytest.raises(ConfigError):
+        kinds(carved, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_EXCEPTIONS=[('J1', '1', '')])
+    with pytest.raises(ConfigError):
+        kinds(out, FILL_GNDPAD_EXCEPTIONS=[('U1', '1')])
+
+
+def test_an_smd_gnd_pad_with_a_plated_hole_in_it_or_tied_shortly_to_one_that_has_is_not_outside_the_pour():
+    def ep(tie, hole=True, gap=0.3):
+        a = board(rect(0, 0, 5, 20)).part('U1', 10, 10)
+        a.p('U1', '1', 10, 10, 'GND', smd=True, size=0.5)                                   # a pin
+        a.p('U1', '2', 10.6 + gap, 10, 'GND', smd=True, size=1.0)                           # the exposed pad, `gap` from the pin's edge
+        if hole:
+            a.p('U1', '2', 10.6 + gap, 10, 'GND', smd=False, size=0.4, mask=3)              # its plated hole
+        if tie:
+            a.s('GND', 0, 10, 10, 10.6 + gap, 10, 0.2)
+        return a
+    assert 'gndpad' not in [k for k in kinds(ep(True))]                                    # the pin is tied to the holed pad, the pad has its hole
+    assert 'gndpad' in kinds(ep(False))                                                    # not tied: the pin is outside the pour
+    assert 'gndpad' in kinds(ep(True, hole=False))                                         # tied, but the pad has no hole
+    assert 'gndpad' in kinds(ep(True, gap=1.5))                                            # a tie longer than FILL_GNDPAD_TIE
+    assert 'gndpad' not in kinds(ep(True, gap=1.5), FILL_GNDPAD_TIE=2.0)
+    near = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 11.05)               # annulus 0.25 from the pad edge
+    assert 'gndpad' in kinds(near) and 'gndpad' not in kinds(near, FILL_GNDPAD_VIA_GAP=0.3)

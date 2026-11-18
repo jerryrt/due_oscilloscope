@@ -26,7 +26,7 @@ from pcbtools.frame import FRAME
 
 def set_zones(b, top_w, bot_w, clearance, spoke, gap, island):
     for z in b.Zones():
-        if z.GetIsRuleArea():
+        if z.GetIsRuleArea() or z.GetZoneName() == STRIP_NAME:
             continue
         top = z.GetLayer() == pcbnew.F_Cu
         z.SetMinThickness(pcbnew.FromMM(top_w if top else bot_w))
@@ -176,6 +176,36 @@ def dead_vias(path, keeps, margin=0.35):
     return out
 
 
+STRIP_NAME = 'shellstrip'
+STRIPS = False                                     # GND strip zones towards a connector pin: off (they leave pieces under the 1.0 mm minimum width); the pins are named exceptions instead
+
+
+def drop_strips(b):
+    for z in list(b.Zones()):
+        if (not z.GetIsRuleArea()) and z.GetZoneName() == STRIP_NAME:
+            b.RemoveNative(z)
+            _DROPPED.append(z)
+
+
+def add_strips(e, rects, clearance, spoke, gap, min_w=0.3):
+    """a GND zone on F.Cu for each rectangle (Due mm): thermal reliefs, minimum width `min_w` (the top pour's own minimum is wider)"""
+    for (x0, y0, x1, y1) in rects:
+        z = pcbnew.ZONE(e.b)
+        z.SetLayer(pcbnew.F_Cu)
+        z.SetNet(e._net('GND'))
+        z.SetZoneName(STRIP_NAME)
+        for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+            z.AppendCorner(e._pt(px, py), -1)
+        z.SetMinThickness(pcbnew.FromMM(min_w))
+        z.SetLocalClearance(pcbnew.FromMM(clearance))
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+        z.SetThermalReliefGap(pcbnew.FromMM(gap))
+        z.SetThermalReliefSpokeWidth(pcbnew.FromMM(spoke))
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+        e.b.Add(z)
+        e._give(z)
+
+
 def _gnd_boxes(path):
     b = kb.read_board(path, {'FRAME': FRAME})
     g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
@@ -188,6 +218,7 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     src = path
     work = path + '.work.tmp.kicad_pcb'
     moved, skipped_pads = [], []
+    strips = []
     edge = set()
     for attempt in range(3):
         keeps = derive_keeps(src, 0.2, clearance, spoke, gap, top_w, grid, outlines, join, shells=shells, skip=edge)
@@ -196,15 +227,21 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
         bad = []                                                   # the SMD GND pads the pour still does not touch, from the filled board
         with edit(src, probe) as e:
             drop_keeps(e.b)
+            drop_strips(e.b)
             for k in keeps:
                 e.keepout(k, KEEP_NAME, tracks=False, vias=False, pour=True, layers='F')
             set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_NEVER)
+            add_strips(e, strips, clearance, spoke, gap)
             e.fill_zones()
         try:
             lost, near = gndpads.failing(probe, gndpad_min, shells=shells)
+            shell_now = list(gndpads.failing.shell)
             bad = [p for p in lost + near if (p[0], p[1]) not in edge]
         finally:
             _rm(probe)
+        if STRIPS and shell_now and not strips:                                 # connector GND pins the pour cannot reach (a 2.54 mm row leaves no 1.0 mm web): each gets a GND strip zone towards the interior
+            strips = gndpads.strip_rects(shell_now)
+            continue
         if not bad:
             break
         done, skipped = gndpads.relocate(src, work, bad)
@@ -218,10 +255,12 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     dead = dead_vias(src, keeps)
     with edit(src, tmp) as e:
         drop_keeps(e.b)
+        drop_strips(e.b)
         e.remove_vias([d[0] for d in dead])
         for k in keeps:
             e.keepout(k, KEEP_NAME, tracks=False, vias=False, pour=True, layers='F')
         set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_NEVER)
+        add_strips(e, strips, clearance, spoke, gap)
         e.fill_zones()
     try:
         b, r, lab, comps = islands(tmp, big)
@@ -241,10 +280,12 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
         vias += pts
     with edit(src, out) as e:
         drop_keeps(e.b)
+        drop_strips(e.b)
         e.remove_vias([d[0] for d in dead])
         for k in keeps:
             e.keepout(k, KEEP_NAME, tracks=False, vias=False, pour=True, layers='F')
         set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+        add_strips(e, strips, clearance, spoke, gap)
         if vias:
             e.add_vias('GND', [p[0] for p in vias], [p[1] for p in vias], 0.6, 0.3)
         e.fill_zones()
@@ -258,6 +299,8 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
         print('%d SMD GND pads got their via at the pad edge (the pour cannot hold them): %s' % (len(moved), ', '.join('%s.%s' % (m[0], m[1]) for m in moved)))
         if skipped_pads:
             print('   not relocated: %s' % '; '.join('%s.%s (%s)' % t for t in skipped_pads))
+        if strips:
+            print('%d GND strip zones (minimum width 0.3) reach connector GND pins from the board interior: %s' % (len(strips), ', '.join('(%.1f..%.1f, %.1f..%.1f)' % (r[0], r[2], r[1], r[3]) for r in strips)))
         print('top GND pour: %d parts hang free of every GND item; %d of 10 mm2 or more are stitched, %d dropped (%.0f mm2 in %d pieces)' % (len(report), len(kept), len(dropped), sum(a for a, _, _ in dropped), len(dropped)))
         for a, (x, y), n in kept:
             print('   stitched pour %.1f mm2 at (%.1f, %.1f): %d via%s' % (a, x, y, n, '' if n == 1 else 's'))
