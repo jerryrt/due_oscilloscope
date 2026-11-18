@@ -145,4 +145,9 @@ FILL_ROUGH_TOL = 0.15
 FILL_ROUGH_LINK = 2.0
 FILL_THERMAL_LAYERS = ('F',)                           # thermal reliefs on the top pour's SMD GND pads
 FILL_SOLID_LAYERS = ('B',)                             # the bottom plane is solid
-GEOMETRY_EXCEPTIONS = []           # (rule, net, pad_or_ref, reason), see v1_layout
+GEOMETRY_EXCEPTIONS = [            # (rule, net, pad_or_ref, reason), see v1_layout
+    ('angle', '/AWG_FB', (83.19, 11.20), 'LR-4 INV_MAX 5.0 mm: AWG_FB is 4.9 mm of track from U301.2 to U301.6 and a perpendicular entry at both pins makes it 5.3 mm'),
+    ('entry', '/AWG_FB', 'U301.2', 'same: U301.2 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)'),
+    ('over_pad', '/AWG_FB', 'R303.2', 'the cleanup may not lengthen an INV_MAX net: ending the track on R303.2 and restarting it adds 0.03 mm to AWG_FB (4.947 mm), so the track keeps running over the pad'),
+    ('entry', '/AWG_FB', 'U301.6', 'same: U301.6 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)'),
+]
