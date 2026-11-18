@@ -12,6 +12,7 @@ from cc_router import DIRS, candidates
 from pcbtools.frame import FRAME
 from pcbtools.boards import v2_layout as _L
 CFG = {k: getattr(_L, k) for k in [n.key for n in rules.TRACK_GEOMETRY_NAMES + rules.FILL_QUALITY_NAMES] if hasattr(_L, k)}      # the AFE-2 configuration: the names the two rules declare, as pcbkit_regress/geometry.py reads them
+CFG['GEOMETRY_EXCEPTIONS'] = [e for e in CFG.get('GEOMETRY_EXCEPTIONS', []) if e[1] == '/AWG_FB']          # the passes see the exceptions of the cleanup itself (AWG_FB's, which it may not lengthen); the others name what the finished board leaves, and must not hide a finding the passes are to fix
 MIN_LEG, BREAKOUT_LEG, FINE_PITCH = 0.62, 0.3, 0.65             # the rule needs 0.6: coordinates are rounded to 0.1 um
 REQ_MAX, REQ_MIN, REQ_SAME = 0.3, 0.15, 0.12
 KEY = 1000

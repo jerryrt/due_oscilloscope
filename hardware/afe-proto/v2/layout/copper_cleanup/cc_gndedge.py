@@ -4,7 +4,7 @@ The GND tracks of the board (the stubs from pad to via) and the vias at their en
 box (centre 0.25 to 0.29 mm from it, so the annulus (0.3 mm radius) overlaps the box by 0.01 mm or more: the rule `gndpad` accepts a GND via within 0.05 mm of the box, and the fill step counts a via as attached to a pad when it is within its radius of the pad's box) and is clear of every other net's copper by the clearance model of the cleanup. Preference: straight out
 of an edge of the pad, centred on it, and 0.29 mm from the box. A pad that has no such place is listed and keeps a legal stub and a via (cc_gndvias' search),
 or, where the pour can keep it, none (that is the fill step's)."""
-import sys, os, math
+import sys, os, math, json
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path[:0] = [HERE]
 import numpy as np
 from cc_state import State, write, FRAME, KEY, key
@@ -17,13 +17,16 @@ for i in range(len(st.S)):
     if st.N[i] == gnd and st.L[i] == 0:
         st.alive[i] = False                                           # every GND track: the stubs and the 1.2 mm bars
 st.via_dead = set(k for k in range(len(b.v_x)) if b.v_net[k] == gnd)       # and every GND via: each pad gets its own below, the fill step stitches what hangs
+# the side of a pad its via goes to, where it matters to the pour (the fill step derives its keep-outs round the vias): N, E, S or W (Due frame, y up); the default is the first clear place
+SIDE = {'C103.2': 'E', 'C401.2': 'W', 'C404.2': 'W', 'C408.2': 'W'}        # C103.2: where the board of record had it; the C401 column: west, so the pour edge above it is straight (north, between the pads, the fill left a 0.6 mm notch above C401)
+SIDE.update(json.loads(os.environ.get('GNDEDGE_SIDE', '{}')))
 # a pad that the exposed pad of its own part holds by a straight track: the track, and no via (U401's pins 1 and 4 beside the exposed pad: 0.6 mm straight into it, within the pad's own height)
 TIES = {'U401.1': ((30.55, 15.25), (31.15, 15.25), 0.15), 'U401.4': ((30.55, 13.75), (31.15, 13.75), 0.2)}
 for spec, (p0, p1, w) in TIES.items():
     st.new.append((p0[0], p0[1], p1[0], p1[1], w, 0, gnd))
     print('tie   %s straight to the exposed pad, %.2f mm wide' % (spec, w))
 # a pad no via fits at, whose stub is drawn by hand: R405.2 (best straight-out place has a copper gap of -0.02 mm against 0.15 required: the LM_FBN track passes along its west edge and R404.2 sits north-east), one L of two legs of 0.75 and 0.8 mm to a via
-HAND = {'R405.2': ([(32.65, 10.7), (32.65, 11.5), (31.9, 11.5)], 0.2)}
+HAND = {}
 for spec, (pl, w) in HAND.items():
     for k in range(len(pl) - 1):
         st.new.append((pl[k][0], pl[k][1], pl[k + 1][0], pl[k + 1][1], w, 0, gnd))
@@ -44,7 +47,7 @@ for h in rows:
     bx0, by0, bx1, by1 = b.p_bx0[h], b.p_by0[h], b.p_bx1[h], b.p_by1[h]
     cx, cy = float(b.p_x[h]), float(b.p_y[h])
     win = (cx - 3, cy - 3, cx + 3, cy + 3)
-    obs = st.obstacles(gnd, 0, win, {int(h)}, [(cx, cy), (cx, cy)], 0.2)
+    obs = st.obstacles(gnd, 0, win, {int(h)}, [(cx, cy), (cx, cy)], 0.2, set(st.via_dead))
     cands = []
     for dx in np.arange(-2.0, 2.0001, 0.05):
         for dy in np.arange(-2.0, 2.0001, 0.05):
@@ -56,10 +59,11 @@ for h in rows:
                 continue                                              # two vias of ours keep their distance
             # straight out of an edge, centred on it: the offset along the edge is small
             off = min(abs(X - cx), abs(Y - cy))
-            cands.append((off, abs(d - 0.29), round(X, 3), round(Y, 3)))
+            side = 'E' if X > bx1 else 'W' if X < bx0 else 'N' if Y > by1 else 'S'
+            cands.append((0 if SIDE.get('%s.%s' % (ref, pin), side) == side else 1, off, abs(d - 0.29), round(X, 3), round(Y, 3)))
     cands.sort()
     done = False
-    for off, dd, X, Y in cands:
+    for pref, off, dd, X, Y in cands:
         if st.valid([(0, [(X, Y), (X, Y)])], obs, 0.6)[0]:
             st.vias = np.vstack([st.vias, [X, Y, 0.6, gnd]])
             placed.append((X, Y))
@@ -76,7 +80,7 @@ for h in left:
     ref, pin = b.fp_ref[b.p_fp[h]], b.p_pin[h]
     bx0, by0, bx1, by1 = b.p_bx0[h], b.p_by0[h], b.p_bx1[h], b.p_by1[h]
     cx, cy = float(b.p_x[h]), float(b.p_y[h])
-    obs = st.obstacles(gnd, 0, (cx - 3, cy - 3, cx + 3, cy + 3), {int(h)}, [(cx, cy), (cx, cy)], 0.2)
+    obs = st.obstacles(gnd, 0, (cx - 3, cy - 3, cx + 3, cy + 3), {int(h)}, [(cx, cy), (cx, cy)], 0.2, set(st.via_dead))
     cands = []
     for dx in np.arange(-2.0, 2.0001, 0.05):
         for dy in np.arange(-2.0, 2.0001, 0.05):
@@ -101,7 +105,7 @@ for h in left:
     A = ps['pos']
     Cs = [(A[0] + dx, A[1] + dy) for dx in np.arange(-2.6, 2.61, 0.1) for dy in np.arange(-2.6, 2.61, 0.1) if 0.5 <= math.hypot(dx, dy) <= 2.6]
     Cs.sort(key=lambda p: math.hypot(p[0] - A[0], p[1] - A[1]))
-    obs = st.obstacles(gnd, 0, (A[0] - 4, A[1] - 4, A[0] + 4, A[1] + 4), ps['skip'], [A, A], 0.2)
+    obs = st.obstacles(gnd, 0, (A[0] - 4, A[1] - 4, A[0] + 4, A[1] + 4), ps["skip"], [A, A], 0.2, set(st.via_dead))
     for V in Cs:
         V = (round(V[0], 3), round(V[1], 3))
         if not st.valid([(0, [V, V])], obs, 0.6)[0]:

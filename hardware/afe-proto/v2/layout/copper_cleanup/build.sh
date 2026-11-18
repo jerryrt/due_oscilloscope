@@ -14,8 +14,10 @@ python3 $W/cc_edits.py $T/1.kicad_pcb $T/2.kicad_pcb > $T/2.log
 cp $T/2.kicad_pcb $T/3.kicad_pcb
 python3 $W/cc_edits.py $T/3.kicad_pcb $T/4.kicad_pcb cc_fix_data > $T/4.log
 python3 $W/cc_reroute.py $T/4.kicad_pcb $T/5.kicad_pcb --kinds detour --max-legs 4 --skip-nets /GND --grid > $T/5.log
-python3 $W/cc_gndedge.py $T/5.kicad_pcb $T/6.kicad_pcb > $T/6.log
-cp $T/6.kicad_pcb $B
+python3 $W/cc_edits.py $T/5.kicad_pcb $T/5b.kicad_pcb cc_fix2_data > $T/5b.log
+python3 $W/cc_gndedge.py $T/5b.kicad_pcb $T/6.kicad_pcb > $T/6.log
+python3 $W/cc_keepouts.py $T/6.kicad_pcb $T/7.kicad_pcb > $T/7.log
+cp $T/7.kicad_pcb $B
 (cd $A && python3 -m pcbtools.fill_clean v2/layout/integrated/afe-v2-integrated.kicad_pcb v2/layout/integrated/.fillclean.out.kicad_pcb --config v2_layout > $T/4.log)
 mv $A/v2/layout/integrated/.fillclean.out.kicad_pcb $B
 rm -f $A/v2/layout/integrated/*.tmp.kicad_pro $A/v2/layout/integrated/.fillclean.out.kicad_pro

@@ -157,10 +157,7 @@ FILL_SHELL_EXCEPTIONS = [                              # (ref, pin, reason): a c
     ('J601', '6', 'Due header GND pin: through-hole on the solid bottom plane; the 2.54 mm header pitch leaves a 0.24 mm web of top copper between it and the signal pins beside it, under the 1.0 mm standard of the top pour'),
     ('J601', '7', 'Due header GND pin: through-hole on the solid bottom plane; the 2.54 mm header pitch leaves a 0.24 mm web of top copper between it and the signal pins beside it, under the 1.0 mm standard of the top pour'),
 ]
-FILL_GNDPAD_EXCEPTIONS = [                             # (ref, pin, reason): an SMD GND pad neither in the pour nor given a via at its edge; each after a hand attempt (clearances measured, DRC floor 0.15 mm)
-    ('R405', '2', 'no via fits at its edge: the best straight-out place (0.25 mm from the pad box) has a copper gap of -0.02 mm to other copper (the LM_FBN track along its west edge, R404.2 to the north-east), and the fill step finds no room either; it keeps a via on an L stub of 0.8 and 0.75 mm to (31.9, 11.5)'),
-    ('U502', '3', 'no via fits at its edge: the best straight-out place (0.27 mm from the pad box) has a copper gap of 0.107 mm to the neighbouring pad, under the DRC floor of 0.15 mm (the fill step measures 0.11 mm), and the 0.5 mm pitch leaves no pour; it keeps a via on a 1.2 mm stub'),
-]
+FILL_GNDPAD_EXCEPTIONS = []                             # (ref, pin, reason): an SMD GND pad neither in the pour nor given a via at its edge; none on AFE-2: every pad has its via at the edge
 FILL_NOTCH_WIDTH = 1.05                                # no bare inlet in the top pour no wider than its 1.0 mm minimum width (and the raster tolerance)
 FILL_ROUGH_LAYERS = ('F',)                             # no row of clearance arcs along the top pour's edge
 FILL_ROUGH_TOL = 0.15
@@ -172,9 +169,13 @@ GEOMETRY_EXCEPTIONS = [            # (rule, net, pad_or_ref, reason), see v1_lay
     ('entry', '/AWG_FB', 'U301.2', 'same: U301.2 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)'),
     ('over_pad', '/AWG_FB', 'R303.2', 'the cleanup may not lengthen an INV_MAX net: ending the track on R303.2 and restarting it adds 0.03 mm to AWG_FB (4.947 mm), so the track keeps running over the pad'),
     ('entry', '/AWG_FB', 'U301.6', 'same: U301.6 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)'),
-    ('detour', '/VNEG_G', (33.23, 6.63), 'BR401.1 to R403.1: the grid router (octilinear, legs of 0.62 mm or more, 0.2 mm clear, 2.5 mm round both pads) finds no path between the two pads that avoids the turn: the +5V_F feed at y 5.95 to 6.0 and the LM_FB3M / LM_FBN pads close the straight ways'),
-    ('detour', '/VREF', (49.0, 13.2), 'the U501.2 branch of the VREF star: LR-8 keeps its six branches on separate copper (U501.2 and C501.1 are cut), and the grid router finds no clear path to the node that is shorter than 1.5 times the shortest'),
-    ('detour', '/VREF', (64.77, 14.22), 'the 39 mm VREF trunk from U501.2 to R305.1 at the AWG block: the grid router finds no clear 0.2 mm path that is within 1.5 times the shortest (23.5 mm) while the other nets of the REF/CAL block keep their routes'),
+    ('detour', '/VNEG_G', (33.23, 6.63), 'R403.1 to BR401.1: R403.1 takes its track along x and BR401.1 along y, 3.325 mm apart in x and 0.6 mm in y; no octilinear path of three legs of 0.62 mm or more joins them without a hook (the candidate search returns none), and the route in the file is the least-bent one the grid search found (measured)'),
+    ('detour', '/VREF', (49.0, 13.2), 'the VREF branch from the node at (50.8, 8.25) to U501.2: the direct paths (via (52.6, 10.05) or (52.6, 9.43)) run over the +3V3A_R tracks (52.6, 10.7)-(52.6, 11.3) and (51.32, 10.7)-(52.6, 10.7), gap -0.2 mm against 0.5 mm required beside VREF (measured); the 9.8 mm route goes round them'),
+    ('detour', '/VREF', (64.77, 14.22), 'the VREF run from R305.1 at the AWG block to U501.2, 39 mm against a 23.5 mm shortest path: the direct paths (via (74.1, 6.65) or (59.15, 6.0)) cross the A0 vertical x = 68.58, the A1 vertical x = 66.05, the TAP4 and SNS_B verticals x = 55.88 and 58.42 and the TAP2/TAP3/TAP4 rows, gap -0.2 mm against 0.5 mm (measured); they may not be crossed'),
+    ('entry', '/LM_FB3M', 'R403.2', 'R403 / R404 pad pair offset 1.65 mm in x and 1.7 mm in y: one 45 degree leg pad to pad (montreal5), not a stair of two 90 degree bends; an axial leg first (0.8 mm, then 45 degrees) cuts the corner of R404.2 by 0.07 mm of copper (measured)'),
+    ('entry', '/LM_FB3M', 'R404.1', 'same: the other end of the 45 degree LM_FB3M leg between R403.2 and R404.1'),
+    ('entry', '/LM_FBN', 'R404.2', 'R404 / R405 pad pair offset 1.65 mm in x and 1.7 mm in y: one 45 degree leg pad to pad, not a stair; an axial leg first cuts the corner of R405.2 (measured, as for R403.2 / R404.1)'),
+    ('entry', '/LM_FBN', 'R405.1', 'same: the other end of the 45 degree LM_FBN leg between R404.2 and R405.1'),
     ('tspur', '/+5V_F', (32.9, 13.25), 'U401.8 breakout: a 0.20 mm stub off the 0.5 mm pitch pad into the 45 degree leg of the +5V_F feed; two segments end at this point in the board file, the check counts three tracks'),
     ('tspur', '/+3V3A', (32.9, 14.75), 'U401.11 breakout: a 0.20 mm stub off the 0.5 mm pitch pad into the 45 degree leg; two segments end at this point in the board file, the check counts three tracks'),
 ]

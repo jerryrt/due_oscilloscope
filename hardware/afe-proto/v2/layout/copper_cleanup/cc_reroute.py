@@ -21,7 +21,7 @@ from pcbtools.boards import v2_layout as _L
 PROTECTED = set(_L.INV_LEN_NODES) | set(_L.ADC_NETS) | set(_L.INV_NODES)        # the nets whose track length an LR row reads or limits: AWG_FB, CH1_OUT, CH2_OUT, A0, A1, the divider nodes
 
 
-OLD_KINDS = ('arc', 'angle', 'jog', 'entry', 'over_pad', 'stale_exception')
+OLD_KINDS = ('arc', 'angle', 'jog', 'entry', 'over_pad')       # not stale_exception: the exceptions of the configuration name the finished board's findings, and an exception whose finding the cleanup has not made yet is not a finding to fix
 
 
 class Runner(State):
