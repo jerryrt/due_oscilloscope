@@ -9,7 +9,7 @@ declare -A M=(
   [min_leg_ignored]="rules.py|glen[g] >= c.TRACK_MIN_LEG - 1e-9|True"
   [min_leg_fixed]="rules.py|glen[g] >= c.TRACK_MIN_LEG - 1e-9|glen[g] >= 0.6"
   [chain_not_merged]="rules.py|            parent[find(i)] = find(j)|            pass"
-  [tee_is_a_bend]="rules.py|if len(lst) != 2 or lst[0][0] == lst[1][0]:|if len(lst) < 2 or lst[0][0] == lst[1][0]:"
+  [tee_is_a_bend]="rules.py#1|if len(lst) != 2 or lst[0][0] == lst[1][0]:|if len(lst) < 2 or lst[0][0] == lst[1][0]:"
   [pad_joint_is_a_bend]="rules.py|if len(pa['rows']) and (_in_pads(p, pa)[0] \& (pa['net'] == b.s_net[i])).any():|if False:"
   [via_joint_is_a_bend]="rules.py|if len(via_xy) and (np.hypot|if False and (np.hypot"
   [breakout_not_exempt]="rules.py|            if fine:|            if False:"
@@ -47,10 +47,10 @@ declare -A M=(
   [reach_any_pitch]="rules.py|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= c.TRACK_FINE_PITCH + 1e-9)):|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= 9e9)):"
   [reach_infinite]="rules.py|if (np.hypot(E[:, 0] - pa['cx'][h], E[:, 1] - pa['cy'][h]) <= c.TRACK_BREAKOUT_REACH).any():|if True:"
   [rough_layers_ignored]="rules.py|        if lay in c.FILL_ROUGH_LAYERS:|        if False:"
-  [rough_link_ignored_rule]="rules.py|link=c.FILL_ROUGH_LINK)|link=2.0)"
+  [rough_link_ignored_rule]="rules.py|link=c.FILL_ROUGH_LINK, exempt=c.FILL_SHELL_PREFIXES)|link=2.0, exempt=c.FILL_SHELL_PREFIXES)"
   [rough_tol_ignored_rule]="rules.py|tol=c.FILL_ROUGH_TOL, link|tol=0.15, link"
-  [rough_not_counted_in_ok]="rules.py|    kinds = ('narrow', 'dead_end', 'rough', 'thermal', 'solid')|    kinds = ('narrow', 'dead_end', 'thermal', 'solid')"
-  [pads_one_per_pin]="rules.py|    r = np.arange(len(b.p_x))\n    return dict(rows=r|    r = pads(b).rows\n    return dict(rows=r"
+  [rough_not_counted_in_ok]="rules.py|'dead_end', 'rough', 'shell'|'dead_end', 'shell'"
+  [pads_one_per_pin]="rules.py|    r = np.arange(len(b.p_x))\n    return dict(rows=r, cx=|    r = pads(b).rows\n    return dict(rows=r, cx="
   [dangling_tolerance_extra]="rules.py|pad_dist(p, h) <= w / 2 + 1e-9|pad_dist(p, h) <= w / 2 + 0.1"
   [dangling_center_only]="rules.py|pad_dist(p, h) <= w / 2 + 1e-9|pad_dist(p, h) <= 1e-9"
   [dangling_any_net_pad]="rules.py|for h in np.flatnonzero((pa['net'] == net) \& ((pa['mask'] \& (1 << layer)) > 0)):|for h in np.flatnonzero(((pa['mask'] \& (1 << layer)) > 0)):"
@@ -65,7 +65,7 @@ declare -A M=(
   [spur_min_ignored]="rules.py|            if ln < c.TRACK_SPUR_MIN - 1e-9:|            if False:"
   [spur_angle_ignored]="rules.py|            if min(abs(a - 90.0), abs(a - 45.0), abs(a - 135.0)) > c.TRACK_ANGLE_TOL:|            if False:"
   [spur_clear_ignored]="rules.py|            if nd < c.TRACK_SPUR_CLEAR - 1e-9:|            if False:"
-  [spur_other_junctions_ignored]="rules.py|[(q[2] / 1000, q[3] / 1000) for q, l2 in juncs.items() if q != k and any(orig[i2] == o for i2, _ in l2)]|[]"
+  [spur_other_junctions_ignored]="rules.py|            if len(here) != 2 or on_pad(p, k[1], k[0], wid[cur]) or on_via(p, k[1], wid[cur]):|            if on_pad(p, k[1], k[0], wid[cur]) or on_via(p, k[1], wid[cur]):"
   [junction_at_bend_ignored]="rules.py|        if trunk is None:|        if False:"
   [wide_limit_ignored]="rules.py|            if lim is not None and b.s_w[i] > lim + c.TRACK_WIDTH_TOL:|            if False:"
   [wide_star_ignored]="rules.py|rules_w.get(nm.lstrip('/'), rules_w.get('*'))|rules_w.get(nm.lstrip('/'))"
@@ -78,20 +78,20 @@ declare -A M=(
   [kink_offset_ignored]="rules.py|                    if off < c.TRACK_KINK_OFFSET and|                    if True and"
   [kink_any_net]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL:"
   [kink_never]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif False:"
-  [shell_min_ignored]="rules.py|                if frac < c.FILL_SHELL_MIN:|                if False:"
+  [shell_min_ignored]="rules.py#2|                if frac < c.FILL_SHELL_MIN:|                if False:"
   [shell_smd_counts]="rules.py|and not b.p_smd[h] and str(b.fp_ref[b.p_fp[h]]).startswith|and str(b.fp_ref[b.p_fp[h]]).startswith"
   [shell_any_net]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
-  [gndpad_via_ignored]="rules.py|                if len(b.v_x) and ((vd <= 0.05) \& (b.v_net == gnd)).any():|                if False:"
-  [gndpad_any_net_via]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 0.05)).any()"
-  [gndpad_via_far]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 2.0) \& (b.v_net == gnd)).any()"
+  [gndpad_via_ignored]="rules.py|if len(b.v_x) and ((vd <= c.FILL_GNDPAD_VIA_GAP) \& (b.v_net == gnd)).any():|if False:"
+  [gndpad_any_net_via]="rules.py|((vd <= c.FILL_GNDPAD_VIA_GAP) \& (b.v_net == gnd)).any()|((vd <= c.FILL_GNDPAD_VIA_GAP)).any()"
+  [gndpad_via_far]="rules.py|((vd <= c.FILL_GNDPAD_VIA_GAP) \& (b.v_net == gnd)).any()|((vd <= 2.0) \& (b.v_net == gnd)).any()"
   [gndpad_min_ignored]="rules.py|                if float((ring \& zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:|                if True:"
-  [own_via_any_via]="rules.py|        d = np.where(used \| (comp_via != comp_pad[jj]), np.inf, d)|        d = np.where(used, np.inf, d)"
+  [own_via_any_via]="rules.py|comp_via != comp_pad[jj]|comp_via != comp_via"
   [own_via_track_ignored]="rules.py|        for a, c_ in zip(*np.nonzero(np.triu(T <= 1e-6, 1))):|        for a, c_ in []:"
   [own_via_pad_track_ignored]="rules.py|            for a, c_ in zip(*np.nonzero(M <= 1e-6)):|            for a, c_ in []:"
   [own_via_via_track_ignored]="rules.py|            for a, c_ in zip(*np.nonzero(D <= 1e-6)):|            for a, c_ in []:"
   [own_via_overlap_ignored]="rules.py|        for a, c_ in zip(*np.nonzero(M - vr[None, :] <= 1e-6)):|        for a, c_ in []:"
   [own_via_hole_ignored]="rules.py|    if tht:\n        gv = np.vstack|    if False:\n        gv = np.vstack"
-  [own_via_reused]="rules.py|            used[i] = True\n        else:\n            nov.append|            pass\n        else:\n            nov.append"
+  [own_via_reused]="rules.py|            used[i] = True\n        else:|            pass\n        else:"
   [gndpad_hole_ignored]="rules.py|                if _has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):|                if _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):"
   [gndpad_tie_ignored]="rules.py|                if _has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE):|                if _has_hole(b, gnd, h):"
   [gndpad_tie_reach_ignored]="rules.py|or box_dist(h, j) > reach:|or False:"
@@ -100,6 +100,7 @@ declare -A M=(
   [reach_collinear_first_joint_stops]="rules.py|            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):|            if True:"
   [shell_any_net_pin]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
   [via_in_pad_by_edge_only]="rules.py|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa))):|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa) \\& False)):"
+  [shell_min_ignored_raster]="rules.py#1|                    if frac < c.FILL_SHELL_MIN:|                    if False:"
 )
 fail=0
 for name in "${!M[@]}"; do
@@ -108,10 +109,20 @@ for name in "${!M[@]}"; do
   python3 - "$tmp/pcbkit/$file" "$old" "$new" <<'PY' || { echo "MUTATION NOT APPLIED: $name"; fail=1; rm -rf "$tmp"; continue; }
 import sys
 p, old, new = sys.argv[1:]
-old, new = old.replace('\\&', '\x26'), new.replace('\\&', '\x26')
+nth = 0
+if '#' in p:
+    p, nth = p.split('#'); nth = int(nth)
+old, new = old.replace('\\&', '\x26').replace('\\n', '\n'), new.replace('\\&', '\x26').replace('\\n', '\n')
 s = open(p).read()
-assert s.count(old) == 1, 'mutation site not found exactly once: ' + old
-open(p, 'w').write(s.replace(old, new))
+if nth:
+    assert s.count(old) >= nth, 'mutation site not found: ' + old
+    i = -1
+    for _ in range(nth):
+        i = s.index(old, i + 1)
+    open(p, 'w').write(s[:i] + new + s[i + len(old):])
+else:
+    assert s.count(old) == 1, 'mutation site not found exactly once: ' + old
+    open(p, 'w').write(s.replace(old, new))
 PY
   if PCBKIT_ROOT="$tmp" python3 -m pytest -q -p no:cacheprovider -c "$here/pytest.ini" "$here" >/dev/null 2>&1; then echo "SURVIVED  $name"; fail=1; else echo "killed    $name"; fi
   rm -rf "$tmp"
