@@ -74,3 +74,23 @@ def test_keep_back_is_a_project_name_and_the_info_list_defaults_to_nothing():
     rules.pour_gap(a, CFG, rep)
     got = {k: (v, s) for k, v, s in rep}
     assert got['POUR_INFO_NODES'] == ((), 'default') and got['POUR_KEEP_BACK'] == (0.5, 'project')
+
+
+def test_a_pour_or_ground_track_that_moved_toward_a_node_is_a_regression_and_one_that_moved_away_is_not():
+    before = base().z('GND', 0, [(False, rect(0, 2.0, 10, 5))]).build()                  # fill edge 2.0 from the node's centre line
+    nearer = base().z('GND', 0, [(False, rect(0, 1.5, 10, 5))]).build()                  # a 0.5 mm bulge toward it
+    farther = base().z('GND', 0, [(False, rect(0, 2.5, 10, 5))]).build()
+    same = base().z('GND', 0, [(False, rect(0, 2.0005, 10, 5))]).build()
+    bad = rules.pour_gap_regressions(before, nearer, CFG)
+    assert [(n, k) for n, k, *_ in bad] == [('NODE', 'pour')] and abs(bad[0][2] - bad[0][3] - 0.5) < 1e-9
+    assert rules.pour_gap_regressions(before, farther, CFG) == []
+    assert rules.pour_gap_regressions(before, same, CFG) == []                              # inside the tolerance
+    assert rules.pour_gap_regressions(before, nearer, CFG, tol=0.6) == []
+    trk = rules.pour_gap_regressions(base().build(), base().s('GND', 0, 0, 1.0, 4, 1.0).build(), CFG)
+    nothing = rules.pour_gap_regressions(base().build(), nearer, CFG)                       # nothing to measure to before: no baseline
+    assert nothing == []
+    info = rules.pour_gap_regressions(Arr('GND', 'NODE', 'INFO').s('INFO', 0, 0, 0, 4, 0).z('GND', 0, [(False, rect(0, 2.0, 10, 5))]).build(),
+                                      Arr('GND', 'NODE', 'INFO').s('INFO', 0, 0, 0, 4, 0).z('GND', 0, [(False, rect(0, 1.0, 10, 5))]).build(), {**CFG, 'POUR_INFO_NODES': ['INFO']})
+    assert [(n, k) for n, k, *_ in info] == [('INFO', 'pour')]                              # a reported node is held too
+    tr = rules.pour_gap_regressions(base().s('GND', 0, 0, 3.0, 4, 3.0).build(), base().s('GND', 0, 0, 3.0, 4, 3.0).s('GND', 0, 0, 1.0, 4, 1.0).build(), CFG)
+    assert [(n, k) for n, k, *_ in tr] == [('NODE', 'track')]

@@ -321,4 +321,16 @@ if __name__ == '__main__':
     skip = {'--top-width', '--bottom-width', '--clearance', '--spoke', '--gap', '--big', '--grid', '--join', '--config'}
     args = [a for k, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and not (k > 1 and sys.argv[k - 1] in skip)]
     fills.SHELL_SKIP.update((str(e[0]), str(e[1])) for e in getattr(cfg, 'FILL_SHELL_EXCEPTIONS', ()))
+    from pcbkit import board as _kb, rules as _rules
+    from pcbtools import rules as _afe_rules
+    _src, _dst = args[0], (args[1] if len(args) > 1 else args[0])
+    _before = _kb.read_board(_src, {'FRAME': FRAME})          # the board as it came in: its pour gaps are the figures the fill may not make worse
     run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
+    _worse = _rules.pour_gap_regressions(_before, _kb.read_board(_dst, {'FRAME': FRAME}), _afe_rules._pour_cfg(cfg))
+    if _worse:
+        for n, kind, g0, g1 in _worse:
+            print('REFUSED: the fill moved ground %s toward %s: %.3f mm -> %.3f mm' % (kind, n, g0, g1))
+        if _dst != _src and os.path.exists(_dst):
+            os.remove(_dst)
+        sys.exit(2)
+    print('pour gaps held: every judged node keeps at least its pre-fill gap to the ground tracks and the pour')

@@ -533,6 +533,21 @@ def pour_gaps(b, cfg, report=None):
     return _pour_gaps(b, resolve(cfg, POUR_GAP_NAMES, 'pour_gap', report))
 
 
+def pour_gap_regressions(before, after, cfg, tol=1e-3, report=None):
+    """[(node, 'track' | 'pour', gap before, gap after)] for every judged or reported node whose gap to the top GND tracks or pour is smaller on `after` than on `before` by more than `tol` mm: a
+    fill (or any edit) that grew ground copper toward a node. An infinite gap before (nothing to measure to) is no baseline"""
+    c = resolve(cfg, POUR_GAP_NAMES, 'pour_gap', report)
+    g0 = {n: (t, p) for n, t, p in _pour_gaps(before, c)}
+    out = []
+    for n, t, p in _pour_gaps(after, c):
+        t0, p0 = g0[n]
+        if math.isfinite(t0) and t < t0 - tol:
+            out.append((n, 'track', t0, t))
+        if math.isfinite(p0) and p < p0 - tol:
+            out.append((n, 'pour', p0, p))
+    return out
+
+
 def pour_gap_parts(b, cfg, report=None):
     """(gaps, near): `gaps` as pour_gaps; `near` lists (node, 'track' | 'pour') for every judged node (POUR_NODES) whose ground track or pour is
     nearer than POUR_KEEP_BACK"""

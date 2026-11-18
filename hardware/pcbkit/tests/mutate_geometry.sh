@@ -114,6 +114,9 @@ declare -A M=(
   [notch_width_not_used]="fills.py|    r_px = max((width / 2 - 0.02) * k, 1.0)|    r_px = max((1.0 / 2 - 0.02) * k, 1.0)"
   [notch_area_floor_ignored]="fills.py|        keep[1:] = areas >= min_area|        keep[1:] = areas >= 0.0"
   [notch_not_in_ok]="rules.py|'dead_end', 'notch', 'rough', 'shell'|'dead_end', 'rough', 'shell'"
+  [gapguard_pour_ignored]="rules.py|        if math.isfinite(p0) and p < p0 - tol:|        if False:"
+  [gapguard_track_ignored]="rules.py|        if math.isfinite(t0) and t < t0 - tol:|        if False:"
+  [gapguard_tol_ignored]="rules.py|        if math.isfinite(p0) and p < p0 - tol:|        if math.isfinite(p0) and p < p0 - 0.6:"
 )
 fail=0
 for name in "${!M[@]}"; do
