@@ -984,11 +984,18 @@ def track_geometry_parts(b, cfg, report=None):
             for e in (0, 1):
                 at.setdefault(key(i, e), []).append((i, e))
     parent = list(range(n))
+    cparent = list(range(n))                                           # the runs: segments joined at every joint of exactly two, whatever the angle
 
     def find(x):
         while parent[x] != x:
             parent[x] = parent[parent[x]]
             x = parent[x]
+        return x
+
+    def cfind(x):
+        while cparent[x] != x:
+            cparent[x] = cparent[cparent[x]]
+            x = cparent[x]
         return x
     bends = []
     via_xy = np.column_stack([b.v_x, b.v_y]) if len(b.v_x) else np.zeros((0, 2))
@@ -1002,6 +1009,7 @@ def track_geometry_parts(b, cfg, report=None):
             continue                                               # a joint on a pad of the net is a junction, not a bend
         if len(via_xy) and (np.hypot(via_xy[:, 0] - p[0, 0], via_xy[:, 1] - p[0, 1]) <= b.v_dia / 2 + 1e-3).any():
             continue
+        cparent[cfind(i)] = cfind(j)
         if _dev(ang[i] - ang[j], 180.0) <= c.TRACK_ANGLE_TOL:
             parent[find(i)] = find(j)
         else:
@@ -1061,7 +1069,10 @@ def track_geometry_parts(b, cfg, report=None):
                     out.append(('entry', '%s enters %s.%s %s' % (name(i), ref, b.p_pin[pa['rows'][h]],
                                 'at %.1f degrees, not along a pad axis (%.1f or %.1f)' % (ang[i] % 180, pa['rot'][h] % 180, (pa['rot'][h] + 90) % 180) if not (along_x or along_y)
                                 else 'across the corner, not through the edge'), float(ends[e_i, 0]), float(ends[e_i, 1])))
-        # a track over the pads of a part it does not end on (even of its own net)
+        # a track over the pads of a part its run does not end on (even of its own net): the run is the segments joined at joints of two, so a track that starts on a pad and turns is still on it
+        run_fps = {}
+        for i in range(n):
+            run_fps.setdefault(cfind(i), set()).update(int(pa['fp'][q]) for q in np.flatnonzero(in_end[i] | in_end[n + i]))
         cu = geom.pad_copper(b, pa['rows'])
         for a0 in range(0, n, 256):
             blk = np.arange(a0, min(n, a0 + 256))
@@ -1072,7 +1083,7 @@ def track_geometry_parts(b, cfg, report=None):
                 i = int(blk[jj])
                 if L[i] <= 1e-6:
                     continue
-                mine = {int(pa['fp'][q]) for q in np.flatnonzero(in_end[i] | in_end[n + i])}
+                mine = run_fps[cfind(i)]
                 if int(pa['fp'][h]) in mine:
                     continue
                 out.append(('over_pad', '%s runs over %s.%s' % (name(i), b.fp_ref[pa['fp'][h]], b.p_pin[pa['rows'][h]]), float((S[i, 0] + S[i, 2]) / 2), float((S[i, 1] + S[i, 3]) / 2)))
