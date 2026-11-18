@@ -15,7 +15,7 @@ FILL_MIN_AREA                default   0.02
 FILL_THERMAL_LAYERS          default   ('F',)
 FILL_SOLID_LAYERS            default   ('B',)
 segments 370  arcs 0
-track_geometry {'angle': 41, 'entry': 53, 'jog': 32, 'over_pad': 19}
+track_geometry {'angle': 41, 'entry': 53, 'jog': 32, 'over_pad': 16}
 fill_quality   {'dead_end': 101, 'narrow': 224, 'thermal': 1}  {'B_dead_end': 45, 'B_narrow': 91, 'B_outline_mm': 3708.5, 'F_dead_end': 56, 'F_narrow': 133, 'F_outline_mm': 2563.0}
 angle    21.95   23.40   F /+3V3A segment 1.34 mm at 42.1 degrees
 angle    25.78   10.71   F /VNEG_G segment 0.64 mm at 47.2 degrees
@@ -145,11 +145,8 @@ entry    83.95   9.66    F /AWG_BIN enters U301.3 at 72.0 degrees, not along a p
 entry    84.95   12.74   F /AWG_BIN enters U301.5 at 72.0 degrees, not along a pad axis (90.0 or 0.0)
 over_pad 25.30   14.60   F /+5V_F runs over C401.1
 over_pad 29.27   14.93   F /+5V_F runs over C402.1
-over_pad 29.48   15.68   F /LM_FBP runs over R402.1
 over_pad 30.30   12.05   F /VNEG_G runs over U401.6
-over_pad 35.53   6.88    F /+5V_F runs over R406.2
 over_pad 51.83   13.90   F /VREF runs over U501.2
-over_pad 51.83   13.90   F /VREF runs over C501.1
 over_pad 52.75   14.72   F /VREF runs over U501.2
 over_pad 53.20   14.04   F /VREF runs over U501.2
 over_pad 66.04   20.74   F /A1 runs over D101.3

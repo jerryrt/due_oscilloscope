@@ -16,6 +16,7 @@ killed    thermal_through_hole_counts
 killed    via_joint_is_a_bend
 killed    min_leg_ignored
 killed    dead_end_width_is_min_width
+killed    over_pad_own_segment_ends_only
 killed    entry_corner_allowed_y
 killed    fill_layer_ignored
 killed    entry_x_axis_not_allowed

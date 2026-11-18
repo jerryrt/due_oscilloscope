@@ -15,7 +15,7 @@ FILL_MIN_AREA                default   0.02
 FILL_THERMAL_LAYERS          default   ('F',)
 FILL_SOLID_LAYERS            default   ('B',)
 segments 408  arcs 0
-track_geometry {'angle': 6, 'entry': 29, 'jog': 18, 'over_pad': 29}
+track_geometry {'angle': 6, 'entry': 29, 'jog': 18, 'over_pad': 20}
 fill_quality   {'dead_end': 100, 'narrow': 243, 'thermal': 1}  {'B_dead_end': 47, 'B_narrow': 91, 'B_outline_mm': 3985.4, 'F_dead_end': 53, 'F_narrow': 152, 'F_outline_mm': 2538.1}
 angle    26.80   11.57   F /VNEG segment 1.83 mm at 11.0 degrees
 angle    43.50   13.18   F /+3V3A segment 1.52 mm at 131.0 degrees
@@ -75,22 +75,13 @@ over_pad 25.22   13.25   F /+5V_F runs over C404.1
 over_pad 46.50   12.60   F /+3V3A runs over C505.1
 over_pad 46.50   12.60   F /+3V3A runs over C501.1
 over_pad 53.34   6.40    F /TAP5 runs over R508.1
-over_pad 53.34   6.40    F /TAP5 runs over R507.2
 over_pad 55.88   7.70    F /TAP4 runs over R506.2
 over_pad 55.88   7.70    F /TAP4 runs over R507.1
-over_pad 56.40   16.59   F /SNS_BI runs over R514.2
 over_pad 58.33   28.40   F /VREF runs over R510.1
-over_pad 58.35   21.37   F /SDA1_A runs over U502.9
 over_pad 58.42   6.80    F /TAP3 runs over R506.1
 over_pad 58.42   6.80    F /TAP3 runs over R505.2
-over_pad 60.47   20.59   F /SNS_BI runs over U502.7
-over_pad 60.84   22.12   F /P33_R runs over C502.1
 over_pad 60.96   6.40    F /TAP2 runs over R504.2
-over_pad 60.96   6.40    F /TAP2 runs over R505.1
-over_pad 62.35   13.49   F /SNS_TAP runs over R502.1
-over_pad 62.35   13.49   F /SNS_TAP runs over R513.1
 over_pad 63.50   6.29    F /TAP1 runs over R504.1
-over_pad 64.80   36.20   F /P33_S runs over R110.1
 over_pad 73.07   39.50   F /A1 runs over D101.3
 over_pad 73.07   39.50   F /A1 runs over TP101.1
 over_pad 74.21   29.08   F /A0 runs over TP201.1
