@@ -49,6 +49,7 @@ FILL_GNDPAD_EXCEPTIONS = [
     ('U502', '3', 'VSSOP pin 3: a via whose annulus touches the pad edge needs 0.16 mm to the corners of the pads either side (U502.2, U502.4), not the 0.2 mm; the 0.225 mm track to the via at (59.8, 16.6) is the copper that fits (measured by hand, 2x crop sent to montreal5)'),
 ]
 
+FILL_NOTCH_WIDTH = 1.05                                # no bare inlet in the top pour no wider than its 1.0 mm minimum width (and the raster tolerance)
 FILL_ROUGH_LAYERS = ('F',)                             # no row of clearance arcs along the top pour's edge
 FILL_ROUGH_TOL = 0.15
 FILL_ROUGH_LINK = 2.0

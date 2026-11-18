@@ -698,3 +698,57 @@ def box_protect(r, boxes, reach=1.0):
         y0 = int(np.floor((r.y1 - by1 - reach) * k)); y1 = int(np.ceil((r.y1 - by0 + reach) * k))
         m[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
     return m
+
+
+def foreign_copper(b, r, layer, net):
+    """a bool mask on the raster `r`: the copper of every OTHER net on `layer` - pads, vias (all layers) and tracks - drawn at its own size"""
+    from scipy import ndimage  # noqa: F401  (imported by the callers that dilate it)
+    k, x0, y1 = r.ppmm, r.x0, r.y1
+    H, W = r.mask.shape
+    im = Image.new('L', (W, H), 0)
+    d = ImageDraw.Draw(im)
+    rows = np.flatnonzero((b.p_net != net) & ((b.p_layer_mask & (1 << layer)) != 0)) if len(b.p_net) else np.zeros(0, np.int64)
+    cu = geom.pad_copper(b, rows) if len(rows) else None
+    if cu is not None:
+        for i in range(len(rows)):
+            m = cu.owner == i
+            C, R = cu.C[m], cu.r[m]
+            if len(C) == 4 and np.all(R == 0):
+                d.polygon([((C[q][0] - x0) * k, (y1 - C[q][1]) * k) for q in range(4)], fill=1)
+            else:
+                for (ax, ay, bx, by), rr in zip(C, R):
+                    d.line(((ax - x0) * k, (y1 - ay) * k, (bx - x0) * k, (y1 - by) * k), fill=1, width=max(1, int(round(2 * rr * k))))
+                    for cx, cy in ((ax, ay), (bx, by)):
+                        d.ellipse([(cx - x0 - rr) * k, (y1 - cy - rr) * k, (cx - x0 + rr) * k, (y1 - cy + rr) * k], fill=1)
+    for i in np.flatnonzero(b.v_net != net) if len(b.v_net) else []:
+        rr = b.v_dia[i] / 2
+        d.ellipse([(b.v_x[i] - x0 - rr) * k, (y1 - b.v_y[i] - rr) * k, (b.v_x[i] - x0 + rr) * k, (y1 - b.v_y[i] + rr) * k], fill=1)
+    for i in np.flatnonzero((b.s_net != net) & (b.s_layer == layer)) if len(b.s_net) else []:
+        d.line(((b.s_x0[i] - x0) * k, (y1 - b.s_y0[i]) * k, (b.s_x1[i] - x0) * k, (y1 - b.s_y1[i]) * k), fill=1, width=max(1, int(round(b.s_w[i] * k))))
+        for cx, cy in ((b.s_x0[i], b.s_y0[i]), (b.s_x1[i], b.s_y1[i])):
+            rr = b.s_w[i] / 2
+            d.ellipse([(cx - x0 - rr) * k, (y1 - cy - rr) * k, (cx - x0 + rr) * k, (y1 - cy + rr) * k], fill=1)
+    return np.asarray(im).astype(bool)
+
+
+def notches(b, r, layer, net, width=1.0, clearance=0.3, tol=0.15, min_area=0.1, explain=None):
+    """the bare inlets of the pour `r`: the parts of the no-pour region too narrow for a disc of `width` mm to enter (a slot or bite in the pour, the pour on both sides) minus every place a
+    clearance ring of another net's copper (clearance + `tol` from it) accounts for, and minus `explain` (a bool mask on `r`, e.g. the no-pour rule areas). Returns (label image, count) of
+    the pieces of at least `min_area` mm2"""
+    k = r.ppmm
+    r_px = max((width / 2 - 0.02) * k, 1.0)
+    comp = ~np.pad(r.mask, 1, constant_values=True)[1:-1, 1:-1]
+    opened, _ = _opened(np.pad(comp, 4, constant_values=True), r_px)
+    opened = opened[4:-4, 4:-4]
+    gap = comp & ~opened
+    near = ndi.distance_transform_edt(~foreign_copper(b, r, layer, net)) <= (clearance + tol) * k
+    gap &= ~near
+    if explain is not None:
+        gap &= ~explain
+    lab, n = ndi.label(gap, structure=np.ones((3, 3)))
+    keep = np.zeros(n + 1, bool)
+    if n:
+        areas = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1)) / (k * k)
+        keep[1:] = areas >= min_area
+    lab = np.where(keep[lab], lab, 0)
+    return ndi.label(lab > 0, structure=np.ones((3, 3)))

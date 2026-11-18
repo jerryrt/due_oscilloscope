@@ -49,7 +49,7 @@ declare -A M=(
   [rough_layers_ignored]="rules.py|        if lay in c.FILL_ROUGH_LAYERS:|        if False:"
   [rough_link_ignored_rule]="rules.py|link=c.FILL_ROUGH_LINK, exempt=c.FILL_SHELL_PREFIXES)|link=2.0, exempt=c.FILL_SHELL_PREFIXES)"
   [rough_tol_ignored_rule]="rules.py|tol=c.FILL_ROUGH_TOL, link|tol=0.15, link"
-  [rough_not_counted_in_ok]="rules.py|'dead_end', 'rough', 'shell'|'dead_end', 'shell'"
+  [rough_not_counted_in_ok]="rules.py|'dead_end', 'notch', 'rough', 'shell'|'dead_end', 'notch', 'shell'"
   [pads_one_per_pin]="rules.py|    r = np.arange(len(b.p_x))\n    return dict(rows=r, cx=|    r = pads(b).rows\n    return dict(rows=r, cx="
   [dangling_tolerance_extra]="rules.py|pad_dist(p, h) <= w / 2 + 1e-9|pad_dist(p, h) <= w / 2 + 0.1"
   [dangling_center_only]="rules.py|pad_dist(p, h) <= w / 2 + 1e-9|pad_dist(p, h) <= 1e-9"
@@ -110,6 +110,10 @@ declare -A M=(
   [stair_legs_unchecked]="rules.py|and a[1] >= m[1] / 2 - 1e-9 and d[1] >= m[1] / 2 - 1e-9:|:"
   [stair_not_90]="rules.py|abs(abs(t1) - 90.0) <= c.TRACK_ANGLE_TOL and|abs(t1) > 10 and"
   [stair_legs_not_merged]="rules.py|            if legs and abs((h - legs[-1][0] + 180.0) % 360.0 - 180.0) < c.TRACK_ANGLE_TOL:|            if False:"
+  [notch_near_ignored]="fills.py|    gap \&= ~near|    gap \&= True"
+  [notch_width_not_used]="fills.py|    r_px = max((width / 2 - 0.02) * k, 1.0)|    r_px = max((1.0 / 2 - 0.02) * k, 1.0)"
+  [notch_area_floor_ignored]="fills.py|        keep[1:] = areas >= min_area|        keep[1:] = areas >= 0.0"
+  [notch_not_in_ok]="rules.py|'dead_end', 'notch', 'rough', 'shell'|'dead_end', 'rough', 'shell'"
 )
 fail=0
 for name in "${!M[@]}"; do

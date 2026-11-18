@@ -211,3 +211,26 @@ def test_a_tie_to_a_holed_pad_of_another_part_is_not_the_exposed_pad_case():
     a.p('U2', '1', 10.9, 10, 'GND', smd=True, size=1.0).p('U2', '1', 10.9, 10, 'GND', smd=False, size=0.4, mask=3)       # a holed pad, but of the neighbouring part
     a.s('GND', 0, 10, 10, 10.9, 10, 0.2)
     assert 'gndpad' in kinds(a)
+
+
+BITE = [(0, 0), (20, 0), (20, 10), (10.5, 10), (10.5, 6), (9.5, 6), (9.5, 10), (0, 10)]                  # a 1.0 mm wide, 4 mm deep slot into the top of the pour
+
+
+def test_a_bare_inlet_no_wider_than_the_minimum_is_a_notch_unless_a_clearance_ring_or_nothing_asks_for_it():
+    assert 'notch' in kinds(board(BITE), FILL_NOTCH_WIDTH=1.05)
+    assert 'notch' not in kinds(board(BITE))                                                         # not asked for
+    assert 'notch' not in kinds(board(BITE), FILL_NOTCH_WIDTH=0.9)                                    # wider than the limit
+    wide = [(0, 0), (20, 0), (20, 10), (11, 10), (11, 6), (9, 6), (9, 6.0), (9, 10), (0, 10)]
+    assert 'notch' not in kinds(board(wide), FILL_NOTCH_WIDTH=1.05)                                   # 2.0 mm wide: a bay, not an inlet
+    short = [(0, 0), (20, 0), (20, 10), (10.5, 10), (10.5, 9.9), (9.5, 9.9), (9.5, 10), (0, 10)]
+    assert 'notch' not in kinds(board(short), FILL_NOTCH_WIDTH=1.05)                                  # 0.1 mm deep: under the area floor
+    ring = board(BITE).part('U1', 0, 0).p('U1', '1', 10, 7.0, 'SIG', size=0.9, mask=1)               # another net's pad in the slot: its clearance ring is the gap
+    assert 'notch' in kinds(ring, FILL_NOTCH_WIDTH=1.05)                                              # the far end of the slot is still bare
+    full = [(0, 0), (20, 0), (20, 10), (10.5, 10), (10.5, 8.6), (9.5, 8.6), (9.5, 10), (0, 10)]
+    ex = board(full).part('U1', 0, 0).p('U1', '1', 10, 9.5, 'SIG', size=0.9, mask=1)
+    assert 'notch' not in kinds(ex, FILL_NOTCH_WIDTH=1.05)                                            # a pad filling a short slot: nothing bare is left
+
+
+def test_the_notch_count_is_a_figure_and_a_verdict():
+    r = rules.fill_quality(board(BITE).build(), dict(GND='GND', FILL_LAYERS=('F',), FILL_NOTCH_WIDTH=1.05))
+    assert not r.ok and r.figures['notch'] == 1.0 and 'inlet' in r.detail

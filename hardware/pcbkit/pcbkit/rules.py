@@ -1546,6 +1546,8 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_ROUGH_LINK', 2.0, 'mm', 'hugging items closer than this (copper to copper) are a row'),
     tunable('FILL_SHELL_PREFIXES', (), 'designator prefixes', 'the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN)'),
     tunable('FILL_GNDPAD_VIA_GAP', 0.05, 'mm', 'a GND via whose annulus is within this of the pad edge is at the edge (no visible stub)'),
+    tunable('FILL_NOTCH_WIDTH', 0.0, 'mm', 'a bare inlet of the top pour no wider than this (the pour minimum width and the raster tolerance; 0 = not checked), that is neither a clearance ring of another net nor explained, is a notch'),
+    tunable('FILL_NOTCH_AREA', 0.1, 'mm2', 'a notch piece smaller than this is a raster corner, not an inlet'),
     tunable('FILL_GNDPAD_STUB', 0.05, 'mm', 'a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour)'),
     tunable('FILL_GNDPAD_TIE', 0.6, 'mm', 'or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad)'),
     tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
@@ -1663,6 +1665,14 @@ def fill_quality_parts(b, cfg, report=None):
         de = [p for p in fills.thin_report(r_all, 0.0, c.FILL_DEAD_END_WIDTH, c.FILL_MIN_AREA, length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]
         for p in de:
             out.append(('dead_end', '%s pour finger %.2f mm wide, %.1f mm long, touching other copper at one end' % (lay, p.width, p.length), p.x, p.y))
+        if c.FILL_NOTCH_WIDTH > 0 and lay in c.FILL_ROUGH_LAYERS:
+            nl, nn = fills.notches(b, r_fill, code, gnd, c.FILL_NOTCH_WIDTH, float(b.z_clear[zs[0]]), c.FILL_ROUGH_TOL, c.FILL_NOTCH_AREA)
+            from scipy import ndimage as _ndn
+            for i in range(1, nn + 1):
+                rr, cc = np.nonzero(nl == i)
+                x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
+                out.append(('notch', '%s pour has a bare inlet no wider than %.2f mm (%.1f mm2 of it) that no clearance ring or keep-out accounts for' % (lay, c.FILL_NOTCH_WIDTH, (nl == i).sum() / r_fill.ppmm ** 2), x, y))
+            figs[f'{lay}_notch'] = nn
         if lay in c.FILL_ROUGH_LAYERS:
             from scipy import ndimage as _ndi
             rough = fills.rough_edges(b, r_fill, code, gnd, clearance=float(b.z_clear[zs[0]]), tol=c.FILL_ROUGH_TOL, link=c.FILL_ROUGH_LINK, exempt=c.FILL_SHELL_PREFIXES)
@@ -1777,7 +1787,7 @@ def fill_quality_parts(b, cfg, report=None):
 
 def fill_quality(b, cfg, report=None):
     parts, figs = fill_quality_parts(b, cfg, report)
-    kinds = ('narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid', 'stale_exception')
+    kinds = ('narrow', 'dead_end', 'notch', 'rough', 'shell', 'gndpad', 'thermal', 'solid', 'stale_exception')
     fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig.update({k: float(v) for k, v in figs.items()})
     fig['violations'] = float(len(parts))

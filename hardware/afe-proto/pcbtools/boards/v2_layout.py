@@ -154,6 +154,7 @@ FILL_SHELL_PREFIXES = ('J',)                           # every connector's throu
 FILL_GNDPAD_MIN = 0.2
 FILL_SHELL_EXCEPTIONS = []                              # (ref, pin, reason): a connector GND pin kept on the bottom plane; kvm_02 lists AFE-2's header pins here with their reason
 FILL_GNDPAD_EXCEPTIONS = []
+FILL_NOTCH_WIDTH = 1.05                                # no bare inlet in the top pour no wider than its 1.0 mm minimum width (and the raster tolerance)
 FILL_ROUGH_LAYERS = ('F',)                             # no row of clearance arcs along the top pour's edge
 FILL_ROUGH_TOL = 0.15
 FILL_ROUGH_LINK = 2.0
