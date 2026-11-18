@@ -9,14 +9,14 @@ GND                          project   '/GND'
 FILL_LAYERS                  default   ('F', 'B')
 FILL_MIN_WIDTH               default   {'F': 0.8, 'B': 0.5}
 FILL_DEAD_END_WIDTH          default   1.6
-FILL_LENGTH_FACTOR           default   1.5
+FILL_LENGTH_FACTOR           default   2.0
 FILL_RASTER                  default   40.0
 FILL_MIN_AREA                default   0.02
 FILL_THERMAL_LAYERS          default   ('F',)
 FILL_SOLID_LAYERS            default   ('B',)
 segments 408  arcs 0
 track_geometry {'angle': 6, 'entry': 29, 'jog': 18, 'over_pad': 20}
-fill_quality   {'dead_end': 100, 'narrow': 243, 'thermal': 1}  {'B_dead_end': 47, 'B_narrow': 91, 'B_outline_mm': 3985.4, 'F_dead_end': 53, 'F_narrow': 152, 'F_outline_mm': 2538.1}
+fill_quality   {'dead_end': 63, 'narrow': 210, 'thermal': 1}  {'B_dead_end': 33, 'B_narrow': 75, 'B_outline_mm': 3985.4, 'F_dead_end': 30, 'F_narrow': 135, 'F_outline_mm': 2538.1}
 angle    26.80   11.57   F /VNEG segment 1.83 mm at 11.0 degrees
 angle    43.50   13.18   F /+3V3A segment 1.52 mm at 131.0 degrees
 angle    51.86   13.70   F /VREF segment 0.58 mm at 136.4 degrees
@@ -93,12 +93,8 @@ over_pad 83.82   5.60    F /DAC0 runs over R305.1
 narrow   17.65   50.80   B pour 0.36 mm wide, 1.3 mm long
 narrow   17.75   50.79   F pour 0.50 mm wide, 2.0 mm long
 narrow   17.76   13.00   F pour 0.57 mm wide, 14.8 mm long
-narrow   20.06   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   20.06   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   22.61   11.59   F pour 0.40 mm wide, 0.7 mm long
-narrow   22.61   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   22.61   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   27.03   10.94   F pour 0.51 mm wide, 0.7 mm long
 narrow   27.54   12.75   F pour 0.30 mm wide, 9.8 mm long
 narrow   28.43   8.83    F pour 0.62 mm wide, 1.2 mm long
 narrow   28.59   10.64   F pour 0.70 mm wide, 1.5 mm long
@@ -110,42 +106,30 @@ narrow   30.23   50.80   F pour 0.45 mm wide, 1.1 mm long
 narrow   31.50   19.05   F pour 0.40 mm wide, 1.1 mm long
 narrow   31.75   2.54    F pour 0.45 mm wide, 1.1 mm long
 narrow   31.76   2.54    B pour 0.36 mm wide, 0.7 mm long
-narrow   32.76   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   32.76   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   34.29   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   34.30   2.53    F pour 0.47 mm wide, 1.1 mm long
-narrow   35.31   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   35.31   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   36.83   2.52    F pour 0.49 mm wide, 1.1 mm long
 narrow   36.84   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   36.86   5.58    F pour 0.75 mm wide, 2.0 mm long
-narrow   37.63   15.50   F pour 0.40 mm wide, 0.7 mm long
-narrow   37.84   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   37.84   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   38.86   13.00   F pour 0.27 mm wide, 0.7 mm long
-narrow   39.94   13.00   F pour 0.30 mm wide, 0.7 mm long
 narrow   40.04   50.53   F pour 0.70 mm wide, 2.4 mm long
 narrow   40.35   50.80   B pour 0.41 mm wide, 0.9 mm long
 narrow   40.65   14.70   F pour 0.55 mm wide, 1.1 mm long
 narrow   41.64   5.67    F pour 0.56 mm wide, 1.8 mm long
 narrow   43.03   6.04    F pour 0.75 mm wide, 1.8 mm long
-narrow   43.65   13.79   F pour 0.50 mm wide, 0.8 mm long
 narrow   43.83   12.18   F pour 0.46 mm wide, 1.0 mm long
 narrow   45.08   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   46.38   49.81   F pour 0.46 mm wide, 0.8 mm long
-narrow   46.60   13.15   F pour 0.40 mm wide, 0.7 mm long
-narrow   46.99   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   46.99   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   47.19   2.57    F pour 0.40 mm wide, 0.8 mm long
 narrow   47.60   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   48.93   49.83   F pour 0.46 mm wide, 0.9 mm long
-narrow   49.54   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   49.54   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   49.55   2.44    F pour 0.34 mm wide, 2.2 mm long
 narrow   50.15   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   50.63   9.02    F pour 0.65 mm wide, 2.0 mm long
 narrow   51.45   49.81   F pour 0.46 mm wide, 0.9 mm long
-narrow   52.06   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   52.06   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   52.11   2.54    B pour 0.40 mm wide, 1.0 mm long
 narrow   52.68   49.83   F pour 0.46 mm wide, 0.9 mm long
@@ -153,7 +137,6 @@ narrow   52.76   7.64    F pour 0.61 mm wide, 1.9 mm long
 narrow   53.79   13.49   F pour 0.53 mm wide, 1.3 mm long
 narrow   54.00   49.81   F pour 0.46 mm wide, 0.8 mm long
 narrow   54.61   2.54    B pour 0.40 mm wide, 0.5 mm long
-narrow   54.61   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   54.61   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   54.61   2.40    F pour 0.57 mm wide, 1.3 mm long
 narrow   54.61   8.22    F pour 0.41 mm wide, 1.1 mm long
@@ -166,40 +149,32 @@ narrow   57.16   2.54    B pour 0.36 mm wide, 0.7 mm long
 narrow   57.16   50.80   B pour 0.36 mm wide, 0.7 mm long
 narrow   57.19   10.80   B pour 0.40 mm wide, 1.0 mm long
 narrow   57.30   11.22   F pour 0.71 mm wide, 2.6 mm long
-narrow   57.70   12.99   F pour 0.49 mm wide, 0.7 mm long
 narrow   57.78   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   58.68   9.59    F pour 0.54 mm wide, 1.3 mm long
 narrow   59.08   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   59.69   2.54    B pour 0.40 mm wide, 0.5 mm long
-narrow   59.69   10.80   B pour 0.40 mm wide, 0.5 mm long
-narrow   59.69   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   59.69   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   59.70   10.79   F pour 0.49 mm wide, 1.1 mm long
 narrow   59.80   15.40   F pour 0.29 mm wide, 1.7 mm long
 narrow   60.30   49.81   F pour 0.46 mm wide, 0.9 mm long
 narrow   61.25   16.38   F pour 0.49 mm wide, 1.1 mm long
 narrow   61.36   27.82   F pour 0.45 mm wide, 1.4 mm long
-narrow   61.74   23.79   F pour 0.45 mm wide, 0.7 mm long
 narrow   61.85   50.52   F pour 0.74 mm wide, 2.3 mm long
 narrow   62.19   50.80   B pour 0.40 mm wide, 1.0 mm long
 narrow   62.23   2.40    F pour 0.57 mm wide, 1.3 mm long
 narrow   62.24   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   62.24   6.02    F pour 0.41 mm wide, 1.1 mm long
-narrow   63.00   7.07    F pour 0.25 mm wide, 0.7 mm long
 narrow   63.11   14.40   F pour 0.40 mm wide, 1.1 mm long
 narrow   63.98   18.73   F pour 0.51 mm wide, 1.6 mm long
 narrow   64.76   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   64.78   2.40    F pour 0.57 mm wide, 1.3 mm long
-narrow   65.40   36.75   F pour 0.60 mm wide, 0.7 mm long
 narrow   66.68   0.22    F pour 0.40 mm wide, 38.0 mm long
 narrow   67.31   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   69.89   50.80   B pour 0.40 mm wide, 1.0 mm long
 narrow   69.98   50.80   F pour 0.53 mm wide, 1.7 mm long
-narrow   72.39   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   72.39   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   72.58   8.88    F pour 0.55 mm wide, 2.0 mm long
 narrow   74.68   15.82   F pour 0.54 mm wide, 1.4 mm long
-narrow   74.94   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   74.94   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   74.98   2.54    B pour 0.40 mm wide, 0.9 mm long
 narrow   75.20   35.31   F pour 0.40 mm wide, 1.0 mm long
@@ -207,7 +182,6 @@ narrow   75.50   13.22   F pour 0.40 mm wide, 1.1 mm long
 narrow   77.11   17.25   F pour 0.74 mm wide, 1.0 mm long
 narrow   77.34   12.65   F pour 0.40 mm wide, 0.8 mm long
 narrow   77.46   2.54    B pour 0.35 mm wide, 0.5 mm long
-narrow   77.46   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   77.46   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   78.18   38.87   F pour 0.50 mm wide, 1.6 mm long
 narrow   78.83   24.62   F pour 0.32 mm wide, 1.1 mm long
@@ -215,7 +189,6 @@ narrow   78.83   43.97   F pour 0.32 mm wide, 1.1 mm long
 narrow   79.00   37.63   F pour 0.55 mm wide, 1.0 mm long
 narrow   79.59   28.85   F pour 0.50 mm wide, 1.5 mm long
 narrow   80.01   2.54    B pour 0.40 mm wide, 0.5 mm long
-narrow   80.01   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   80.01   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   80.91   39.65   F pour 0.52 mm wide, 1.4 mm long
 narrow   82.55   50.80   F pour 0.45 mm wide, 1.1 mm long
@@ -223,18 +196,12 @@ narrow   82.56   2.54    B pour 0.36 mm wide, 0.7 mm long
 narrow   82.56   50.80   B pour 0.36 mm wide, 0.7 mm long
 narrow   82.75   22.52   F pour 0.40 mm wide, 7.2 mm long
 narrow   82.75   46.07   F pour 0.40 mm wide, 7.2 mm long
-narrow   83.41   30.58   F pour 0.35 mm wide, 0.6 mm long
-narrow   84.13   12.13   F pour 0.39 mm wide, 0.6 mm long
-narrow   84.89   35.85   F pour 0.35 mm wide, 0.7 mm long
 narrow   85.09   2.54    B pour 0.40 mm wide, 0.5 mm long
-narrow   85.09   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   85.09   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   87.63   2.52    F pour 0.49 mm wide, 1.1 mm long
 narrow   87.64   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   90.16   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   90.18   2.53    F pour 0.47 mm wide, 1.1 mm long
-narrow   90.91   24.53   F pour 0.35 mm wide, 0.7 mm long
-narrow   90.91   44.05   F pour 0.35 mm wide, 0.7 mm long
 narrow   92.68   10.15   F pour 0.65 mm wide, 1.3 mm long
 narrow   92.68   12.70   F pour 0.65 mm wide, 1.3 mm long
 narrow   92.68   15.24   F pour 0.63 mm wide, 1.3 mm long
@@ -334,42 +301,26 @@ narrow   96.51   47.00   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   49.50   B pour 0.40 mm wide, 0.9 mm long
 narrow   96.53   49.42   F pour 0.54 mm wide, 1.8 mm long
 dead_end 17.91   50.80   B pour finger 0.80 mm wide, 3.3 mm long, touching other copper at one end
-dead_end 20.06   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 22.61   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 25.46   13.92   F pour finger 0.60 mm wide, 1.3 mm long, touching other copper at one end
-dead_end 26.94   10.68   F pour finger 0.70 mm wide, 1.2 mm long, touching other copper at one end
 dead_end 28.88   14.49   F pour finger 1.55 mm wide, 2.4 mm long, touching other copper at one end
 dead_end 29.39   9.33    F pour finger 0.95 mm wide, 4.1 mm long, touching other copper at one end
 dead_end 29.40   2.54    B pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
-dead_end 30.23   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
-dead_end 30.23   50.75   F pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 31.29   18.72   F pour finger 0.47 mm wide, 1.8 mm long, touching other copper at one end
 dead_end 31.75   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 32.76   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
-dead_end 32.76   50.75   F pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 34.29   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 35.31   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 35.31   50.79   F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 36.84   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 37.25   18.29   F pour finger 0.60 mm wide, 1.2 mm long, touching other copper at one end
-dead_end 37.25   19.72   F pour finger 0.60 mm wide, 1.2 mm long, touching other copper at one end
 dead_end 37.84   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 37.84   50.79   F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 38.06   12.19   F pour finger 1.14 mm wide, 2.4 mm long, touching other copper at one end
-dead_end 38.85   4.07    F pour finger 0.55 mm wide, 1.3 mm long, touching other copper at one end
 dead_end 39.89   50.45   F pour finger 0.70 mm wide, 2.7 mm long, touching other copper at one end
 dead_end 40.18   50.80   B pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
-dead_end 40.65   14.77   F pour finger 0.61 mm wide, 1.3 mm long, touching other copper at one end
 dead_end 40.96   38.99   B pour finger 1.30 mm wide, 2.4 mm long, touching other copper at one end
 dead_end 40.96   42.99   B pour finger 1.30 mm wide, 2.4 mm long, touching other copper at one end
 dead_end 41.38   22.34   F pour finger 0.90 mm wide, 4.6 mm long, touching other copper at one end
 dead_end 41.61   5.58    F pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 42.23   12.49   F pour finger 1.45 mm wide, 4.9 mm long, touching other copper at one end
 dead_end 42.66   7.12    F pour finger 1.15 mm wide, 3.9 mm long, touching other copper at one end
-dead_end 43.56   14.08   F pour finger 0.74 mm wide, 1.3 mm long, touching other copper at one end
-dead_end 44.79   49.98   F pour finger 0.72 mm wide, 1.4 mm long, touching other copper at one end
 dead_end 46.99   50.53   F pour finger 0.85 mm wide, 2.1 mm long, touching other copper at one end
-dead_end 46.99   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 49.54   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 49.54   50.56   F pour finger 0.85 mm wide, 2.1 mm long, touching other copper at one end
 dead_end 49.71   2.92    F pour finger 0.92 mm wide, 3.1 mm long, touching other copper at one end
@@ -379,35 +330,21 @@ dead_end 52.06   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other
 dead_end 52.24   2.55    B pour finger 0.64 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 52.89   8.09    F pour finger 0.90 mm wide, 2.8 mm long, touching other copper at one end
 dead_end 54.61   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 54.61   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 54.61   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 54.61   50.53   F pour finger 0.85 mm wide, 2.1 mm long, touching other copper at one end
 dead_end 57.15   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 57.15   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 57.15   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 57.16   50.53   F pour finger 0.85 mm wide, 2.1 mm long, touching other copper at one end
 dead_end 57.38   10.79   B pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 59.69   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 59.69   10.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 59.69   50.53   F pour finger 0.85 mm wide, 2.1 mm long, touching other copper at one end
-dead_end 59.69   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 61.56   27.77   F pour finger 0.60 mm wide, 1.8 mm long, touching other copper at one end
 dead_end 62.03   50.80   B pour finger 0.64 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 62.24   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 62.24   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 62.66   16.72   F pour finger 1.20 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 64.76   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 64.76   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 65.31   37.02   F pour finger 0.70 mm wide, 1.3 mm long, touching other copper at one end
 dead_end 67.31   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 69.95   2.77    F pour finger 1.10 mm wide, 2.0 mm long, touching other copper at one end
-dead_end 70.06   40.17   F pour finger 0.50 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 70.08   50.79   B pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
-dead_end 72.39   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 72.58   9.09    F pour finger 0.64 mm wide, 2.4 mm long, touching other copper at one end
-dead_end 72.85   38.84   F pour finger 0.50 mm wide, 1.3 mm long, touching other copper at one end
-dead_end 72.85   40.17   F pour finger 0.50 mm wide, 1.3 mm long, touching other copper at one end
-dead_end 72.90   28.38   F pour finger 0.65 mm wide, 1.4 mm long, touching other copper at one end
 dead_end 74.94   50.79   B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 75.11   2.55    B pour finger 0.65 mm wide, 2.0 mm long, touching other copper at one end
 dead_end 77.46   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
@@ -417,19 +354,12 @@ dead_end 78.46   24.67   F pour finger 0.53 mm wide, 1.8 mm long, touching other
 dead_end 78.46   43.92   F pour finger 0.53 mm wide, 1.8 mm long, touching other copper at one end
 dead_end 79.14   38.73   F pour finger 1.01 mm wide, 4.5 mm long, touching other copper at one end
 dead_end 80.01   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 80.01   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 82.55   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 82.55   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 82.93   22.62   F pour finger 0.50 mm wide, 7.5 mm long, touching other copper at one end
 dead_end 82.93   45.97   F pour finger 0.50 mm wide, 7.5 mm long, touching other copper at one end
 dead_end 85.09   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 85.09   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
 dead_end 87.64   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 87.64   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 88.01   50.79   B pour finger 1.15 mm wide, 1.3 mm long, touching other copper at one end
 dead_end 90.16   2.54    B pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 90.16   2.54    F pour finger 0.63 mm wide, 1.6 mm long, touching other copper at one end
-dead_end 92.34   50.79   B pour finger 1.15 mm wide, 1.3 mm long, touching other copper at one end
 dead_end 92.48   43.30   F pour finger 0.95 mm wide, 1.6 mm long, touching other copper at one end
 dead_end 92.49   45.72   F pour finger 1.20 mm wide, 1.9 mm long, touching other copper at one end
 dead_end 95.34   30.58   B pour finger 1.41 mm wide, 42.4 mm long, touching other copper at one end
