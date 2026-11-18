@@ -84,10 +84,14 @@ def stitch_points(b, r, lab, comp, area, min_radius=0.9, spacing=8.0, court_marg
 KEEP_NAME = 'fillkeep'
 
 
+_DROPPED = []                                      # removed zones are kept alive: RemoveNative leaves the object to Python, and freeing it here crashes the next Zones() walk
+
+
 def drop_keeps(b):
     for z in list(b.Zones()):
         if z.GetIsRuleArea() and z.GetZoneName() == KEEP_NAME:
-            b.Remove(z)
+            b.RemoveNative(z)
+            _DROPPED.append(z)
 
 
 def _rm(tmp):
@@ -112,21 +116,26 @@ def _fill_to(path, tmp, keeps, loose_w, clearance, spoke, gap, bot_w=None):
     return fills.net_copper(b, 0, g, 40.0, with_net_items=True, frame=fr), b, g, fills.net_copper(b, 0, g, 40.0, with_net_items=False, frame=fr)
 
 
-def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, join, rounds=6):
+def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, join, rounds=6, shells=(), skip=None):
     """the no-pour rectangles of pcbkit.fills.keepouts, from the top pour filled at `loose_w` (its narrowest) with no keep-outs of ours, then `rounds` times: fill at `width` with
     them, and add what that fill still leaves that is not worth keeping (blobs on necks, dead-end fingers)"""
     tmp = path + '.keeps.tmp.kicad_pcb'
     bounds = (17.0, -4.5, 117.0, 57.84)
-    r0 = _fill_to(path, tmp, [], loose_w, clearance, spoke, gap)[0]
+    r0, b0, g0, _ = _fill_to(path, tmp, [], loose_w, clearance, spoke, gap)
+    protect = fills.pin_protect(b0, r0, g0, shells) if shells else None       # connector ground pins stay in the pour
+    if skip is not None:                                                       # and so does the pour round each SMD ground pad that has not been given a via at its edge
+        boxes = [(b0.p_bx0[i], b0.p_by0[i], b0.p_bx1[i], b0.p_by1[i]) for i in range(len(b0.p_x)) if b0.p_net[i] == g0 and b0.p_smd[i] and (b0.p_layer_mask[i] & 1) and (b0.fp_ref[b0.p_fp[i]], b0.p_pin[i]) not in skip]
+        pb = fills.box_protect(r0, boxes)
+        protect = pb if protect is None else (protect | pb)
     extra = None
-    keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds)
+    keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, protect=protect)
     for _ in range(rounds):
         r, bb, g, rp = _fill_to(path, tmp, keeps, width, clearance, spoke, gap)
         lo = fills.leftovers(r) | fills.rough_edges(bb, rp, 0, g, clearance)
         extra = lo if extra is None else (extra | lo)
         if not lo.any():
             break
-        new = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra)
+        new = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra, protect=protect)
         if new == keeps:
             break
         keeps = new
@@ -167,12 +176,47 @@ def dead_vias(path, keeps, margin=0.35):
     return out
 
 
-def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=10.0, grid=0.5, join=1.0, outlines=(), verbose=True):
+def _gnd_boxes(path):
+    b = kb.read_board(path, {'FRAME': FRAME})
+    g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
+    return [(b.fp_ref[b.p_fp[i]], b.p_pin[i], float(b.p_x[i]), float(b.p_y[i]), (float(b.p_bx0[i]), float(b.p_by0[i]), float(b.p_bx1[i]), float(b.p_by1[i])))
+            for i in range(len(b.p_x)) if b.p_net[i] == g and b.p_smd[i] and (b.p_layer_mask[i] & 1)]
+
+
+def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=10.0, grid=0.5, join=1.0, outlines=(), verbose=True, shells=(), gndpad_min=0.2):
     from pcbtools.editor import edit
-    keeps = derive_keeps(path, 0.2, clearance, spoke, gap, top_w, grid, outlines, join)
+    src = path
+    work = path + '.work.tmp.kicad_pcb'
+    moved, skipped_pads = [], []
+    edge = set()
+    for attempt in range(3):
+        keeps = derive_keeps(src, 0.2, clearance, spoke, gap, top_w, grid, outlines, join, shells=shells, skip=edge)
+        from pcbtools import gndpads                              # imported late: pcbnew's zone objects break when this module's imports come first
+        probe = path + '.probe.tmp.kicad_pcb'
+        bad = []                                                   # the SMD GND pads the pour still does not touch, from the filled board
+        with edit(src, probe) as e:
+            drop_keeps(e.b)
+            for k in keeps:
+                e.keepout(k, KEEP_NAME, tracks=False, vias=False, pour=True, layers='F')
+            set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_NEVER)
+            e.fill_zones()
+        try:
+            lost, near = gndpads.failing(probe, gndpad_min)
+            bad = [p for p in lost + near if (p[0], p[1]) not in edge]
+        finally:
+            _rm(probe)
+        if not bad:
+            break
+        done, skipped = gndpads.relocate(src, work, bad)
+        moved += done
+        skipped_pads += skipped
+        edge |= {(r, pn) for r, pn, *_ in bad}
+        src = work
+        if not done:
+            break
     tmp = path + '.fillclean.tmp.kicad_pcb'
-    dead = dead_vias(path, keeps)
-    with edit(path, tmp) as e:
+    dead = dead_vias(src, keeps)
+    with edit(src, tmp) as e:
         drop_keeps(e.b)
         e.remove_vias([d[0] for d in dead])
         for k in keeps:
@@ -195,7 +239,7 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
                     break
         report.append((area, (cx, cy), len(pts)))
         vias += pts
-    with edit(path, out) as e:
+    with edit(src, out) as e:
         drop_keeps(e.b)
         e.remove_vias([d[0] for d in dead])
         for k in keeps:
@@ -211,9 +255,14 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
         for k in keeps:
             print('   keep-out polygon, %d corners, %.1f mm2, from (%.2f, %.2f)' % (len(k), abs(sum(k[i][0] * k[(i + 1) % len(k)][1] - k[(i + 1) % len(k)][0] * k[i][1] for i in range(len(k)))) / 2, k[0][0], k[0][1]))
         print('%d orphan GND vias inside a keep-out removed (nothing of theirs on the top copper): %s' % (len(dead), ', '.join('(%.1f, %.1f)' % (d[1], d[2]) for d in dead)))
+        print('%d SMD GND pads got their via at the pad edge (the pour cannot hold them): %s' % (len(moved), ', '.join('%s.%s' % (m[0], m[1]) for m in moved)))
+        if skipped_pads:
+            print('   not relocated: %s' % '; '.join('%s.%s (%s)' % t for t in skipped_pads))
         print('top GND pour: %d parts hang free of every GND item; %d of 10 mm2 or more are stitched, %d dropped (%.0f mm2 in %d pieces)' % (len(report), len(kept), len(dropped), sum(a for a, _, _ in dropped), len(dropped)))
         for a, (x, y), n in kept:
             print('   stitched pour %.1f mm2 at (%.1f, %.1f): %d via%s' % (a, x, y, n, '' if n == 1 else 's'))
+    if src == work:
+        _rm(work)
     return keeps, kept, dropped, vias
 
 
@@ -226,4 +275,4 @@ if __name__ == '__main__':
     outl = [tuple(r) for rs in cfg.OUTLINE.values() for r in rs]
     skip = {'--top-width', '--bottom-width', '--clearance', '--spoke', '--gap', '--big', '--grid', '--join', '--config'}
     args = [a for k, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and not (k > 1 and sys.argv[k - 1] in skip)]
-    run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl)
+    run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))

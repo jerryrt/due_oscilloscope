@@ -6,12 +6,20 @@ from pcbkit import rules
 from pcbkit.config import ConfigError
 
 
-def run(a, **over):
+def run_all(a, **over):
     return rules.track_geometry_parts(a.build(), over)
 
 
+def run(a, **over):
+    res = run_all(a, **over)
+    return rules.WaivedList([f for f in res if f[0] not in ROUTE], res.waived)
+
+
+ROUTE = ('detour', 'dangling', 'tspur', 'wide')                               # the route kinds have their own tests (test_route_checks.py): these boards end tracks in the air
+
+
 def kinds(a, **over):
-    return sorted({k for k, *_ in run(a, **over)})
+    return sorted({k for k, *_ in run(a, **over) if k not in ROUTE})
 
 
 def base():
@@ -19,7 +27,8 @@ def base():
 
 
 def test_a_clean_board_passes_and_says_so():
-    a = base().s('SIG', 0, 0, 0, 5, 0).s('SIG', 0, 5, 0, 8, 3).s('SIG', 0, 8, 3, 8, 9)       # 0, 45 and 90 degrees, runs of 5, 4.2 and 6
+    a = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0).p('U1', '2', 8, 9, 'SIG', size=1.0)
+    a.s('SIG', 0, 0, 0, 5, 0).s('SIG', 0, 5, 0, 8, 3).s('SIG', 0, 8, 3, 8, 9)       # 0, 45 and 90 degrees, runs of 5, 4.2 and 6, from pad to pad
     r = rules.track_geometry(a.build(), {})
     assert r.ok and r.figures['segments'] == 3 and r.figures['violations'] == 0 and 'on the angle step' in r.detail
 
@@ -151,3 +160,19 @@ def test_a_named_exception_waives_exactly_one_finding_and_a_stale_or_ambiguous_o
         kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1.1', '')])
     with pytest.raises(ConfigError):
         kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1.1')])
+
+
+def test_every_pad_of_a_part_counts_not_one_per_pin_number():
+    """an exposed pad is several pads of one number, and unnumbered pads share the empty pin: the first of them is lying under a track like any other"""
+    def board(track):
+        a = base().part('U1', 5, 0)
+        a.p('U1', '13', 5, 0, 'GND', size=1.0)                                  # the first pad of number 13 (a later one of the same number follows)
+        a.p('U1', '13', 5, 4, 'GND', size=1.0)
+        a.p('U1', '', 9, 0, 'OTHER', size=1.0)                                  # two unnumbered pads
+        a.p('U1', '', 9, 4, 'OTHER', size=1.0)
+        return a.s(*track)
+    assert 'over_pad' in kinds(board(('SIG', 0, 2, 0, 8, 0)))                  # across the FIRST pad 13
+    assert 'over_pad' in kinds(board(('SIG', 0, 7, 0, 11, 0)))                 # across the first unnumbered pad
+    assert 'over_pad' in kinds(board(('SIG', 0, 7, 4, 11, 4)))                 # and the second
+    one = base().part('U1', 5, 0).p('U1', '13', 5, 0, 'GND', size=1.0).p('U1', '13', 5, 4, 'GND', size=1.0)
+    assert 'entry' in kinds(one.s('GND', 0, 2, 3, 5, 0))                       # a 45 degree entry into the first pad 13

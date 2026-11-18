@@ -925,8 +925,9 @@ TRACK_GEOMETRY_NAMES = (
 
 
 def _pad_arrays(b):
-    pt = pads(b)
-    r = pt.rows
+    """EVERY pad of the board, not rules.pads()'s one per (part, pin): an exposed pad is several pads of one number (a rectangle, via-in-pad squares) and unnumbered pads share the empty pin, and a track
+    can lie over, or enter, any of them"""
+    r = np.arange(len(b.p_x))
     return dict(rows=r, cx=b.p_x[r], cy=b.p_y[r], sx=b.p_sx[r], sy=b.p_sy[r], rot=b.p_rot[r], shape=b.p_shape[r], fp=b.p_fp[r], net=b.p_net[r], mask=b.p_layer_mask[r])
 
 
@@ -946,10 +947,10 @@ def _in_pads(P, pa, tol=0.0):
 def _fp_pitch(b):
     """{footprint index: the smallest distance between two of its pad centres}: its pad pitch (a one-pad part has none)"""
     out = {}
-    pt = pads(b)
-    for f in np.unique(b.p_fp[pt.rows]) if len(pt.rows) else []:
-        m = b.p_fp[pt.rows] == f
-        P = np.column_stack([b.p_x[pt.rows][m], b.p_y[pt.rows][m]])
+    rows = np.arange(len(b.p_x))
+    for f in np.unique(b.p_fp[rows]) if len(rows) else []:
+        m = b.p_fp[rows] == f
+        P = np.column_stack([b.p_x[rows][m], b.p_y[rows][m]])
         if len(P) >= 2:
             d = np.hypot(P[:, None, 0] - P[None, :, 0], P[:, None, 1] - P[None, :, 1])
             d[d < 1e-6] = np.inf
@@ -1184,13 +1185,27 @@ def _route_findings(b, c):
             at.setdefault(key(i, e), []).append((i, e))
     via_xy = np.column_stack([b.v_x, b.v_y]) if len(b.v_x) else np.zeros((0, 2))
 
-    def on_pad(p, net, layer, w=0.0):                        # the track's copper (its end is a disc of width w) touches a pad of its net
-        if not len(pa['rows']):
-            return False
-        return bool((_in_pads(np.array([p]), pa, tol=w / 2 + 0.01)[0] & (pa['net'] == net) & ((pa['mask'] & (1 << layer)) > 0)).any())
+    def pad_dist(p, h):
+        """distance from the point to the pad copper h (a rotated rectangle, or a circle or oval as a capsule), 0 inside"""
+        a = math.radians(pa['rot'][h])
+        dx, dy = p[0] - pa['cx'][h], p[1] - pa['cy'][h]
+        u = dx * math.cos(a) + dy * math.sin(a)
+        v = -dx * math.sin(a) + dy * math.cos(a)
+        hx, hy = pa['sx'][h] / 2, pa['sy'][h] / 2
+        if pa['shape'][h] in (0, 2):
+            r = min(hx, hy)
+            ax = max(hx - r, 0.0), max(hy - r, 0.0)
+            return max(math.hypot(max(abs(u) - ax[0], 0.0), max(abs(v) - ax[1], 0.0)) - r, 0.0)
+        return math.hypot(max(abs(u) - hx, 0.0), max(abs(v) - hy, 0.0))
+
+    def on_pad(p, net, layer, w=0.0):                        # the track's round end cap (a disc of width w) overlaps copper of a pad of its net: nothing beyond the cap
+        for h in np.flatnonzero((pa['net'] == net) & ((pa['mask'] & (1 << layer)) > 0)):
+            if abs(pa['cx'][h] - p[0]) < 5 and abs(pa['cy'][h] - p[1]) < 5 and pad_dist(p, h) <= w / 2 + 1e-9:
+                return True
+        return False
 
     def on_via(p, net, w=0.0):
-        return bool(len(via_xy) and (np.hypot(via_xy[:, 0] - p[0], via_xy[:, 1] - p[1]) <= b.v_dia / 2 + w / 2 + 0.01)[b.v_net == net].any())
+        return bool(len(via_xy) and (np.hypot(via_xy[:, 0] - p[0], via_xy[:, 1] - p[1]) <= b.v_dia / 2 + w / 2 + 1e-9)[b.v_net == net].any())
     parent = list(range(n))
 
     def find(x):
@@ -1205,48 +1220,53 @@ def _route_findings(b, c):
         if on_pad(p, k[1], k[0], wid[lst[0][0]]) or on_via(p, k[1], wid[lst[0][0]]):
             continue
         parent[find(lst[0][0])] = find(lst[1][0])
-    runs = {}
-    for i in range(n):
-        runs.setdefault(find(i), []).append(i)
-    runlen = {}
-    for members in runs.values():
+    def path_of(members):
+        """(pts, first end, second end) of a group of pieces joined as one path, or None when it is a loop or branches"""
         cnt = {}
         for i in members:
             for e in (0, 1):
                 cnt.setdefault(key(i, e), []).append((i, e))
         ends = [(k, v[0]) for k, v in cnt.items() if len(v) == 1]
         if len(ends) != 2:
-            continue                                         # a loop, or a joint of three or more: not a path
+            return None
         (k0, (i0, e0)), (k1, (i1, e1)) = ends
-        order, cur, e_in = [], i0, e0                        # walk from the first end, leaving each piece by its other end
-        done = set()
+        order, cur, e_in, done = [], i0, e0, set()
         while cur is not None and cur not in done:
             done.add(cur)
             order.append((cur, 1 - e_in))
             nxt = [t for t in cnt[key(cur, 1 - e_in)] if t[0] != cur]
             cur, e_in = (nxt[0] if nxt else (None, None))
-        net, layer = k0[1], k0[0]
         pts = [(S[i, 2 * (1 - eo)], S[i, 2 * (1 - eo) + 1]) for i, eo in order] + [(S[order[-1][0], 2 * order[-1][1]], S[order[-1][0], 2 * order[-1][1] + 1])]
+        return pts, (k0, i0, e0), (k1, i1, e1)
+
+    def worst_turn(pts):
+        """(turn, bend points) of the worst stretch of TRACK_TURN_WINDOW: the sum of the bends in it, each by its size"""
         vecs = [(pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]) for j in range(len(pts) - 1)]
         along = [0.0]
         for v in vecs:
             along.append(along[-1] + math.hypot(*v))
-        bends_at = []                                        # (distance along the run, size of the bend)
-        for q, (u, v) in enumerate(zip(vecs, vecs[1:]), 1):
-            cross = u[0] * v[1] - u[1] * v[0]
-            dot = u[0] * v[0] + u[1] * v[1]
-            bends_at.append((along[q], abs(math.degrees(math.atan2(cross, dot))), pts[q]))
-        turn, turn_at = 0.0, None
+        bends_at = [(along[q], abs(math.degrees(math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]))), pts[q]) for q, (u, v) in enumerate(zip(vecs, vecs[1:]), 1)]
+        turn, at_ = 0.0, None
         for d0, _, _ in bends_at:
-            w = sum(a for d, a, _ in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9)
-            if w > turn:
-                turn, turn_at = w, [pt for d, _, pt in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9]
+            sel = [(a_, pt) for d, a_, pt in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9]
+            if sum(a_ for a_, _ in sel) > turn:
+                turn, at_ = sum(a_ for a_, _ in sel), [pt for _, pt in sel]
+        return turn, at_
+
+    runs = {}
+    for i in range(n):
+        runs.setdefault(find(i), []).append(i)
+    runlen = {}
+    for members in runs.values():
+        got = path_of(members)
+        if got is None:
+            continue                                         # a loop, or a joint of three or more: not a path
+        pts, (k0, i0, e0), (k1, i1, e1) = got
+        net, layer = k0[1], k0[0]
         length = float(sum(L[i] for i in members))
         short = _octile(pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1])
-        if turn_at and turn > c.TRACK_MAX_TURN + c.TRACK_ANGLE_TOL:
-            out.append(('detour', '%s run turns %.0f degrees within %.1f mm (a hook or U-turn)' % (name(i0), turn, c.TRACK_TURN_WINDOW), float(np.mean([q[0] for q in turn_at])), float(np.mean([q[1] for q in turn_at]))))
-        mid = pts[len(pts) // 2]
         if length >= c.TRACK_DETOUR_MIN_LEN and length > c.TRACK_DETOUR_RATIO * short + 1e-6:
+            mid = pts[len(pts) // 2]
             out.append(('detour', '%s run of %.2f mm is %.1f times its %.2f mm shortest path' % (name(i0), length, length / max(short, 1e-9), short), float(mid[0]), float(mid[1])))
         runlen[find(i0)] = length
         for k, i, eo in ((k0, i0, e0), (k1, i1, e1)):
@@ -1255,6 +1275,29 @@ def _route_findings(b, c):
                 continue
             if len(at[k]) < 2:
                 out.append(('dangling', '%s track end touches no pad, via or track of its net' % name(i), float(p[0]), float(p[1])))
+    def reach_along(piece):
+        """the distance from the end `piece` = (i, e) rests on, along its track, to the first place that is not a straight-through joint of two collinear pieces"""
+        i, e = piece
+        dist = float(L[i])
+        cur, ef = i, 1 - e
+        for _ in range(200):
+            k = key(cur, ef)
+            p = (k[2] / 1000, k[3] / 1000)
+            here = at[k]
+            if len(here) != 2 or on_pad(p, k[1], k[0], wid[cur]) or on_via(p, k[1], wid[cur]):
+                break
+            oi, oe = [t for t in here if t[0] != cur][0] if any(t[0] != cur for t in here) else (None, None)
+            if oi is None:
+                break
+            u = (S[cur, 2 * ef] - S[cur, 2 * (1 - ef)], S[cur, 2 * ef + 1] - S[cur, 2 * (1 - ef) + 1])
+            v = (S[oi, 2 * (1 - oe)] - S[oi, 2 * oe], S[oi, 2 * (1 - oe) + 1] - S[oi, 2 * oe + 1])
+            cosang = (u[0] * v[0] + u[1] * v[1]) / max(math.hypot(*u) * math.hypot(*v), 1e-12)
+            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):
+                break
+            dist += float(L[oi])
+            cur, ef = oi, 1 - oe
+        return dist
+
     # junctions (three or more pieces at a point on no pad or via): the two collinear pieces are the trunk, any other is a spur
     juncs = {}
     for k, lst in at.items():
@@ -1276,9 +1319,7 @@ def _route_findings(b, c):
         if trunk is None:
             out.append(('tspur', '%s junction at a bend of the trunk (three tracks meet where it turns)' % nm, float(p[0]), float(p[1])))
             continue
-        o = orig[lst[trunk[0]][0]]
-        near = [(S0[o, 0], S0[o, 1]), (S0[o, 2], S0[o, 3])] + [(q[2] / 1000, q[3] / 1000) for q, l2 in juncs.items() if q != k and any(orig[i2] == o for i2, _ in l2)]
-        nd = min(math.hypot(q[0] - p[0], q[1] - p[1]) for q in near)
+        nd = min(reach_along(lst[trunk[0]]), reach_along(lst[trunk[1]]))          # along the trunk to its first real bend, junction, pad, via or end (collinear pieces are one track)
         for idx, (i, e) in enumerate(lst):
             if idx in trunk:
                 continue
@@ -1294,6 +1335,34 @@ def _route_findings(b, c):
                 why.append('its junction is %.2f mm from a bend, another junction or a pad on the trunk (needs %.2f)' % (nd, c.TRACK_SPUR_CLEAR))
             if why:
                 out.append(('tspur', '%s T spur %s' % (nm, '; '.join(why)), float(p[0]), float(p[1])))
+    # the turning of a trunk is judged straight through its T junctions (the two collinear pieces of a junction are one track), so a V on a trunk is a detour in its own right
+    parent2 = list(parent)
+
+    def find2(x):
+        while parent2[x] != x:
+            parent2[x] = parent2[parent2[x]]
+            x = parent2[x]
+        return x
+    for k, lst in juncs.items():
+        dirs = []
+        for i, e in lst:
+            v = (S[i, 2 * (1 - e)] - S[i, 2 * e], S[i, 2 * (1 - e) + 1] - S[i, 2 * e + 1])
+            dirs.append((v[0] / max(L[i], 1e-9), v[1] / max(L[i], 1e-9)))
+        for a_ in range(len(lst)):
+            for b_ in range(a_ + 1, len(lst)):
+                if dirs[a_][0] * dirs[b_][0] + dirs[a_][1] * dirs[b_][1] < -math.cos(math.radians(c.TRACK_ANGLE_TOL)):
+                    parent2[find2(lst[a_][0])] = find2(lst[b_][0])
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find2(i), []).append(i)
+    for members in groups.values():
+        got = path_of(members)
+        if got is None:
+            continue
+        pts, (k0, i0, _), _ = got
+        turn, at_ = worst_turn(pts)
+        if at_ and turn > c.TRACK_MAX_TURN + c.TRACK_ANGLE_TOL:
+            out.append(('detour', '%s run turns %.0f degrees within %.1f mm (a hook, a V kink or a U-turn)' % (name(i0), turn, c.TRACK_TURN_WINDOW), float(np.mean([q[0] for q in at_])), float(np.mean([q[1] for q in at_]))))
     seen, uniq = set(), []
     for f in out:
         k = (f[0], f[1], round(f[2], 3), round(f[3], 3))
@@ -1409,6 +1478,13 @@ def fill_quality_parts(b, cfg, report=None):
                 x0 = int(np.floor((b.p_bx0[h] - 1.5 - r_fill.x0) * k)); x1 = int(np.ceil((b.p_bx1[h] + 1.5 - r_fill.x0) * k))
                 y0 = int(np.floor((r_fill.y1 - b.p_by1[h] - 1.5) * k)); y1 = int(np.ceil((r_fill.y1 - b.p_by0[h] + 1.5) * k))
                 x0, y0 = max(x0, 0), max(y0, 0)
+                y1, x1 = min(y1, r_fill.mask.shape[0]), min(x1, r_fill.mask.shape[1])
+                if y1 <= y0 or x1 <= x0:
+                    frac = 0.0                                   # the pin is outside the pour's raster: no pour near it
+                    if frac < c.FILL_SHELL_MIN:
+                        lost += 1
+                        out.append(('shell', '%s pin %s (GND) has no pour round it' % (b.fp_ref[b.p_fp[h]], b.p_pin[h]), float(b.p_x[h]), float(b.p_y[h])))
+                    continue
                 zone = r_fill.mask[y0:y1, x0:x1]
                 yy, xx = np.mgrid[y0:y1, x0:x1]
                 px = r_fill.x0 + (xx + 0.5) / k
@@ -1431,8 +1507,13 @@ def fill_quality_parts(b, cfg, report=None):
                 x0 = int(np.floor((b.p_bx0[h] - 1.2 - r_fill.x0) * k2)); x1 = int(np.ceil((b.p_bx1[h] + 1.2 - r_fill.x0) * k2))
                 y0 = int(np.floor((r_fill.y1 - b.p_by1[h] - 1.2) * k2)); y1 = int(np.ceil((r_fill.y1 - b.p_by0[h] + 1.2) * k2))
                 x0, y0 = max(x0, 0), max(y0, 0)
-                zone = r_fill.mask[y0:y1, x0:x1]
-                yy, xx = np.mgrid[y0:y1, x0:x1]
+                y1, x1 = min(y1, r_fill.mask.shape[0]), min(x1, r_fill.mask.shape[1])
+                if y1 <= y0 or x1 <= x0:
+                    zone = np.zeros((0, 0), bool)
+                    yy = xx = np.zeros((0, 0))
+                else:
+                    zone = r_fill.mask[y0:y1, x0:x1]
+                    yy, xx = np.mgrid[y0:y1, x0:x1]
                 px = r_fill.x0 + (xx + 0.5) / k2
                 py = r_fill.y1 - (yy + 0.5) / k2
                 d = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - px, px - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - py, py - b.p_by1[h]), 0))      # distance from the pad's box

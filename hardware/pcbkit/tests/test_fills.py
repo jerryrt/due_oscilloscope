@@ -279,3 +279,39 @@ def test_own_pads_with_a_thermal_gap_at_the_pour_edge_are_rough_and_buried_ones_
     assert run([19.5, 19.5, 19.5], [5, 7.2, 9.4]).any()                    # three pads whose gaps open to the edge
     assert not run([19.5], [5]).any()                                       # one alone
     assert not run([10, 10, 10], [5, 7.2, 9.4]).any()                       # buried: pour all round their gaps
+
+
+# ---- protected cells: a connector's ground pins are never part of a keep-out
+
+def test_protected_cells_are_never_in_a_keep_out_and_a_diagonal_does_not_cover_them():
+    import numpy as np
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    e = _diag_extra(r)
+    free = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=e)
+    assert len(free) == 1
+    prot = np.zeros_like(r.mask)
+    k = 20
+    prot[int((r.y1 - 35.0) * k):int((r.y1 - 33.0) * k), int((5.0 - r.x0) * k):int((7.0 - r.x0) * k)] = True        # a 2 mm square on the diagonal (the band runs from (-1, 41) to (14, 26))
+    got = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=e, protect=prot)
+    def covers(polys, x, y):
+        def inside(poly):
+            c = False
+            for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+                if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+                    c = not c
+            return c
+        return any(inside(p) for p in polys)
+    assert covers(free, 6.0, 34.0) and not covers(got, 6.0, 34.0)
+    assert not covers(got, 5.2, 34.8) and not covers(got, 6.8, 33.2)
+
+
+def test_pin_protect_marks_the_box_of_a_through_hole_ground_pad_of_a_listed_part_only():
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 40, 40))]).part('J1', 30, 30).part('U1', 30, 30)
+    a.p('J1', '1', 10, 10, 'GND', smd=False, size=1.0, mask=3).p('J1', '2', 20, 10, 'SIG', smd=False, size=1.0, mask=3).p('J1', '3', 30, 10, 'GND', smd=True, size=1.0)
+    a.p('U1', '1', 10, 30, 'GND', smd=False, size=1.0, mask=3)
+    b = a.build()
+    r = fills.net_copper(b, 0, b.nets.index('GND'), ppmm=10, with_net_items=False)
+    m = fills.pin_protect(b, r, b.nets.index('GND'), ('J',), reach=1.0)
+    px = lambda x, y: m[int((r.y1 - y) * 10), int((x - r.x0) * 10)]
+    assert px(10, 10) and px(10.9, 10) and not px(12.0, 10)                                      # the pad's box grown by `reach`
+    assert not px(20, 10) and not px(30, 10) and not px(10, 30)                                   # another net, an SMD pad, a part not listed

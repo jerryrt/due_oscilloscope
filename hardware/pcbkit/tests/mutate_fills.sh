@@ -33,6 +33,18 @@ declare -A M=(
   [rough_own_items_ignored]="fills.py|            ok = 0.1 < frac < 0.9|            ok = False"
   [rough_own_buried_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac > 0.1"
   [rough_own_far_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac < 0.9"
+  [shell_min_ignored]="rules.py|                if frac < c.FILL_SHELL_MIN:|                if False:"
+  [shell_smd_counts]="rules.py|and not b.p_smd[h] and str(b.fp_ref[b.p_fp[h]]).startswith|and str(b.fp_ref[b.p_fp[h]]).startswith"
+  [shell_any_net]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
+  [gndpad_via_ignored]="rules.py|                if len(b.v_x) and ((vd <= 0.05) \& (b.v_net == gnd)).any():|                if False:"
+  [gndpad_any_net_via]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 0.05)).any()"
+  [gndpad_via_far]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 2.0) \& (b.v_net == gnd)).any()"
+  [gndpad_min_ignored]="rules.py|                if float((ring \& zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:|                if True:"
+  [protect_ignored]="fills.py|        cells \&= ~keepc|        pass"
+  [protect_diag_covers]="fills.py|            if keepc is not None and keepc.any() and _poly_covers(lp, keepc):|            if False:"
+  [pin_protect_any_net]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_smd[h] or"
+  [pin_protect_smd]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_net[h] != net or"
+  [pin_protect_any_prefix]="fills.py|or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)):|or False:"
 )
 fail=0
 for name in "${!M[@]}"; do

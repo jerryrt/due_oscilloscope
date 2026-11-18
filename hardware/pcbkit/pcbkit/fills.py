@@ -451,7 +451,7 @@ def _octilinear(loop):
     return ok
 
 
-def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(), snap=1.0, bounds=None, hole_area=4.0, extra=None):
+def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(), snap=1.0, bounds=None, hole_area=4.0, extra=None, protect=None):
     """The same no-pour areas as `keepouts`, one polygon per cluster instead of rectangles: the cells (a `grid` mm grid on multiples of `grid` mm) that hold a piece too narrow for
     `width`, closed over `join` mm, traced round, and every staircase of equal steps drawn as one 45 degree edge (the polygon only grows). A cluster that encloses pour (a hole
     over `hole_area` mm2) is cut into rectangles instead, since a rule area has no holes. An edge or vertex line within `snap` mm of a block outline's edge moves onto it unless a
@@ -484,6 +484,13 @@ def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(
     for i in range(1, hn + 1):
         if (hl == i).sum() * grid * grid <= hole_area:
             cells |= hl == i
+    if protect is not None:                                  # cells that must stay in the pour (a connector's ground pins): never part of a keep-out
+        pp = np.zeros((hc * cell, wc * cell), bool)
+        pp[oy:oy + H, ox:ox + W] = protect
+        keepc = pp.reshape(hc, cell, wc, cell).any(axis=(1, 3))
+        cells &= ~keepc
+    else:
+        keepc = None
     lab, n = ndi.label(cells, structure=np.ones((3, 3)))
     polys = []
     def mm(p):
@@ -494,6 +501,8 @@ def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(
         outer = [lp for lp in loops if _area2(lp) > 0]
         if len(loops) == 1 and len(outer) == 1:
             lp = _diagonalise(outer[0])
+            if keepc is not None and keepc.any() and _poly_covers(lp, keepc):
+                lp = outer[0]                                # a diagonal would cover a protected cell: keep the traced edge
             polys.append([mm(p) for p in lp])
         else:
             for c0, r0, c1, r1 in _decompose(comp):
@@ -510,6 +519,16 @@ def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(
                 continue
         out.append([(round(x, 3), round(y, 3)) for x, y in poly])
     return sorted(out)
+
+
+def _poly_covers(loop, cells):
+    """the polygon `loop` (cell-grid corners) contains the centre of a True cell of `cells`"""
+    from PIL import Image as _I, ImageDraw as _D
+    h, w = cells.shape
+    im = _I.new('L', (w * 4, h * 4), 0)
+    _D.Draw(im).polygon([(x * 4, y * 4) for x, y in loop], fill=1)
+    m = np.asarray(im).reshape(h, 4, w, 4).mean(axis=(1, 3)) > 0.5
+    return bool((m & cells).any())
 
 
 def _dedupe(poly):
@@ -594,6 +613,8 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
         items.append(([('disc', (px(b.v_x[i], b.v_y[i]), r_ * k))], window(b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), (b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), int(b.v_net[i]) == net))
     hug = []
     for shapes, win, box, mine in items:
+        if win[2] <= win[0] or win[3] <= win[1]:
+            continue                                          # the item is outside the raster
         m = draw(shapes, win)
         if not m.any():
             continue
@@ -648,3 +669,27 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
         out[r0:r1, c0:c1] |= closed
     return out
 
+
+
+def pin_protect(b, r, net, prefixes, layer=0, reach=1.25):
+    """a bool mask on the raster `r`: round each through-hole pad of `net` on `layer` of a part whose designator starts with one of `prefixes`, the box of the pad grown by `reach` mm"""
+    m = np.zeros_like(r.mask)
+    k = r.ppmm
+    for h in range(len(b.p_net)):
+        if b.p_net[h] != net or b.p_smd[h] or not (b.p_layer_mask[h] & (1 << layer)) or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)):
+            continue
+        x0 = int(np.floor((b.p_bx0[h] - reach - r.x0) * k)); x1 = int(np.ceil((b.p_bx1[h] + reach - r.x0) * k))
+        y0 = int(np.floor((r.y1 - b.p_by1[h] - reach) * k)); y1 = int(np.ceil((r.y1 - b.p_by0[h] + reach) * k))
+        m[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
+    return m
+
+
+def box_protect(r, boxes, reach=1.25):
+    """a bool mask on the raster `r`: each box (x0, y0, x1, y1) in board mm grown by `reach`"""
+    m = np.zeros_like(r.mask)
+    k = r.ppmm
+    for bx0, by0, bx1, by1 in boxes:
+        x0 = int(np.floor((bx0 - reach - r.x0) * k)); x1 = int(np.ceil((bx1 + reach - r.x0) * k))
+        y0 = int(np.floor((r.y1 - by1 - reach) * k)); y1 = int(np.ceil((r.y1 - by0 + reach) * k))
+        m[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
+    return m

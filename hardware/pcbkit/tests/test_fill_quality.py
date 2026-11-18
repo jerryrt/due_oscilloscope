@@ -98,3 +98,44 @@ def test_a_row_of_pads_the_pour_edge_hugs_is_rough_and_a_single_pad_or_a_disable
     assert 'rough' not in kinds(_hugged([5, 7, 9]), FILL_ROUGH_LINK=0.2)                    # the row link distance is the limit
     r = rules.fill_quality(_hugged([5, 7, 9]).build(), dict(GND='GND', FILL_LAYERS=('F',)))
     assert not r.ok and r.figures['rough'] == 1.0 and r.figures['F_rough'] == 1.0
+
+
+# ---- connector ground pins and SMD ground pads of the top pour
+
+def _pins(pour, pins, **over):
+    a = board(pour).part('J1', 30, 30).part('U1', 40, 40)
+    for n, (ref, x, y, smd) in enumerate(pins):
+        a.p(ref, str(n + 1), x, y, 'GND', smd=smd, size=1.0, mask=1 if smd else 3)
+    return a
+
+
+def test_a_connector_ground_pin_carved_out_of_the_top_pour_is_a_shell_finding():
+    pour = rect(0, 0, 20, 20)
+    ok = _pins(pour, [('J1', 10, 10, False)])
+    assert 'shell' not in kinds(ok, FILL_SHELL_PREFIXES=('J',))
+    carved = _pins(rect(0, 0, 5, 20), [('J1', 10, 10, False)])                                   # no pour near the pin
+    assert 'shell' in kinds(carved, FILL_SHELL_PREFIXES=('J',))
+    assert 'shell' not in kinds(carved)                                                          # not asked for
+    assert 'shell' not in kinds(carved, FILL_SHELL_PREFIXES=('K',))                              # another prefix
+    other = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, False)])
+    assert 'shell' not in kinds(other, FILL_SHELL_PREFIXES=('J',))                               # a part that is not a connector
+    smd = _pins(rect(0, 0, 5, 20), [('J1', 10, 10, True)])
+    assert 'shell' not in kinds(smd, FILL_SHELL_PREFIXES=('J',))                                 # only through-hole pins
+    part = _pins(rect(0, 0, 10.0, 20), [('J1', 10, 10, False)])                                  # pour on one side only: partly round it
+    assert 'shell' in kinds(part, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_MIN=0.9) and 'shell' not in kinds(part, FILL_SHELL_PREFIXES=('J',), FILL_SHELL_MIN=0.1)
+
+
+def test_an_smd_ground_pad_outside_the_pour_needs_a_via_at_its_edge():
+    out = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)])
+    assert 'gndpad' in kinds(out, FILL_GNDPAD_MIN=0.2)
+    inside = _pins(rect(0, 0, 20, 20), [('U1', 10, 10, True)])
+    assert 'gndpad' not in kinds(inside, FILL_GNDPAD_MIN=0.2)
+    near = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 10.8)                    # a via whose annulus touches the pad's edge
+    assert 'gndpad' not in kinds(near)
+    far = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 11.5)                     # a stub's length away
+    assert 'gndpad' in kinds(far)
+    other = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('SIG', 10, 10.8)
+    assert 'gndpad' in kinds(other)                                                               # a via of another net does not count
+    assert 'gndpad' not in kinds(out, FILL_GNDPAD_MIN=0.0)                                         # switched off
+    th = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, False)])
+    assert 'gndpad' not in kinds(th)                                                              # a through-hole pin is the shell's business
