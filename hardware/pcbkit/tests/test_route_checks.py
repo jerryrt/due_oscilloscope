@@ -158,3 +158,9 @@ def test_an_end_whose_cap_overlaps_another_track_is_a_tap_not_a_dangling_end_and
     assert got(near, 'tspur')                                                              # a T stub: 0.45 mm from the pad to the track
     far = pad().s('SIG', 0, 0, 0, 0.3, 0).s('SIG', 0, 0.55, -3, 0.55, 3)                  # 0.25 mm off: the caps do not reach
     assert any(abs(x - 0.3) < 1e-6 for _, _, x, y in got(far, 'dangling'))
+
+
+def test_an_end_that_already_meets_another_tracks_end_is_a_joint_and_is_never_snapped_onto_a_nearby_body():
+    a = base().s('SIG', 0, 0, 0, 0, 6, 0.3).s('SIG', 0, 0, 6, -0.3, 6, 0.3).s('SIG', 0, -0.3, 6, -1.5, 6, 0.2)       # a trunk turning west through a 0.3 mm piece: its far end is 0.3 mm from the trunk, caps touching
+    assert got(a, 'tspur') == []                                                                                    # it is a joint with the next piece, not a tap on the trunk
+    assert len(got(a, 'dangling')) == 2                                                                             # the trunk's start and the neck's end hang, nothing else

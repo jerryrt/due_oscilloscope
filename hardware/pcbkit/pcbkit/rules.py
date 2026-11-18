@@ -1134,7 +1134,11 @@ def _split_at_taps(b, S, L):
             continue
         for e in (0, 1):
             p = S[i, 2 * e:2 * e + 2]
+            joint = any(j != i and b.s_net[j] == b.s_net[i] and b.s_layer[j] == b.s_layer[i] and L[j] > 1e-6 and
+                        min(math.hypot(p[0] - S[j, 0], p[1] - S[j, 1]), math.hypot(p[0] - S[j, 2], p[1] - S[j, 3])) < 0.01 for j in range(n))
             for j in range(n):
+                if joint:
+                    break                                    # the end already meets another track's end: a joint, never a tap
                 if j == i or b.s_net[j] != b.s_net[i] or b.s_layer[j] != b.s_layer[i] or L[j] <= 1e-6:
                     continue
                 d = geom.seg_seg_dist(S[j:j + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0]
