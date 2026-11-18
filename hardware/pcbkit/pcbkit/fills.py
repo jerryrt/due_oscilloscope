@@ -48,7 +48,7 @@ class Piece:
     dead_end: bool = False
 
 
-def net_copper(b, layer, net, ppmm=40.0, with_net_items=True, pad=1.0):
+def net_copper(b, layer, net, ppmm=40.0, with_net_items=True, pad=1.0, frame=None):
     """The raster of the pour on `layer` (0 = F.Cu, 1 = B.Cu) of net code `net`: the filled polygons of every filled copper zone of that net and layer (outline rings
     drawn, hole rings cleared), and, with `with_net_items`, the net's pads on that layer, vias and tracks. `pad` is the margin of the raster beyond the zones, mm."""
     zs = [z for z in range(len(b.z_layer)) if b.z_layer[z] == layer and b.z_net[z] == net and b.z_filled[z] and not b.z_keepout[z]]
@@ -61,6 +61,8 @@ def net_copper(b, layer, net, ppmm=40.0, with_net_items=True, pad=1.0):
     allp = np.vstack([b.z_xy[b.z_vert_off[j]:b.z_vert_off[j + 1]] for _, j in rings])
     x0, x1 = allp[:, 0].min() - pad, allp[:, 0].max() + pad
     y0, y1 = allp[:, 1].min() - pad, allp[:, 1].max() + pad
+    if frame is not None:                                   # a fixed window (x0, y0, x1, y1), so rasters of two fills of one board have one shape
+        x0, y0, x1, y1 = frame
     k = float(ppmm)
     W, H = int(np.ceil((x1 - x0) * k)) + 1, int(np.ceil((y1 - y0) * k)) + 1
 
@@ -204,4 +206,120 @@ def covered_items(b, r, layer, net, frac=0.5):
         rr = max(1, int(round(b.v_dia[i] / 2 * k)))
         sub = r.mask[max(cy - rr, 0):cy + rr + 1, max(cx - rr, 0):cx + rr + 1]
         out[('via', int(i))] = bool(sub.size and sub.mean() >= frac)
+    return out
+
+
+def keepouts(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(), snap=1.0, bounds=None, hole_area=4.0, fill_ratio=1.0, extra=None):
+    """Straight-edged no-pour rectangles over the dense places of a pour, from `r` = the raster of a LOOSE fill (the pour at its narrowest minimum width, thermal
+    reliefs on, with the net's own items): the parts of the copper where no disc of diameter `width` fits are where a fill of minimum width `width` would leave a ragged
+    edge, a tooth or a dead-end finger. Those pieces (at least `min_area` mm2) closer than `join` mm are one cluster; a cluster's bounding rectangle is grown outward to the `grid`,
+    rectangles that touch or overlap are merged until none does, an edge within `snap` mm of an edge of a rectangle of `outlines` (block outlines, (x0, y0, x1, y1)) moves onto
+    it, and `bounds` (x0, y0, x1, y1) clips the result. Returns [(x0, y0, x1, y1)] in the raster's frame, sorted. Nothing here reads a configuration."""
+    k = r.ppmm
+    pieces, opened = narrow_pieces(r, width, min_area)
+    res = np.zeros_like(r.mask)
+    lab0 = _lab_of(r, opened)
+    for p in pieces:
+        res[p._sl] |= (lab0[p._sl] == p._lab)
+    if extra is not None:
+        res = res | extra
+    if not res.any():
+        return []
+    # the cells of the grid that hold a piece, closed over `join` mm so near pieces are one region, small holes filled, then cut into rectangles (a long diagonal run of pieces
+    # is a staircase of rectangles, never one big bounding box)
+    cell = max(1, int(round(grid * k)))
+    H, W = res.shape
+    hc, wc = -(-H // cell), -(-W // cell)
+    pad = np.zeros((hc * cell, wc * cell), bool)
+    pad[:H, :W] = res
+    cells = pad.reshape(hc, cell, wc, cell).any(axis=(1, 3))
+    it = int(round(join / grid / 2))
+    if it:
+        cells = ndi.binary_closing(np.pad(cells, it + 1), structure=np.ones((3, 3)), iterations=it)[it + 1:-(it + 1), it + 1:-(it + 1)]
+    holes = ndi.binary_fill_holes(cells) & ~cells
+    hl, hn = ndi.label(holes)
+    for i in range(1, hn + 1):
+        if (hl == i).sum() * grid * grid <= hole_area:
+            cells |= hl == i
+    rects, open_ = [], {}
+    for row in range(hc + 1):
+        runs = set()
+        if row < hc:
+            c = 0
+            while c < wc:
+                if cells[row, c]:
+                    c0 = c
+                    while c < wc and cells[row, c]:
+                        c += 1
+                    runs.add((c0, c))
+                else:
+                    c += 1
+        for run_ in list(open_):
+            if run_ not in runs:
+                r0 = open_.pop(run_)
+                rects.append((run_[0], r0, run_[1], row))
+        for run_ in runs:
+            open_.setdefault(run_, row)
+    rects = [[r.x0 + c0 * cell / k, r.y1 - r1 * cell / k, r.x0 + c1 * cell / k, r.y1 - r0 * cell / k] for c0, r0, c1, r1 in rects]
+    def sn(v, lo=True):
+        return (np.floor(v / grid + 1e-9) if lo else np.ceil(v / grid - 1e-9)) * grid
+    rects = [[sn(a, True), sn(b, True), sn(c, False), sn(d, False)] for a, b, c, d in rects]
+    def merge(rs):
+        rs = [list(x) for x in rs]
+        again = True
+        while again:
+            again = False
+            for i in range(len(rs)):
+                for j in range(i + 1, len(rs)):
+                    a, c = rs[i], rs[j]
+                    if a[0] <= c[2] and c[0] <= a[2] and a[1] <= c[3] and c[1] <= a[3]:
+                        u = [min(a[0], c[0]), min(a[1], c[1]), max(a[2], c[2]), max(a[3], c[3])]
+                        ov = max(0.0, min(a[2], c[2]) - max(a[0], c[0])) * max(0.0, min(a[3], c[3]) - max(a[1], c[1]))
+                        have = (a[2] - a[0]) * (a[3] - a[1]) + (c[2] - c[0]) * (c[3] - c[1]) - ov
+                        if (u[2] - u[0]) * (u[3] - u[1]) > fill_ratio * have + 1e-9:        # only a union that is nearly the rectangles themselves: a staircase stays a staircase
+                            continue
+                        rs[i] = u
+                        del rs[j]
+                        again = True
+                        break
+                if again:
+                    break
+        return rs
+    rects = merge(rects)
+    xs = sorted({o[0] for o in outlines} | {o[2] for o in outlines})
+    ys = sorted({o[1] for o in outlines} | {o[3] for o in outlines})
+    def near(v, cand):
+        c = [t for t in cand if abs(t - v) <= snap]
+        return min(c, key=lambda t: abs(t - v)) if c else v
+    rects = [[near(a, xs), near(b, ys), near(c, xs), near(d, ys)] for a, b, c, d in rects]
+    rects = merge(rects)
+    if bounds is not None:
+        rects = [[max(a, bounds[0]), max(b, bounds[1]), min(c, bounds[2]), min(d, bounds[3])] for a, b, c, d in rects]
+        rects = [x for x in rects if x[2] > x[0] and x[3] > x[1]]
+    return sorted((round(a, 3), round(b, 3), round(c, 3), round(d, 3)) for a, b, c, d in rects)
+
+
+def _lab_of(r, opened):
+    res = r.mask & ~opened
+    lab, _ = ndi.label(res, structure=np.ones((3, 3)))
+    return lab
+
+
+def leftovers(r, neck=1.5, small=12.0, dead_width=1.6, lo=1.0, min_area=0.05):
+    """What a fill leaves that is not worth keeping, as a mask on the raster of that fill `r` (the pour with the net's items): parts of the pour that hang by a neck narrower than
+    `neck` mm and hold less than `small` mm2 (a blob), and fingers of width `lo` to `dead_width` that touch copper at one end only (a dead end). Feed it to keepouts(extra=...)."""
+    k = r.ppmm
+    out = np.zeros_like(r.mask)
+    opened, _ = _opened(r.mask, neck * k / 2)
+    lab, n = ndi.label(opened, structure=np.ones((3, 3)))
+    grown = ndi.distance_transform_edt(~opened) <= neck * k / 2
+    for i, sl in enumerate(ndi.find_objects(lab), 1):
+        if (lab[sl] == i).sum() / (k * k) < small:
+            comp = lab == i
+            out |= r.mask & (ndi.distance_transform_edt(~comp) <= neck * k / 2)
+    pieces, op = narrow_pieces(r, dead_width, min_area)
+    lab0 = _lab_of(r, op)
+    for p in thin_report(r, lo, dead_width, min_area):
+        if p.dead_end:
+            out[p._sl] |= lab0[p._sl] == p._lab
     return out

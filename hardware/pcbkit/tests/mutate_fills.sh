@@ -18,6 +18,11 @@ declare -A M=(
   [covered_fraction_zero]="fills.py|out[('pad', int(i))] = bool(sub.size and sub.mean() >= frac)|out[('pad', int(i))] = bool(sub.size and sub.mean() >= 0.0)"
   [layer_ignored]="fills.py|if b.z_layer[z] == layer and b.z_net[z] == net|if b.z_net[z] == net"
   [unfilled_zone_counts]="fills.py|and b.z_filled[z] and not b.z_keepout[z]|and not b.z_keepout[z]"
+  [keep_grid_ignored]="fills.py|return (np.floor(v / grid + 1e-9) if lo else np.ceil(v / grid - 1e-9)) * grid|return v"
+  [keep_outline_snap_off]="fills.py|c = [t for t in cand if abs(t - v) <= snap]|c = []"
+  [keep_bounds_ignored]="fills.py|if bounds is not None:|if False:"
+  [keep_extra_ignored]="fills.py|        res = res | extra|        pass"
+  [keep_ratio_merges_all]="fills.py|if (u[2] - u[0]) * (u[3] - u[1]) > fill_ratio * have + 1e-9:|if False:"
 )
 fail=0
 for name in "${!M[@]}"; do

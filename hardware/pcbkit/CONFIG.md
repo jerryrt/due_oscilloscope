@@ -114,13 +114,18 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 |---|---|---|---|---|
 | `GND` | project | net name | required | the net of the pours |
 | `FILL_LAYERS` | tunable | layer letters | `('F', 'B')` | layers measured |
-| `FILL_MIN_WIDTH` | tunable | mm per layer, or one mm | `{'F': 0.8, 'B': 0.5}` | no part of the pour is narrower: the top for its looks, the plane for slivers only |
+| `FILL_MIN_WIDTH` | tunable | mm per layer, or one mm | `{'F': 1.0, 'B': 0.5}` | no part of the pour is narrower: the top for its looks, the plane for slivers only |
 | `FILL_DEAD_END_WIDTH` | tunable | mm | `1.6` | a finger narrower than this joined at one end is a dead end |
 | `FILL_LENGTH_FACTOR` | tunable | x half the width | `2.0` | shorter parts are corner rounding |
 | `FILL_RASTER` | tunable | pixels per mm | `40.0` | measuring resolution (width figures are good to a pixel or two) |
 | `FILL_MIN_AREA` | tunable | mm2 | `0.02` | smaller parts are ignored |
 | `FILL_THERMAL_LAYERS` | tunable | layer letters | `('F',)` | zones that must use thermal reliefs on SMD GND pads |
 | `FILL_SOLID_LAYERS` | tunable | layer letters | `('B',)` | zones that must connect pads solid |
+
+The same fill standard has a tool side that reads no configuration, `pcbkit.fills.keepouts(r, width, grid, join, outlines, snap, bounds, extra)`: from the raster of a loose fill it derives the straight-edged
+no-pour rectangles over the places where the pour cannot stay `width` wide (pieces narrower than `width`, closed over `join` mm, cut into rectangles on `grid` mm, an edge within `snap` mm of a block outline moved onto it,
+clipped to `bounds`), and `pcbkit.fills.leftovers(r)` the blobs on necks and dead-end fingers a fill with them still leaves, to feed back as `extra`. The AFE's `pcbtools.fill_clean` runs the loop (top 1.0 mm,
+clearance 0.3, thermal gap 0.3 / spoke 0.3, bottom solid 0.5) and writes the rectangles as rule areas named `fillkeep` on F.Cu that forbid copper pour only.
 
 ### rules.keepout_ring
 

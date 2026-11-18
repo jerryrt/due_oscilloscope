@@ -100,3 +100,53 @@ def test_another_nets_track_or_pad_is_not_an_anchor_of_the_pour():
     a = Arr('GND', 'SIG').z('GND', 0, [(False, FINGER)]).part('C1', 11.8, 5.0).p('C1', '1', 11.8, 5.0, 'SIG', size=0.6)
     b = a.build()
     assert fills.thin_report(fills.net_copper(b, 0, b.nets.index('GND')), 0.2, 0.5)[0].dead_end
+
+
+# ---- keepouts: straight-edged no-pour rectangles over the places a fill cannot stay wide
+
+def test_keepouts_cover_the_narrow_strip_on_the_grid_and_leave_the_squares():
+    _, r = raster([(x + 0.13, y + 0.21) for x, y in BIG], ppmm=20)               # off the grid, so the snapping has work to do
+    ks = fills.keepouts(r, width=1.0, grid=0.5, join=0.0)
+    assert len(ks) >= 1
+    assert all(abs(v / 0.5 - round(v / 0.5)) < 1e-6 for k in ks for v in k)                  # every edge on the 0.5 mm grid
+    assert any(k[0] <= 10.63 and k[2] >= 11.63 and k[1] <= 5.2 <= k[3] for k in ks)             # the strip is inside one
+    assert all(k[2] - k[0] < 6 for k in ks)                                                   # the 10 mm squares are not
+
+
+def test_keepouts_of_a_pour_with_no_narrow_part_are_none():
+    _, r = raster(rect(0, 0, 10, 10), ppmm=20)
+    assert fills.keepouts(r, width=1.0) == []
+
+
+def test_keepouts_edges_move_onto_a_near_block_outline_edge_and_not_a_far_one():
+    _, r = raster(BIG, ppmm=20)
+    near = fills.keepouts(r, 1.0, 0.5, 0.0, outlines=[(10.2, -1.0, 11.8, 11.0)], snap=1.0)
+    assert any(abs(k[0] - 10.2) < 1e-6 and abs(k[2] - 11.8) < 1e-6 for k in near)
+    far = fills.keepouts(r, 1.0, 0.5, 0.0, outlines=[(6.1, -1.0, 15.7, 11.0)], snap=1.0)
+    assert not any(abs(k[0] - 6.1) < 1e-6 for k in far)
+
+
+def test_keepouts_are_clipped_to_the_bounds():
+    _, r = raster(BIG, ppmm=20)
+    ks = fills.keepouts(r, 1.0, 0.5, 0.0, bounds=(0, 0, 11.0, 10))
+    assert ks and all(k[2] <= 11.0 + 1e-9 for k in ks)
+
+
+def test_a_diagonal_run_of_pieces_is_a_staircase_and_not_one_bounding_box():
+    import numpy as np
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    extra = np.zeros_like(r.mask)
+    for i in range(0, 700, 2):                                                                  # a 1 px thick diagonal across the pour
+        extra[i:i + 20, i:i + 20] = True
+    ks = fills.keepouts(r, 1.0, 0.5, 0.0, extra=extra)
+    assert len(ks) > 3 and max((k[2] - k[0]) * (k[3] - k[1]) for k in ks) < 0.2 * 35 * 35
+
+
+def test_leftovers_find_a_blob_on_a_neck_and_a_dead_end_finger_and_not_a_big_pour():
+    _, r = raster(BIG, ppmm=20)
+    assert not fills.leftovers(r, neck=0.2, small=1.0).any()                                    # nothing small hangs by a neck under 0.2 mm
+    BLOB = [(0, 0), (20, 0), (20, 20), (0, 20), (0, 10.6), (-2, 10.6), (-2, 11.5), (-5, 11.5), (-5, 8.5), (-2, 8.5), (-2, 9.4), (0, 9.4)]       # a 20 mm square, a 1.2 mm neck, a 3 x 3 blob
+    _, rb = raster(BLOB, ppmm=20)
+    lo = fills.leftovers(rb, neck=1.5, small=12.0)
+    assert lo.sum() > 0 and lo[:, :200].any() and not lo[:, 300:].any()                         # the blob and its neck, none of the square
+    assert not fills.leftovers(rb, neck=1.5, small=5.0, dead_width=0.5).any()                  # a blob of 9 mm2 is not small under 5 mm2

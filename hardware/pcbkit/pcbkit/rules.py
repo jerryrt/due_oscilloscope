@@ -1104,7 +1104,7 @@ def track_geometry(b, cfg, report=None):
 FILL_QUALITY_NAMES = (
     project('GND', 'net name', 'the net of the pours measured'),
     tunable('FILL_LAYERS', ('F', 'B'), 'layer letters', 'the copper layers whose pour of GND is measured'),
-    tunable('FILL_MIN_WIDTH', {'F': 0.8, 'B': 0.5}, 'mm per layer, or one mm for all', 'no strip, finger or tooth of the pour is narrower than this (the top for its looks, the plane for slivers only)'),
+    tunable('FILL_MIN_WIDTH', {'F': 1.0, 'B': 0.5}, 'mm per layer, or one mm for all', 'no strip, finger or tooth of the pour is narrower than this (the top for its looks, the plane for slivers only)'),
     tunable('FILL_DEAD_END_WIDTH', 1.6, 'mm', 'a part of the pour narrower than this that touches other copper at one end only is a dead-end finger'),
     tunable('FILL_LENGTH_FACTOR', 2.0, 'x half the width', 'a narrow part is a finger or a tooth only when it is longer than this times half the width limit (a shorter one is the rounding of a corner)'),
     tunable('FILL_RASTER', 40.0, 'pixels per mm', 'the resolution the pour is measured at'),
