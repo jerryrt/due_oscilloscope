@@ -544,7 +544,7 @@ def _snap_poly(poly, xs, ys, snap):
     return poly
 
 
-def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.25):
+def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.25, trace=None):
     """The places where the pour edge is a run of clearance arcs, as a mask on the raster `rp` of the pour (built WITHOUT the net's own items). An item (a pad or a via of another net on
     `layer`) hugs the pour when pour copper lies within `clearance` + `tol` of it. Hugging items whose copper is within `link` mm of each other are one cluster; a cluster of two or more
     is rough (one alone may show its round clearance), and its mask is every item grown by clearance + tol + `margin` and closed over `link` mm, so a keep-out over it leaves a straight edge
@@ -552,7 +552,7 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
     k = rp.ppmm
     reach = clearance + tol
     items = []                                              # (mask window, (r0, c0)) per item, in raster pixels
-    rows = np.flatnonzero((b.p_net != net) & ((b.p_layer_mask & (1 << layer)) != 0)) if len(b.p_net) else np.zeros(0, np.int64)
+    rows = np.flatnonzero((b.p_layer_mask & (1 << layer)) != 0) if len(b.p_net) else np.zeros(0, np.int64)
     cu = geom.pad_copper(b, rows) if len(rows) else None
     wpx = int(np.ceil((reach + link + margin + 0.2) * k))
     def window(x0, y0, x1, y1):
@@ -588,18 +588,27 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
                 shapes.append(('line', ((*px(ax, ay), *px(bx, by)), 2 * rr * k)))
                 shapes.append(('disc', (px(ax, ay), rr * k)))
                 shapes.append(('disc', (px(bx, by), rr * k)))
-        items.append((shapes, window(b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i]), (b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i])))
-    for i in np.flatnonzero(b.v_net != net) if len(b.v_net) else []:
+        items.append((shapes, window(b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i]), (b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i]), int(b.p_net[i]) == net))
+    for i in range(len(b.v_net)):
         r_ = b.v_dia[i] / 2
-        items.append(([('disc', (px(b.v_x[i], b.v_y[i]), r_ * k))], window(b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), (b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_)))
+        items.append(([('disc', (px(b.v_x[i], b.v_y[i]), r_ * k))], window(b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), (b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), int(b.v_net[i]) == net))
     hug = []
-    for shapes, win, box in items:
+    for shapes, win, box, mine in items:
         m = draw(shapes, win)
         if not m.any():
             continue
-        near = ndi.distance_transform_edt(~m) <= reach * k
-        if (near & rp.mask[win[0]:win[2], win[1]:win[3]]).any():
+        zone = rp.mask[win[0]:win[2], win[1]:win[3]]
+        ring = ndi.distance_transform_edt(~m) <= reach * k
+        if not mine:
+            ok = (ring & zone).any()                          # another net's item with pour within its clearance
+        else:                                                 # the net's own item stands at the edge when the pour round it is cut off on some side but not all
+            around = ring & ~m
+            frac = (around & zone).sum() / max(1, around.sum())
+            ok = 0.1 < frac < 0.9
+        if ok:
             hug.append((shapes, win, box))
+    if trace is not None:
+        trace.extend(('hug', h[2]) for h in hug)
     parent = list(range(len(hug)))
     def find(a):
         while parent[a] != a:
@@ -633,3 +642,4 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
         closed = (closed | G)[pad_:-pad_, pad_:-pad_]
         out[r0:r1, c0:c1] |= closed
     return out
+

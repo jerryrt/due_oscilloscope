@@ -9,7 +9,7 @@ from pcbkit import board as kb, rules
 
 FRAME = (50.0, 150.0)
 BOARDS = {'v1': 'kicad/afe-proto.kicad_pcb', 'v2': 'v2/layout/integrated/afe-v2-integrated.kicad_pcb'}
-CFG = {'GND': '/GND'}
+CFG = {'GND': '/GND', 'TRACK_BREAKOUT_REACH': 0.8}      # montreal5's ruling: a WSON fan-out's second short leg is still a breakout
 
 
 def report(path):

@@ -30,6 +30,9 @@ declare -A M=(
   [rough_single_counts]="fills.py|        if len(g) < 2:|        if len(g) < 1:"
   [rough_reach_ignored]="fills.py|if (near \& rp.mask[win[0]:win[2], win[1]:win[3]]).any():|if True:"
   [rough_link_ignored]="fills.py|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= link:|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= 1e9:"
+  [rough_own_items_ignored]="fills.py|            ok = 0.1 < frac < 0.9|            ok = False"
+  [rough_own_buried_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac > 0.1"
+  [rough_own_far_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac < 0.9"
 )
 fail=0
 for name in "${!M[@]}"; do

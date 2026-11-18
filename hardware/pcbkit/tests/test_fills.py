@@ -246,3 +246,19 @@ def test_pads_that_do_not_touch_the_pour_or_are_far_apart_are_not_a_run():
     assert not fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3).any()        # 5 mm apart: three single pads
     b, rp = _hugged([3, 9, 15])
     assert fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3, link=6.0).any()  # the link distance is the limit
+
+
+def _own_vias(pts):
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 20, 20))])
+    for x, y in pts:
+        a.v('GND', x, y)
+    b = a.build()
+    return b, fills.net_copper(b, 0, b.nets.index('GND'), ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+
+
+def test_a_row_of_the_nets_own_vias_standing_at_the_pour_edge_is_rough_and_one_or_buried_ones_are_not():
+    g = lambda pts: fills.rough_edges(*_own_vias(pts)[:1], _own_vias(pts)[1], 0, 1, clearance=0.3)
+    assert g([(20.0, 5), (20.0, 7), (20.0, 9)]).any()                      # three vias half out of the pour
+    assert not g([(20.0, 7)]).any()                                         # one alone may show its arc
+    assert not g([(10.0, 5), (10.0, 7), (10.0, 9)]).any()                   # buried in the pour: the edge is not theirs
+    assert not g([(26.0, 5), (26.0, 7), (26.0, 9)]).any()                   # away from the pour altogether
