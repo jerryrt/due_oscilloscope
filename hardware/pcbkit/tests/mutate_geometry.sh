@@ -72,6 +72,8 @@ declare -A M=(
   [wide_tol_ignored]="rules.py|b.s_w[i] > lim + c.TRACK_WIDTH_TOL|b.s_w[i] > lim"
   [reach_stops_at_collinear]="rules.py|            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):|            if True:"
   [reach_never_stops]="rules.py|            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):|            if False:"
+  [cap_tap_ignored]="rules.py|                    if geom.seg_seg_dist(S0[j0:j0 + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0] <= wid[i] / 2 + b.s_w[j0] / 2 + 1e-9:|                    if False:"
+  [cap_tap_body_only]="rules.py|                if d > b.s_w[i] / 2 + b.s_w[j] / 2 + 1e-9:|                if d > b.s_w[j] / 2 + 0.005:"
 )
 fail=0
 for name in "${!M[@]}"; do

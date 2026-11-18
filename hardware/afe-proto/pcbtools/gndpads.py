@@ -21,10 +21,10 @@ VIA_D, VIA_DRILL = 0.6, 0.3
 MIN_CLEAR = 0.2
 
 
-def failing(path, gndpad_min=0.2, radius=3.0):
+def failing(path, gndpad_min=0.2, radius=3.0, shells=()):
     """(pads, trouble): the SMD GND pads the pour does not touch, and the SMD GND pads within `radius` of a place where the filled pour is rough or has a dead-end finger (their ring is what makes it so)"""
     b = kb.read_board(path, {'FRAME': FRAME})
-    parts, _ = rules.fill_quality_parts(b, {'GND': '/GND', 'FILL_LAYERS': ('F',), 'FILL_ROUGH_LAYERS': ('F',), 'FILL_SHELL_PREFIXES': (), 'FILL_GNDPAD_MIN': gndpad_min})
+    parts, _ = rules.fill_quality_parts(b, {'GND': '/GND', 'FILL_LAYERS': ('F',), 'FILL_ROUGH_LAYERS': ('F',), 'FILL_SHELL_PREFIXES': shells, 'FILL_GNDPAD_MIN': gndpad_min})
     out, spots = [], []
     for kind, text, x, y in parts:
         if kind == 'gndpad':

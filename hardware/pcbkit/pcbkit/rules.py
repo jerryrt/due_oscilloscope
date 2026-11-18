@@ -1123,9 +1123,12 @@ def _octile(dx, dy):
 
 
 def _split_at_taps(b, S, L):
-    """the segments with every body cut at the places another track of the same net and layer ends on it (a T): (S2, net, layer, width, orig) with `orig` the index of the segment each piece came from"""
+    """the segments with every body cut at the places another track of the same net and layer ends on it (a T): (S2, net, layer, width, orig) with `orig` the index of the segment each piece came from.
+    An end whose round cap overlaps the other track's copper (a hair off its centre line) counts as a tap and is moved onto the centre line, so the two are one joint"""
+    S = S.copy()
     n = len(S)
     cuts = {i: [] for i in range(n)}
+    snaps = {}
     for i in range(n):
         if L[i] <= 1e-6:
             continue
@@ -1135,12 +1138,18 @@ def _split_at_taps(b, S, L):
                 if j == i or b.s_net[j] != b.s_net[i] or b.s_layer[j] != b.s_layer[i] or L[j] <= 1e-6:
                     continue
                 d = geom.seg_seg_dist(S[j:j + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0]
-                if d > b.s_w[j] / 2 + 0.005:
+                if d > b.s_w[i] / 2 + b.s_w[j] / 2 + 1e-9:
                     continue
                 if min(math.hypot(p[0] - S[j, 0], p[1] - S[j, 1]), math.hypot(p[0] - S[j, 2], p[1] - S[j, 3])) < 0.01:
                     continue                                 # at an end of j: a joint, not a body tap
                 u = ((p[0] - S[j, 0]) * (S[j, 2] - S[j, 0]) + (p[1] - S[j, 1]) * (S[j, 3] - S[j, 1])) / (L[j] ** 2)
-                cuts[j].append(min(max(u, 0.0), 1.0))
+                u = min(max(u, 0.0), 1.0)
+                cuts[j].append(u)
+                if d > 0.005:
+                    snaps[(i, e)] = (S[j, 0] + u * (S[j, 2] - S[j, 0]), S[j, 1] + u * (S[j, 3] - S[j, 1]))
+                break
+    for (i, e), q in snaps.items():
+        S[i, 2 * e], S[i, 2 * e + 1] = q
     rows = []
     for i in range(n):
         if L[i] <= 1e-6:
@@ -1274,7 +1283,13 @@ def _route_findings(b, c):
             if on_pad(p, net, layer, wid[i]) or on_via(p, net, wid[i]):
                 continue
             if len(at[k]) < 2:
-                out.append(('dangling', '%s track end touches no pad, via or track of its net' % name(i), float(p[0]), float(p[1])))
+                for j0 in range(len(S0)):                        # its round end cap overlapping the copper of another track of the net (a tap a hair off the other track's centre line)
+                    if j0 == orig[i] or L0[j0] <= 1e-6 or b.s_net[j0] != net or b.s_layer[j0] != layer:
+                        continue
+                    if geom.seg_seg_dist(S0[j0:j0 + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0] <= wid[i] / 2 + b.s_w[j0] / 2 + 1e-9:
+                        break
+                else:
+                    out.append(('dangling', '%s track end touches no pad, via or track of its net' % name(i), float(p[0]), float(p[1])))
     def reach_along(piece):
         """the distance from the end `piece` = (i, e) rests on, along its track, to the first place that is not a straight-through joint of two collinear pieces"""
         i, e = piece
@@ -1461,7 +1476,7 @@ def fill_quality_parts(b, cfg, report=None):
             out.append(('dead_end', '%s pour finger %.2f mm wide, %.1f mm long, touching other copper at one end' % (lay, p.width, p.length), p.x, p.y))
         if lay in c.FILL_ROUGH_LAYERS:
             from scipy import ndimage as _ndi
-            rough = fills.rough_edges(b, r_fill, code, gnd, clearance=float(b.z_clear[zs[0]]), tol=c.FILL_ROUGH_TOL, link=c.FILL_ROUGH_LINK)
+            rough = fills.rough_edges(b, r_fill, code, gnd, clearance=float(b.z_clear[zs[0]]), tol=c.FILL_ROUGH_TOL, link=c.FILL_ROUGH_LINK, exempt=c.FILL_SHELL_PREFIXES)
             rl, rn = _ndi.label(rough, structure=np.ones((3, 3)))
             for i in range(1, rn + 1):
                 rr, cc = np.nonzero(rl == i)

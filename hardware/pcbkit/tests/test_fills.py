@@ -315,3 +315,21 @@ def test_pin_protect_marks_the_box_of_a_through_hole_ground_pad_of_a_listed_part
     px = lambda x, y: m[int((r.y1 - y) * 10), int((x - r.x0) * 10)]
     assert px(10, 10) and px(10.9, 10) and not px(12.0, 10)                                      # the pad's box grown by `reach`
     assert not px(20, 10) and not px(30, 10) and not px(10, 30)                                   # another net, an SMD pad, a part not listed
+
+
+def test_a_connectors_own_ground_pins_are_not_a_rough_edge():
+    def pads(ref, smd):
+        xs, ys = [19.5, 19.5, 19.5], [5, 7.2, 9.4]
+        a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 20, 20))] + [(True, rect(x - 0.7, y - 0.7, x + 0.7, y + 0.7)) for x, y in zip(xs, ys)])
+        a.part(ref, 30, 30)
+        for n, (x, y) in enumerate(zip(xs, ys)):
+            a.p(ref, str(n + 1), x, y, 'GND', smd=smd, size=1.0, mask=1 if smd else 3)
+        b = a.build()
+        return b, fills.net_copper(b, 0, b.nets.index('GND'), ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+    b, r = pads('J1', False)
+    assert fills.rough_edges(b, r, 0, 1, clearance=0.3).any()                                     # three through-hole pins at the edge are a row of arcs
+    assert not fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()                  # but not when the connector's ground pins are exempt
+    b, r = pads('J1', True)
+    assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()                      # SMD pads of a J part still count
+    b, r = pads('U1', False)
+    assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()                      # and other parts

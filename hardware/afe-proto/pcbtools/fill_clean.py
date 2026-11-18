@@ -131,7 +131,7 @@ def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, jo
     keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, protect=protect)
     for _ in range(rounds):
         r, bb, g, rp = _fill_to(path, tmp, keeps, width, clearance, spoke, gap)
-        lo = fills.leftovers(r) | fills.rough_edges(bb, rp, 0, g, clearance)
+        lo = fills.leftovers(r) | fills.rough_edges(bb, rp, 0, g, clearance, exempt=shells)
         extra = lo if extra is None else (extra | lo)
         if not lo.any():
             break
@@ -201,7 +201,7 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
             set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_NEVER)
             e.fill_zones()
         try:
-            lost, near = gndpads.failing(probe, gndpad_min)
+            lost, near = gndpads.failing(probe, gndpad_min, shells=shells)
             bad = [p for p in lost + near if (p[0], p[1]) not in edge]
         finally:
             _rm(probe)

@@ -563,7 +563,7 @@ def _snap_poly(poly, xs, ys, snap):
     return poly
 
 
-def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.25, trace=None):
+def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.25, trace=None, exempt=()):
     """The places where the pour edge is a run of clearance arcs, as a mask on the raster `rp` of the pour (built WITHOUT the net's own items). An item (a pad or a via of another net on
     `layer`) hugs the pour when pour copper lies within `clearance` + `tol` of it. Hugging items whose copper is within `link` mm of each other are one cluster; a cluster of two or more
     is rough (one alone may show its round clearance), and its mask is every item grown by clearance + tol + `margin` and closed over `link` mm, so a keep-out over it leaves a straight edge
@@ -597,6 +597,8 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
     def px(x, y):
         return ((x - rp.x0) * k, (rp.y1 - y) * k)
     for n_, i in enumerate(rows):
+        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)):
+            continue                                         # a connector's own ground pins are kept in the pour: their arcs are not a defect
         m = cu.owner == n_
         C, R = cu.C[m], cu.r[m]
         shapes = []

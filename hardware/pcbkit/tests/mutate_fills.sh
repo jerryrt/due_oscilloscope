@@ -45,6 +45,9 @@ declare -A M=(
   [pin_protect_any_net]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_smd[h] or"
   [pin_protect_smd]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_net[h] != net or"
   [pin_protect_any_prefix]="fills.py|or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)):|or False:"
+  [exempt_ignored]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)):|        if False:"
+  [exempt_smd_too]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and|        if exempt and b.p_net[i] == net and"
+  [exempt_any_net]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and|        if exempt and not b.p_smd[i] and"
 )
 fail=0
 for name in "${!M[@]}"; do
