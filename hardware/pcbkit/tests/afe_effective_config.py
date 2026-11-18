@@ -6,12 +6,14 @@ sys.path.append('/usr/lib/python3/dist-packages')
 from pcbtools import rules as R          # noqa: E402  (importing pcbtools registers pcbkit)
 from pcbkit import rules as K            # noqa: E402
 from pcbtools.boards import v2_layout as C   # noqa: E402
+from pcbtools.frame import FRAME            # noqa: E402
+from pcbkit import board as KB              # noqa: E402
 
 kc = R.kit_cfg_lr1(C)
 for rule in ('ground_plane', 'bottom_hops'):
     print(K.effective_config(kc, rule))
 rep = []
-R.lr1(__import__('pcbtools.boardio', fromlist=['x']).read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb'), C, rep)
+R.lr1(KB.read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', FRAME), C, rep)
 print('\nreport carried by one lr1 run on the integrated board: %d rows (ground_plane then bottom_hops)' % len(rep))
 
 # the typo guard on every AFE configuration: nothing may raise, and the names no pcbkit module declares are listed (informational)
@@ -29,7 +31,7 @@ for name in ('v2_layout', 'v2', 'v1', 'v1r', 'v1_frozen'):
 
 # step 3: the effective configuration of the moved rules, as one AFE run on the integrated board reports them (names, source, value)
 from pcbkit.config import format_report   # noqa: E402
-b = __import__('pcbtools.boardio', fromlist=['x']).read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb')
+b = KB.read_board('hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb', FRAME)
 for fn in (R.lr3, R.lr4, R.lr5, R.lr12, R.lr11):
     rep = []
     fn(b, C, rep)

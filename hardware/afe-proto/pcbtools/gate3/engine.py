@@ -975,12 +975,13 @@ def stamp_now():
 def generate(cfg, T, out_dir, config_name, stamp=None):
     """build the whole package for board config `cfg` and table `T` into `out_dir` (GATE3.md and data/); returns the document text.
     stamp: the generated-at text (default: now)."""
-    from pcbtools import boardio
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
     board = os.path.join(REPO, T.BOARD)
     project = os.path.join(REPO, T.PROJECT)
     data_dir = os.path.join(out_dir, 'data')
     os.makedirs(data_dir, exist_ok=True)
-    b = boardio.read_board_retry(board)
+    b = KB.read_board_retry(board, FRAME)
     props = footprint_props(board)
     D = dict(generated=stamp or stamp_now())
     D['info'] = sec_info(b, T)

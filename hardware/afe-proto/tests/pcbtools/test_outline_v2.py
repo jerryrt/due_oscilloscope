@@ -11,7 +11,8 @@ import sys
 import numpy as np
 import pytest
 
-from pcbtools import boardio
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v2_layout as L
 
 
@@ -125,7 +126,7 @@ pcbnew_mark = pytest.mark.pcbnew
 
 @pcbnew_mark
 def test_the_band_of_the_integrated_board_holds_no_copper(pcbnew_required):
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     for _, band in L.KEEPOUTS:
         assert band_copper(b, band) == []
     assert b.z_keepout.sum() == 3 and (b.outline[:, 1].min(), b.outline[:, 1].max()) == pytest.approx((L.BOARD_RECT[1], L.BOARD_RECT[3]), abs=1e-5)   # two bands + the unnamed 5V_F rule area
@@ -143,7 +144,7 @@ def test_copper_in_the_band_is_found_and_kicad_calls_it_a_violation(pcbnew_requi
             e.add_tracks('/GND', 'F', 40.0, y, 44.0, y, 0.2)
             e.add_vias('/GND', 60.0, y, 0.6, 0.3)
     for _, band in L.KEEPOUTS:
-        hit = band_copper(boardio.read_board(p), band)
+        hit = band_copper(KB.read_board(p, FRAME), band)
         assert any(h.startswith('track') for h in hit) and any(h.startswith('via') for h in hit), hit
     if not shutil.which('kicad-cli'):
         pytest.skip('no kicad-cli')
@@ -158,7 +159,7 @@ def test_the_bottom_ground_plane_fills_both_bands_and_is_not_a_keepout(pcbnew_re
     """the bottom layer is free in the bands: the real board's B.Cu fill reaches into each band (but not to the edge, 0.45 mm), and a B.Cu
     track put in a band is neither counted by the top-only band check nor reported by KiCad's DRC as not allowed"""
     from pcbtools.editor import edit
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     bz = np.flatnonzero((b.z_layer == 1) & b.z_filled & ~b.z_keepout)
     assert len(bz) == 1
     v0, v1 = b.z_vert_off[b.z_ring_off[bz[0]]], b.z_vert_off[b.z_ring_off[bz[0] + 1]]
@@ -170,7 +171,7 @@ def test_the_bottom_ground_plane_fills_both_bands_and_is_not_a_keepout(pcbnew_re
     y = (L.KEEPOUTS[0][1][1] + L.KEEPOUTS[0][1][3]) / 2
     with edit(p) as e:
         e.add_tracks('/GND', 'B', 40.0, y, 44.0, y, 0.2)
-    assert band_copper(boardio.read_board(p), L.KEEPOUTS[0][1]) == []
+    assert band_copper(KB.read_board(p, FRAME), L.KEEPOUTS[0][1]) == []
     if shutil.which('kicad-cli'):
         out = tmp_path / 'drc.json'
         subprocess.run(['kicad-cli', 'pcb', 'drc', '--format', 'json', '--severity-all', '-o', str(out), str(p)], capture_output=True)

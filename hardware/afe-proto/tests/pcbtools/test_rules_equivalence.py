@@ -30,7 +30,8 @@ import re
 import numpy as np
 import pytest
 
-from pcbtools import boardio, fence, mutate as M, rules as R
+from pcbtools import fence, mutate as M, rules as R
+from pcbkit import board as KB
 from pcbtools.boards import v2, v2_arms
 import pcbtools.check as CK
 import known_improvements as KI
@@ -50,7 +51,7 @@ def gold(board):
 
 
 def arrays(board):
-    return boardio.load_npz(os.path.join(ARR, f'{board}.npz'))
+    return KB.load_npz(os.path.join(ARR, f'{board}.npz'))
 
 
 # (board, row) -> the printed figure sits on a rounding boundary: {figure key: exact value}

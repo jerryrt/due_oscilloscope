@@ -8,7 +8,7 @@ Each block board is a copy of the base in which one block's agent worked. For ev
   of every part it owns, with its designator text pose, and (b) its tracks and vias wholly inside its fences; the base's own
   tracks and vias wholly inside those fences are removed first. Zones are the base's (refill the pour afterwards).
 
-Both boards are read once into arrays (boardio.read_board); every decision is a boolean mask on those arrays; the board is
+Both boards are read once into arrays (pcbkit.board.read_board); every decision is a boolean mask on those arrays; the board is
 changed in ONE edit() call. cfg: the names fence.py reads (FENCES, HUNDREDS, OWNER_OVERRIDE, TOL_MM).
 """
 from __future__ import annotations
@@ -17,7 +17,9 @@ import dataclasses
 
 import numpy as np
 
-from . import boardio, fence
+from . import fence
+from pcbkit import board as KB
+from .frame import FRAME
 from .editor import edit
 
 _LAYER = {0: 'F', 1: 'B'}
@@ -50,12 +52,12 @@ def merge(base_path, blocks, out_path, cfg, carry_text=True):
     board along with its position and angle. The old merge_blocks took position and angle only, so a block's 1.0 mm silk designators
     came out as the base's 0.5 mm fab text and LR-11 failed: a defect, not behaviour to keep. carry_text=False reproduces the old
     output (the equivalence test asks for it)"""
-    base = boardio.read_board(base_path)
+    base = KB.read_board(base_path, FRAME)
     report = _overlaps(cfg)
     merged, refused, items = [], {}, {}
     plan = []                                    # (block, blk arrays, base masks, blk masks)
     for name, path in blocks.items():
-        blk = boardio.read_board(path)
+        blk = KB.read_board(path, FRAME)
         res = fence.check_fence(base, blk, name, cfg)
         if res.violations:
             refused[name] = list(res.violations)

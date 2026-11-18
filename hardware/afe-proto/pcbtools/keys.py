@@ -415,11 +415,12 @@ def main(argv=None):
     ap.add_argument('--config', default='v2_layout')
     ap.add_argument('--write', help='write the edited board here (default: report only)')
     a = ap.parse_args(argv)
-    from . import boardio
+    from pcbkit import board as KB
+    from .frame import FRAME
     cfg = importlib.import_module(f'pcbtools.boards.{a.config}')
     with open(a.board) as fh:
         text = fh.read()
-    b = boardio.read_board(a.board)
+    b = KB.read_board(a.board, FRAME)
     if a.legend:
         items = [(h.strip(), r.split(',')) for h, r in (s.split('=') for s in a.legend.split(';'))]
         regions = [tuple(float(v) for v in r.split(',')) for r in a.region]

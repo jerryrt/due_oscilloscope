@@ -17,7 +17,9 @@ import types
 
 import pytest
 
-from pcbtools import boardio, check as CK, rules as R
+from pcbtools import check as CK, rules as R
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v1_arms
 from pcbtools.boards import v1_frozen as v1          # the old tool's goldens were taken on the frozen 34b2e51 inputs
 
@@ -37,7 +39,7 @@ def board(tmp_path_factory):
     """the frozen v1 board, read once from a throw-away copy (a pcbnew read leaves .kicad_prl beside the file)"""
     d = tmp_path_factory.mktemp('v1board')
     shutil.copy(os.path.join(FX, 'afe-proto.kicad_pcb'), d)
-    return boardio.read_board(str(d / 'afe-proto.kicad_pcb'))
+    return KB.read_board(str(d / 'afe-proto.kicad_pcb'), FRAME)
 
 
 def _cfg(**over):

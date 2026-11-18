@@ -20,7 +20,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..'))
 sys.path.insert(0, HERE)
 import place_designators as pd  # noqa: E402
-from pcbtools import boardio, rules  # noqa: E402
+from pcbtools import rules  # noqa: E402
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v2_layout as cfg  # noqa: E402
 import outlines  # noqa: E402
 
@@ -286,7 +288,7 @@ def run(b, text, log=print, seed=3):
 def main(argv):
     path = argv[0]
     out = argv[argv.index('--write') + 1]
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     text = open(path).read()
     seed = int(argv[argv.index('--seed') + 1]) if '--seed' in argv else 3
     moves = run(b, text, seed=seed)

@@ -6,13 +6,14 @@ from pathlib import Path
 import numpy as np
 AFE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(AFE))
-from pcbtools import boardio
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 
 CAPS = ["C401", "C403", "C404", "C405", "C406", "C407", "C408", "C409", "C410", "C402"]
 
 
 def main(path):
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     nets = list(b.nets) if hasattr(b, "nets") else None
     refs = list(b.fp_ref)
     g = nets.index("/GND") if "/GND" in nets else None

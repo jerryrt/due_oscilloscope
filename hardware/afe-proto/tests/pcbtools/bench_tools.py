@@ -23,9 +23,10 @@ def sexpr(path):
 
 
 def editor(path):
-    from pcbtools import boardio
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
     from pcbtools.editor import edit
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     out = os.path.join(tempfile.mkdtemp(prefix='pcbtools-bench-'), 'out.kicad_pcb')
     with edit(path, out=out) as e:
         e.move(b.fp_ref[0], float(b.fp_x[0]), float(b.fp_y[0]), float(b.fp_rot[0]))
@@ -54,9 +55,11 @@ def board(_=None):
 
 
 def fence(path, base, block):
-    from pcbtools import boardio, fence as F
+    from pcbtools import fence as F
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
     from pcbtools.boards import v2
-    F.check_fence(boardio.read_board(base), boardio.read_board(path), block, v2)
+    F.check_fence(KB.read_board(base, FRAME), KB.read_board(path, FRAME), block, v2)
 
 
 if __name__ == '__main__':

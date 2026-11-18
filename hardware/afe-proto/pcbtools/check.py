@@ -6,7 +6,7 @@
 Prints the lines the old lr_check.py printed ('[PASS] LR-1: ...', 'ALL PASS' / 'FAIL: ...'; with --mutate
 '[FAILED AS REQUIRED] ...' per arm and 'every arm caught' / 'NOT CAUGHT: ...'). A .kicad_pcb is read once (pcbnew, in a
 short child process retried on a start-up segfault, every retry printed); an .npz is a cache written by
-`python -m pcbtools.boardio`. LR-10 (kicad-cli DRC) runs only with --drc and only from a .kicad_pcb; otherwise its row is
+`python -m pcbkit.board BOARD OUT.npz 50 150`. LR-10 (kicad-cli DRC) runs only with --drc and only from a .kicad_pcb; otherwise its row is
 printed as [NOT RUN] and the run is not a pass ('LR-10 NOT RUN', exit 1) unless --no-drc says the skip is wanted. Exit 0 only if every row that ran passed (every arm was caught, and every arm was testable) and LR-10 either ran or was skipped by --no-drc, 1
 otherwise, 2 on bad input.
 """
@@ -19,13 +19,15 @@ import sys
 import tempfile
 import time
 
-from . import boardio, drc, rules
+from . import drc, rules
+from pcbkit import board as KB
+from .frame import FRAME
 
 
 def load(path):
     if str(path).endswith('.npz'):
-        return boardio.load_npz(path)
-    return boardio.read_board_retry(path)
+        return KB.load_npz(path)
+    return KB.read_board_retry(path, FRAME)
 
 
 def _drc_possible(b):
@@ -146,7 +148,7 @@ def main(argv=None):
         rc = 1 if (run_rows(b, cfg, a.rows, a.drc, no_drc=a.no_drc) or run_rows.not_run) else 0
     if a.timing:
         t2 = time.perf_counter()
-        print(f'# timing read_s={t1 - t0:.3f} rules_s={t2 - t1:.3f} drc_child_s={drc.drc_time():.3f} read_attempts={boardio.LAST_ATTEMPTS["n"]}',
+        print(f'# timing read_s={t1 - t0:.3f} rules_s={t2 - t1:.3f} drc_child_s={drc.drc_time():.3f} read_attempts={KB.LAST_ATTEMPTS["n"]}',
               file=sys.stderr)
     return rc
 

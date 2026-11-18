@@ -5,11 +5,17 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import boardio
+from pcbkit import board as KB
 
 
 def _group(name):
-    return [n for n, _ in boardio.SPEC[name]]
+    return [n for n, _ in KB.SPEC[name]]
+
+
+def _filled(b, group):
+    """the fields of a group an edit must keep in step: all of them, except a LATER_FIELDS one the board was built without (empty: "not read", which
+    the group-length check allows and which an edit leaves empty)"""
+    return [n for n in _group(group) if not (n in KB.LATER_FIELDS and len(getattr(b, n)) == 0)]
 
 
 def _cat(old, new, kind):
@@ -20,8 +26,8 @@ def _cat(old, new, kind):
 
 def _append(b, group, **row):
     kw = {}
-    for n in _group(group):
-        kind = boardio.KIND[n]
+    for n in _filled(b, group):
+        kind = KB.KIND[n]
         kw[n] = _cat(getattr(b, n), [row[n]], kind)
     return b.replace(**kw)
 
@@ -95,14 +101,14 @@ def add_footprint_like(b, new_ref, like_ref):
     i = b.ref_index(like_ref)
     n = len(b.fp_idx)
     kw = {}
-    for f in _group('footprints'):
+    for f in _filled(b, 'footprints'):
         v = getattr(b, f)
         val = new_ref if f == 'fp_ref' else n if f == 'fp_idx' else v[i]
-        kw[f] = _cat(v, [val], boardio.KIND[f])
+        kw[f] = _cat(v, [val], KB.KIND[f])
     k = int(np.flatnonzero(b.r_fp == i)[0])
-    for f in _group('reftext'):
+    for f in _filled(b, 'reftext'):
         v = getattr(b, f)
-        kw[f] = _cat(v, [n if f == 'r_fp' else v[k]], boardio.KIND[f])
+        kw[f] = _cat(v, [n if f == 'r_fp' else v[k]], KB.KIND[f])
     return b.replace(**kw)
 
 

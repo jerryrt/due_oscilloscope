@@ -5,7 +5,7 @@
         e.add_tracks('AWG_OUT', 'F', x0, y0, x1, y1, 0.25)
         e.remove_tracks(arrays.s_idx[mask])     # indices from BoardArrays: positions in board.GetTracks()
 
-Coordinates are Due mm (x right, y up), converted by boardio.to_due/from_due (the one transform). Item indices
+Coordinates are Due mm (x right, y up), converted by pcbkit.board.to_frame/from_frame with pcbtools.frame.FRAME (the one transform). Item indices
 (`s_idx`, `a_idx`, `v_idx`, `fp_idx`) are the positions the reader recorded; they stay valid for the whole edit() because
 the editor takes its snapshot of the enumeration on entry and additions only append.
 
@@ -21,7 +21,8 @@ import gc
 
 import numpy as np
 
-from . import boardio
+from pcbkit import board as KB
+from .frame import FRAME
 
 _LAYERS = {0: 'F.Cu', 1: 'B.Cu', 'F': 'F.Cu', 'B': 'B.Cu', 'F.Cu': 'F.Cu', 'B.Cu': 'B.Cu'}
 
@@ -43,7 +44,7 @@ class Editor:
 
     # ------------------------------------------------------------------ helpers
     def _pt(self, x, y):
-        kx, ky = boardio.from_due(x, y)
+        kx, ky = KB.from_frame(x, y, FRAME)
         return self.pcb.VECTOR2I(self.pcb.FromMM(float(kx)), self.pcb.FromMM(float(ky)))
 
     def _give(self, item):
@@ -199,8 +200,8 @@ class Editor:
                 return z
         if rect is None:
             bb = self.b.GetBoardEdgesBoundingBox()
-            x0, y1 = boardio.to_due(self.pcb.ToMM(bb.GetLeft()), self.pcb.ToMM(bb.GetTop()))
-            x1, y0 = boardio.to_due(self.pcb.ToMM(bb.GetRight()), self.pcb.ToMM(bb.GetBottom()))
+            x0, y1 = KB.to_frame(self.pcb.ToMM(bb.GetLeft()), self.pcb.ToMM(bb.GetTop()), FRAME)
+            x1, y0 = KB.to_frame(self.pcb.ToMM(bb.GetRight()), self.pcb.ToMM(bb.GetBottom()), FRAME)
         else:
             x0, y0, x1, y1 = rect
         z = self.pcb.ZONE(self.b)
@@ -262,12 +263,12 @@ class Editor:
         return z
 
     def pad_xy(self, ref, pin):
-        """centre of pad `pin` of `ref` in Due mm (the last pad of that number, as boardio reads it)"""
+        """centre of pad `pin` of `ref` in Due mm (the last pad of that number, as pcbkit.board reads it)"""
         hit = [p for p in self._fp(ref).Pads() if p.GetNumber() == str(pin)]
         if not hit:
             raise KeyError(f'{ref}.{pin}: no such pad')
         c = hit[-1].GetPosition()
-        x, y = boardio.to_due(self.pcb.ToMM(c.x), self.pcb.ToMM(c.y))
+        x, y = KB.to_frame(self.pcb.ToMM(c.x), self.pcb.ToMM(c.y), FRAME)
         return float(x), float(y)
 
     def stub_via(self, net, ref, pin, dx, dy, w=0.3, dia=0.6, drill=0.3, layer='F'):

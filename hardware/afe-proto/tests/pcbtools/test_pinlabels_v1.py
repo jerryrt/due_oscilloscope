@@ -9,7 +9,9 @@ import subprocess
 
 import pytest
 
-from pcbtools import boardio, pinlabels as PL, rules as R
+from pcbtools import pinlabels as PL, rules as R
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v1 as L
 
 REPO = pathlib.Path(__file__).resolve().parents[4]
@@ -58,7 +60,7 @@ def file_labels(text):
 
 @pcbnew_mark
 def test_every_edge_socket_pad_has_exactly_one_label_equal_to_the_table(pcbnew_required):
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     table = PL.label_table(L)
     pads = PL.socket_pads(b, L)
     assert len(pads) == 50                                                                      # 8 + 8 + 8 + 10 + 8 + 8 pads on the six sockets
@@ -93,11 +95,11 @@ def test_every_label_has_the_same_rotation_height_and_width(pcbnew_required, tmp
     p = tmp_path / 'rot.kicad_pcb'
     p.write_text(text[:m.start()] + rot + text[m.end():])
     assert len(sizes(p.read_text())) == 2                                                       # the uniformity measure sees it ...
-    r = PL.findings(boardio.read_board(p), L)
+    r = PL.findings(KB.read_board(p, FRAME), L)
     assert any('"A3"' in s and 'turned 0' in s for s in r), r                                     # ... and so does LR-11
     big = m.group(0).replace(f'(size {h:g} {w:g})', f'(size {h:g} {w + 0.1:g})', 1)
     p.write_text(text[:m.start()] + big + text[m.end():])
-    r = PL.findings(boardio.read_board(p), L)
+    r = PL.findings(KB.read_board(p, FRAME), L)
     assert any('"A3"' in s and 'every label is' in s for s in r), r
 
 
@@ -105,7 +107,7 @@ def test_every_label_has_the_same_rotation_height_and_width(pcbnew_required, tmp
 def test_the_board_labels_pass_the_rule_and_the_rule_reports_each_way_to_break_them(pcbnew_required, tmp_path):
     """broken once on purpose, each by editing the board text: a renamed label, a missing label, a label moved onto a pad, a label under the
     minimum height, two labels run together, a stray text in a band. Each must make findings() (LR-11) report it; the clean board reports none."""
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     assert PL.findings(b, L) == []
     text = BOARD.read_text()
     blocks = list(re.finditer(r'\n\t\(gr_text "([^"]*)"\n\t\t\(at ([-\d.]+) ([-\d.]+) ([-\d.]+)\)(.*?)\n\t\)(?=\n)', text, re.S))
@@ -114,7 +116,7 @@ def test_the_board_labels_pass_the_rule_and_the_rule_reports_each_way_to_break_t
     def run(new, name):
         p = tmp_path / (name + '.kicad_pcb')
         p.write_text(new)
-        return PL.findings(boardio.read_board(p), L)
+        return PL.findings(KB.read_board(p, FRAME), L)
     cut = lambda m, repl: text[:m.start()] + repl + text[m.end():]  # noqa: E731
     r = run(cut(lab, lab.group(0).replace('"A3"', '"A9"', 1)), 'renamed')
     assert any('"A3"' in s for s in r), r
@@ -144,14 +146,14 @@ def test_lr11_fails_when_a_pin_label_is_missing(pcbnew_required, tmp_path):
     m = [m for m in re.finditer(r'\n\t\(gr_text "A3"\n.*?\n\t\)(?=\n)', text, re.S)][0]
     p = tmp_path / 'b.kicad_pcb'
     p.write_text(text[:m.start()] + text[m.end():])
-    r = R.lr11(boardio.read_board(p), L)
+    r = R.lr11(KB.read_board(p, FRAME), L)
     assert not r.ok and 'A3' in r.detail
-    assert R.lr11(boardio.read_board(BOARD), L).ok
+    assert R.lr11(KB.read_board(BOARD, FRAME), L).ok
 
 
 @pcbnew_mark
 def test_the_labels_are_spliced_in_idempotently_and_touch_nothing_else(pcbnew_required):
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     plan = PL.plan_labels(b, L)
     text = BOARD.read_text()
     ids = [(s, pin) for s, pin, *_ in PL.socket_pads(b, L)]
@@ -205,12 +207,12 @@ def test_the_ink_file_is_what_the_stroke_font_and_the_board_give(pcbnew_required
     ink, across = PL.measure(sorted(d['ink']), L.PIN_LABEL_H, L.PIN_LABEL_W, L.PIN_LABEL_THICK)
     assert all(abs(ink[n] - d['ink'][n]) < 0.002 for n in ink), {n: (ink[n], d['ink'][n]) for n in ink if abs(ink[n] - d['ink'][n]) >= 0.002}
     assert abs(across - d['ink_h']) < 0.002
-    assert PL.pad_edge(boardio.read_board(BOARD), L) == pytest.approx(d['pad_edge'], abs=0.002)
+    assert PL.pad_edge(KB.read_board(BOARD, FRAME), L) == pytest.approx(d['pad_edge'], abs=0.002)
 
 
 @pcbnew_mark
 def test_every_label_fits_between_the_pads_and_the_board_edge_and_is_one_size(pcbnew_required, tmp_path):
-    b = boardio.read_board(BOARD)
+    b = KB.read_board(BOARD, FRAME)
     plan = PL.plan_labels(b, L)
     assert {(p.h, p.w, p.angle) for p in plan} == {(1.0, L.PIN_LABEL_W, 90.0)}                  # exactly 1.0 mm high, one width, one rotation
     x0, y0, x1, y1 = L.BOARD_RECT
@@ -225,7 +227,7 @@ def test_every_label_fits_between_the_pads_and_the_board_edge_and_is_one_size(pc
     out = text[:mm.start(2)] + str(float(mm.group(2)) + 1.0) + text[mm.end(2):]                 # 1 mm south in sheet y = 1 mm outward of the south edge
     p = tmp_path / 'edge.kicad_pcb'
     p.write_text(out)
-    r = PL.findings(boardio.read_board(p), L)
+    r = PL.findings(KB.read_board(p, FRAME), L)
     assert any('CANRX' in s for s in r), r
     need4 = PL.required_overhang(L.PIN_LABEL_INK[L.PIN_LABEL_LONGEST], PL.pad_edge(b, L), L.PIN_LABEL_PAD_GAP, m, L.OVERHANG_STEP)
     assert need4 != 4.0 and need4 == L.OVERHANG                                                  # a typed 4.0 would not equal the computed figure

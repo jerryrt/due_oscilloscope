@@ -16,7 +16,8 @@ import tempfile
 import time
 from collections import defaultdict
 
-from . import boardio
+from pcbkit import board as KB
+from .frame import FRAME
 from .rules import Result
 
 _LAST = {'s': 0.0}
@@ -86,7 +87,7 @@ def lr10_arm(b, outdir, cfg):
     text = open(dst).read()
     arm = cfg.DRC_ARM
     r = int(b.pad_indices(arm['ref'], arm['pin'])[0])
-    x, y = boardio.from_due(b.p_x[r], b.p_y[r])
+    x, y = KB.from_frame(b.p_x[r], b.p_y[r], FRAME)
     seg = (f'\t(segment (start {x:.6f} {y + 1.0:.6f}) (end {x + 3.0:.6f} {y + 1.0:.6f}) (width 0.1) (layer "F.Cu") '
            f'(net "{arm['net']}") (uuid "00000000-0000-4000-8000-000000000101"))\n')
     i = text.rstrip().rfind(')')

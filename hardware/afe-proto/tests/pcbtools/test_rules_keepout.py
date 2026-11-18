@@ -2,7 +2,8 @@
 mutation harness (mutate_rules.py) can run it against a broken copy of rules.py."""
 import numpy as np
 
-from pcbtools import boardio, rules as R
+from pcbtools import rules as R
+from pcbkit import board as KB
 
 from synth import Synth, cfg
 
@@ -12,11 +13,11 @@ def test_a_cache_without_z_keepout_loads_with_every_zone_a_pour(tmp_path):
     b = s.build()
     assert b.z_keepout.tolist() == [False, True]
     p = tmp_path / 'b.npz'
-    boardio.save_npz(b, p)
+    KB.save_npz(b, p)
     d = dict(np.load(p, allow_pickle=False))
     del d['z_keepout']                                                                  # a cache written before the field existed
     np.savez_compressed(tmp_path / 'old.npz', **d)
-    o = boardio.load_npz(str(tmp_path / 'old.npz'))
+    o = KB.load_npz(str(tmp_path / 'old.npz'))
     assert o.z_keepout.tolist() == [False, False] and o.z_layer.tolist() == b.z_layer.tolist()
 
 

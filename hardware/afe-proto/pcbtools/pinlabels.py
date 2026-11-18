@@ -42,7 +42,7 @@ from pcbkit import pinlabels as _kit
 from pcbkit.pinlabels import (Label, Planned, clean, parse_header_table, label_names, measure, required_overhang, planned_boxes,   # noqa: F401
                               _cells, _box, _convex_gap, _gap, _label_boxes, _fmt)
 
-SHEET_X, SHEET_Y = 50.0, 150.0                       # Due mm -> KiCad sheet mm: x + 50, 150 - y
+from .frame import FRAME                              # Due mm -> KiCad sheet mm: x + 50, 150 - y (the AFE's one frame)
 REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 INK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pinlabel_ink.json')
 NAMESPACE = 'afe-pinlabel'
@@ -50,7 +50,7 @@ NAMESPACE = 'afe-pinlabel'
 
 class _Cfg:
     """a board configuration with the AFE's defaults for the names the kit reads (FRAME, PIN_TABLE_ROOT, PIN_LABEL_UUID_NAMESPACE)"""
-    _DEFAULTS = {'FRAME': (SHEET_X, SHEET_Y), 'PIN_TABLE_ROOT': REPO, 'PIN_LABEL_UUID_NAMESPACE': NAMESPACE}
+    _DEFAULTS = {'FRAME': FRAME, 'PIN_TABLE_ROOT': REPO, 'PIN_LABEL_UUID_NAMESPACE': NAMESPACE}
 
     def __init__(self, cfg):
         object.__setattr__(self, '_cfg', cfg)
@@ -85,7 +85,7 @@ def load_ink(path=INK_FILE):
 
 
 def file_texts(text):
-    return _kit.file_texts(text, (SHEET_X, SHEET_Y))
+    return _kit.file_texts(text, FRAME)
 
 
 def findings(b, cfg):
@@ -93,7 +93,7 @@ def findings(b, cfg):
 
 
 def _sheet(x, y):
-    return _kit._sheet(x, y, (SHEET_X, SHEET_Y))
+    return _kit._sheet(x, y, FRAME)
 
 
 def label_uuid(ref, pin):
@@ -101,7 +101,7 @@ def label_uuid(ref, pin):
 
 
 def label_block(p):
-    return _kit.label_block(p, (SHEET_X, SHEET_Y), NAMESPACE)
+    return _kit.label_block(p, FRAME, NAMESPACE)
 
 
 def apply_labels(text, plan, cfg, all_ids=None):
@@ -109,8 +109,8 @@ def apply_labels(text, plan, cfg, all_ids=None):
 
 
 def main(argv):
-    from . import boardio
-    return _kit.main(argv, read_board=lambda p, c: boardio.read_board_retry(p),
+    from pcbkit import board as KB
+    return _kit.main(argv, read_board=lambda p, c: KB.read_board_retry(p, FRAME),
                      load_config=lambda n: _Cfg(importlib.import_module('pcbtools.boards.' + n)), ink_file=INK_FILE)
 
 

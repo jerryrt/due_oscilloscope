@@ -117,9 +117,10 @@ def test_broken_once_a_key_for_a_part_the_board_lacks_is_refused():
 
 @pytest.mark.pcbnew
 def test_ch2_has_no_free_area_adjoining_it_and_the_generator_says_so(pcbnew_required):
-    from pcbtools import boardio
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
     text = BOARD.read_text()
-    r = K.plan(boardio.read_board(str(BOARD)), text, CFG, 'CH2')
+    r = K.plan(KB.read_board(str(BOARD), FRAME), text, CFG, 'CH2')
     assert isinstance(r, K.NoFit)
     assert r.need == pytest.approx(K.size(list(CFG.KEYS['CH2']['parts']), 4, 4, CFG))
     assert r.biggest_adjoining[0] < r.need[0] and r.biggest_adjoining[1] < r.need[1] or r.biggest_adjoining[0] * r.biggest_adjoining[1] < r.need[0] * r.need[1]

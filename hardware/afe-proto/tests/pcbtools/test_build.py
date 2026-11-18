@@ -12,7 +12,8 @@ import types
 import numpy as np
 import pytest
 
-from pcbtools import boardio
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools import build as bd
 from pcbtools.boards import v1_frozen as v1
 
@@ -93,7 +94,7 @@ def built(tmp_path_factory):
     nets = bd.schematic_nets(old_dir / 'afe-proto.kicad_sch')
     out = tmp / 'new.kicad_pcb'
     info = bd.build_board(design.PARTS, cfg, place, nets, out, legalise_overlaps=True, anchors=fixed)
-    return dict(old=boardio.read_board(old_dir / 'afe-proto.kicad_pcb'), new=boardio.read_board(out), place=place,
+    return dict(old=KB.read_board(old_dir / 'afe-proto.kicad_pcb', FRAME), new=KB.read_board(out, FRAME), place=place,
                 info=info, nets=nets, fixed=fixed, parts=design.PARTS, out=out, cfg=cfg, design=design)
 
 
@@ -189,7 +190,7 @@ def test_the_v1_outline_overhangs_on_each_long_edge_with_top_only_keepouts(built
     cfg = v1.pcb_cfg(FOOTPRINT_DIR=FPDIR, COMMENTS=built['cfg'].COMMENTS)
     out = tmp_path / 'new.kicad_pcb'
     bd.build_board(built['parts'], cfg, built['place'], built['nets'], out, legalise_overlaps=True, anchors=built['fixed'])
-    b = boardio.read_board(out)
+    b = KB.read_board(out, FRAME)
     assert (b.outline[:, 0].min(), b.outline[:, 1].min(), b.outline[:, 0].max(), b.outline[:, 1].max()) == pytest.approx((17.0, -v1.OVERHANG, 117.0, 53.34 + v1.OVERHANG), abs=1e-5)      # the overhang is the config's computed one (the longest pin name)
     board = pcbnew.LoadBoard(str(out))
     areas = [z for z in board.Zones() if z.GetIsRuleArea()]

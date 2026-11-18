@@ -85,10 +85,11 @@ def run(tmp_path_factory):
     work = tmp_path_factory.mktemp('schcheck')
     proj = work / 'project'
     shutil.copytree(FIX, proj, ignore=shutil.ignore_patterns('3d', '__pycache__', 'render', '*.kicad_prl', '~*'))
-    from pcbtools import boardio
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
     rows, nets = sc.schematic_rows(str(proj / 'afe-proto.kicad_sch'), v1.PARTS, v1)
     path = str(proj / 'afe-proto.kicad_pcb')
-    board = boardio.read_board(path)
+    board = KB.read_board(path, FRAME)
     more, _ = sc.board_rows(board, nets, v1, drc_path=path)
     arm_rows = sc.run_arms(sc.arms(v1, nets, board, path, str(work)))
     return {r.id: r for r in rows + more + arm_rows}

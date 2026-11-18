@@ -18,7 +18,9 @@ import sys
 import numpy as np
 import pytest
 
-from pcbtools import boardio, cap
+from pcbtools import cap
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v2
 import synth
 from synth import Synth
@@ -182,7 +184,7 @@ def test_kicad_coordinates_are_the_exact_nanometre_doubles_pcbnew_gives():
         d = synth.Synth('/A').s('/A', 'F', k_x - 50, 150 - k_y, k_x - 50 + 1, 150 - k_y, 0.2).build()
         xa, ya, xb, yb, _ = cap.copper(d, ('/A',)).segs['/A'][0]
         assert (xa, ya) == (k_x, k_y)                                                  # exact float equality, not approx
-        px, py = boardio.from_due(d.s_x0[0], d.s_y0[0])
+        px, py = KB.from_frame(d.s_x0[0], d.s_y0[0], FRAME)
         plain_is_inexact += (px, py) != (k_x, k_y)
     assert plain_is_inexact >= 1                                                       # the check can fail: the plain transform is off
 
@@ -247,7 +249,7 @@ def test_the_pour_keep_back_is_a_disc_and_does_not_wrap_round_the_window():
 # -------------------------------------------------------------------------- (c) equivalence to the old tool's goldens
 @pytest.fixture(scope='module')
 def integrated():
-    return boardio.load_npz(str(ARR / f'{NAME}.npz'))
+    return KB.load_npz(str(ARR / f'{NAME}.npz'))
 
 
 @pytest.fixture(scope='module')
@@ -350,11 +352,12 @@ import sys, json
 sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2])
 import cap as old, numpy as np
-from pcbtools import boardio, cap as new
+from pcbtools import cap as new
+from pcbkit import board as KB
 from pcbtools.boards import v2
 import pcbnew
 o = old.main(sys.argv[3])
-b = boardio.load_npz(sys.argv[4])
+b = KB.load_npz(sys.argv[4])
 r = new.report(b, v2)
 out = {'pairs': {f'{k[0]}|{k[1]}': [float(o[k]), float(d['c'])] for k, d in r.pairs.items()},
        'selfs': {f'{n}|{p}': [float(o[(n, 'self')][p]), float(d[p])] for n, d in r.selfs.items() if (n, 'self') in o for p in (False, True)}}
@@ -432,7 +435,7 @@ def test_a_grid_over_the_cell_limit_is_refused_before_anything_is_built(monkeypa
 
 
 def test_the_real_windows_are_under_the_limit():
-    b = boardio.load_npz(str(ARR / 'v2-integrated-990d4b03.npz'))
+    b = KB.load_npz(str(ARR / 'v2-integrated-990d4b03.npz'))
     for label, nets, pad, h in v2.CAP_PAIRS:
         x0, y0, x1, y1 = cap.window(b, nets, pad)
         nzb, nz = cap._grid(h, cap.STACK)

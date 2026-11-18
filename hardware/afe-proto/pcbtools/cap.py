@@ -19,7 +19,7 @@ What differs from the old tool, and why (each is tested in tests/pcbtools/test_c
   * the sparse operator is built once per scenario (CSR over the free cells) and solved with scipy's conjugate gradient and
     a Jacobi preconditioner, relative residual `tol` (default 1e-6, the old tool's); the old tool re-derived a matrix-free
     stencil on every iteration. The system is the same one: harmonic-mean face permittivity, same boundary conditions.
-Coordinates: the arrays are in Due mm (y up); the grid is laid out in KiCad mm (`boardio.from_due`) so that its cells fall
+Coordinates: the arrays are in Due mm (y up); the grid is laid out in KiCad mm (`pcbkit.board.from_frame`) so that its cells fall
 where the old tool's did. A capacitance is invariant under the flip; the cell phase is not, and it moves figures by ~1 %.
 """
 from __future__ import annotations
@@ -34,7 +34,8 @@ import scipy.ndimage as ndi
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from . import boardio
+from pcbkit import board as KB
+from .frame import FRAME
 
 E0 = 8.854e-12            # F/m, as the old tool (the figures in the goldens are written with it)
 CHUNK = 2_000_000         # cells rasterised at once: bounds the temporary arrays of the ragged expansion
@@ -78,8 +79,8 @@ STACK = Stack()
 def kicad(x, y):
     """Due mm -> KiCad mm rounded to 1e-6 (one nm): bit-for-bit the doubles pcbnew's ToMM gives for the same integers, which
     matters because a 0.2 mm track on a 0.1 mm grid puts cell centres exactly on its edge and a rounding error flips them"""
-    kx, ky = boardio.from_due(x, y)
-    return np.round(kx, boardio.ND) + 0.0, np.round(ky, boardio.ND) + 0.0
+    kx, ky = KB.from_frame(x, y, FRAME)
+    return np.round(kx, KB.ND) + 0.0, np.round(ky, KB.ND) + 0.0
 
 
 @dataclasses.dataclass

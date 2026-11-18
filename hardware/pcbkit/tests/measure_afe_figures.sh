@@ -18,11 +18,13 @@ python3 -B -m pcbtools.check $B --config v2_layout --no-drc > $O/rules.txt 2>&1 
 python3 -B - > $O/silkread.txt <<'PY'
 import glob, os, sys
 sys.path.append('/usr/lib/python3/dist-packages')
-from pcbtools import boardio, silkread
+from pcbtools import silkread                     # importing pcbtools registers pcbkit
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 LABELS = {'J101': 'CH1 IN', 'J201': 'CH2 IN', 'J301': 'AWG OUT'}
 paths = ['hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb'] + sorted(glob.glob('hardware/afe-proto/tests/fixtures/v2-8a1f7ac/*.kicad_pcb'))
 for p in paths:
-    b = boardio.read_board(p)
+    b = KB.read_board(p, FRAME)
     keys = silkread.read_keys(open(p).read())
     f = silkread.findings(b, keys, LABELS)
     print(os.path.basename(p), len(keys), len(f))

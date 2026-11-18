@@ -40,7 +40,7 @@ MUTANTS = [
     (C, 'capsule radius is the full width', "        r = w / 2\n", "        r = w\n"),
     (C, 'rect is open at its edges', "(X >= rects[k, 0]) & (X <= rects[k, 2])", "(X > rects[k, 0]) & (X < rects[k, 2])"),
     (C, 'ragged expansion swaps row and column', "yield item, i0[item] + local // w, j0[item] + local % w", "yield item, i0[item] + local % w, j0[item] + local // w"),
-    (C, 'coordinates not rounded to the nanometre', "return np.round(kx, boardio.ND) + 0.0, np.round(ky, boardio.ND) + 0.0", "return kx, ky"),
+    (C, 'coordinates not rounded to the nanometre', "return np.round(kx, KB.ND) + 0.0, np.round(ky, KB.ND) + 0.0", "return kx, ky"),
     (C, 'B.Cu tracks counted as top copper', "    top_s = b.s_layer == 0", "    top_s = b.s_layer >= 0"),
     (C, 'arcs dropped', "        seg = np.vstack([seg, c1, c2])", "        pass"),
     (C, 'window ignores its pad', "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad", "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad * 0"),

@@ -23,7 +23,8 @@ import tempfile
 
 import numpy as np
 
-from . import boardio
+from pcbkit import board as KB
+from .frame import FRAME
 from .schematic import make_uid
 from .sexpr import find, first, parse
 
@@ -160,7 +161,7 @@ def build_board(parts, cfg, place, nets, out_path, legalise_overlaps=False, anch
         raise KeyError(f'not placed: {missing}')
 
     def at(x, y):
-        kx, ky = boardio.from_due(x, y)
+        kx, ky = KB.from_frame(x, y, FRAME)
         return pcb.VECTOR2I(pcb.FromMM(float(kx)), pcb.FromMM(float(ky)))
     uid = lambda *k: make_uid(cfg.NS, *k)      # noqa: E731
     import uuid
@@ -282,9 +283,9 @@ def build_board(parts, cfg, place, nets, out_path, legalise_overlaps=False, anch
             bb = f.GetCourtyard(pcb.F_CrtYd).BBox()
             if bb.GetWidth() == 0:
                 bb = f.GetBoundingBox(False)
-            (ax, ay), (bx, by) = (boardio.to_due(pcb.ToMM(bb.GetLeft()), pcb.ToMM(bb.GetBottom())),
-                                  boardio.to_due(pcb.ToMM(bb.GetRight()), pcb.ToMM(bb.GetTop())))
-            px, py = boardio.to_due(pcb.ToMM(f.GetPosition().x), pcb.ToMM(f.GetPosition().y))
+            (ax, ay), (bx, by) = (KB.to_frame(pcb.ToMM(bb.GetLeft()), pcb.ToMM(bb.GetBottom()), FRAME),
+                                  KB.to_frame(pcb.ToMM(bb.GetRight()), pcb.ToMM(bb.GetTop()), FRAME))
+            px, py = KB.to_frame(pcb.ToMM(f.GetPosition().x), pcb.ToMM(f.GetPosition().y), FRAME)
             pos[k] = (float(px), float(py))
             rel[k] = (float(ax) - float(px), float(ay) - float(py), float(bx) - float(px), float(by) - float(py))
         new, pairs = legalise(pos, rel, np.array([r in anc for r in refs]), np.array([order[r] for r in refs]))

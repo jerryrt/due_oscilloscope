@@ -6,7 +6,9 @@ import re
 
 import pytest
 
-from pcbtools import boardio, rules as R
+from pcbtools import rules as R
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v1 as L
 
 BOARD = pathlib.Path(__file__).resolve().parents[2] / 'kicad' / 'afe-proto.kicad_pcb'
@@ -28,14 +30,14 @@ def _move(text, ref, layer):
 def _lr11(tmp_path, text):
     p = tmp_path / 'b.kicad_pcb'
     p.write_text(text)
-    return R.lr11(boardio.read_board(p), L)
+    return R.lr11(KB.read_board(p, FRAME), L)
 
 
 def test_the_board_passes_with_its_off_silk_passives(pcbnew_required):
     text = BOARD.read_text()
     fab = [r for r in re.findall(r'\(property "Reference" "([A-Z]+\d+)"', text) if _ref_layer(text, r).group(2) == 'F.Fab']
     assert len(fab) >= 40 and not any(r.rstrip('0123456789') in L.SILK_REQUIRED_PREFIXES for r in fab)    # the floor: the check has passives to judge
-    r = R.lr11(boardio.read_board(BOARD), L)
+    r = R.lr11(KB.read_board(BOARD, FRAME), L)
     assert r.ok, r.detail
     assert f'{len(fab)} passive designators on F.Fab' in r.detail
 

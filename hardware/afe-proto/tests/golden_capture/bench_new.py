@@ -17,11 +17,14 @@ t0 = time.perf_counter()
 what = sys.argv[2]
 extra = {}
 if what == 'read_board':
-    from pcbtools import boardio
-    b = boardio.read_board(sys.argv[3])
+    import pcbtools  # noqa: F401  (registers pcbkit)
+    from pcbkit import board as KB
+    from pcbtools.frame import FRAME
+    b = KB.read_board(sys.argv[3], FRAME)
     extra = dict(segments=len(b.s_idx), pads=len(b.p_fp), footprints=len(b.fp_idx))
 else:
-    from pcbtools import geom
+    import pcbtools  # noqa: F401  (registers pcbkit)
+    from pcbkit import geom
     rng = np.random.default_rng(1)
     n = 10000
     def mk(n):

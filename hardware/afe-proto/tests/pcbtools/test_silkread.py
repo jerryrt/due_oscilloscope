@@ -5,7 +5,9 @@ import pathlib
 
 import pytest
 
-from pcbtools import boardio, silkread
+from pcbtools import silkread
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.silkread import Key
 
 from synth import Synth
@@ -115,7 +117,7 @@ def test_a_bnc_label_off_its_frame_fails():
     b = board()
     s = list(b.t_y)
     s[1] += 0.1                                                      # CH2 IN, 0.1 mm off J1's offset
-    f = silkread.findings(boardio.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 't_y': s}), [KEY], BNC)
+    f = silkread.findings(KB.BoardArrays(**{**{k: getattr(b, k) for k in b.__dataclass_fields__}, 't_y': s}), [KEY], BNC)
     assert any(x.startswith('J2: "CH2 IN"') for x in f), f
 
 
@@ -142,9 +144,9 @@ def test_the_frame_follows_the_connector_rotation():
 
 
 def test_read_keys_takes_unfilled_top_rectangles_with_their_texts():
-    x0, y0 = boardio.from_due(28.0, 12.0)
-    x1, y1 = boardio.from_due(36.0, 14.0)
-    tx, ty = boardio.from_due(32.0, 13.0)
+    x0, y0 = KB.from_frame(28.0, 12.0, FRAME)
+    x1, y1 = KB.from_frame(36.0, 14.0, FRAME)
+    tx, ty = KB.from_frame(32.0, 13.0, FRAME)
     rect = lambda fill: (f'\t(gr_rect\n\t\t(start {float(x0)} {float(y0)})\n\t\t(end {float(x1)} {float(y1)})\n\t\t(fill {fill})\n'
                          f'\t\t(layer "F.SilkS")\n\t)\n')
     txt = f'(kicad_pcb\n{rect("no")}{rect("yes")}\t(gr_text "C2"\n\t\t(at {float(tx)} {float(ty)} 0)\n\t\t(layer "F.SilkS")\n\t)\n)\n'
@@ -217,6 +219,6 @@ OPEN = {'v2/layout/integrated/afe-v2-integrated.kicad_pcb': 83, 'kicad/afe-proto
 @pytest.mark.parametrize('rel', sorted(OPEN))
 def test_the_board_only_gets_closer_to_d30(rel):
     p = HERE / rel
-    f = silkread.findings(boardio.read_board(str(p)), silkread.read_keys(p.read_text()), LABELS, blocks=BLOCKS)
+    f = silkread.findings(KB.read_board(str(p), FRAME), silkread.read_keys(p.read_text()), LABELS, blocks=BLOCKS)
     assert len(f) <= OPEN[rel], f'{len(f)} D30 findings against {OPEN[rel]} recorded: {f[:5]}'
     assert len(f) == OPEN[rel], f'{len(f)} D30 findings, fewer than the {OPEN[rel]} recorded: lower OPEN to {len(f)}'

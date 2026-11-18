@@ -423,9 +423,10 @@ def main(argv=None):
     rows, nets = schematic_rows(s, cfg.PARTS, cfg)
     board = path = None
     if a.pcb:
-        from . import boardio
+        from pcbkit import board as KB
+        from .frame import FRAME
         path = os.path.join(proj, f'{cfg.PROJECT}.kicad_pcb')
-        board = boardio.read_board(path)
+        board = KB.read_board(path, FRAME)
         more, _ = board_rows(board, nets, cfg, drc_path=path)
         rows += more
     if a.arms:

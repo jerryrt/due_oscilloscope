@@ -3,7 +3,7 @@ import types
 
 import numpy as np
 
-from pcbtools import boardio
+from pcbkit import board as KB
 from pcbtools.boards import v2
 
 
@@ -32,7 +32,7 @@ class Synth:
         return self
 
     def p(self, ref, pin, x, y, net='', size=0.6, smd=True, mask=1, shape=1, sy=None, rot=0.0):
-        """a pad: `size` square (or size x sy), `mask` the copper layers it reaches (bit0 F.Cu, bit1 B.Cu), `shape` as boardio
+        """a pad: `size` square (or size x sy), `mask` the copper layers it reaches (bit0 F.Cu, bit1 B.Cu), `shape` as pcbkit.board
         (1 rect, 0 circle, 2 oval), `rot` degrees; the bounding box follows the rotation"""
         i = [f[0] for f in self.fp].index(ref)
         sy = size if sy is None else sy
@@ -93,4 +93,4 @@ class Synth:
                 roff.append(len(hole))
             kw.update(z_net=[z[0] for z in self.zone], z_layer=[z[1] for z in self.zone], z_filled=[z[2] for z in self.zone], z_keepout=[z[4] for z in self.zone],
                       z_xy=xy, z_ring_off=roff, z_vert_off=voff, z_ring_hole=hole)
-        return boardio.BoardArrays(**kw)
+        return KB.BoardArrays(**kw)

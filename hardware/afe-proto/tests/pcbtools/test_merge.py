@@ -10,7 +10,9 @@ import sys
 import numpy as np
 import pytest
 
-from pcbtools import boardio, fence
+from pcbtools import fence
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools import merge as mg
 from pcbtools.boards import v1_frozen as cfg
 from pcbtools.editor import edit
@@ -46,7 +48,7 @@ def _pads():
         import tempfile
         tmp = pathlib.Path(tempfile.mkdtemp(prefix='merge-pads-')) / 'b.kicad_pcb'
         shutil.copy(FIX / 'afe-proto.kicad_pcb', tmp)        # pcbnew writes a .kicad_prl next to a board it loads: never in a fixture
-        b = boardio.read_board(tmp)
+        b = KB.read_board(tmp, FRAME)
         _PADS = np.column_stack([b.p_x, b.p_y])
     return _PADS
 
@@ -76,7 +78,7 @@ def boards(tmp_path_factory):
         e.add_tracks('GND', 'F', 99.0, 30.0, 99.0, 34.0, 0.25)               # B: outside every fence: must survive
         e.add_vias('GND', px, py)                                           # C: inside POWER: the POWER block will remove it
         e.add_tracks('VNEG', 'F', 15.0, 45.0, 16.0, 45.0, 0.2)               # D: outside every fence, other net
-    b0 = boardio.read_board(base)
+    b0 = KB.read_board(base, FRAME)
     ia = [i for i in range(len(b0.s_idx)) if b0.s_x0[i] == pytest.approx(ax)][0]
     awg_part = next(r for r in b0.fp_ref if fence.owner_of(r, cfg) == 'AWG')
     pwr_part = next(r for r in b0.fp_ref if fence.owner_of(r, cfg) == 'POWER')
@@ -130,7 +132,7 @@ def test_the_clean_blocks_merge_and_the_two_bad_ones_are_refused(new_merge):
 
 def test_merged_copper_is_the_base_outside_plus_the_blocks_inside(boards, new_merge):
     _, out = new_merge
-    segs, vias = rows(boardio.read_board(out))
+    segs, vias = rows(KB.read_board(out, FRAME))
     ax, ay = inside('AWG')
     px, py = inside('POWER')
     assert (round(ax, 4), round(ay, 4), round(ax + 3.0, 4), round(ay, 4), 0.25, '/GND', 0) not in segs      # A removed
@@ -143,7 +145,7 @@ def test_merged_copper_is_the_base_outside_plus_the_blocks_inside(boards, new_me
 
 def test_owned_parts_take_the_block_pose_and_nobody_elses_do(boards, new_merge):
     _, out = new_merge
-    base, m, awg = (boardio.read_board(p) for p in (boards['base'], out, boards['awg']))
+    base, m, awg = (KB.read_board(p, FRAME) for p in (boards['base'], out, boards['awg']))
     pb, pm, pa = poses(base), poses(m), poses(awg)
     assert pm[boards['awg_part']] == pa[boards['awg_part']] != pb[boards['awg_part']]
     assert pm[boards['pwr_part']] != pb[boards['pwr_part']]                  # moved by the POWER block (merged), not by SCOPE's bad copy
@@ -162,7 +164,7 @@ def test_same_result_as_the_old_merge_blocks(boards, new_merge, tmp_path):
                        cwd=old_dir, capture_output=True, text=True, env=env)
     assert r.returncode == 1, r.stderr[-300:]                    # 1 = a block refused, as the new one reports
     assert 'AWG: merged (3 tracks/vias' in r.stdout and 'SCOPE: REFUSED' in r.stdout and 'REFCAL: REFUSED' in r.stdout
-    a, b = boardio.read_board(out), boardio.read_board(oldout)
+    a, b = KB.read_board(out, FRAME), KB.read_board(oldout, FRAME)
     assert rows(a) == rows(b)
     assert poses(a) == poses(b)
 
@@ -170,7 +172,7 @@ def test_same_result_as_the_old_merge_blocks(boards, new_merge, tmp_path):
 def test_nothing_is_written_when_no_block_merges_cleanly_except_the_base_copy(boards, tmp_path):
     res = mg.merge(boards['base'], {'SCOPE': boards['bad']}, tmp_path / 'o.kicad_pcb', cfg)
     assert res.merged == [] and not res.ok
-    a, b = boardio.read_board(boards['base']), boardio.read_board(tmp_path / 'o.kicad_pcb')
+    a, b = KB.read_board(boards['base'], FRAME), KB.read_board(tmp_path / 'o.kicad_pcb', FRAME)
     assert rows(a) == rows(b) and poses(a) == poses(b)
 
 
@@ -192,7 +194,7 @@ def test_cli_exit_codes_and_report(boards, tmp_path):
 
 
 def _text(path, ref):
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     j = int(np.flatnonzero(b.r_fp == b.ref_index(ref))[0])
     return float(b.r_h[j]), bool(b.r_on_silk[j])
 
@@ -213,5 +215,5 @@ def test_carry_text_takes_the_designators_height_and_layer_from_the_block(boards
     assert _text(plain, ref) == base_h
     assert _text(carried, ref) == (1.3, True)
     # an owned part with no text change keeps what its block board had, which here is the base's own
-    other = next(r for r in boardio.read_board(boards['base']).fp_ref if r != ref and fence.owner_of(r, cfg) == 'AWG')
+    other = next(r for r in KB.read_board(boards['base'], FRAME).fp_ref if r != ref and fence.owner_of(r, cfg) == 'AWG')
     assert _text(carried, other) == _text(boards['base'], other)

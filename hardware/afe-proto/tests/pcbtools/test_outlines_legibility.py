@@ -8,7 +8,9 @@ import sys
 import numpy as np
 import pytest
 
-from pcbtools import boardio, rules as R
+from pcbtools import rules as R
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 
 from synth import Synth, cfg
 
@@ -250,7 +252,7 @@ def test_v2_layout_config_carries_the_table_and_the_frozen_config_is_unchanged()
 @pytest.mark.pcbnew
 def test_integrated_board_lr11_passes_and_the_shared_parts_sit_where_the_finding_says(pcbnew_required):
     from pcbtools.boards import v2_layout as c
-    b = boardio.read_board(str(BOARD))
+    b = KB.read_board(str(BOARD), FRAME)
     r = R.lr11(b, c)
     assert r.ok, r.detail
     refs = list(b.fp_ref)

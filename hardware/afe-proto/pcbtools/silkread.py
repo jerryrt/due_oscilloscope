@@ -21,14 +21,15 @@ A part may be exempted by name, with its reason (`exempt`); the reason is the bo
 
 Text extents are estimated, not read: a stroke-font character is CHAR_ADV of its width wide *(check: 0.9 matches the
 1.0 mm designators in the AFE-2 render to within a pixel at 13.5 px/mm; other fonts or sizes are unmeasured)*.
-Everything is in Due mm, y up (boardio's frame).
+Everything is in Due mm, y up (pcbtools.frame.FRAME).
 """
 import dataclasses
 import re
 
 import numpy as np
 
-from pcbtools import boardio
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 
 OWN_MARGIN = 0.25      # mm, D30
 BNC_TOL = 0.05         # mm, D30
@@ -69,7 +70,7 @@ def read_keys(txt):
     """the unfilled F.SilkS rectangles of a board text, with the board texts inside each; designator-ness is judged later"""
     texts = []
     for m in re.finditer(r'\(gr_text "([^"]*)"\s*\(at ([-\d.]+) ([-\d.]+)[^)]*\)\s*\(layer "F\.SilkS"\)', txt):
-        x, y = boardio.to_due(float(m.group(2)), float(m.group(3)))
+        x, y = KB.to_frame(float(m.group(2)), float(m.group(3)), FRAME)
         texts.append((m.group(1), x, y))
     keys = []
     for m in re.finditer(r'\(gr_rect(.*?)\n\t\)', txt, re.S):
@@ -78,8 +79,8 @@ def read_keys(txt):
             continue
         s = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', body)
         e = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', body)
-        x0, y0 = boardio.to_due(float(s.group(1)), float(s.group(2)))
-        x1, y1 = boardio.to_due(float(e.group(1)), float(e.group(2)))
+        x0, y0 = KB.to_frame(float(s.group(1)), float(s.group(2)), FRAME)
+        x1, y1 = KB.to_frame(float(e.group(1)), float(e.group(2)), FRAME)
         box = _box(x0, y0, x1, y1)
         inside = tuple(t for t in texts if box[0] < t[1] < box[2] and box[1] < t[2] < box[3])
         keys.append(Key(box, inside))
@@ -100,7 +101,7 @@ def findings(b, keys=(), bnc_labels=None, exempt=None, blocks=None):
     shown = set()
     for j in range(len(b.r_fp)):
         i = row[int(b.r_fp[j])]
-        if not top[i] or not b.r_on_silk[j] or int(b.r_layer[j]) != boardio.R_LAYERS['F.SilkS']:
+        if not top[i] or not b.r_on_silk[j] or int(b.r_layer[j]) != KB.R_LAYERS['F.SilkS']:
             continue
         r = refs[i]
         shown.add(r)

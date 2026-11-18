@@ -1,5 +1,5 @@
 """Read the block outlines ACTUALLY drawn on a board's F.Silkscreen, as rectangles in Due mm (x right, y up, origin at the Due's
-lower-left corner: x - 50, 150 - y of KiCad's sheet coordinates, the transform of pcbtools.boardio.to_due).
+lower-left corner: x - 50, 150 - y of KiCad's sheet coordinates, the transform of pcbkit.board.to_frame with pcbtools.frame.FRAME).
 
     python3 v2/layout/outlines_from_silk.py BOARD.kicad_pcb          print the rectangles found
     python3 v2/layout/outlines_from_silk.py BOARD.kicad_pcb --check  exit 1 unless they equal outlines.RECTS (within TOL)

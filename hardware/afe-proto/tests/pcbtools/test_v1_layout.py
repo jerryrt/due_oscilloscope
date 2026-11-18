@@ -4,7 +4,9 @@ import pathlib
 import types
 
 import pytest
-from pcbtools import boardio, rules as R
+from pcbtools import rules as R
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v1, v1_layout
 
 BOARD = pathlib.Path(__file__).resolve().parents[2] / 'kicad' / 'afe-proto.kicad_pcb'
@@ -21,7 +23,7 @@ def test_the_layout_config_differs_from_v1_only_in_its_outlines():
 
 @pytest.mark.pcbnew
 def test_lr11_passes_on_the_live_board_with_the_strays_and_fails_without_one(pcbnew_required):
-    b = boardio.read_board(str(BOARD))
+    b = KB.read_board(str(BOARD), FRAME)
     assert R.lr11(b, v1_layout).ok
     cfg = types.SimpleNamespace(**{k: getattr(v1_layout, k) for k in dir(v1_layout) if k.isupper()})
     cfg.OUTLINE_STRAYS = tuple(r for r in STRAYS if r != 'R111')

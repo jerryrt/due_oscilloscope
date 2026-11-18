@@ -18,7 +18,9 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..'))
-from pcbtools import boardio, sexpr, rules  # noqa: E402
+from pcbtools import sexpr, rules  # noqa: E402
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.boards import v2_layout as cfg  # noqa: E402
 sys.path.insert(0, HERE)
 import outlines  # noqa: E402
@@ -340,7 +342,7 @@ def _fp_angle(text, ref):
 def main(argv):
     path = argv[0]
     out = argv[argv.index('--write') + 1] if '--write' in argv else None
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     text = open(path).read()
     before = rules.designator_findings(b, cfg)
     print(f'before: {len(before[0])} pairs closer than {cfg.DESIGNATOR_GAP_MIN} mm, {len(before[1])} over a pad, {len(before[2])} too far')
@@ -348,7 +350,7 @@ def main(argv):
     print(f'{len(moves)} designators moved')
     if out:
         open(out, 'w').write(apply_moves(text, b, moves))
-        after = rules.designator_findings(boardio.read_board(out), cfg)
+        after = rules.designator_findings(KB.read_board(out, FRAME), cfg)
         print(f'after: {len(after[0])} pairs closer than {cfg.DESIGNATOR_GAP_MIN} mm, {len(after[1])} over a pad, {len(after[2])} too far')
         # the pairs the room does not allow, as the config's DESIGNATOR_GAP_WAIVED (floor = the gap reached, rounded down to 0.05)
         print('DESIGNATOR_GAP_WAIVED = {' + ', '.join(f'({a!r}, {c!r}): {math.floor(g * 20) / 20:.2f}' for a, c, g in after[0]) + '}')

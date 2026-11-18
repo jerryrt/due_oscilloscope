@@ -4,16 +4,17 @@ import sys, math, json
 sys.path.insert(0, '.'); sys.path.append('/usr/lib/python3/dist-packages')
 import numpy as np
 import pcbnew
-from pcbtools import boardio
+from pcbkit import board as KB
+from pcbtools.frame import FRAME
 from pcbtools.editor import edit
 from pcbtools.boards import v1 as C
 inp, outp = sys.argv[1], sys.argv[2]
 PITCH = float(sys.argv[3]) if len(sys.argv) > 3 else 5.08
 KEEP = {n: 0.6 for n in C.HIZ}; KEEP.update({n: 0.5 for n in C.POUR_NODES})
-b = boardio.read_board(inp)
+b = KB.read_board(inp, FRAME)
 bd = pcbnew.LoadBoard(inp); mm = pcbnew.ToMM
 def duebox(bb):
-    x0, y0 = boardio.to_due(mm(bb.GetX()), mm(bb.GetY())); x1, y1 = boardio.to_due(mm(bb.GetRight()), mm(bb.GetBottom()))
+    x0, y0 = KB.to_frame(mm(bb.GetX()), mm(bb.GetY()), FRAME); x1, y1 = KB.to_frame(mm(bb.GetRight()), mm(bb.GetBottom()), FRAME)
     return (float(min(x0, x1)), float(min(y0, y1)), float(max(x0, x1)), float(max(y0, y1)))
 polys = []          # keep-away polygons, Due mm
 for t in bd.GetTracks():
@@ -21,7 +22,7 @@ for t in bd.GetTracks():
     n = t.GetNetname()
     if n not in KEEP: continue
     d = KEEP[n]; w = mm(t.GetWidth())
-    p = boardio.to_due(mm(t.GetStart().x), mm(t.GetStart().y)); q = boardio.to_due(mm(t.GetEnd().x), mm(t.GetEnd().y))
+    p = KB.to_frame(mm(t.GetStart().x), mm(t.GetStart().y), FRAME); q = KB.to_frame(mm(t.GetEnd().x), mm(t.GetEnd().y), FRAME)
     p = (float(p[0]), float(p[1])); q = (float(q[0]), float(q[1])); L = math.hypot(q[0] - p[0], q[1] - p[1])
     ux, uy = ((q[0] - p[0]) / L, (q[1] - p[1]) / L) if L > 1e-9 else (1.0, 0.0); nx, ny = -uy, ux; h = w / 2 + d
     polys.append((n, [(p[0] - ux * d + nx * h, p[1] - uy * d + ny * h), (q[0] + ux * d + nx * h, q[1] + uy * d + ny * h), (q[0] + ux * d - nx * h, q[1] + uy * d - ny * h), (p[0] - ux * d - nx * h, p[1] - uy * d - ny * h)]))
@@ -45,7 +46,7 @@ with edit(inp, outp) as e:
     # stitching vias on a grid in the open fill
     ps = zone.GetFilledPolysList(e._layer('F'))
     def inside(x, y):
-        kx, ky = boardio.from_due(x, y); return ps.Contains(pcbnew.VECTOR2I(pcbnew.FromMM(float(kx)), pcbnew.FromMM(float(ky))))
+        kx, ky = KB.from_frame(x, y, FRAME); return ps.Contains(pcbnew.VECTOR2I(pcbnew.FromMM(float(kx)), pcbnew.FromMM(float(ky))))
     fences = [r for B in C.ANALOG_FENCE for r in C.OUTLINE[B]]
     court = [(float(b.fp_cx0[i]), float(b.fp_cy0[i]), float(b.fp_cx1[i]), float(b.fp_cy1[i])) for i in range(len(b.fp_ref)) if not np.isnan(b.fp_cx0[i])]
     silk = [duebox(d.GetBoundingBox()) for d in bd.GetDrawings() if d.GetLayer() == pcbnew.F_SilkS] + [duebox(it.GetBoundingBox()) for fp in bd.GetFootprints() for it in fp.GraphicalItems() if it.GetLayer() == pcbnew.F_SilkS]

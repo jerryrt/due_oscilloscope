@@ -253,8 +253,8 @@ V2_BLOCKS = ['POWER', 'REFCAL', 'SCOPE', 'AWG']
 
 @pytest.fixture(scope='module')
 def v2board():
-    from pcbtools import boardio
-    return boardio.load_npz(str(ARRAYS / 'v2-integrated-990d4b03.npz'))
+    from pcbkit import board as KB
+    return KB.load_npz(str(ARRAYS / 'v2-integrated-990d4b03.npz'))
 
 
 @pytest.fixture(scope='module')
@@ -313,8 +313,8 @@ def test_v2_protected_patterns_cover_the_rule():
 # ------------------------------------------------------------------------------------------------ v1 REFCAL acceptance
 @pytest.fixture(scope='module')
 def v1board():
-    from pcbtools import boardio
-    return boardio.load_npz(str(HERE / 'planar_v1_34b2e51.npz'))
+    from pcbkit import board as KB
+    return KB.load_npz(str(HERE / 'planar_v1_34b2e51.npz'))
 
 
 def v1(b, **kw):

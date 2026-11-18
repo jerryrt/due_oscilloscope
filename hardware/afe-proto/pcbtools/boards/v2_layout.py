@@ -123,4 +123,4 @@ KEY_BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'
 # LR-11 on the committed board adds the identity block (pcbtools/identity.py) and the no-arrow rule; the frozen fixtures and the old-tool
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
 IDENTITY_CHECK = True
-SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (boardio reads F.SilkS texts only)
+SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (pcbkit.board reads F.SilkS texts only)
