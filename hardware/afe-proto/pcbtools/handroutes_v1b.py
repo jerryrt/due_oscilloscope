@@ -8,7 +8,7 @@ ROUTES = [
     dict(net='TAP2', why='R504.2 stub 1.0 mm', rm=[((61.105, 5.65), (60.655, 5.65))], add=[(0.2, [(61.62, 5.65), (60.615, 5.65)])]),
     dict(net='TAP1', why='R504.1 stub 0.8 mm', rm=[((63.355, 5.65), (63.505, 5.65))], add=[(0.2, [(62.85, 5.65), (63.65, 5.65)])]),
     dict(net='AWG_OUT', why='R303.1 stub 0.87 mm', rm=[((80.45, 8.15), (80.15, 8.15))], add=[(0.2, [(80.95, 8.15), (80.08, 8.15)])]),
-    dict(net='DAC0', why='R305.1 stub 0.6 mm (DAC0 is length-limited: no more than needed)', rm=[((84.12, 4.85), (84.27, 4.85))], add=[(0.2, [(83.77, 4.85), (84.37, 4.85)])]),
+    dict(net='DAC0', why='the trunk moved 0.25 mm onto the R305.1 pad (x 84.12) so it needs no spur: DAC0 3.35 + 0.35 = 3.7 mm, shorter than main 4.1', rm=[((84.12, 4.85), (84.27, 4.85)), ((84.37, 6.45), (84.37, 3.1)), ((83.77, 6.45), (84.37, 6.45))], add=[(0.2, [(84.12, 3.1), (84.12, 5.2)]), (0.2, [(84.12, 5.2), (84.12, 6.45)]), (0.2, [(83.77, 6.45), (84.12, 6.45)])]),
     dict(net='VREF', why='R512.2 stub: the end goes deep into the pad (1.05 mm from the trunk)', rm=[((52.45, 17.4), (52.95, 17.4))], add=[(0.2, [(52.45, 17.4), (53.5, 17.4)])]),
     dict(net='P33_R', why='C502.1 spur from deep in the pad: 1.0 mm', rm=[((59.8, 21.9), (59.8, 22.4))], add=[(0.2, [(59.8, 21.4), (59.8, 22.4)])]),
     dict(net='P33_RN', why='two overlapping duplicate pieces of one vertical become one track',
