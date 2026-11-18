@@ -154,6 +154,7 @@ GROUND_PLANE_NAMES = (
     project('PLANE_LAYER', "'F' | 'B' (or 0 | 1)", 'the copper layer that carries the plane'),
     tunable('COPPER_LAYERS', 2, 'count', 'the board must have exactly this many copper layers'),
     tunable('GND_VIA_REACH', 3.0, 'mm', 'an SMD ground pad has a via of its own within this distance'),
+    tunable('GND_VIA_TIE', True, 'bool', 'the via of its own must be joined to the pad by copper (its own top track chain, lying in the pad, or a plated hole of the pad); False = nearness alone (a first-release board that predates the rule)'),
 )
 
 
@@ -250,7 +251,7 @@ def ground_plane_parts(b, cfg, report=None):
     for jj, j in enumerate(sel):
         r = pt.rows[j]
         d = np.hypot(gv[:, 0] - b.p_x[r], gv[:, 1] - b.p_y[r]) if len(gv) else np.zeros(0)
-        d = np.where(used | (comp_via != comp_pad[jj]), np.inf, d)                     # its own: joined to the pad by copper (its own track, or lying in the pad)
+        d = np.where(used | ((comp_via != comp_pad[jj]) & c.GND_VIA_TIE), np.inf, d)                     # its own: joined to the pad by copper (its own track, or lying in the pad)
         i = int(np.argmin(d)) if len(d) else -1
         if i >= 0 and d[i] <= c.GND_VIA_REACH:
             used[i] = True

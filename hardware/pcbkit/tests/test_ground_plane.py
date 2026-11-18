@@ -93,4 +93,4 @@ def test_project_names_raise_naming_the_key_and_tunables_default_and_are_reporte
     rep = []
     rules.ground_plane(a, {**CFG, 'GND_VIA_REACH': 4.0}, rep)
     assert {k: (v, s) for k, v, s in rep} == {'GND': ('GND', 'project'), 'PLANE_LAYER': ('B', 'project'), 'COPPER_LAYERS': (2, 'default'),
-                                              'GND_VIA_REACH': (4.0, 'project')}
+                                              'GND_VIA_REACH': (4.0, 'project'), 'GND_VIA_TIE': (True, 'default')}

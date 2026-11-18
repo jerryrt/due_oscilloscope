@@ -15,6 +15,7 @@ def lr1_board(hop=2.0, hop_vias=((30, 30), (32, 30)), gnd_via=(11, 10), a0=None,
     s.part('C1', 10, 10).p('C1', '1', 10, 10, '/GND')
     if gnd_via:
         s.v('/GND', *gnd_via)
+        s.s('/GND', 'F', 10, 10, *gnd_via)                                   # the via is the pad's own: joined to it by its own top track (a via is tied by copper, not by nearness)
     rings = [(SQ(0, 0, 50, 50), False)] + ([(SQ(60, 0, 70, 10), False)] if pour_rings == 2 else [])
     s.z('/GND', 'B', rings)
     s.s(hop_net, 'B', 30, 30, 30 + hop, 30)
@@ -31,7 +32,7 @@ C1 = cfg(ANALOG_REFS=frozenset(), ANALOG_FENCE=(), OUTLINE={}, XSENS=('/A0',))
 def test_lr1_passes_with_exact_figures():
     r = R.lr1(lr1_board(), C1)
     assert r.ok, r.detail
-    assert r.detail == '2 layers, one bottom plane, 1 bottom runs, 1 GND pads each with its own via'
+    assert r.detail == '2 layers, one bottom plane, 1 bottom runs, 1 GND pads each with its own via (a plated hole of the pad counts)'
     assert r.figures['max_run_mm'] == 2.0 and r.figures['max_run_vias'] == 2 and r.figures['gnd_pads'] == 1
     assert r.figures['bottom_pieces'] == 1
 
@@ -92,7 +93,7 @@ def test_lr1_hop_under_a_sensitive_top_net_and_pad():
     r = R.lr1(lr1_board(a0=(31, 25, 31, 35)), C1)
     assert not r.ok and '/SCL: bottom segment under /A0 (a hop under a sensitive net; bridge it on top)' in r.detail
     assert R.lr1(lr1_board(a0=(31, 31, 31, 40)), C1).ok                         # ends 1 mm above the hop: clear
-    s = Synth('/GND', '/SCL', '/A0').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10)
+    s = Synth('/GND', '/SCL', '/A0').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).s('/GND', 'F', 10, 10, 11, 10)
     s.part('R1', 31, 30.5).p('R1', '1', 31, 30.5, '/A0')
     s.z('/GND', 'B', [(SQ(0, 0, 50, 50), False)]).s('/SCL', 'B', 30, 30, 32, 30).v('/SCL', 30, 30).v('/SCL', 32, 30)
     r = R.lr1(s.build(), C1)
@@ -104,12 +105,12 @@ def test_lr1_hop_inside_a_fence_or_under_an_analog_part():
     r = R.lr1(lr1_board(), c)
     assert not r.ok and 'bottom segment inside an analog fence (29.0, 29.0, 33.0, 31.0)' in r.detail
     b = lr1_board()
-    s = Synth('/GND', '/SCL').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).z('/GND', 'B', [(SQ(0, 0, 50, 50), False)])
+    s = Synth('/GND', '/SCL').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).s('/GND', 'F', 10, 10, 11, 10).z('/GND', 'B', [(SQ(0, 0, 50, 50), False)])
     s.part('U9', 31, 33, box=(30, 31.5, 32, 34.5))           # courtyard 1.5 above the hop: outside ZONE_PAD 0.3 + 0.1
     s.s('/SCL', 'B', 30, 30, 32, 30).v('/SCL', 30, 30).v('/SCL', 32, 30)
     c2 = cfg(ANALOG_REFS=frozenset({'U9'}), ANALOG_FENCE=(), OUTLINE={}, XSENS=())
     assert R.lr1(s.build(), c2).ok
-    s2 = Synth('/GND', '/SCL').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).z('/GND', 'B', [(SQ(0, 0, 50, 50), False)])
+    s2 = Synth('/GND', '/SCL').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).s('/GND', 'F', 10, 10, 11, 10).z('/GND', 'B', [(SQ(0, 0, 50, 50), False)])
     s2.part('U9', 31, 31, box=(30, 30.3, 32, 33)).s('/SCL', 'B', 30, 30, 32, 30).v('/SCL', 30, 30).v('/SCL', 32, 30)
     r = R.lr1(s2.build(), c2)
     assert not r.ok and "bottom copper under ['U9']" in r.detail             # 0.3 above the track centre line: within 0.3 + 0.1

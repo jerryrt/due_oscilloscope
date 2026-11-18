@@ -1,5 +1,7 @@
-"""fill_clean.py BOARD [OUT] [--top-width W] [--bottom-width W] [--clearance C] [--spoke S] [--gap G] [--big A]: the GND pours of a board as the owner wants them, and a report.
+"""fill_clean.py BOARD [OUT] (--reference BOARD_OF_RECORD | --reference-input) [--top-width W] [--bottom-width W] [--clearance C] [--spoke S] [--gap G] [--big A]: the GND pours of a board as the owner wants them, and a report.
 
+  - the build refuses (exit 2, nothing written) when the fill moved ground copper toward any POUR_NODES / POUR_INFO_NODES node, against the pour gaps of the reference board: name the board of record with
+    --reference (the input may carry a stale fill that is no reference at all); without either flag it stops before doing anything;
   - the top GND zone connects SMD GND pads by thermal reliefs (gap G, spoke S), the bottom plane stays solid;
   - the minimum fill width is W on the top and W on the bottom (KiCad then drops what is narrower), the zones' clearance C;
   - a pour of A mm2 or more that the minimum width would leave hanging (cut off from every pad, via and track of the net) is kept: GND stitching vias go into it, one per 100 mm2 at least 8 mm
@@ -318,13 +320,19 @@ if __name__ == '__main__':
     import importlib
     cfg = importlib.import_module('pcbtools.boards.' + cfgname)
     outl = [tuple(r) for rs in cfg.OUTLINE.values() for r in rs]
-    skip = {'--top-width', '--bottom-width', '--clearance', '--spoke', '--gap', '--big', '--grid', '--join', '--config'}
+    skip = {'--top-width', '--bottom-width', '--clearance', '--spoke', '--gap', '--big', '--grid', '--join', '--config', '--reference'}
     args = [a for k, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and not (k > 1 and sys.argv[k - 1] in skip)]
     fills.SHELL_SKIP.update((str(e[0]), str(e[1])) for e in getattr(cfg, 'FILL_SHELL_EXCEPTIONS', ()))
     from pcbkit import board as _kb, rules as _rules
     from pcbtools import rules as _afe_rules
     _src, _dst = args[0], (args[1] if len(args) > 1 else args[0])
-    _before = _kb.read_board(_src, {'FRAME': FRAME})          # the board as it came in: its pour gaps are the figures the fill may not make worse
+    if '--reference' in sys.argv:                                     # the figures to hold: the board of record's pour gaps (the input may carry a stale fill that no longer is the pour)
+        _ref = sys.argv[sys.argv.index('--reference') + 1]
+    elif '--reference-input' in sys.argv:
+        _ref = _src                                                    # explicit: the input board's own fill is the reference
+    else:
+        sys.exit('fill_clean: name the board whose pour gaps this fill must not make worse (--reference BOARD, the board of record), or --reference-input to hold the input board\'s own; a guard that silently reads a stale fill cannot fire')
+    _before = _kb.read_board(_ref, {'FRAME': FRAME})          # the board as it came in: its pour gaps are the figures the fill may not make worse
     run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
     _worse = _rules.pour_gap_regressions(_before, _kb.read_board(_dst, {'FRAME': FRAME}), _afe_rules._pour_cfg(cfg))
     if _worse:
@@ -333,4 +341,4 @@ if __name__ == '__main__':
         if _dst != _src and os.path.exists(_dst):
             os.remove(_dst)
         sys.exit(2)
-    print('pour gaps held: every judged node keeps at least its pre-fill gap to the ground tracks and the pour')
+    print('pour gaps held: every judged node keeps at least its gap to the ground tracks and the pour on %s' % _ref)

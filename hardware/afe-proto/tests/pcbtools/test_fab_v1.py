@@ -55,7 +55,7 @@ def test_the_outline_round_trips_at_the_configured_size(built):
 def test_the_drills_equal_the_holes_of_the_board_file(built):
     assert fab.check_drills(text(built[0], 'PTH.drl'), text(built[0], 'NPTH.drl'), BOARD.read_text()) == []
     pth, npth = fab.board_holes(BOARD.read_text())
-    assert pth == {(0.3, 'round'): 92, (1.0, 'round'): 95, (2.2, 'round'): 6} and npth == {(2.7, 'round'): 2}     # written down, counted by hand from the board (92 = 89 vias and 3 plated holes of the copper cleanup's board: 21 more vias than the frozen layout, the stitching of the kept pours less the orphans a keep-out left dangling)
+    assert pth == {(0.3, 'round'): 94, (1.0, 'round'): 95, (2.2, 'round'): 6} and npth == {(2.7, 'round'): 2}     # written down, counted by hand from the board (94 = 91 vias and 3 plated holes of the copper-cleanup board (main f0845ddf had 89 vias: the cleanup puts a via at the edge of each pad the pour cannot hold and stitches the kept pours))
 
 
 def _jlc_refs(board_text):

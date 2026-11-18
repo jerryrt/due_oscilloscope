@@ -22,7 +22,7 @@ def test_a_cache_without_z_keepout_loads_with_every_zone_a_pour(tmp_path):
 
 
 def lr1_with(keepout):
-    s = Synth('/GND').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10)
+    s = Synth('/GND').part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).s('/GND', 'F', 10, 10, 11, 10)
     s.z('/GND', 'B', [([(0, 0), (50, 0), (50, 50), (0, 50)], False)])
     if keepout:
         s.z('', 'B', [([(0, -5), (50, -5), (50, 0), (0, 0)], False)], filled=False, keepout=True)       # a rule area on B.Cu, no net

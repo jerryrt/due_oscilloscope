@@ -49,7 +49,8 @@ def kit_cfg_lr1(cfg):
     value LR-1 always used)"""
     return dict(GND=cfg.GND, PLANE_LAYER='B',
                 HOP_FENCES=[rc for blk in cfg.ANALOG_FENCE for rc in cfg.OUTLINE.get(blk, [])], HOP_SENSITIVE=cfg.XSENS,
-                HOP_KEEPOUT_PARTS=cfg.ANALOG_REFS, HOP_KEEPOUT_PAD=cfg.ZONE_PAD, HOP_MAX=cfg.HOP_MAX, HOP_MAX_VIAS=cfg.HOP_MAX_VIAS)
+                HOP_KEEPOUT_PARTS=cfg.ANALOG_REFS, HOP_KEEPOUT_PAD=cfg.ZONE_PAD, HOP_MAX=cfg.HOP_MAX, HOP_MAX_VIAS=cfg.HOP_MAX_VIAS,
+                GND_VIA_TIE=getattr(cfg, 'GND_VIA_TIE', True))
 
 
 def bottom_runs(b, cfg):

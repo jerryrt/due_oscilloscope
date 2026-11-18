@@ -83,7 +83,7 @@ def test_every_old_arm_is_here_or_declared_dropped():
 
 
 def test_every_arm_is_caught_on_the_clean_board(board, capsys):
-    miss = CK.run_arms(board, v1, v1_arms.ARMS, no_drc=True, lr10_arm=False)
+    miss = CK.run_arms(board, _cfg(GND_VIA_TIE=False), v1_arms.ARMS, no_drc=True, lr10_arm=False)       # the frozen first-release board predates the copper-tie rule: nearness alone for its LR-1
     out = capsys.readouterr().out
     assert miss == [] and CK.run_arms.untestable == [], out
     assert out.count('FAILED AS REQUIRED') == len(v1_arms.ARMS), out

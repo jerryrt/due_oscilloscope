@@ -173,7 +173,7 @@ def test_the_integrated_boards_bottom_hop_is_one_piece_with_its_vias():
 # ------------------------------------------------------------------------------------------------ 4, 5: LR-1
 def lr1_base(extra=None, zones=1):
     s = Synth('/GND', '/SCL', '/A0')
-    s.part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10)
+    s.part('C1', 10, 10).p('C1', '1', 10, 10, '/GND').v('/GND', 11, 10).s('/GND', 'F', 10, 10, 11, 10)
     s.z('/GND', 'B', [(SQ(0, 0, 50, 50), False)])
     if extra:
         extra(s)

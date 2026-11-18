@@ -117,6 +117,7 @@ declare -A M=(
   [gapguard_pour_ignored]="rules.py|        if math.isfinite(p0) and p < p0 - tol:|        if False:"
   [gapguard_track_ignored]="rules.py|        if math.isfinite(t0) and t < t0 - tol:|        if False:"
   [gapguard_tol_ignored]="rules.py|        if math.isfinite(p0) and p < p0 - tol:|        if math.isfinite(p0) and p < p0 - 0.6:"
+  [gnd_via_tie_flag_ignored]="rules.py|(comp_via != comp_pad[jj]) \\& c.GND_VIA_TIE|(comp_via != comp_pad[jj]) \\& True"
 )
 fail=0
 for name in "${!M[@]}"; do

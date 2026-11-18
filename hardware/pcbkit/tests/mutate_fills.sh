@@ -20,27 +20,29 @@ declare -A M=(
   [unfilled_zone_counts]="fills.py|and b.z_filled[z] and not b.z_keepout[z]|and not b.z_keepout[z]"
   [keep_grid_ignored]="fills.py|return (np.floor(v / grid + 1e-9) if lo else np.ceil(v / grid - 1e-9)) * grid|return v"
   [keep_outline_snap_off]="fills.py|c = [t for t in cand if abs(t - v) <= snap]|c = []"
-  [keep_bounds_ignored]="fills.py|if bounds is not None:|if False:"
-  [keep_extra_ignored]="fills.py|        res = res | extra|        pass"
+  [keep_bounds_ignored]="fills.py#1|    if bounds is not None:|    if False:"
+  [keep_extra_ignored]="fills.py#1|        res = res | extra|        pass"
   [keep_ratio_merges_all]="fills.py|if (u[2] - u[0]) * (u[3] - u[1]) > fill_ratio * have + 1e-9:|if False:"
   [poly_no_diagonal]="fills.py|        if m >= 4:                                              # at least two full steps|        if False:"
   [poly_hole_ignored]="fills.py|if len(loops) == 1 and len(outer) == 1:|if True:"
   [poly_snap_bends_diagonals]="fills.py|if any(diag(i) or diag((i - 1) % n) for i in idx):|if False:"
   [poly_grid_offset_dropped]="fills.py|    ox, oy = int(round((r.x0 - xo) * k)), int(round((yo - r.y1) * k))|    ox, oy = 0, 0"
   [rough_single_counts]="fills.py|        if len(g) < 2:|        if len(g) < 1:"
-  [rough_reach_ignored]="fills.py|if (near \& rp.mask[win[0]:win[2], win[1]:win[3]]).any():|if True:"
+  [rough_reach_ignored]="fills.py|            ok = (ring \& zone).any()  |            ok = True  "
   [rough_link_ignored]="fills.py|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= link:|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= 1e9:"
-  [rough_own_items_ignored]="fills.py|            ok = 0.1 < frac < 0.9|            ok = False"
-  [rough_own_buried_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac > 0.1"
-  [rough_own_far_counts]="fills.py|            ok = 0.1 < frac < 0.9|            ok = frac < 0.9"
+  [rough_own_items_ignored]="fills.py|            ok = f1 > 0.02 and 0.1 < f2 < 0.9|            ok = False"
+  [rough_own_buried_counts]="fills.py|            ok = f1 > 0.02 and 0.1 < f2 < 0.9|            ok = f1 > 0.02 and f2 > 0.1"
+  [rough_own_far_counts]="fills.py|            ok = f1 > 0.02 and 0.1 < f2 < 0.9|            ok = f1 > 0.02 and f2 < 0.9"
   [protect_ignored]="fills.py|        cells \&= ~keepc|        pass"
   [protect_diag_covers]="fills.py|            if keepc is not None and keepc.any() and _poly_covers(lp, keepc):|            if False:"
   [pin_protect_any_net]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_smd[h] or"
   [pin_protect_smd]="fills.py|        if b.p_net[h] != net or b.p_smd[h] or|        if b.p_net[h] != net or"
-  [pin_protect_any_prefix]="fills.py|or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)):|or False:"
-  [exempt_ignored]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)):|        if False:"
+  [pin_protect_any_prefix]="fills.py|or not str(b.fp_ref[b.p_fp[h]]).startswith(tuple(prefixes)) or (|or False or ("
+  [exempt_ignored]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and str(b.fp_ref[b.p_fp[i]]).startswith(tuple(exempt)) and (|        if False and ("
   [exempt_smd_too]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and|        if exempt and b.p_net[i] == net and"
   [exempt_any_net]="fills.py|        if exempt and not b.p_smd[i] and b.p_net[i] == net and|        if exempt and not b.p_smd[i] and"
+  [keep_polys_bounds_ignored]="fills.py#1|        if bounds is not None:|        if False:"
+  [keep_polys_extra_ignored]="fills.py#2|        res = res | extra|        pass"
 )
 fail=0
 for name in "${!M[@]}"; do
@@ -49,10 +51,20 @@ for name in "${!M[@]}"; do
   python3 - "$tmp/pcbkit/$file" "$old" "$new" <<'PY' || { echo "MUTATION NOT APPLIED: $name"; fail=1; rm -rf "$tmp"; continue; }
 import sys
 p, old, new = sys.argv[1:]
-old, new = old.replace('\\&', '\x26'), new.replace('\\&', '\x26')
+nth = 0
+if '#' in p:
+    p, nth = p.split('#'); nth = int(nth)
+old, new = old.replace('\\&', '\x26').replace('\\n', '\n'), new.replace('\\&', '\x26').replace('\\n', '\n')
 s = open(p).read()
-assert s.count(old) == 1, 'mutation site not found exactly once: ' + old
-open(p, 'w').write(s.replace(old, new))
+if nth:
+    assert s.count(old) >= nth, 'mutation site not found: ' + old
+    i = -1
+    for _ in range(nth):
+        i = s.index(old, i + 1)
+    open(p, 'w').write(s[:i] + new + s[i + len(old):])
+else:
+    assert s.count(old) == 1, 'mutation site not found exactly once: ' + old
+    open(p, 'w').write(s.replace(old, new))
 PY
   if PCBKIT_ROOT="$tmp" python3 -m pytest -q -p no:cacheprovider -c "$here/pytest.ini" "$here/test_fills.py" >/dev/null 2>&1; then echo "SURVIVED  $name"; fail=1; else echo "killed    $name"; fi
   rm -rf "$tmp"

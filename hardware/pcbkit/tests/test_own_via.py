@@ -61,3 +61,9 @@ def test_a_hole_in_the_middle_of_a_big_pad_is_in_that_pad_however_far_the_edge_i
 def test_a_via_whose_annulus_overlaps_the_pad_edge_is_its_own_though_its_centre_is_outside():
     assert not missing(board((0, 0, True)).v('GND', 0.7, 0))                                      # pad half-width 0.5, via radius 0.3: overlaps by 0.1
     assert missing(board((0, 0, True)).v('GND', 0.9, 0))                                          # 0.1 mm short of touching
+
+
+def test_without_the_tie_rule_a_via_in_reach_counts_by_nearness_alone():
+    a = board((0, 0, True)).v('GND', 2.0, 0)
+    assert missing(a)                                                                              # tied by nothing: not its own
+    assert not missing(a, GND_VIA_TIE=False)                                                        # the first-release rule: within reach is enough
