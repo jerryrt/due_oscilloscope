@@ -1,6 +1,9 @@
 #!/bin/bash
-# render.sh board.kicad_pcb outdir  : F.Cu+silk, B.Cu, 3D top and bottom. Run in the PCB image (r5 or later):
-#   docker/pcb/run.sh -m 3G -t 900 -c 2 bash hardware/afe-proto/v2/layout/render.sh <board> <outdir>
+# render.sh board.kicad_pcb outdir  : F.Cu+silk, B.Cu, 3D top and bottom. Run in the PCB image (r5 or later), on the board IN ITS OWN PROJECT DIRECTORY (its 3D
+# models are found from there: U401's is ${KIPRJMOD}/../../../kicad/lib/..., which only resolves from v2/layout/integrated/; a copy in a scratch directory renders a
+# bare U401). The 3D renders go through pcbkit.render, which refuses while any model file is missing, and the last step records in renders.sha256.json how many
+# models it checked and which were missing:
+#   docker/pcb/run.sh -m 3G -t 900 -c 2 bash hardware/afe-proto/v2/layout/render.sh hardware/afe-proto/v2/layout/integrated/afe-v2-integrated.kicad_pcb hardware/afe-proto/v2/layout/integrated/render
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 svg2png=$here/../../../../docker/pcb/svg2png.sh
 B=$1; O=$2; mkdir -p $O
@@ -9,8 +12,9 @@ kicad-cli pcb export svg --layers F.Cu,F.Silkscreen,Edge.Cuts --mode-single --ex
 kicad-cli pcb export svg --layers B.Cu,Edge.Cuts --mode-single --exclude-drawing-sheet --page-size-mode 2 -o $O/B.svg $B >/dev/null 2>&1
 $svg2png $O/F.svg $O/afe-v2-integrated-F.Cu-silk.png --dpi 400
 $svg2png $O/B.svg $O/afe-v2-integrated-B.Cu.png --dpi 400
-kicad-cli pcb render --side top --quality basic --width 2400 --height 1400 -o $O/afe-v2-integrated-3d.png $B >/dev/null 2>&1
-kicad-cli pcb render --side bottom --quality basic --width 2400 --height 1400 -o $O/afe-v2-integrated-3d-bottom.png $B >/dev/null 2>&1
+export PYTHONPATH="$here/../../../pcbkit${PYTHONPATH:+:$PYTHONPATH}"
+python3 -m pcbkit.render $B $O/afe-v2-integrated-3d.png --side top --width 2400 --height 1400 || exit 1
+python3 -m pcbkit.render $B $O/afe-v2-integrated-3d-bottom.png --side bottom --width 2400 --height 1400 || exit 1
 # one crop of the top silk per overhang band (the Due's pin names), 40 px/mm: the band and the strip to the sockets' pads, full width.
 # Geometry from the board config: the page is the board rectangle, y down from its north edge.
 dpi=1016
