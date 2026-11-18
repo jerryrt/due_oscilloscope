@@ -55,3 +55,33 @@ def test_outline_line_checker_closed_edges_breaks_and_crossings():
     assert outlines.check_outline_lines([(0, 0, 3.95, 0), (5.2, 0, 10, 0)] + full[1:], rects, [(4, -0.1, 5, 0.1)], 0.075, 0.2)     # too short on the start side only
     assert outlines.check_outline_lines([(0, 0, 3.8, 0), (5.05, 0, 10, 0)] + full[1:], rects, [(4, -0.1, 5, 0.1)], 0.075, 0.2)     # and on the end side only
     assert outlines.check_outline_lines(full + [full[0]], rects, [], 0.075, 0.2)             # a line drawn twice
+
+
+def test_kind_is_the_longest_matching_prefix():
+    assert rules._kind('TP1', ('T', 'TP')) == 'TP' and rules._kind('TP1', ('TP', 'T')) == 'TP' and rules._kind('R1', ('T', 'TP')) == 'P'
+
+
+def test_region_margin_is_inside_the_line_less_the_rounding_allowance():
+    f = lambda lab: outlines.label_region_findings(lab, (3, 3), 'A', OUT, (), None, 0.1, 0.01, False, False)
+    assert f((0.095, 2, 3, 3)) == []                       # 0.095 inside: short of 0.1 by less than the allowance
+    assert f((0.085, 2, 3, 3))                             # short by more: a finding
+
+
+def test_step_1_reports_the_nearest_offender_whatever_the_order():
+    lab = {'R1': [(0, 1.2, 1, 1.5)]}
+    near, far = ('R2', [(0, 1.5, 1, 2.5)]), ('R3', [(1.25, 1.2, 2.25, 1.5)])      # R2 touches the label, R3 is 0.25 away; R1's own part is 0.2
+    for order in ((near, far), (far, near)):
+        solid = dict([('R1', [(0, 0, 1, 1)])] + list(order))
+        s1 = rules.two_way_core(solid, lab, (), 0.15, 0.0)['R1'][1]
+        assert s1[1] == 'R2'
+        assert [x[1] for x in rules.two_way_all(solid, lab, (), 0.15, 0.0)['R1'][1]] == [k for k, _ in order]      # and every offender is listed
+
+
+def test_step_2_reports_the_nearest_offender_whatever_the_order():
+    solid = {'R1': [(0, 0, 1, 1)], 'R2': [(5, 0, 6, 1)], 'R3': [(9, 0, 10, 1)]}
+    mine = ('R1', [(0, 4, 1, 4.5)])                                          # R1's own label, 3.0 away
+    near, far = ('R2', [(0, 1.1, 1, 1.5)]), ('R3', [(0, 1.8, 1, 2.2)])       # two other labels nearer R1 than that: 0.1 and 0.8
+    for order in ((near, far), (far, near)):
+        labs = dict([mine] + list(order))
+        assert rules.two_way_core(solid, labs, (), 0.15, 0.0)['R1'][2][1] == 'R2'
+        assert [x[1] for x in rules.two_way_all(solid, labs, (), 0.15, 0.0)['R1'][2]] == [k for k, _ in order]

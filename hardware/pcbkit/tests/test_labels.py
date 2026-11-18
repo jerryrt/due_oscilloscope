@@ -188,3 +188,36 @@ def test_the_projects_own_tables_raise_when_missing_and_the_effective_configurat
     src = {l.split()[0]: l.split()[1] for l in txt.splitlines()}
     assert src['READ_MARGIN'] == 'project' and src['EPS'] == 'default' and src['BLOCK'] == 'project' and 'READ_MARGIN' in txt
     assert place(lb, dict(READ_MARGIN=0.2))['R1'] is not None                # a tunable runs with its default
+
+
+def test_validate_reports_a_label_crowding_a_fixed_part_under_the_judged_label():
+    # TP1's label sits nearer R1 than R1's own (forced) label: R1 is not judged, so the finding belongs to the label that crowds it
+    lb = board(part('TP1', 0, 0, 0.6, 0.6), part('R1', 2.2, 0))
+    plan = {'TP1': (0.0, 1.5, 0), 'R1': (2.2, -1.6, 0)}
+    bad = validate(lb, plan, {}, skip=('R1',))
+    assert 'TP1' in bad and any(t.startswith('two-way, from part R1') for t in bad['TP1']), bad
+    assert 'R1' not in validate(lb, plan, {}, skip=('R1',))                          # the fixed label itself is not judged
+    far = validate(lb, {'TP1': (0.0, 1.5, 0), 'R1': (2.2, -0.6, 0)}, {}, skip=('R1',))
+    assert not any('two-way' in t for t in far.get('TP1', []))                       # with R1's own label nearer it is fine
+
+
+def test_validate_lists_every_offender_not_only_the_nearest():
+    lb = board(part('R1', 0, 0), part('R2', 0, 1.6), part('R3', 0, -1.6))
+    plan = {'R1': (0.0, 6.0, 0), 'R2': (3.0, 0.0, 0), 'R3': (-3.0, 0.0, 0)}        # R1's own label is far: the labels of R2 and R3 both read as nearer to R1
+    got = [t for t in validate(lb, plan, {}).get('R1', []) if t.startswith('two-way, from the part')]
+    assert len(got) == 2, got
+
+
+def test_a_bnc_function_text_counts_as_part_of_its_own_label():
+    # J1's designator is far from it but its function text hugs it; J2's label near J1 must not read as nearer to J1 than J1's own label
+    plan = {'J1': (0.0, -4.0, 0), 'J2': (2.0, 0.5, 0)}
+    f = lambda lb: [t for ts in validate(lb, plan, {}, skip=('J1',)).values() for t in ts if t.startswith('two-way, from part J1')]
+    assert not f(board(part('J1', 0, 0), part('J2', 6, 3), fixed={'fn_J1': (-0.2, 0.4, 0.2, 1.5)}))
+    assert f(board(part('J1', 0, 0), part('J2', 6, 3)))                            # without the text the same plan is a finding
+
+
+def test_a_skipped_label_is_not_judged_from_the_label_either():
+    lb = board(part('R1', 0, 0), part('R2', 0, 3))
+    plan = {'R1': (0.0, 2.1, 0)}                                                    # hangs on R2
+    assert any('from the label' in t for t in validate(lb, plan, {}).get('R1', []))
+    assert 'R1' not in validate(lb, plan, {}, skip=('R1',))

@@ -167,7 +167,7 @@ class _P:
                 return False
             if o in s.parts and s.comparable(o, ref):
                 ds = s.own_label_dist(o)
-                if ds is not None and s.dsolid(o, L) < ds + m - c.EPS:
+                if ds is not None and rules.too_near(ds, s.dsolid(o, L), m, c.EPS):
                     return False
         return True
 
@@ -219,7 +219,7 @@ class _P:
                 return 'label'
         d_own = min(G.gap(L, b) for b in sol)                   # from the label: its own part nearer than any other comparable part by READ_MARGIN
         for o in s.refs:
-            if o != ref and s.comparable(ref, o) and min(G.gap(L, b) for b in s.solid[o]) < d_own + c.READ_MARGIN - c.EPS:
+            if o != ref and s.comparable(ref, o) and rules.too_near(d_own, min(G.gap(L, b) for b in s.solid[o]), c.READ_MARGIN, c.EPS):
                 return 'ownnearer'
         if not s.two_way(ref, L):
             return 'twoway'
@@ -392,11 +392,14 @@ def validate(lb, plan, cfg, skip=()):
     for key, box in lb.fixed.items():
         if key.startswith('fn_') and key[3:] in s.parts:
             labels.setdefault(key[3:], []).append(box)
-    for p_, (own, s1, s2) in rules.two_way_core(s.solid, labels, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, e).items():
-        if p_ in skip:
-            continue
-        if s1:
-            out.setdefault(p_, []).append('two-way, from the label: part %s is %.3f mm from it, its own part %.3f (needs +%.2f)' % (s1[1], s1[3], s1[2], c.READ_MARGIN))
-        if s2:
-            out.setdefault(p_, []).append('two-way, from the part: label of %s is %.3f mm from it, its own label %.3f (needs +%.2f)' % (s2[1], s2[3], s2[2], c.READ_MARGIN))
+    for p_, (own, f1, f2) in rules.two_way_all(s.solid, labels, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, e).items():
+        if p_ not in skip:
+            for x in f1:
+                out.setdefault(p_, []).append('two-way, from the label: part %s is %.3f mm from it, its own part %.3f (needs +%.2f)' % (x[1], x[3], x[2], c.READ_MARGIN))
+        for x in f2:
+            who = p_ if p_ not in skip else x[1]        # a fixed or forced part's reading is crowded by the label that is judged: report it under that label
+            if who in skip:
+                continue
+            out.setdefault(who, []).append('two-way, from the part: label of %s is %.3f mm from it, its own label %.3f (needs +%.2f)' % (x[1], x[3], x[2], c.READ_MARGIN) if who == p_ else
+                                           'two-way, from part %s: this label is %.3f mm from it, its own label %.3f (needs +%.2f)' % (p_, x[3], x[2], c.READ_MARGIN))
     return out

@@ -249,6 +249,6 @@ three directions, the region rules); the owner's reading standard is the two-way
 with a corner just outside, clear of bodies, pads, silk and labels) and the outline lines (every edge closed except at pad, footprint-silk or forced-label breaks, each break 0.2 mm
 clear, a shared line drawn once, no line across anything, none off the rectangles). A forced label may touch a line; only crossing it counts.
 
-Where the checks live: `pcbkit.rules` owns the two-way nearest test (`two_way_core` on boxes, `two_way_test` on a board) and the one-label rule (`shares_baseline`); `pcbkit.outlines` owns the region rule for a label
+Where the checks live: `pcbkit.rules` owns the two-way nearest test (`two_way_all` on boxes lists every offender, `two_way_core` keeps the nearest of each step, `two_way_test` reads a board; `too_near` is the one comparison of both steps) and the one-label rule (`shares_baseline`); `pcbkit.outlines` owns the region rule for a label
 (`label_region_findings`), the block-name check (`check_name_boxes`) and the outline-line check (`check_outline_lines`). `pcbkit.labels` places labels and calls them: `validate`, `validate_names`, `validate_outline` and
-`check_two_way` are thin callers, so the placer and the rules can never disagree about what reads.
+`check_two_way` are thin callers, so the placer and the rules can never disagree about what reads. The placer's search calls `too_near` with the same `READ_MARGIN` and `EPS` for its own-part-nearer test and its part-side test; only the label-side test against already placed labels is deliberately stricter (full margin, no allowance), because it is a search preference. `validate` reports a label that crowds a fixed or forced part under the judged label's owner.

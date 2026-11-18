@@ -846,10 +846,17 @@ def two_way_test(b, cfg, report=None):
     return two_way_core(solid, labels, c.SILK_REQUIRED_PREFIXES, c.READ_MARGIN, c.EPS)
 
 
-def two_way_core(solid, labels, prefixes, margin, eps):
-    """the two-way nearest test on boxes: `solid` {ref: [boxes]} (a part's body box and its pad boxes), `labels` {ref: [boxes]} (a part's label boxes; a BNC's designator and function text are
-    two boxes of one label), `prefixes` the anchor kinds (see _kind). Returns {ref: (own distance, step 1 failure, step 2 failure)} for every part that has a label. This is the one
-    implementation: `two_way_test` reads the boxes off a board, pcbkit.labels reads them off a proposed plan."""
+def too_near(d_own, d_other, margin, eps):
+    """the one predicate of the two-way test: something at d_other reads as nearer than, or as near as, what is at d_own, because it is not farther by `margin` (less eps of rounding).
+    Both steps of the test, the label validation and the placer's search call it."""
+    return d_own + margin > d_other + eps
+
+
+def two_way_all(solid, labels, prefixes, margin, eps):
+    """the two-way nearest test on boxes, every offender: `solid` {ref: [boxes]} (a part's body box and its pad boxes), `labels` {ref: [boxes]} (a part's label boxes; a BNC's
+    designator and function text are two boxes of one label), `prefixes` the anchor kinds (see _kind). Returns {ref: (own distance, [step 1 failures], [step 2 failures])} for every
+    part that has a label; a step 1 failure is (shortfall, part, own, other) of a part nearer to the label than its own, a step 2 failure (shortfall, label owner, own, other) of
+    another label nearer to the part than its own. Each list is in the order the candidates were met."""
     m = margin
     kinds = {r: _kind(r, prefixes) for r in set(solid) | set(labels)}
 
@@ -858,23 +865,28 @@ def two_way_core(solid, labels, prefixes, margin, eps):
     out = {}
     for p in sorted(labels):
         own = min(dsolid(p, bx) for bx in labels[p])
-        s1 = None
+        s1 = []
         for q in solid:
             if q == p or (kinds[p] != 'P' and kinds[q] != kinds[p]):
                 continue
             dq = min(_gap(bx, it) for bx in labels[p] for it in solid[q]) if solid[q] else 9e9
             dp = min(_gap(bx, it) for bx in labels[p] for it in solid[p]) if solid[p] else 9e9        # (a part with nothing solid: never nearest)
-            if dp + m > dq + eps and (s1 is None or dq - dp < s1[0]):
-                s1 = (dq - dp, q, dp, dq)
-        s2 = None
+            if too_near(dp, dq, m, eps):
+                s1.append((dq - dp, q, dp, dq))
+        s2 = []
         for o, bxs in labels.items():
             if o == p or (kinds[p] != 'P' and kinds[o] != kinds[p]):
                 continue
             do = min(dsolid(p, bx) for bx in bxs)
-            if own + m > do + eps and (s2 is None or do - own < s2[0]):
-                s2 = (do - own, o, own, do)
+            if too_near(own, do, m, eps):
+                s2.append((do - own, o, own, do))
         out[p] = (own, s1, s2)
     return out
+
+
+def two_way_core(solid, labels, prefixes, margin, eps):
+    """the nearest offender of each step, see two_way_all: {ref: (own distance, step 1 failure or None, step 2 failure or None)}. `two_way_test` reads the boxes off a board."""
+    return {p: (own, min(s1, key=lambda f: f[0]) if s1 else None, min(s2, key=lambda f: f[0]) if s2 else None) for p, (own, s1, s2) in two_way_all(solid, labels, prefixes, margin, eps).items()}
 
 
 def designators(b, cfg, report=None):

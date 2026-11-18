@@ -109,7 +109,7 @@ def label_region_findings(label, part_xy, block, outline, strays=(), ref=None, m
     inside = covered(_grow(label, margin - eps), mine)
     anywhere = any(_in_box(ctr, q) for v in outline.values() for q in v)
     if ref in strays:
-        if inside or not any(_in_box(ctr, q) for k, v in outline.items() if k != block for q in v):
+        if not any(_in_box(ctr, q) for k, v in outline.items() if k != block for q in v):
             return []
         return ["label of a stray inside another block's rectangle"]
     if any(_in_box(part_xy, q) for q in mine):

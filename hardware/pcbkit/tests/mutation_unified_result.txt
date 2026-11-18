@@ -1,8 +1,21 @@
-killed    two_way_step2_dropped
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+178 passed, 1 warning in 4.93s
+killed    two_way_eps_sign
+killed    step1_not_nearest
+killed    step2_not_nearest
+killed    two_way_margin_zero
+killed    search_read_margin_zero
+killed    two_way_never_too_near
+killed    kind_first_prefix
+killed    region_margin_zero
 killed    outline_break_clearance
 killed    outline_crossing_unseen
+killed    skip_part_not_attributed
 killed    anchor_kinds_ignored
 killed    baseline_threshold
 killed    stray_rule_dropped
-killed    two_way_ignores_the_margin
+killed    skip_part_step1_judged
 killed    edge_part_not_free
+killed    bnc_text_own_label
+killed    region_margin_plus_eps
