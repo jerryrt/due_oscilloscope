@@ -238,6 +238,8 @@ def test_cli_prints_the_old_lines(capsys):
     want = [l for l in old if 'LR-10' not in l and not l.startswith('FAIL:')]
     assert len(body) == len(want)
     for a, b in zip(body, want):
+        if b.startswith('[PASS] LR-1:'):                          # the one deliberate change in the LR-1 line: a plated hole of the pad now counts as its own via (the exposed pad U401.13's holes: 37 -> 39 pads)
+            b = b.replace('37 GND pads each with its own via', '39 GND pads each with its own via (a plated hole of the pad counts)')
         assert a == b
     assert any(l.startswith('[NOT RUN] LR-10') for l in out)
     assert out[-1] == 'FAIL: LR-11; LR-10 NOT RUN'
