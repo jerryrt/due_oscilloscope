@@ -152,7 +152,7 @@ def test_a_trunk_drawn_as_two_collinear_segments_is_one_track_for_the_distance_t
 
 
 def test_an_end_whose_cap_overlaps_another_track_is_a_tap_not_a_dangling_end_and_a_short_one_is_a_t_stub():
-    pad = lambda: base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0)
+    pad = lambda: base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3)
     near = pad().s('SIG', 0, 0, 0, 0.3, 0).s('SIG', 0, 0.45, -3, 0.45, 3)               # the stub's end is 0.15 mm off the other track's centre line: the caps (0.1 + 0.1) overlap
     assert not any(abs(x - 0.3) < 1e-6 for _, _, x, y in got(near, 'dangling'))
     assert got(near, 'tspur')                                                              # a T stub: 0.45 mm from the pad to the track
