@@ -23,6 +23,10 @@ declare -A M=(
   [keep_bounds_ignored]="fills.py|if bounds is not None:|if False:"
   [keep_extra_ignored]="fills.py|        res = res | extra|        pass"
   [keep_ratio_merges_all]="fills.py|if (u[2] - u[0]) * (u[3] - u[1]) > fill_ratio * have + 1e-9:|if False:"
+  [poly_no_diagonal]="fills.py|        if m >= 4:                                              # at least two full steps|        if False:"
+  [poly_hole_ignored]="fills.py|if len(loops) == 1 and len(outer) == 1:|if True:"
+  [poly_snap_bends_diagonals]="fills.py|if any(diag(i) or diag((i - 1) % n) for i in idx):|if False:"
+  [poly_grid_offset_dropped]="fills.py|    ox, oy = int(round((r.x0 - xo) * k)), int(round((yo - r.y1) * k))|    ox, oy = 0, 0"
 )
 fail=0
 for name in "${!M[@]}"; do

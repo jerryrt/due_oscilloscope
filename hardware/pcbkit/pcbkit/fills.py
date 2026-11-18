@@ -323,3 +323,222 @@ def leftovers(r, neck=1.5, small=12.0, dead_width=1.6, lo=1.0, min_area=0.05):
         if p.dead_end:
             out[p._sl] |= lab0[p._sl] == p._lab
     return out
+
+
+# ---------------------------------------------------------------------------------------------------- keep-out polygons (octilinear, one per cluster)
+
+def _decompose(cells):
+    """the cell mask cut into rectangles (c0, r0, c1, r1), a run of cells per row joined with the identical run below"""
+    hc, wc = cells.shape
+    rects, open_ = [], {}
+    for row in range(hc + 1):
+        runs = set()
+        if row < hc:
+            c = 0
+            while c < wc:
+                if cells[row, c]:
+                    c0 = c
+                    while c < wc and cells[row, c]:
+                        c += 1
+                    runs.add((c0, c))
+                else:
+                    c += 1
+        for run_ in list(open_):
+            if run_ not in runs:
+                rects.append((run_[0], open_.pop(run_), run_[1], row))
+        for run_ in runs:
+            open_.setdefault(run_, row)
+    return rects
+
+
+def _loops(cells):
+    """the boundary loops of a cell mask, each a list of corner points (c, r) (r grows downward), clockwise around a filled part and counter-clockwise around a hole; collinear
+    corners are dropped"""
+    hc, wc = cells.shape
+    P = np.pad(cells, 1)
+    nxt = {}
+    for r, c in zip(*np.nonzero(cells)):
+        r1, c1 = r + 1, c + 1
+        if not P[r1 - 1, c1]:
+            nxt.setdefault((c, r), []).append((c + 1, r))
+        if not P[r1, c1 + 1]:
+            nxt.setdefault((c + 1, r), []).append((c + 1, r + 1))
+        if not P[r1 + 1, c1]:
+            nxt.setdefault((c + 1, r + 1), []).append((c, r + 1))
+        if not P[r1, c1 - 1]:
+            nxt.setdefault((c, r + 1), []).append((c, r))
+    loops = []
+    while nxt:
+        start = next(iter(nxt))
+        loop, cur, prev = [start], start, None
+        while True:
+            outs = nxt[cur]
+            if len(outs) > 1 and prev is not None:             # a corner two parts share: turn right (clockwise), so parts touching at a corner stay apart
+                d = (cur[0] - prev[0], cur[1] - prev[1])
+                outs.sort(key=lambda o: -(d[0] * (o[1] - cur[1]) - d[1] * (o[0] - cur[0])))
+            n = outs.pop(0)
+            if not outs:
+                del nxt[cur]
+            prev, cur = cur, n
+            if cur == start and start not in nxt:
+                break
+            loop.append(cur)
+            if cur == start:
+                break
+        if loop[-1] == loop[0] and len(loop) > 1:
+            loop.pop()
+        loops.append(_collinear(loop))
+    return loops
+
+
+def _collinear(loop):
+    out = []
+    n = len(loop)
+    for i in range(n):
+        a, b, c = loop[i - 1], loop[i], loop[(i + 1) % n]
+        if (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) != 0:
+            out.append(b)
+    return out
+
+
+def _area2(loop):
+    return sum(loop[i][0] * loop[(i + 1) % len(loop)][1] - loop[(i + 1) % len(loop)][0] * loop[i][1] for i in range(len(loop)))
+
+
+def _diagonalise(loop):
+    """a staircase of equal steps (two or more steps, every edge the same length, turns alternating) becomes the straight 45 degree line through its outer corners: the polygon only
+    grows, and every edge is along 0, 45 or 90 degrees. `loop` is clockwise (image coordinates)."""
+    n = len(loop)
+    if n < 6:
+        return loop
+    E = [(loop[(i + 1) % n][0] - loop[i][0], loop[(i + 1) % n][1] - loop[i][1]) for i in range(n)]
+    L = [abs(e[0]) + abs(e[1]) for e in E]
+    turn = [E[i - 1][0] * E[i][1] - E[i - 1][1] * E[i][0] for i in range(n)]       # at vertex i, between edge i-1 and edge i: > 0 turns clockwise on screen (convex for a clockwise loop)
+    drop = [False] * n
+    keepv = [False] * n
+    i = 0
+    seen = 0
+    while seen < n:
+        # a run starts at edge j and holds edges j..j+m-1 all of length L[j], with the turn at each inner vertex alternating in sign
+        j = i % n
+        m = 1
+        while m < n and L[(j + m) % n] == L[j] and turn[(j + m) % n] * turn[(j + m - 1) % n] < 0 and (m == 1 or True):
+            m += 1
+        if m >= 4:                                              # at least two full steps
+            inner = [(j + t) % n for t in range(1, m)]       # vertices between consecutive edges of the run
+            convex = [v for v in inner if turn[v] > 0]
+            for v in inner:
+                drop[v] = True
+            if convex:
+                keepv[convex[0]] = True
+                keepv[convex[-1]] = True
+            i += m
+            seen += m
+        else:
+            i += 1
+            seen += 1
+    out = [loop[v] for v in range(n) if not drop[v] or keepv[v]]
+    return _collinear(out) if len(out) >= 3 else loop
+
+
+def _octilinear(loop):
+    ok = True
+    n = len(loop)
+    for i in range(n):
+        dx, dy = loop[(i + 1) % n][0] - loop[i][0], loop[(i + 1) % n][1] - loop[i][1]
+        if not (dx == 0 or dy == 0 or abs(dx) == abs(dy)):
+            ok = False
+    return ok
+
+
+def keepout_polygons(r, width=1.0, grid=0.5, join=1.0, min_area=0.05, outlines=(), snap=1.0, bounds=None, hole_area=4.0, extra=None):
+    """The same no-pour areas as `keepouts`, one polygon per cluster instead of rectangles: the cells (a `grid` mm grid on multiples of `grid` mm) that hold a piece too narrow for
+    `width`, closed over `join` mm, traced round, and every staircase of equal steps drawn as one 45 degree edge (the polygon only grows). A cluster that encloses pour (a hole
+    over `hole_area` mm2) is cut into rectangles instead, since a rule area has no holes. An edge or vertex line within `snap` mm of a block outline's edge moves onto it unless a
+    diagonal edge would bend. `bounds` clips (a vertex outside moves to it). Returns [[(x, y), ...]] in the raster's frame, every edge along 0, 45 or 90 degrees."""
+    k = r.ppmm
+    pieces, opened = narrow_pieces(r, width, min_area)
+    res = np.zeros_like(r.mask)
+    lab0 = _lab_of(r, opened)
+    for p in pieces:
+        res[p._sl] |= (lab0[p._sl] == p._lab)
+    if extra is not None:
+        res = res | extra
+    if not res.any():
+        return []
+    cell = int(round(grid * k))
+    if abs(cell - grid * k) > 1e-6:
+        raise ValueError('grid %r mm is not a whole number of pixels at %r px/mm' % (grid, k))
+    xo, yo = np.floor(r.x0 / grid) * grid, np.ceil(r.y1 / grid) * grid
+    ox, oy = int(round((r.x0 - xo) * k)), int(round((yo - r.y1) * k))
+    H, W = res.shape
+    hc, wc = -(-(H + oy) // cell), -(-(W + ox) // cell)
+    pad = np.zeros((hc * cell, wc * cell), bool)
+    pad[oy:oy + H, ox:ox + W] = res
+    cells = pad.reshape(hc, cell, wc, cell).any(axis=(1, 3))
+    it = int(round(join / grid / 2))
+    if it:
+        cells = ndi.binary_closing(np.pad(cells, it + 1), structure=np.ones((3, 3)), iterations=it)[it + 1:-(it + 1), it + 1:-(it + 1)]
+    holes = ndi.binary_fill_holes(cells) & ~cells
+    hl, hn = ndi.label(holes)
+    for i in range(1, hn + 1):
+        if (hl == i).sum() * grid * grid <= hole_area:
+            cells |= hl == i
+    lab, n = ndi.label(cells, structure=np.ones((3, 3)))
+    polys = []
+    def mm(p):
+        return (float(xo + p[0] * grid), float(yo - p[1] * grid))
+    for i in range(1, n + 1):
+        comp = lab == i
+        loops = _loops(comp)
+        outer = [lp for lp in loops if _area2(lp) > 0]
+        if len(loops) == 1 and len(outer) == 1:
+            lp = _diagonalise(outer[0])
+            polys.append([mm(p) for p in lp])
+        else:
+            for c0, r0, c1, r1 in _decompose(comp):
+                polys.append([mm(p) for p in ((c0, r0), (c1, r0), (c1, r1), (c0, r1))])
+    xs = sorted({o[0] for o in outlines} | {o[2] for o in outlines})
+    ys = sorted({o[1] for o in outlines} | {o[3] for o in outlines})
+    out = []
+    for poly in polys:
+        poly = _snap_poly(poly, xs, ys, snap)
+        if bounds is not None:
+            poly = [(min(max(x, bounds[0]), bounds[2]), min(max(y, bounds[1]), bounds[3])) for x, y in poly]
+            poly = _dedupe(poly)
+            if len(poly) < 3 or abs(_area2(poly)) < 1e-6:
+                continue
+        out.append([(round(x, 3), round(y, 3)) for x, y in poly])
+    return sorted(out)
+
+
+def _dedupe(poly):
+    out = []
+    for p in poly:
+        if not out or p != out[-1]:
+            out.append(p)
+    if len(out) > 1 and out[0] == out[-1]:
+        out.pop()
+    return _collinear(out) if len(out) >= 3 else out
+
+
+def _snap_poly(poly, xs, ys, snap):
+    """move each line of vertices (all those at one x, or one y) onto a block outline's edge within `snap` mm, when no diagonal edge touches the line"""
+    n = len(poly)
+    def diag(i):
+        a, b = poly[i], poly[(i + 1) % n]
+        return abs(a[0] - b[0]) > 1e-9 and abs(a[1] - b[1]) > 1e-9
+    for axis, cand in ((0, xs), (1, ys)):
+        for v in sorted({round(p[axis], 6) for p in poly}):
+            near = [t for t in cand if abs(t - v) <= snap]
+            if not near:
+                continue
+            t = min(near, key=lambda q: abs(q - v))
+            idx = [i for i in range(n) if abs(poly[i][axis] - v) < 1e-6]
+            if any(diag(i) or diag((i - 1) % n) for i in idx):
+                continue
+            for i in idx:
+                p = list(poly[i])
+                p[axis] = t
+                poly[i] = tuple(p)
+    return poly

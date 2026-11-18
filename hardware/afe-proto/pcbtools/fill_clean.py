@@ -111,15 +111,30 @@ def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, jo
     bounds = (17.0, -4.5, 117.0, 57.84)
     r0 = _fill_to(path, tmp, [], loose_w, clearance, spoke, gap)
     extra = None
-    keeps = fills.keepouts(r0, width, grid, join, outlines=outlines, bounds=bounds)
+    keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds)
     for _ in range(rounds):
         r = _fill_to(path, tmp, keeps, width, clearance, spoke, gap)
         lo = fills.leftovers(r)
         extra = lo if extra is None else (extra | lo)
         if not lo.any():
             break
-        keeps = fills.keepouts(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra)
+        keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra)
     return keeps
+
+
+def _near_poly(x, y, poly, margin):
+    """the point is inside the polygon or within `margin` of its edge"""
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        (x0, y0), (x1, y1) = poly[i], poly[(i + 1) % n]
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            inside = not inside
+        dx, dy = x1 - x0, y1 - y0
+        t = 0.0 if dx == dy == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy)))
+        if math.hypot(x - x0 - t * dx, y - y0 - t * dy) <= margin:
+            return True
+    return inside
 
 
 def dead_vias(path, keeps, margin=0.35):
@@ -132,7 +147,7 @@ def dead_vias(path, keeps, margin=0.35):
         if b.v_net[i] != g:
             continue
         x, y, r = b.v_x[i], b.v_y[i], b.v_dia[i] / 2
-        if not any(k[0] - margin <= x <= k[2] + margin and k[1] - margin <= y <= k[3] + margin for k in keeps):
+        if not any(_near_poly(x, y, k, margin) for k in keeps):
             continue
         tr = np.any((np.hypot(b.s_x0 - x, b.s_y0 - y) <= r + b.s_w / 2 + 0.01) | (np.hypot(b.s_x1 - x, b.s_y1 - y) <= r + b.s_w / 2 + 0.01))
         pd = np.any((b.p_bx0 - r <= x) & (x <= b.p_bx1 + r) & (b.p_by0 - r <= y) & (y <= b.p_by1 + r))
@@ -176,9 +191,9 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     kept = [x for x in report if x[2]]
     dropped = [x for x in report if not x[2]]
     if verbose:
-        print('%d no-pour rectangles (grid %.2f mm):' % (len(keeps), grid))
+        print('%d no-pour polygons (grid %.2f mm, edges at 0/45/90 degrees):' % (len(keeps), grid))
         for k in keeps:
-            print('   keep-out (%.2f, %.2f)-(%.2f, %.2f)  %.1f x %.1f mm' % (k + (k[2] - k[0], k[3] - k[1])))
+            print('   keep-out polygon, %d corners, %.1f mm2, from (%.2f, %.2f)' % (len(k), abs(sum(k[i][0] * k[(i + 1) % len(k)][1] - k[(i + 1) % len(k)][0] * k[i][1] for i in range(len(k)))) / 2, k[0][0], k[0][1]))
         print('%d orphan GND vias inside a keep-out removed (nothing of theirs on the top copper): %s' % (len(dead), ', '.join('(%.1f, %.1f)' % (d[1], d[2]) for d in dead)))
         print('top GND pour: %d parts hang free of every GND item; %d of 10 mm2 or more are stitched, %d dropped (%.0f mm2 in %d pieces)' % (len(report), len(kept), len(dropped), sum(a for a, _, _ in dropped), len(dropped)))
         for a, (x, y), n in kept:

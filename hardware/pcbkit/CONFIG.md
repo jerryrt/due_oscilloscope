@@ -125,7 +125,7 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 The same fill standard has a tool side that reads no configuration, `pcbkit.fills.keepouts(r, width, grid, join, outlines, snap, bounds, extra)`: from the raster of a loose fill it derives the straight-edged
 no-pour rectangles over the places where the pour cannot stay `width` wide (pieces narrower than `width`, closed over `join` mm, cut into rectangles on `grid` mm, an edge within `snap` mm of a block outline moved onto it,
 clipped to `bounds`), and `pcbkit.fills.leftovers(r)` the blobs on necks and dead-end fingers a fill with them still leaves, to feed back as `extra`. The AFE's `pcbtools.fill_clean` runs the loop (top 1.0 mm,
-clearance 0.3, thermal gap 0.3 / spoke 0.3, bottom solid 0.5) and writes the rectangles as rule areas named `fillkeep` on F.Cu that forbid copper pour only.
+clearance 0.3, thermal gap 0.3 / spoke 0.3, bottom solid 0.5) with `keepout_polygons` (one polygon per cluster, every edge at 0, 45 or 90 degrees; a staircase of equal steps is one 45 degree edge) and writes them as rule areas named `fillkeep` on F.Cu that forbid copper pour only.
 
 ### rules.keepout_ring
 

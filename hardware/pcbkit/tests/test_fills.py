@@ -150,3 +150,70 @@ def test_leftovers_find_a_blob_on_a_neck_and_a_dead_end_finger_and_not_a_big_pou
     lo = fills.leftovers(rb, neck=1.5, small=12.0)
     assert lo.sum() > 0 and lo[:, :200].any() and not lo[:, 300:].any()                         # the blob and its neck, none of the square
     assert not fills.leftovers(rb, neck=1.5, small=5.0, dead_width=0.5).any()                  # a blob of 9 mm2 is not small under 5 mm2
+
+
+# ---- keepout_polygons: one octilinear polygon per cluster
+
+def _octi(poly):
+    n = len(poly)
+    for i in range(n):
+        dx, dy = poly[(i + 1) % n][0] - poly[i][0], poly[(i + 1) % n][1] - poly[i][1]
+        if not (abs(dx) < 1e-6 or abs(dy) < 1e-6 or abs(abs(dx) - abs(dy)) < 1e-6):
+            return False
+    return True
+
+
+def _diag_extra(r, steps=60, size=10):
+    import numpy as np
+    e = np.zeros_like(r.mask)
+    for i in range(steps):
+        e[i * size // 2:i * size // 2 + size, i * size // 2:i * size // 2 + size] = True
+    return e
+
+
+def test_a_diagonal_cluster_is_one_polygon_with_45_degree_edges():
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    ps = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=_diag_extra(r))
+    assert len(ps) == 1 and len(ps[0]) <= 8 and _octi(ps[0])
+    assert any(abs(abs(ps[0][(i + 1) % len(ps[0])][0] - ps[0][i][0]) - abs(ps[0][(i + 1) % len(ps[0])][1] - ps[0][i][1])) < 1e-6 and abs(ps[0][(i + 1) % len(ps[0])][0] - ps[0][i][0]) > 5 for i in range(len(ps[0])))
+
+
+def test_polygon_vertices_are_on_the_grid_and_the_pieces_are_inside_the_polygon():
+    _, r = raster([(x + 0.13, y + 0.21) for x, y in BIG], ppmm=20)
+    ps = fills.keepout_polygons(r, 1.0, 0.5, 0.0)
+    assert ps and all(abs(v / 0.5 - round(v / 0.5)) < 1e-6 for p in ps for q in p for v in q)
+    assert any(min(x for x, _ in p) <= 10.9 and max(x for x, _ in p) >= 11.2 for p in ps)
+
+
+def test_a_cluster_around_pour_is_cut_into_rectangles_not_one_polygon_covering_it():
+    import numpy as np
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    e = np.zeros_like(r.mask)
+    e[100:500, 100:140] = e[100:500, 460:500] = e[100:140, 100:500] = e[460:500, 100:500] = True      # a square ring of cells, a 20 x 20 mm hole inside
+    ps = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=e, hole_area=4.0)
+    assert len(ps) >= 4 and all(len(p) == 4 for p in ps)
+
+
+def test_polygon_snap_to_outline_moves_straight_edges_and_never_bends_a_diagonal():
+    import numpy as np
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    box = np.zeros_like(r.mask)
+    box[300:400, 200:300] = True                                                                 # a block of pieces, x 9..14, y 21..26
+    free = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=box)[0]
+    snapped = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=box, outlines=[(8.7, 20.6, 14.4, 26.3)], snap=1.0)[0]
+    assert snapped != free and {round(x, 3) for x, _ in snapped} == {8.7, 14.4} and {round(y, 3) for _, y in snapped} == {20.6, 26.3}
+    e = _diag_extra(r)
+    d_free = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=e)[0]
+    d_snap = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=e, outlines=[(0.3, 0.3, 39.8, 39.8)], snap=1.0)[0]
+    assert _octi(d_snap) and d_snap == d_free
+
+
+def test_polygon_covers_its_pieces_when_the_raster_is_off_the_grid():
+    import numpy as np
+    _, r = raster([(x + 0.37, y + 0.29) for x, y in rect(0, 0, 40, 40)], ppmm=20)
+    box = np.zeros_like(r.mask)
+    box[300:400, 200:300] = True                                                                 # pixel columns 200..300 are x = r.x0 + 10 .. r.x0 + 15
+    p = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=box)[0]
+    x0, x1 = r.x0 + 10.0, r.x0 + 15.0
+    y1, y0 = r.y1 - 15.0, r.y1 - 20.0
+    assert min(x for x, _ in p) <= x0 + 1e-6 and max(x for x, _ in p) >= x1 - 1e-6 and min(y for _, y in p) <= y0 + 1e-6 and max(y for _, y in p) >= y1 - 1e-6

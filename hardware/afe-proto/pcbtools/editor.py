@@ -255,8 +255,11 @@ class Editor:
         z.SetDoNotAllowPads(False)
         z.SetDoNotAllowFootprints(False)
         z.SetZoneName(name)
-        x0, y0, x1, y1 = rect
-        for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+        pts = rect if len(rect) > 4 or isinstance(rect[0], (tuple, list)) else None      # (x0, y0, x1, y1), or a polygon [(x, y), ...] in Due mm
+        if pts is None:
+            x0, y0, x1, y1 = rect
+            pts = ((x0, y0), (x1, y0), (x1, y1), (x0, y1))
+        for px, py in pts:
             z.AppendCorner(self._pt(px, py), -1)
         self.b.Add(z)
         self._give(z)
