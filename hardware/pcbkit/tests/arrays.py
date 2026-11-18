@@ -26,19 +26,20 @@ class Arr:
         self.via.append((x, y, dia, drill, self.n(net)))
         return self
 
-    def z(self, net, layer, rings, filled=True, keepout=False):
-        """rings: list of (hole, [(x, y), ...])"""
-        self.zone.append((layer, self.n(net), filled, keepout, rings))
+    def z(self, net, layer, rings, filled=True, keepout=False, conn=2):
+        """rings: list of (hole, [(x, y), ...]); conn is the pad connection (1 thermal, 2 solid)"""
+        self.zone.append((layer, self.n(net), filled, keepout, rings, conn))
         return self
 
     def part(self, ref, x, y, court=None):
         self.fp.append((ref, x, y, court if court else (np.nan,) * 4))
         return self
 
-    def p(self, ref, pin, x, y, net, smd=True, size=0.8):
+    def p(self, ref, pin, x, y, net, smd=True, size=0.8, sy=None, rot=0.0, shape=1, mask=1):
+        """a pad of size `size` (x) by `sy` (default: square), rotated `rot`, shape 0 circle, 1 rect; mask 1 = F.Cu"""
         k = [f[0] for f in self.fp].index(ref)
         h = size / 2
-        self.pad.append((k, pin, x, y, x - h, y - h, x + h, y + h, self.n(net), smd, size))
+        self.pad.append((k, pin, x, y, x - h, y - h, x + h, y + h, self.n(net), smd, size, size if sy is None else sy, rot, shape, mask))
         return self
 
     def body(self, ref, x0, y0, x1, y1):
@@ -72,7 +73,7 @@ class Arr:
         if P:
             kw.update(p_fp=[q[0] for q in P], p_pin=[q[1] for q in P], p_x=[q[2] for q in P], p_y=[q[3] for q in P], p_bx0=[q[4] for q in P],
                       p_by0=[q[5] for q in P], p_bx1=[q[6] for q in P], p_by1=[q[7] for q in P], p_net=[q[8] for q in P], p_smd=[q[9] for q in P],
-                      p_rot=[0] * len(P), p_shape=[1] * len(P), p_sx=[q[10] for q in P], p_sy=[q[10] for q in P], p_layer_mask=[1] * len(P))
+                      p_rot=[q[12] for q in P], p_shape=[q[13] for q in P], p_sx=[q[10] for q in P], p_sy=[q[11] for q in P], p_layer_mask=[q[14] for q in P])
         if F:
             nan = (np.nan,) * 4
             fb = [self.fab.get(f[0], nan) for f in F]
@@ -91,12 +92,12 @@ class Arr:
         kw['read_fields'] = B.LATER_FIELDS
         if self.zone:
             xy, roff, voff, rhole = [], [0], [0], []
-            for _, _, _, _, rings in self.zone:
+            for _, _, _, _, rings, _c in self.zone:
                 for hole, pts in rings:
                     xy.extend(pts)
                     voff.append(voff[-1] + len(pts))
                     rhole.append(1 if hole else 0)
                 roff.append(len(voff) - 1)
             kw.update(z_layer=[z[0] for z in self.zone], z_net=[z[1] for z in self.zone], z_filled=[z[2] for z in self.zone],
-                      z_keepout=[z[3] for z in self.zone], z_xy=np.array(xy, float), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
+                      z_keepout=[z[3] for z in self.zone], z_conn=[z[5] for z in self.zone], z_xy=np.array(xy, float), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
         return B.BoardArrays.from_arrays(**kw)

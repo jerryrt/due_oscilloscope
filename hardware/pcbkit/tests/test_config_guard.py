@@ -11,7 +11,7 @@ CFG = dict(GND='GND', PLANE_LAYER='B', HOP_FENCES=[], HOP_SENSITIVE=[], HOP_KEEP
 def test_the_registry_holds_every_name_the_modules_declare():
     for n in ('GND', 'PLANE_LAYER', 'COPPER_LAYERS', 'GND_VIA_REACH', 'HOP_MAX', 'HOP_FENCES', 'HOP_SENSITIVE_CLEAR', 'FRAME'):
         assert n in C.DECLARED
-    assert C.DECLARED['GND'] == {'ground_plane', 'bottom_hops', 'sensitive_nets', 'pour_gap'}
+    assert C.DECLARED['GND'] == {'ground_plane', 'bottom_hops', 'sensitive_nets', 'pour_gap', 'fill_quality'}
     assert C.DECLARED['KEEPOUT_DIST'] == {'keepout_ring'} and 'DECOUPLING_MAX' in C.DECLARED
 
 

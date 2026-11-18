@@ -49,8 +49,10 @@ SPEC = {
                                                                                      ('r_hide', '?'), ('r_just', 'S')],
     'silk': [('t_text', 'S')] + [(n, _F) for n in ('t_x', 't_y', 't_h')]
             + [(n, _F) for n in ('t_ang', 't_stroke', 't_x0', 't_y0', 't_x1', 't_y1')] + [('t_hide', '?'), ('t_layer', 'i1'), ('t_just', 'S')],
-    'zones': [('z_layer', 'i1'), ('z_net', 'i4'), ('z_filled', '?'), ('z_keepout', '?')],
+    'zones': [('z_layer', 'i1'), ('z_net', 'i4'), ('z_filled', '?'), ('z_keepout', '?'), ('z_conn', 'i1'), ('z_minw', _F), ('z_clear', _F)],
 }
+# zone settings: z_conn is pcbnew's pad connection (0 none, 1 thermal relief, 2 solid, 3 thermal for through-hole pads only, -1 inherited), z_minw the minimum width and z_clear the
+# zone's own clearance, mm; read since the fill-quality rule, so a board from before has them empty (see require)
 # zone geometry: z_xy (V,2), z_ring_off (nz+1) int64 zone -> ring, z_vert_off (nring+1) int64 ring -> vertex,
 # z_ring_hole (nring) int8: 0 = outline ring, 1 = hole ring (a hole belongs to the nearest outline before it)
 _ZGEO = [('z_xy', 'xy'), ('z_ring_off', 'off'), ('z_vert_off', 'off'), ('z_ring_hole', 'i1')]
@@ -85,7 +87,7 @@ KIND = dict(_ALL)
 # Fields added after the first release of the arrays. A board built by hand, or an npz cache written before them, leaves them
 # EMPTY (length 0), which means "not read": the group-length check lets them be empty, and a consumer that needs one checks len().
 _ADDED = frozenset({'fp_fab_x0', 'fp_fab_y0', 'fp_fab_x1', 'fp_fab_y1', 'r_hide', 'r_just', 't_ang', 't_stroke', 't_x0', 't_y0', 't_x1', 't_y1',
-                    't_hide', 't_layer', 't_just'})
+                    't_hide', 't_layer', 't_just', 'z_conn', 'z_minw', 'z_clear'})
 # every name added after the first release, groups of their own included: a project that must keep its recorded array set (the AFE's
 # cached fixtures hold the first one) filters _ALL, KIND and SPEC by it
 LATER_FIELDS = frozenset(_ADDED) | {n for g in ('fpsilk', 'gsilk') for n, _ in SPEC[g]}
@@ -464,9 +466,11 @@ def _extract(pcb, b, path, frame):
 
     # zones: filled outlines and their holes, as rings
     zl, zn, zf, zk, xy, roff, voff, rhole = [], [], [], [], [], [0], [0], []
+    zc, zm, zq = [], [], []
     for z in b.Zones():
         lay = z.GetLayer()
         zl.append(_layer(pcb, lay)); zn.append(z.GetNetCode()); zf.append(bool(z.IsFilled())); zk.append(bool(z.GetIsRuleArea()))
+        zc.append(int(z.GetPadConnection())); zm.append(pcb.ToMM(z.GetMinThickness())); zq.append(pcb.ToMM(z.GetLocalClearance()))
         if z.IsFilled():
             ps = z.GetFilledPolysList(lay)
             for k in range(ps.OutlineCount()):
@@ -480,7 +484,7 @@ def _extract(pcb, b, path, frame):
     if zl:
         a = np.array(xy, np.float64).reshape(-1, 2) * U
         x, y = to_f(a[:, 0], a[:, 1])
-        kw.update(z_layer=zl, z_net=zn, z_filled=zf, z_keepout=zk, z_xy=np.column_stack([_r(x), _r(y)]), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
+        kw.update(z_layer=zl, z_net=zn, z_filled=zf, z_keepout=zk, z_conn=zc, z_minw=_r(np.array(zm)), z_clear=_r(np.array(zq)), z_xy=np.column_stack([_r(x), _r(y)]), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
 
     # outline: the Edge.Cuts polygon(s), concatenated outer rings (a single ring on these boards)
     ps = pcb.SHAPE_POLY_SET()
