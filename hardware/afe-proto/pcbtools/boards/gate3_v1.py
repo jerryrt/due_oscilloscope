@@ -55,17 +55,17 @@ LR_SUBCHECKS = (('INV_MAX', '(LR-4 sub-check) the inverting-node trace is the sh
 DRC_ROW = 'LR-10'                                          # the row the engine adds from kicad-cli DRC
 
 # ---------------------------------------------------------------------------------------------------- section 3: DRC
-# (violation type, a reference it names): documented, not counted as "other". The five silk_overlap items are the waived ones recorded below.
-DRC_DOCUMENTED = (('courtyards_overlap', 'MH602'), ('silk_overlap', 'Reference field of J501'), ('silk_overlap', 'Reference field of R514'),
-                  ('silk_overlap', 'Reference field of R520'))        # the engine matches the item description after 'Footprint ' is stripped
-DRC_DOCUMENTED_LABEL = 'MH602 courtyards and the waived silk overlaps'
+# (violation type, a reference it names): documented, not counted as "other". The five silk_overlap items an earlier layout carried (and the spec team waived, note (1) below) are gone:
+# the passives' designators moved to F.Fab, so nothing but the MH602 courtyards is documented now.
+DRC_DOCUMENTED = (('courtyards_overlap', 'MH602'),)        # the engine matches the item description after 'Footprint ' is stripped
+DRC_DOCUMENTED_LABEL = 'MH602 courtyards'
 DRC_DOCUMENTED_NOTE = (
     '**The MH602 courtyard overlaps** (MH602 with the sockets J607 and J605) are the Due\'s own geometry: MH602 is the optional M2.5 standoff position beside the socket '
     'rows. **The owner\'s caliper check of the socket clearance is pending**, and the screw is optional, so the overlap costs nothing if the screw is left out. '
     '(The caliper status is the gate brief\'s statement, not a repo file *(check)*.)\n\n'
     '**Silk waivers, granted by the spec team** (recorded for this gate; the waiver text is the brief\'s, not a repo file *(check)*). '
-    '(1) **5 DRC `silk_overlap` items**: J501\'s reference against U502\'s polygon, J501\'s reference against its own silk, R514\'s reference against U502\'s silk, and R520\'s reference against '
-    'J501\'s box (twice). Each is a label touching a part outline and each label stays legible: waived. '
+    '(1) **5 DRC `silk_overlap` items** that an earlier layout carried (J501\'s reference against U502\'s polygon and against its own silk, R514\'s reference against U502\'s silk, R520\'s reference against '
+    'J501\'s box twice) were waived, each a label touching a part outline. **None is left on this board**: the passives\' designators moved to F.Fab, so there is no silk overlap to waive. '
     '(2) **47 label pairs 0.6-1.0 mm apart**, clearly separate, listed on the `WAIVE` line of `whatif/blocks/gate3/silk3/check_final.txt` in kvm_01\'s tree '
     '*(check: the copy of that file read for this table lists 49 pairs on its `WAIVE` line and 3 under 0.6 mm, against the 47 of the brief; the count is the brief\'s)*. '
     '(3) **Two labels far from their parts**: R207 3.44 mm and R403 3.89 mm. (4) **MH602\'s label lies inside the SCOPE fence** (the mounting hole is the Due\'s own position at the edge of the fence; '
@@ -139,8 +139,8 @@ CFG_GAP_WAIVED = 'DESIGNATOR_GAP_WAIVED'
 CFG_GAP_MIN = 'DESIGNATOR_GAP_MIN'
 CFG_GAP_ONE_LABEL = 'DESIGNATOR_GAP_ONE_LABEL'
 # each deviation row is (rule / item, deviation text, status / authority text). The engine adds this row once per documented DRC item
-# (the MH602 courtyards and the waived silk overlaps), so the text is generic and names the item.
-DEV_COURT = ('DRC documented items', '{items}: documented DRC item', 'documented (section 3): MH602 courtyards (owner caliper check pending, screw optional); silk overlaps waived by the spec team')
+# (the MH602 courtyards), so the text is generic and names the item.
+DEV_COURT = ('DRC documented items', '{items}: documented DRC item', 'documented (section 3): MH602 courtyards (owner caliper check pending, screw optional)')
 DEV_POWER = ('LR-5 (generator caps at their pins)',
              'capacitors more than {far_mm:n3} mm from their {ic} pad: {far}; the nearer ones: {near} mm (all measured here, pad centre to pad centre; full list below)',
              'standing rule (b): an LR-5 deviation of a recorded kind is allowed with its measured figure, which is this row. Gate3-notes item 5 recorded only the output capacitors C407-C410 at 5.6-8.3 mm '
