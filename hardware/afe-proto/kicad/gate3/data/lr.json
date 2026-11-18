@@ -53,12 +53,12 @@
   "ok": true,
   "detail": "A0/A1 top only, no via (45/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it",
   "figures": {
-   "a0_mm": 45.02749800000001,
-   "a1_mm": 51.01749999999999,
+   "a0_mm": 44.624998,
+   "a1_mm": 51.01499999999999,
    "fb_mm": 4.3999999999999995,
    "violations": 0.0,
    "gnd_track_gap_AWG_INV_mm": 3.00180995549373,
-   "pour_gap_AWG_INV_mm": 0.5
+   "pour_gap_AWG_INV_mm": 4.028713073905222
   }
  },
  {
@@ -99,7 +99,7 @@
   "ok": true,
   "detail": "+3V3A and VNEG: one piece per consumer group after cutting the star pads",
   "figures": {
-   "pieces": 4.0,
+   "pieces": 5.0,
    "groups_reached": 4.0,
    "groups_absent": 0.0,
    "violations": 0.0
@@ -109,9 +109,9 @@
   "rule": "LR-7",
   "checker_row": "LR-7",
   "ok": true,
-  "detail": "DAC0 4.3 mm; back-termination at the BNC; shell pads on ground",
+  "detail": "DAC0 4.1 mm; back-termination at the BNC; shell pads on ground",
   "figures": {
-   "dac0_mm": 4.26,
+   "dac0_mm": 4.1,
    "shell_pads": 3.0,
    "R304_to_J301_mm": 12.854960132182441,
    "R306_to_J301_mm": 12.51439171514141
@@ -149,6 +149,44 @@
    "designators": 122.0,
    "violations": 0.0,
    "waived_pairs": 0.0
+  }
+ },
+ {
+  "rule": "LR-13",
+  "checker_row": "LR-13",
+  "ok": true,
+  "detail": "379 segments: on the angle step, no jogs, straight into pads, over no foreign pad, 7 findings waived by named exceptions",
+  "figures": {
+   "arc": 0.0,
+   "angle": 0.0,
+   "jog": 0.0,
+   "entry": 0.0,
+   "over_pad": 0.0,
+   "stale_exception": 0.0,
+   "segments": 379.0,
+   "violations": 0.0,
+   "waived": 7.0
+  }
+ },
+ {
+  "rule": "LR-14",
+  "checker_row": "LR-14",
+  "ok": true,
+  "detail": "no narrow piece, dead end or row of arcs in the pour, thermal reliefs and solid planes as configured",
+  "figures": {
+   "narrow": 0.0,
+   "dead_end": 0.0,
+   "rough": 0.0,
+   "thermal": 0.0,
+   "solid": 0.0,
+   "F_rough": 0.0,
+   "F_narrow": 0.0,
+   "F_dead_end": 0.0,
+   "F_outline_mm": 1057.2479980480553,
+   "B_narrow": 0.0,
+   "B_dead_end": 0.0,
+   "B_outline_mm": 1248.2264441696886,
+   "violations": 0.0
   }
  },
  {

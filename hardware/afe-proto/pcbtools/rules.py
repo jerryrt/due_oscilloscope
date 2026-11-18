@@ -578,4 +578,7 @@ def lr14(b, cfg, report=None):
 
 
 ROWS = [('LR-1', lr1), ('LR-2', lr2), ('LR-3', lr3), ('LR-4', lr4), ('LR-4 INV_MAX', lr4_inv), ('LR-12 DECOUP_MAX', lr12),
-        ('LR-5', lr5), ('LR-6', lr6), ('LR-7', lr7), ('LR-8', lr8), ('LR-9', lr9), ('LR-11', lr11), ('LR-13', lr13), ('LR-14', lr14)]
+        ('LR-5', lr5), ('LR-6', lr6), ('LR-7', lr7), ('LR-8', lr8), ('LR-9', lr9), ('LR-11', lr11)]
+# the copper rows run beside the twelve above, which the equivalence tests hold to the old checker's goldens (there are none for these)
+COPPER_ROWS = [('LR-13', lr13), ('LR-14', lr14)]
+ALL_ROWS = ROWS + COPPER_ROWS

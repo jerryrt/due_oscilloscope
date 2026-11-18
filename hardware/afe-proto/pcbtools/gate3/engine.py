@@ -350,7 +350,7 @@ def _rename_for(T, checker_row):
 def sec_lr(b, cfg, drc_report, T):
     from pcbtools import rules
     out = []
-    for name, fn in rules.ROWS:
+    for name, fn in rules.ALL_ROWS:
         r = fn(b, cfg)
         ren = _rename_for(T, name)
         label = ren[0].format(getattr(cfg, ren[1])) if ren else name

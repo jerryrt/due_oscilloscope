@@ -29,7 +29,7 @@ RULE_DOC = 'docs/afe.md'
 
 SECTION_SOURCES = (
     ('1 Renders', 'PNGs in `kicad/render` (`v1-top.png`, `v1-bottom.png`, `v1-3d.png`; not regenerated here; checked for existence and age against the board)'),
-    ('2 LR table', '`pcbtools.rules.ROWS` on the board with `boards/v1.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
+    ('2 LR table', '`pcbtools.rules.ALL_ROWS` on the board with `boards/v1.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
     ('3 DRC', 'kicad-cli `pcb drc --severity-all` on a work copy of the board and its project file'),
     ('4 Bridges and hops', 'board arrays (pads, tracks, vias) via `gate3.bridge_table` / `hop_table`; the 16 bridges and their justifications from `kicad/design.py` (the `two(...)` notes) through `BRIDGE_TABLE` in `boards/gate3_v1.py`, '
                            'with the standing rules (a) and (b) of `kicad/gate3/notes.md`'),

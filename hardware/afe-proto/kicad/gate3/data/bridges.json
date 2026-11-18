@@ -255,7 +255,7 @@
     {
      "net": "/P33_U",
      "layer": "F.Cu",
-     "edge_gap_mm": -0.125,
+     "edge_gap_mm": -0.12,
      "cls": null
     }
    ],
@@ -378,7 +378,7 @@
     {
      "net": "/VREF",
      "layer": "F.Cu",
-     "edge_gap_mm": -0.1,
+     "edge_gap_mm": -0.09,
      "cls": "vref"
     }
    ],

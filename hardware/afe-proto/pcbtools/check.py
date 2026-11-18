@@ -39,7 +39,7 @@ def run_rows(b, cfg, rows=None, want_drc=False, out=print, no_drc=False):
     cache with no board file to run it on - the summary says 'LR-10 NOT RUN' and `run_rows.not_run` is set, so a green line cannot
     be read as the whole check. `no_drc` (the command line's --no-drc) is the explicit request to skip it."""
     fails = []
-    todo = [(n, f) for n, f in rules.ROWS if not rows or n in rows]
+    todo = [(n, f) for n, f in rules.ALL_ROWS if not rows or n in rows]
     for name, fn in todo:
         r = fn(b, cfg)
         out(f'[{"PASS" if r.ok else "FAIL"}] {name}: {r.detail}')

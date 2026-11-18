@@ -24,7 +24,7 @@ RULE_DOC = 'docs/afe.md'                                  # the rule table (`| L
 
 SECTION_SOURCES = (
     ('1 Renders', 'PNGs in `v2/layout/integrated/render` (not regenerated here; checked for existence and, by content hash, that they were made from this board)'),
-    ('2 LR table', '`pcbtools.rules.ROWS` on the board with `boards/v2_layout.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
+    ('2 LR table', '`pcbtools.rules.ALL_ROWS` on the board with `boards/v2_layout.py`; LR-10 from kicad-cli; rule text from `docs/afe.md`'),
     ('3 DRC', 'kicad-cli `pcb drc --severity-all` on a work copy of the board and its project file'),
     ('4 Bridges and hops', 'board arrays (pads, tracks, vias) via `gate3.bridge_table` / `hop_table`; justifications from `v2/kicad/design.py` `BRIDGES`'),
     ('5 Deviations', 'rule figures (2), board (power caps, outline), `boards/v2_layout.py` waiver tables, project file rules; cited spec text is quoted from the named file'),
