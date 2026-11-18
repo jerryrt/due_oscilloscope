@@ -11,7 +11,6 @@ What fills them:
 | reader | fills the added fields? |
 |---|---|
 | `pcbkit.board.read_board(path, cfg)`, `read_board_retry`, and an npz cache written from one | yes: `read_fields == LATER_FIELDS`, a field with zero rows is still read |
-| `pcbtools.boardio.read_board` (the AFE binding) | no: first release's arrays only, `read_fields` empty, so a pcbkit consumer of an added field raises. Read with `pcbkit.board.read_board(path, FRAME)` for them |
 | a board built by hand (`from_arrays`), an npz cache written before this step | no, unless the caller names the fields it filled in `read_fields=` |
 
 `fp_fab_*` is NaN for a footprint with no F.Fab shape. **`fp_fab_*` is the box of the F.Fab SHAPES only; text on F.Fab is not part of it.** F.Fab text is not printed and is not the part: since D30 (1c) it is just the designators moved off the silk, and a label that touches another part's F.Fab reference text is not touching that part. A part with no F.Fab shape (the test points) has NaN, and the two-way nearest test then uses its pads as the solid, which it always includes. (An earlier version included the text: it made four of AFE-1's approved labels and one of AFE-2's block names fail the two-way test by touching other parts' F.Fab designators.) No configuration name is read beyond `FRAME`.

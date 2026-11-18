@@ -6,7 +6,7 @@ editor, so the checking side (kvm_02) and the building side (kvm_01) can work in
 
 ## Rules
 
-1. **pcbnew is loaded exactly once per board**, by `pcbtools.boardio.read_board(path) -> BoardArrays`, which copies what the
+1. **pcbnew is loaded exactly once per board**, by `pcbkit.board.read_board(path, FRAME) -> BoardArrays` (`FRAME` is `pcbtools.frame.FRAME`: the frame is always passed), which copies what the
    tools need into plain numpy arrays and then **releases pcbnew** (the `BOARD` object is deleted inside the call; nothing
    in `BoardArrays` refers to pcbnew). Peak memory of a read is about one board load (160 MB measured on the v2 integrated
    board) and the returned arrays are a few MB.
@@ -15,12 +15,12 @@ editor, so the checking side (kvm_02) and the building side (kvm_01) can work in
    must be split into processes (`docker/pcb/run-gate.sh` does).
 2. **Every check works on `BoardArrays`**, vectorised. No per-segment Python loops. A computation that a numpy
    expression reproduces replaces the loop it came from (the loop is deleted, not kept as a fallback).
-3. **Edits go through one write path** (`pcbtools.boardio.edit(path)`: a context manager that loads, yields a thin
+3. **Edits go through one write path** (`pcbtools.editor.edit(path)`: a context manager that loads, yields a thin
    editor, saves, and frees the board in one place; owned by the building side). The checking side never writes a board.
 4. **Order and rounding**: every item array keeps KiCad's own enumeration order (`board.GetTracks()` split into segments and vias, `GetFootprints()`), and `s_idx`, `v_idx`, `fp_idx` are the position in that enumeration so an editor can delete or move an item from a mask computed on the arrays without re-searching. Positions and sizes are rounded to 1e-6 mm at read time, so golden figures compare with a 1e-6 tolerance.
 5. **Coordinates**: every array is in *Due mm*: x right, y **up**, origin the Due's lower-left corner (KiCad x - 50,
-   150 - KiCad y). float64. Angles are degrees, counter-clockwise, KiCad's convention. The transform lives in ONE function in `boardio` (`to_due`/`from_due`), tested against two known pads (J601 pin 5 at (38.1, 2.54) on the v2 board).
-6. **pcbtools imports pcbnew only inside `boardio.py`** (and the building side's editor). The core (`geom`, `rules`,
+   150 - KiCad y). float64. Angles are degrees, counter-clockwise, KiCad's convention. The transform lives in ONE function in `pcbkit.board` (`to_frame`/`from_frame`, given `FRAME`), tested against two known pads (J601 pin 5 at (38.1, 2.54) on the v2 board).
+6. **pcbtools imports pcbnew only inside `pcbkit.board`** (and the building side's editor). The core (`pcbkit.geom`, `rules`,
    `cap`) imports numpy/scipy only, so it is testable without KiCad, on boards the tests build as arrays with known answers.
 
 ## `BoardArrays` (frozen dataclass; every field is a numpy array or a tuple of str)
@@ -43,7 +43,7 @@ A `BoardArrays` also carries two derived lookups (built once, plain numpy):
 * `net_id(name) -> int` (raises KeyError), `ref_index(ref) -> int`, `pad_index(ref, pin) -> int`.
 * `seg_mask(net=..., layer=...)`, `pad_mask(net=...)` returning boolean arrays (boolean selection only; no loops).
 
-## `pcbtools.geom` (numpy only, vectorised; the shared kernels)
+## `pcbkit.geom` (numpy only, vectorised; the shared kernels)
 
 All take arrays, return arrays, and chunk internally so memory stays bounded (peak < 200 MB for 10 000 x 10 000 pairs).
 
@@ -80,7 +80,7 @@ in-process (one subprocess per arm is only for the `pcbnew`-marked tests that lo
 
 ## What changes for the building side (kvm_01)
 
-* Reads use `read_board`. Writes use `boardio.edit(path)`; the editor API (move footprint, set text, add/remove track/via,
+* Reads use `read_board`. Writes use `pcbtools.editor.edit(path)`; the editor API (move footprint, set text, add/remove track/via,
   add footprint, refill zones) is the building side's to define; the checking side only needs the file on disk.
 * `layout.py`, `merge_blocks.py`, `fence_check.py` (the latter is a checking-side rule, built on arrays) share the same config.
 
@@ -93,7 +93,7 @@ in-process (one subprocess per arm is only for the `pcbnew`-marked tests that lo
 
 ## Write path (kvm_01's)
 
-`with pcbtools.boardio.edit(path) as e:` loads once, yields an Editor, saves and frees on exit (no module-level keep list; the objects
+`with pcbtools.editor.edit(path) as e:` loads once, yields an Editor, saves and frees on exit (no module-level keep list; the objects
 pcbnew's SWIG must not free are held by the editor instance until exit). Editor methods: `move(ref, x, y, rot=None, side=None)`,
 `set_ref(ref, x, y, h, w, t, on_silk)`, `add_text(text, x, y, h, layer='F.SilkS')`, `add_tracks(net, layer, X0, Y0, X1, Y1, w)` (arrays),
 `add_vias(net, x, y, dia, drill)` (arrays), `remove_tracks(idx)`, `remove_vias(idx)` (index arrays from `BoardArrays`),

@@ -1,7 +1,8 @@
 # pcbtools (stage 1: I/O, geometry kernels, fixtures)
 
-Interface: `ARRAYS.md`. Stage 1 delivers `boardio.py` (BoardArrays, `read_board`, `to_due`/`from_due`, npz cache), `geom.py`
-(numpy/scipy kernels) and the frozen fixtures and goldens the rules (stage 2) are checked against.
+Interface: `ARRAYS.md`. The arrays, the readers and the geometry kernels are `pcbkit.board` and `pcbkit.geom` (`hardware/pcbkit`), which
+the AFE imports directly, passing its coordinate frame (`pcbtools/frame.py`, `FRAME = (50, 150)`) to every reader and transform: there is
+no default frame. Stage 1 delivered them here and they moved out; what stays is the frozen fixtures and goldens the rules are checked against.
 
 ## Environment
 
@@ -21,22 +22,23 @@ Goldens recorded so far are labelled "working reference, host .venv-pcb"; they a
 
 ## Running the tests (from hardware/afe-proto)
 
-    python -m pytest -m "not pcbnew" tests                 # pure numpy: geom, boardio containers, cached arrays vs goldens
+    python -m pytest -m "not pcbnew" tests                 # pure numpy: cached arrays vs goldens
     PCB_PYTHON=python tests/run_pcbnew_tests.sh            # pcbnew group + guard; retries a start-up segfault up to 3 times
-    python tests/pcbtools/mutate_geom.py                   # mutation proof: each geom mutant must be caught
+    python hardware/pcbkit/tests/mutate_kit.py             # mutation proof of pcbkit.geom and pcbkit.board (the geom kernels' mutants live there)
 
 The pcbnew group skips with an explicit reason when pcbnew is missing, **fails** when `PCBTOOLS_EXPECT_PCBNEW=1`, and
 `test_guard.py` (last) fails unless every pcbnew-marked test passed.
 
 ## Layout
 
-    pcbtools/boardio.py  geom.py  boards/ (stage 2)
+    pcbtools/frame.py  boards/   (the frame; the board configurations)
     tests/fixtures/v2-8a1f7ac/   frozen boards, design.py/floorplan.py/layout.py, SOURCE.md (do not edit)
     tests/fixtures/arrays/       cached BoardArrays (.npz) of each fixture, readable without pcbnew
     tests/golden/v2-8a1f7ac/     old-tool outputs (lr_check, --mutate, fence_check, cap, loader counts), old/new bench
     tests/golden/MANIFEST.sha256 (hash of every golden), update_manifest.py, *_mutation_result.txt
     tests/golden_capture/        the scripts that WRITE goldens (capture_old, run_old_tools, bench_*, reparse_figures); never collected
-    # regenerate arrays:  python -m pcbtools.boardio BOARD.kicad_pcb OUT.npz   (run from hardware/afe-proto)
+    # regenerate arrays:  PYTHONPATH=hardware/pcbkit python -m pcbkit.board BOARD.kicad_pcb OUT.npz 50 150   (the frame is required; a cache the recorded
+    # tests/fixtures/arrays hold is the first release's field set and is not regenerated)
 
 ## Conventions that bite
 
@@ -78,7 +80,7 @@ layer; widths are not used. LR-6 and LR-8 also require REACHABILITY: every prese
 reaches a star / source pad through that copper, so an unrouted net no longer passes; a group or branch none of whose parts is on
 the board is "absent", not unreachable. A pad is identified by (ref, pin) and the last pad of a repeated pin wins, as in the old
 loader. LR-4's top-pour test is the exact distance from the pour's polygon edges (outline and hole rings) to the node's copper:
-tracks as capsules, pads by size and rotation (`pcbtools.shapes`; a rounded-rectangle pad is its circumscribed rectangle, which
+tracks as capsules, pads by size and rotation (`pcbkit.geom`; a rounded-rectangle pad is its circumscribed rectangle, which
 overstates the pad by at most its corner radius: conservative), 0 where the node's copper lies on the fill; the figure
 `pour_gap_<node>_mm` is that distance. **Which nodes** LR-4's pour sentence covers is a decision recorded in `boards/v2.py` and `CONFIG_FIELDS.md`: the inverting node is the
 shortest trace of the stage and the top ground pour is kept back from it, which is an inverting input with gain resistors, `/AWG_FB`
@@ -188,7 +190,7 @@ board object kept alive in a module is what ran the shared machine out of memory
 
 | module | what it does | checked against |
 |---|---|---|
-| `editor.py` | `with edit(path, out=None) as e:` the ONE place a board is changed: `move`, `set_ref`, `set_ref_pose`, `add_text`, `add_footprint_from`, `remove_footprint`, `add_tracks(net, layer, x0, y0, x1, y1, w)` and `add_vias(net, x, y, dia, drill)` (array arguments, grouped by the caller), `remove_tracks`/`remove_vias(idx)` by the `*_idx` of `BoardArrays`, `fill_zones`, `pour`. Saved once on exit | read-back with `boardio` after each edit; repeated edits in one process (the SWIG ownership traps below) |
+| `editor.py` | `with edit(path, out=None) as e:` the ONE place a board is changed: `move`, `set_ref`, `set_ref_pose`, `add_text`, `add_footprint_from`, `remove_footprint`, `add_tracks(net, layer, x0, y0, x1, y1, w)` and `add_vias(net, x, y, dia, drill)` (array arguments, grouped by the caller), `remove_tracks`/`remove_vias(idx)` by the `*_idx` of `BoardArrays`, `fill_zones`, `pour`. Saved once on exit | read-back with `pcbkit.board` after each edit; repeated edits in one process (the SWIG ownership traps below) |
 | `sexpr.py` | tokenizer and iterative reader/writer of KiCad s-expressions (`parse`, `dump`, `find`, `first`, `Q`), symmetric escapes | round trip on every fixture file; atom count; a slow budget step |
 | `schematic.py` | `write_all(parts, cfg, out_dir)`: the symbol library, the sheets and the project from `design.PARTS` | byte-identical to the old `build_sch.py` on v1 |
 | `build.py` | `build_board(parts, cfg, place, nets, out, legalise_overlaps, anchors)`; `legalise` pushes overlapping courtyards apart (anchors never move); `overlaps` is one array pass | same parts, pads, nets, outline and positions as the old `build_pcb.py` on v1; two builds are byte-identical |
