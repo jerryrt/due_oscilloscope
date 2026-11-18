@@ -673,7 +673,7 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
 
 
 
-def pin_protect(b, r, net, prefixes, layer=0, reach=1.25):
+def pin_protect(b, r, net, prefixes, layer=0, reach=1.0):
     """a bool mask on the raster `r`: round each through-hole pad of `net` on `layer` of a part whose designator starts with one of `prefixes`, the box of the pad grown by `reach` mm"""
     m = np.zeros_like(r.mask)
     k = r.ppmm
@@ -686,7 +686,7 @@ def pin_protect(b, r, net, prefixes, layer=0, reach=1.25):
     return m
 
 
-def box_protect(r, boxes, reach=1.25):
+def box_protect(r, boxes, reach=1.0):
     """a bool mask on the raster `r`: each box (x0, y0, x1, y1) in board mm grown by `reach`"""
     m = np.zeros_like(r.mask)
     k = r.ppmm

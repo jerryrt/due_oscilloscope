@@ -220,7 +220,7 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     moved, skipped_pads = [], []
     strips = []
     edge = set()
-    for attempt in range(4):
+    for attempt in range(8):
         keeps = derive_keeps(src, 0.2, clearance, spoke, gap, top_w, grid, outlines, join, shells=shells, skip=edge)
         from pcbtools import gndpads                              # imported late: pcbnew's zone objects break when this module's imports come first
         probe = path + '.probe.tmp.kicad_pcb'

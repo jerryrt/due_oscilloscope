@@ -34,13 +34,16 @@ def failing(path, gndpad_min=0.2, radius=3.0, shells=()):
             ref, _, rest = text.partition(' pin ')
             out.append((ref, rest.split(' ')[0], x, y))
         elif kind in ('rough', 'dead_end'):
-            spots.append((x, y))
+            import re as _re
+            m = _re.search(r'\(([\d.]+) mm2', text)
+            area = float(m.group(1)) if m else 0.0
+            spots.append((x, y, radius + math.sqrt(area / math.pi)))              # a big cluster reaches further than its centre's neighbours
     near = []
     g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
     pins = list(b.p_pin)
     have = {(r, p) for r, p, *_ in out}
     for i in range(len(b.p_x)):
-        if b.p_net[i] == g and b.p_smd[i] and (b.p_layer_mask[i] & 1) and any(math.hypot(b.p_x[i] - sx, b.p_y[i] - sy) <= radius for sx, sy in spots):
+        if b.p_net[i] == g and b.p_smd[i] and (b.p_layer_mask[i] & 1) and any(math.hypot(b.p_x[i] - sx, b.p_y[i] - sy) <= rr for sx, sy, rr in spots):
             key = (b.fp_ref[b.p_fp[i]], pins[i])
             if key not in have:
                 near.append((key[0], key[1], float(b.p_x[i]), float(b.p_y[i])))
@@ -132,6 +135,7 @@ def relocate(src, dst, pads):
         def hole_room(cx, cy):
             d = [math.hypot(b.v_x[i] - cx, b.v_y[i] - cy) - 0.3 for i in range(len(b.v_x)) if i != vi]
             d += [math.hypot(b.p_x[i] - cx, b.p_y[i] - cy) - min(b.p_sx[i], b.p_sy[i]) / 2 - 0.15 for i in range(len(b.p_x)) if not b.p_smd[i]]
+            d += [math.hypot(nx - cx, ny - cy) - 0.3 for nx, ny in new]                      # the vias this pass has already placed
             return (min(d) - 0.25) if d else 9.0
         rooms = [(min(_room(b, g, cx, cy), hole_room(cx, cy) + MIN_CLEAR), cx, cy) for cx, cy in cands]
         room, cx, cy = max(rooms)
