@@ -88,7 +88,7 @@
     {
      "net": "/+5V_F",
      "layer": "F.Cu",
-     "edge_gap_mm": -0.15,
+     "edge_gap_mm": -0.13,
      "cls": null
     }
    ],

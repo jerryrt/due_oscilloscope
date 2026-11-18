@@ -3,14 +3,14 @@
   "rule": "LR-1",
   "checker_row": "LR-1",
   "ok": true,
-  "detail": "2 layers, one bottom plane, 4 bottom runs, 45 GND pads each with its own via",
+  "detail": "2 layers, one bottom plane, 4 bottom runs, 47 GND pads each with its own via (a plated hole of the pad counts)",
   "figures": {
    "layers": 2.0,
    "bottom_pieces": 1.0,
    "bottom_runs": 4.0,
    "max_run_mm": 1.7999999999999972,
    "max_run_vias": 2.0,
-   "gnd_pads": 45.0,
+   "gnd_pads": 47.0,
    "pads_without_via": 0.0,
    "violations": 0.0
   }
@@ -51,13 +51,13 @@
   "rule": "LR-4",
   "checker_row": "LR-4",
   "ok": true,
-  "detail": "A0/A1 top only, no via (45/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it",
+  "detail": "A0/A1 top only, no via (36/51 mm); FB node 4.4 mm of track; decoupling near; no pour within 0.5 mm of it",
   "figures": {
-   "a0_mm": 44.624998,
+   "a0_mm": 36.18749583362055,
    "a1_mm": 51.01499999999999,
    "fb_mm": 4.3999999999999995,
    "violations": 0.0,
-   "gnd_track_gap_AWG_INV_mm": 3.00180995549373,
+   "gnd_track_gap_AWG_INV_mm": 3.8699999999999988,
    "pour_gap_AWG_INV_mm": 4.028713073905222
   }
  },
@@ -109,9 +109,9 @@
   "rule": "LR-7",
   "checker_row": "LR-7",
   "ok": true,
-  "detail": "DAC0 4.1 mm; back-termination at the BNC; shell pads on ground",
+  "detail": "DAC0 3.7 mm; back-termination at the BNC; shell pads on ground",
   "figures": {
-   "dac0_mm": 4.1,
+   "dac0_mm": 3.700001000000006,
    "shell_pads": 3.0,
    "R304_to_J301_mm": 12.854960132182441,
    "R306_to_J301_mm": 12.51439171514141
@@ -155,17 +155,21 @@
   "rule": "LR-13",
   "checker_row": "LR-13",
   "ok": true,
-  "detail": "379 segments: on the angle step, no jogs, straight into pads, over no foreign pad, 7 findings waived by named exceptions",
+  "detail": "331 segments: on the angle step, no jogs, straight into pads, over no foreign pad, 8 findings waived by named exceptions",
   "figures": {
    "arc": 0.0,
    "angle": 0.0,
    "jog": 0.0,
    "entry": 0.0,
    "over_pad": 0.0,
+   "detour": 0.0,
+   "dangling": 0.0,
+   "tspur": 0.0,
+   "wide": 0.0,
    "stale_exception": 0.0,
-   "segments": 379.0,
+   "segments": 331.0,
    "violations": 0.0,
-   "waived": 7.0
+   "waived": 8.0
   }
  },
  {
@@ -177,15 +181,23 @@
    "narrow": 0.0,
    "dead_end": 0.0,
    "rough": 0.0,
+   "shell": 0.0,
+   "gndpad": 0.0,
    "thermal": 0.0,
    "solid": 0.0,
+   "stale_exception": 0.0,
    "F_rough": 0.0,
+   "F_shell_pins": 14.0,
+   "F_shell_lost": 4.0,
+   "F_gndpad_lost": 1.0,
    "F_narrow": 0.0,
    "F_dead_end": 0.0,
-   "F_outline_mm": 1057.2479980480553,
+   "F_outline_mm": 1107.1221982191578,
    "B_narrow": 0.0,
    "B_dead_end": 0.0,
    "B_outline_mm": 1248.2264441696886,
+   "F_shell_waived": 4.0,
+   "F_gndpad_waived": 1.0,
    "violations": 0.0
   }
  },
