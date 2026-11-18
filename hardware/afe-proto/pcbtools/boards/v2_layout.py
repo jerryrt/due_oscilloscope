@@ -124,3 +124,22 @@ KEY_BLOCKS = {'CH1': '1', 'CH2': '2', 'AWG': '3', 'POWER': '4', 'REF / CAL': '5'
 # comparisons read boards/v2.py, which carries the fields but not this switch, because their boards predate the identity.
 IDENTITY_CHECK = True
 SILK_WORDS = tuple(SILK_WORDS) + (NAME, ID_LINE, SN_LABEL)    # top silk words; the bottom marker is held by identity.findings (pcbkit.board reads F.SilkS texts only)
+
+# The copper standard both AFE boards are judged by (pcbkit rules.track_geometry and rules.fill_quality; pcbkit/CONFIG.md says what each name does). Every value is set here, so the
+# effective configuration printed by a check is this file's, not a default's.
+TRACK_ANGLE_STEP = 45.0           # every segment along 0, 45, 90, 135 degrees
+TRACK_ANGLE_TOL = 0.5
+TRACK_MIN_LEG = 0.6               # no bend with a leg shorter than this, except a breakout from a fine-pitch pad
+TRACK_FINE_PITCH = 0.65
+TRACK_BREAKOUT_REACH = 0.8        # montreal5: the second short leg of a fan-out (a 0.5 mm WSON) is a breakout too
+TRACK_ENTRY_EDGE_TOL = 0.001      # a track enters a pad through an edge, not across a corner, to this tolerance
+TRACK_OVERLAP_TOL = 0.001
+FILL_LAYERS = ('F', 'B')
+FILL_MIN_WIDTH = {'F': 1.0, 'B': 0.5}                  # the owner's fill standard: top 1.0 mm, bottom plane 0.5 mm
+FILL_DEAD_END_WIDTH = 1.6
+FILL_LENGTH_FACTOR = 2.0
+FILL_RASTER = 40.0
+FILL_MIN_AREA = 0.02
+FILL_THERMAL_LAYERS = ('F',)                           # thermal reliefs on the top pour's SMD GND pads
+FILL_SOLID_LAYERS = ('B',)                             # the bottom plane is solid
+GEOMETRY_EXCEPTIONS = []           # (rule, net, pad_or_ref, reason), see v1_layout
