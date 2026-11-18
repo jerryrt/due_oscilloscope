@@ -1520,6 +1520,7 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_ROUGH_LINK', 2.0, 'mm', 'hugging items closer than this (copper to copper) are a row'),
     tunable('FILL_SHELL_PREFIXES', (), 'designator prefixes', 'the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN)'),
     tunable('FILL_GNDPAD_VIA_GAP', 0.05, 'mm', 'a GND via whose annulus is within this of the pad edge is at the edge (no visible stub)'),
+    tunable('FILL_GNDPAD_STUB', 0.05, 'mm', 'a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour)'),
     tunable('FILL_GNDPAD_TIE', 0.6, 'mm', 'or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad)'),
     tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
     tunable('FILL_SHELL_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this connector GND pin stays on the bottom plane (a reason is required); each must match exactly one shell finding, or it is a stale_exception finding and the check fails'),
@@ -1536,6 +1537,55 @@ def _has_hole(b, gnd, j):
     def inside(x, y):
         return b.p_bx0[j] <= x <= b.p_bx1[j] and b.p_by0[j] <= y <= b.p_by1[j]
     return any(b.p_net[m] == gnd and not b.p_smd[m] and inside(b.p_x[m], b.p_y[m]) for m in range(len(b.p_net))) or any(b.v_net[m] == gnd and inside(b.v_x[m], b.v_y[m]) for m in range(len(b.v_x)))
+
+
+def _visible_stub(b, gnd, h, r_fill, step=0.05):
+    """the length (mm) of top-layer GND track on the chain that runs from SMD pad h to a GND via that is not covered by the pour: pieces end to end (a joint is within 0.01 mm), from a piece with an end inside
+    the pad to the first via; each sample of the centre line outside the pad and the via is bare when the pour raster has no pour there. 0 when the pad has no track to a via"""
+    segs_ = [k for k in range(len(b.s_x0)) if b.s_net[k] == gnd and b.s_layer[k] == 0]
+    if not segs_:
+        return 0.0
+    ends = {k: ((b.s_x0[k], b.s_y0[k]), (b.s_x1[k], b.s_y1[k])) for k in segs_}
+
+    def in_pad(pt, tol):
+        return b.p_bx0[h] - tol <= pt[0] <= b.p_bx1[h] + tol and b.p_by0[h] - tol <= pt[1] <= b.p_by1[h] + tol
+
+    def in_via(pt):
+        return any(b.v_net[v] == gnd and math.hypot(pt[0] - b.v_x[v], pt[1] - b.v_y[v]) <= b.v_dia[v] / 2 + 1e-6 for v in range(len(b.v_x)))
+    start = [k for k in segs_ if any(in_pad(e, b.s_w[k] / 2) for e in ends[k])]
+    best = 0.0
+    for k0 in start:
+        k, pt = k0, (ends[k0][1] if in_pad(ends[k0][0], b.s_w[k0] / 2) else ends[k0][0])
+        pt = ends[k0][0] if pt is ends[k0][1] else ends[k0][1]                      # the end inside the pad, where the walk starts
+        seen, bare, reached = [], 0.0, False
+        for _ in range(8):
+            seen.append(k)
+            (xa, ya), (xb, yb) = ends[k]
+            if math.hypot(xb - pt[0], yb - pt[1]) < math.hypot(xa - pt[0], ya - pt[1]):
+                (xa, ya), (xb, yb) = (xb, yb), (xa, ya)                             # walked from the end nearer `pt`
+            ln = math.hypot(xb - xa, yb - ya)
+            n = max(int(ln / step), 1)
+            for i in range(n):
+                t = (i + 0.5) / n
+                x, y = xa + t * (xb - xa), ya + t * (yb - ya)
+                if in_via((x, y)):
+                    reached = True                                                  # the first via on the way: the pad's own
+                    break
+                if in_pad((x, y), 0.0):
+                    continue
+                col = int((x - r_fill.x0) * r_fill.ppmm); row = int((r_fill.y1 - y) * r_fill.ppmm)
+                if not (0 <= row < r_fill.mask.shape[0] and 0 <= col < r_fill.mask.shape[1]) or not r_fill.mask[row, col]:
+                    bare += ln / n
+            if reached:
+                break
+            pt = (xb, yb)
+            nxt = [q for q in segs_ if q not in seen and any(math.hypot(e[0] - pt[0], e[1] - pt[1]) < 0.01 for e in ends[q])]
+            if len(nxt) != 1:
+                break
+            k = nxt[0]
+        if reached:
+            best = max(best, bare)
+    return best
 
 
 def _tied_to_holed_pad(b, gnd, h, reach):
@@ -1646,6 +1696,11 @@ def fill_quality_parts(b, cfg, report=None):
                 py = r_fill.y1 - (yy + 0.5) / k2
                 d = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - px, px - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - py, py - b.p_by1[h]), 0))      # distance from the pad's box
                 ring = (d > clr2 + 0.05) & (d <= clr2 + 0.65)
+                vis = _visible_stub(b, gnd, h, r_fill)                      # a track to a via of its own that lies bare is a stub, in the pour or not, and a via a hair from the pad edge does not make it one with the pad
+                if vis > c.FILL_GNDPAD_STUB and not (_has_hole(b, gnd, h) or _tied_to_holed_pad(b, gnd, h, c.FILL_GNDPAD_TIE)):
+                    bad_pads += 1
+                    out.append(('gndpad', '%s pin %s (SMD GND) has %.2f mm of bare track to its via, which is not at the pad edge' % (b.fp_ref[b.p_fp[h]], b.p_pin[h], vis), float(b.p_x[h]), float(b.p_y[h])))
+                    continue
                 if float((ring & zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:
                     continue
                 vd = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - b.v_x, b.v_x - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - b.v_y, b.v_y - b.p_by1[h]), 0)) - b.v_dia / 2 if len(b.v_x) else np.array([9.0])

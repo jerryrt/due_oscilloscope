@@ -201,3 +201,12 @@ def test_a_short_stub_ending_just_beyond_the_end_of_another_track_is_not_a_tap_o
     a.s('SIG', 0, 0, 0, -2.2, 2.2, 0.3).s('SIG', 0, -2.2, 2.2, -2.4, 2.2, 0.25)                     # a 45 degree track and a 0.2 mm stub into a pad, the stub's far end 0.2 from the diagonal's end, past it along its axis
     assert got(a, 'tspur') == []
     assert got(a, 'dangling') == []
+
+
+def test_two_tracks_whose_end_caps_overlap_across_a_hair_gap_are_joined_not_dangling():
+    a = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0).p('U1', '2', 10, 0, 'SIG', size=1.0)
+    a.s('SIG', 0, 0, 0, 5.0, 0, 0.25).s('SIG', 0, 5.1, 0, 10, 0, 0.25)                               # 0.1 mm apart, the caps overlap
+    assert got(a, 'dangling') == []
+    b2 = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0).p('U1', '2', 10, 0, 'SIG', size=1.0)
+    b2.s('SIG', 0, 0, 0, 5.0, 0, 0.25).s('SIG', 0, 5.5, 0, 10, 0, 0.25)                              # 0.5 mm apart: two dangling ends
+    assert len(got(b2, 'dangling')) == 2

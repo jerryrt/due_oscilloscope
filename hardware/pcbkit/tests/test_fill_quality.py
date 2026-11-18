@@ -180,3 +180,34 @@ def test_an_smd_gnd_pad_with_a_plated_hole_in_it_or_tied_shortly_to_one_that_has
 def test_a_through_hole_pin_of_another_net_is_not_a_shell():
     a = board(rect(0, 0, 5, 20)).part('J1', 30, 30).p('J1', '1', 10, 10, 'SIG', smd=False, size=1.0, mask=3)
     assert 'shell' not in kinds(a, FILL_SHELL_PREFIXES=('J',))
+
+
+def _stub(pour, via_xy=(10.74, 9.26)):
+    a = _pins(pour, [('U1', 10, 10, True)]).v('GND', *via_xy)
+    return a.s('GND', 0, 10, 10, 10, via_xy[1], 0.2).s('GND', 0, 10, via_xy[1], via_xy[0], via_xy[1], 0.2)           # down 0.74 mm, then across to the via
+
+
+def test_a_bare_track_from_a_pad_to_a_via_a_hair_off_its_corner_is_a_stub_and_one_under_the_pour_is_not():
+    out = _stub(rect(0, 0, 5, 20))                                                                  # the via is 0.04 mm from the pad's box: 'at the edge' by distance, with 0.7 mm of visible track
+    assert 'gndpad' in kinds(out)
+    assert 'gndpad' not in kinds(out, FILL_GNDPAD_STUB=1.0)                                         # the length is the limit
+    hidden = _stub(rect(0, 0, 20, 20))                                                              # the same copper under a pour
+    assert 'gndpad' not in kinds(hidden)
+    touching = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 10.8)
+    assert 'gndpad' not in kinds(touching)                                                          # a via at the edge, no track at all
+
+
+def test_a_via_on_the_way_ends_the_stub_and_a_through_hole_in_the_pad_has_none():
+    a = _stub(rect(0, 0, 5, 20))
+    a.s('GND', 0, 10.74, 9.26, 14.0, 9.26, 0.2)                                                      # a bar that goes on past the via: not the pad's stub
+    assert 'gndpad' in kinds(a) and len([1 for k in kinds(a) if k == 'gndpad']) == 1
+    long_bar = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 10.8).s('GND', 0, 10, 10, 10, 13.0, 0.2)
+    assert 'gndpad' not in kinds(long_bar)                                                          # the via is at the edge and the bar beyond it is somebody else's track
+
+
+def test_a_tie_to_a_holed_pad_of_another_part_is_not_the_exposed_pad_case():
+    a = board(rect(0, 0, 5, 20)).part('U1', 10, 10).part('U2', 11, 10)
+    a.p('U1', '1', 10, 10, 'GND', smd=True, size=0.5)
+    a.p('U2', '1', 10.9, 10, 'GND', smd=True, size=1.0).p('U2', '1', 10.9, 10, 'GND', smd=False, size=0.4, mask=3)       # a holed pad, but of the neighbouring part
+    a.s('GND', 0, 10, 10, 10.9, 10, 0.2)
+    assert 'gndpad' in kinds(a)

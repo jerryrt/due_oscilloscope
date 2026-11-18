@@ -55,7 +55,7 @@ declare -A M=(
   [dangling_center_only]="rules.py|pad_dist(p, h) <= w / 2 + 1e-9|pad_dist(p, h) <= 1e-9"
   [dangling_any_net_pad]="rules.py|for h in np.flatnonzero((pa['net'] == net) \& ((pa['mask'] \& (1 << layer)) > 0)):|for h in np.flatnonzero(((pa['mask'] \& (1 << layer)) > 0)):"
   [dangling_via_ignored]="rules.py|return bool(len(via_xy) and (np.hypot(via_xy[:, 0] - p[0], via_xy[:, 1] - p[1]) <= b.v_dia / 2 + w / 2 + 1e-9)[b.v_net == net].any())|return False"
-  [dangling_track_ignored]="rules.py|            if len(at[k]) < 2:|            if True:"
+  # dangling_track_ignored (len(at[k]) < 2 -> True) is equivalent: a joined end is cleared by the end-cap test below it, which sees the other track's end at distance 0
   [turn_limit_ignored]="rules.py|                if abs(net) >= c.TRACK_MAX_TURN - c.TRACK_ANGLE_TOL:|                if False:"
   [turn_window_infinite]="rules.py|            sel = [t for t in bends[q0:] if t[0] <= bends[q0][0] + c.TRACK_TURN_WINDOW + 1e-9]|            sel = bends[q0:]"
   [turn_not_through_junction]="rules.py|                    parent2[find2(lst[a_][0])] = find2(lst[b_][0])|                    pass"
@@ -102,9 +102,13 @@ declare -A M=(
   [via_in_pad_by_edge_only]="rules.py|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa))):|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa) \\& False)):"
   [shell_min_ignored_raster]="rules.py#1|                    if frac < c.FILL_SHELL_MIN:|                    if False:"
   [tap_past_the_end_snaps]="rules.py|                if u <= 0.0 or u >= 1.0:|                u = min(max(u, 0.0), 1.0)\n                if False:"
+  [gndstub_ignored]="rules.py|                if vis > c.FILL_GNDPAD_STUB and not (|                if False and not ("
+  [gndstub_mask_ignored]="rules.py|or not r_fill.mask[row, col]:|or True:"
+  [gndstub_not_stopping_at_via]="rules.py|                if in_via((x, y)):\n                    reached = True|                if False:\n                    reached = True"
 )
 fail=0
 for name in "${!M[@]}"; do
+  [[ -n "${MUT_ONLY:-}" && ! $name =~ $MUT_ONLY ]] && continue          # MUT_ONLY=regex runs the matching mutants only
   IFS='|' read -r file old new <<< "${M[$name]}"
   tmp=$(mktemp -d); cp -r "$kit/pcbkit" "$tmp/pcbkit"
   python3 - "$tmp/pcbkit/$file" "$old" "$new" <<'PY' || { echo "MUTATION NOT APPLIED: $name"; fail=1; rm -rf "$tmp"; continue; }
