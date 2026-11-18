@@ -15,7 +15,7 @@ def run(a, **over):
     return rules.WaivedList([f for f in res if f[0] not in ROUTE], res.waived)
 
 
-ROUTE = ('detour', 'dangling', 'tspur', 'wide')                               # the route kinds have their own tests (test_route_checks.py): these boards end tracks in the air
+ROUTE = ('detour', 'stair', 'dangling', 'tspur', 'wide')                               # the route kinds have their own tests (test_route_checks.py): these boards end tracks in the air
 
 
 def kinds(a, **over):

@@ -210,3 +210,23 @@ def test_two_tracks_whose_end_caps_overlap_across_a_hair_gap_are_joined_not_dang
     b2 = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0).p('U1', '2', 10, 0, 'SIG', size=1.0)
     b2.s('SIG', 0, 0, 0, 5.0, 0, 0.25).s('SIG', 0, 5.5, 0, 10, 0, 0.25)                              # 0.5 mm apart: two dangling ends
     assert len(got(b2, 'dangling')) == 2
+
+
+def test_two_opposite_90_degree_bends_with_a_short_middle_leg_are_a_stair_where_one_45_degree_leg_would_do():
+    z = [(0, 0), (3, 0), (3, 0.8), (6, 0.8)]                                                         # east 3, north 0.8, east 3: net heading 0, every leg over 0.6 (no jog)
+    assert [f for f in got(chain(z), 'stair')] and not got(chain(z), 'jog')
+    assert not got(chain([(0, 0), (3, 0), (3, 1.6), (6, 1.6)]), 'stair')                              # a middle leg of 1.6 mm is a deliberate lane change
+    assert got(chain([(0, 0), (3, 0), (3, 1.6), (6, 1.6)]), 'stair', TRACK_STAIR_MAX=2.0)
+    assert not got(chain([(0, 0), (0.2, 0), (0.2, 0.8), (3, 0.8)]), 'stair')                          # the leg before is 0.2 mm, under half the step: a 45 degree leg would not fit
+    assert not got(chain([(0, 0), (3, 0), (3.8, 0.8), (6.8, 0.8)]), 'stair')                          # the step is already a 45 degree leg
+    assert not got(chain([(0, 0), (3, 0), (3, 0.8), (3, 4)]), 'stair')                                # bends in the same sense, then straight on: a corner, not a Z
+    z2 = [(0, 0), (1.5, 0), (3, 0), (3, 0.8), (6, 0.8)]                                               # collinear pieces make one leg
+    assert len(got(chain(z2), 'stair')) == 1
+    assert got(chain([(0, 0), (3, 0), (3, -0.8), (6, -0.8)]), 'stair')                                # either way round
+
+
+def test_a_stair_needs_opposite_90_degree_bends_and_counts_a_leg_in_pieces_as_one_leg():
+    assert not got(chain([(0, 0), (3, 0), (3, 0.8), (0, 0.8)]), 'stair')                              # 90 and 90 the same way: a U, not a Z
+    assert not got(chain([(0, 0), (3, 0), (3.8, 0.8), (4.6, 0)]), 'stair')                            # 45 then 90 back: not two 90 degree bends
+    assert got(chain([(0, 0), (0.2, 0), (0.4, 0), (0.4, 0.8), (3, 0.8)]), 'stair')                    # the leg before is 0.4 mm in two pieces: exactly half the step
+    assert got(chain([(0, 0), (3, 0), (3, 0.4), (3, 0.8), (6, 0.8)]), 'stair')                        # the middle leg in two pieces is one leg

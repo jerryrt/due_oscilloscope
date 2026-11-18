@@ -27,7 +27,7 @@ def report(path, which='v1'):
     text.append('segments %d  arcs %d' % (len(b.s_idx), len(b.a_idx)))
     text.append('track_geometry %s' % dict(sorted(collections.Counter(k for k, *_ in tg).items())))
     text.append('fill_quality   %s  %s' % (dict(sorted(collections.Counter(k for k, *_ in fq).items())), {k: round(v, 1) for k, v in sorted(figs.items())}))
-    for kind in ('stale_exception', 'arc', 'angle', 'jog', 'entry', 'over_pad', 'detour', 'dangling', 'tspur', 'wide', 'narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid'):
+    for kind in ('stale_exception', 'arc', 'angle', 'jog', 'entry', 'over_pad', 'detour', 'stair', 'dangling', 'tspur', 'wide', 'narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid'):
         for k, t, x, y in sorted((p for p in tg + fq if p[0] == kind), key=lambda p: (p[2], p[3])):
             text.append('%-8s %-7.2f %-7.2f %s' % (kind, x, y, t))
     return '\n'.join(text), len(tg) + len(fq)

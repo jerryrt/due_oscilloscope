@@ -965,6 +965,7 @@ TRACK_GEOMETRY_NAMES = (
     tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
     tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
     tunable('TRACK_MAX_TURN', 180.0, 'degrees', 'a run between its two ends (pads, vias, junctions) changes its heading by this much or more, net, within any TRACK_TURN_WINDOW of its length: a hook or U-turn (a dog-leg is 90, a lane change 0)'),
+    tunable('TRACK_STAIR_MAX', 1.5, 'mm', 'a Z of two opposite 90 degree bends with a middle leg shorter than this, where a single 45 degree leg would fit (both legs either side at least half of it), is a stair'),
     tunable('TRACK_KINK_OFFSET', 0.6, 'mm', 'a V kink or bump: bends adding up to 180 degrees in all (45 down, 90 up, 45 level) that come back to the heading they left within this lateral offset of the line they left'),
     tunable('TRACK_TURN_WINDOW', 3.0, 'mm', 'the stretch of a run over which its turning is added up'),
     tunable('TRACK_DETOUR_RATIO', 1.5, 'x', 'a run is no longer than this times the shortest octilinear (0/45/90) path between its two ends'),
@@ -1309,6 +1310,29 @@ def _route_findings(b, c):
         pts = [(S[i, 2 * (1 - eo)], S[i, 2 * (1 - eo) + 1]) for i, eo in order] + [(S[order[-1][0], 2 * order[-1][1]], S[order[-1][0], 2 * order[-1][1] + 1])]
         return pts, (k0, i0, e0), (k1, i1, e1)
 
+    def stairs(pts):
+        """[(middle leg, leg before, leg after, x, y)]: three consecutive legs of the run where the two bends are 90 degrees (within TRACK_ANGLE_TOL) in opposite senses, the middle leg is shorter than
+        TRACK_STAIR_MAX, and both legs either side are at least half of it (so one 45 degree leg could take the step). Collinear pieces are one leg"""
+        legs = []                                            # (heading degrees, length, start point)
+        for j in range(len(pts) - 1):
+            dx, dy = pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]
+            ln = math.hypot(dx, dy)
+            if ln < 1e-9:
+                continue
+            h = math.degrees(math.atan2(dy, dx))
+            if legs and abs((h - legs[-1][0] + 180.0) % 360.0 - 180.0) < c.TRACK_ANGLE_TOL:
+                legs[-1] = (legs[-1][0], legs[-1][1] + ln, legs[-1][2])
+            else:
+                legs.append((h, ln, pts[j]))
+        res = []
+        for a, m, d in zip(legs, legs[1:], legs[2:]):
+            t1 = (m[0] - a[0] + 180.0) % 360.0 - 180.0
+            t2 = (d[0] - m[0] + 180.0) % 360.0 - 180.0
+            if abs(abs(t1) - 90.0) <= c.TRACK_ANGLE_TOL and abs(abs(t2) - 90.0) <= c.TRACK_ANGLE_TOL and t1 * t2 < 0 \
+                    and m[1] < c.TRACK_STAIR_MAX - 1e-9 and a[1] >= m[1] / 2 - 1e-9 and d[1] >= m[1] / 2 - 1e-9:
+                res.append((m[1], a[1], d[1], m[2][0], m[2][1]))
+        return res
+
     def worst_turn(pts):
         """the worst stretch of TRACK_TURN_WINDOW, (kind, bend points) or None: a 'hook' when the heading changes by TRACK_MAX_TURN or more net there, a 'V kink' when the bends add up to 180 degrees in all and
         the track comes back to its heading within TRACK_KINK_OFFSET of the line it left"""
@@ -1354,6 +1378,8 @@ def _route_findings(b, c):
         if length >= c.TRACK_DETOUR_MIN_LEN and length > c.TRACK_DETOUR_RATIO * short + 1e-6:
             mid = pts[len(pts) // 2]
             out.append(('detour', '%s run of %.2f mm is %.1f times its %.2f mm shortest path' % (name(i0), length, length / max(short, 1e-9), short), float(mid[0]), float(mid[1])))
+        for st in stairs(pts):
+            out.append(('stair', '%s Z of %.2f mm between two opposite 90 degree bends where a 45 degree leg would do (the legs either side are %.2f and %.2f mm)' % (name(i0), st[0], st[1], st[2]), float(st[3]), float(st[4])))
         runlen[find(i0)] = length
         for k, i, eo in ((k0, i0, e0), (k1, i1, e1)):
             p = (k[2] / 1000, k[3] / 1000)

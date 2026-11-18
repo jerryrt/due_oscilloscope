@@ -105,6 +105,11 @@ declare -A M=(
   [gndstub_ignored]="rules.py|                if vis > c.FILL_GNDPAD_STUB and not (|                if False and not ("
   [gndstub_mask_ignored]="rules.py|or not r_fill.mask[row, col]:|or True:"
   [gndstub_not_stopping_at_via]="rules.py|                if in_via((x, y)):\n                    reached = True|                if False:\n                    reached = True"
+  [stair_same_sense]="rules.py|t1 * t2 < 0|True"
+  [stair_any_length]="rules.py|and m[1] < c.TRACK_STAIR_MAX - 1e-9 and a[1]|and a[1]"
+  [stair_legs_unchecked]="rules.py|and a[1] >= m[1] / 2 - 1e-9 and d[1] >= m[1] / 2 - 1e-9:|:"
+  [stair_not_90]="rules.py|abs(abs(t1) - 90.0) <= c.TRACK_ANGLE_TOL and|abs(t1) > 10 and"
+  [stair_legs_not_merged]="rules.py|            if legs and abs((h - legs[-1][0] + 180.0) % 360.0 - 180.0) < c.TRACK_ANGLE_TOL:|            if False:"
 )
 fail=0
 for name in "${!M[@]}"; do
