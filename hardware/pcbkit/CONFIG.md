@@ -116,7 +116,7 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 | `FILL_LAYERS` | tunable | layer letters | `('F', 'B')` | layers measured |
 | `FILL_MIN_WIDTH` | tunable | mm per layer, or one mm | `{'F': 0.8, 'B': 0.5}` | no part of the pour is narrower: the top for its looks, the plane for slivers only |
 | `FILL_DEAD_END_WIDTH` | tunable | mm | `1.6` | a finger narrower than this joined at one end is a dead end |
-| `FILL_LENGTH_FACTOR` | tunable | x half the width | `1.5` | shorter parts are corner rounding |
+| `FILL_LENGTH_FACTOR` | tunable | x half the width | `2.0` | shorter parts are corner rounding |
 | `FILL_RASTER` | tunable | pixels per mm | `40.0` | measuring resolution (width figures are good to a pixel or two) |
 | `FILL_MIN_AREA` | tunable | mm2 | `0.02` | smaller parts are ignored |
 | `FILL_THERMAL_LAYERS` | tunable | layer letters | `('F',)` | zones that must use thermal reliefs on SMD GND pads |
