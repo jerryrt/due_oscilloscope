@@ -121,6 +121,9 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 | `FILL_LENGTH_FACTOR` | tunable | x half the width | `2.0` | shorter parts are corner rounding |
 | `FILL_RASTER` | tunable | pixels per mm | `40.0` | measuring resolution (width figures are good to a pixel or two) |
 | `FILL_MIN_AREA` | tunable | mm2 | `0.02` | smaller parts are ignored |
+| `FILL_ROUGH_LAYERS` | tunable | layer letters | `('F',)` | layers whose pour edge must not be a row of clearance arcs: two or more pads or vias in a row (of any net, the net's own when they stand half out of the pour) that the edge hugs; one alone may show its arc |
+| `FILL_ROUGH_TOL` | tunable | mm | `0.15` | an item hugs the edge when pour lies within the zone clearance plus this of it |
+| `FILL_ROUGH_LINK` | tunable | mm | `2.0` | hugging items closer than this are a row |
 | `FILL_THERMAL_LAYERS` | tunable | layer letters | `('F',)` | zones that must use thermal reliefs on SMD GND pads |
 | `FILL_SOLID_LAYERS` | tunable | layer letters | `('B',)` | zones that must connect pads solid |
 

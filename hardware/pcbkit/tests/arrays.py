@@ -99,5 +99,5 @@ class Arr:
                     rhole.append(1 if hole else 0)
                 roff.append(len(voff) - 1)
             kw.update(z_layer=[z[0] for z in self.zone], z_net=[z[1] for z in self.zone], z_filled=[z[2] for z in self.zone],
-                      z_keepout=[z[3] for z in self.zone], z_conn=[z[5] for z in self.zone], z_xy=np.array(xy, float), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
+                      z_keepout=[z[3] for z in self.zone], z_conn=[z[5] for z in self.zone], z_clear=[0.3 for z in self.zone], z_minw=[0.2 for z in self.zone], z_xy=np.array(xy, float), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
         return B.BoardArrays.from_arrays(**kw)

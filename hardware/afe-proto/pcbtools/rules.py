@@ -560,5 +560,22 @@ def lr11(b, cfg, report=None):
                   dict(outlines=float(len(cfg.OUTLINE)), designators=float(ndes), violations=float(len(bad)), waived_pairs=float(nwaived)))
 
 
+# ----------------------------------------------------------------------------------------------------- LR-13, LR-14
+def _copper_cfg(cfg):
+    """the names pcbkit's two copper rules declare, taken from the board configuration (the whole configuration carries names the typo guard would reject)"""
+    names = [n.key for n in _kit.TRACK_GEOMETRY_NAMES + _kit.FILL_QUALITY_NAMES]
+    return {k: getattr(cfg, k) for k in names if hasattr(cfg, k)}
+
+
+def lr13(b, cfg, report=None):
+    """LR-13 = pcbkit.rules.track_geometry: tracks on 0/45/90, no short jog, straight into pads, over no foreign pad; the configuration's named exceptions are counted as waived"""
+    return _kit.track_geometry(b, _copper_cfg(cfg), report)
+
+
+def lr14(b, cfg, report=None):
+    """LR-14 = pcbkit.rules.fill_quality: no narrow piece, dead end or row of arcs in the top pour, thermal reliefs on its SMD GND pads, the bottom plane solid"""
+    return _kit.fill_quality(b, _copper_cfg(cfg), report)
+
+
 ROWS = [('LR-1', lr1), ('LR-2', lr2), ('LR-3', lr3), ('LR-4', lr4), ('LR-4 INV_MAX', lr4_inv), ('LR-12 DECOUP_MAX', lr12),
-        ('LR-5', lr5), ('LR-6', lr6), ('LR-7', lr7), ('LR-8', lr8), ('LR-9', lr9), ('LR-11', lr11)]
+        ('LR-5', lr5), ('LR-6', lr6), ('LR-7', lr7), ('LR-8', lr8), ('LR-9', lr9), ('LR-11', lr11), ('LR-13', lr13), ('LR-14', lr14)]

@@ -80,3 +80,21 @@ def test_a_board_read_before_the_zone_fields_is_refused_not_passed():
     if old is not None:
         with pytest.raises(FieldNotRead):
             rules.fill_quality_parts(old, dict(GND='GND'))
+
+
+def _hugged(ys, x=20.9):
+    a = board(rect(0, 0, 20, 20)).part('U1', 30, 30)
+    for n, y in enumerate(ys):
+        a.p('U1', str(n + 1), x, y, 'SIG', size=1.0)
+    return a
+
+
+def test_a_row_of_pads_the_pour_edge_hugs_is_rough_and_a_single_pad_or_a_disabled_layer_is_not():
+    assert 'rough' in kinds(_hugged([5, 7, 9]))
+    assert 'rough' not in kinds(_hugged([7]))
+    assert 'rough' not in kinds(_hugged([5, 7, 9], x=24.0))
+    assert 'rough' not in kinds(_hugged([5, 7, 9]), FILL_ROUGH_LAYERS=())
+    assert 'rough' not in kinds(_hugged([5, 7, 9]), FILL_ROUGH_TOL=0.0)                      # 0.4 mm from the edge is not within the 0.3 clearance
+    assert 'rough' not in kinds(_hugged([5, 7, 9]), FILL_ROUGH_LINK=0.2)                    # the row link distance is the limit
+    r = rules.fill_quality(_hugged([5, 7, 9]).build(), dict(GND='GND', FILL_LAYERS=('F',)))
+    assert not r.ok and r.figures['rough'] == 1.0 and r.figures['F_rough'] == 1.0

@@ -40,7 +40,7 @@ SECTION_SOURCES = (
 )
 
 # ---------------------------------------------------------------------------------------------------- section 2: the LR table
-LR_HEADING = '## 2. LR table (rules LR-1 to LR-11 on the integrated board)'
+LR_HEADING = '## 2. LR table (rules LR-1 to LR-11, LR-13 and LR-14 on the integrated board)'
 LR_INTRO = ('Verdicts are the checker\'s own (`python3 -B -m pcbtools.check BOARD --config {config} --drc`, called through the library so the figures are kept). '
             'The rule text is `docs/afe.md`\'s, shortened to its first sentence; the full text is there. '
             'The supply-pin decoupling distance is a sub-check of **LR-4** ("each supply pin has its 100 nF within a few millimetres", `docs/afe.md`), printed here as '
@@ -48,7 +48,7 @@ LR_INTRO = ('Verdicts are the checker\'s own (`python3 -B -m pcbtools.check BOAR
             'and `docs/afe.md` has no LR-12 row. The rule numbers in this table are `docs/afe.md`\'s. '
             '**Two recorded LR-2 deviations are not rows of this table**, because the checker has no figure for them; they are in section 6 with their conditions '
             '(the 10.22 mm IN-pad to N-bus distance, and the CH2 output-run ruling that became moot).\n')
-LR_DOC_ROWS = ('LR-1', 'LR-2', 'LR-3', 'LR-4', 'LR-5', 'LR-6', 'LR-7', 'LR-8', 'LR-9', 'LR-10', 'LR-11')      # rows whose text is in RULE_DOC
+LR_DOC_ROWS = ('LR-1', 'LR-2', 'LR-3', 'LR-4', 'LR-5', 'LR-6', 'LR-7', 'LR-8', 'LR-9', 'LR-10', 'LR-11', 'LR-13', 'LR-14')      # rows whose text is in RULE_DOC
 LR_RENAMES = (('LR-12 DECOUP_MAX', 'LR-4 decoupling (DECOUP_MAX {:.1f} mm)', 'DECOUP_MAX'),)             # (checker row, label shown, config field filling {})
 LR_SUBCHECKS = (('INV_MAX', '(LR-4 sub-check) the inverting-node trace is the shortest of the stage'),
                 ('LR-4 decoupling', '(LR-4 sub-check) each supply pin has its 100 nF within a few millimetres'))

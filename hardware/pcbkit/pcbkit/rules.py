@@ -1145,7 +1145,8 @@ def track_geometry(b, cfg, report=None):
     fig['violations'] = float(len(parts))
     fig['waived'] = float(len(parts.waived))
     bad = [f'{p[0]}: {p[1]} at ({p[2]:.2f}, {p[3]:.2f})' for p in parts]
-    return Result(not parts, '; '.join(bad[:6]) or f'{len(b.s_idx)} segments: on the angle step, no jogs, straight into pads, over no foreign pad', fig)
+    waived = f', {len(parts.waived)} findings waived by named exceptions' if parts.waived else ''
+    return Result(not parts, '; '.join(bad[:6]) or f'{len(b.s_idx)} segments: on the angle step, no jogs, straight into pads, over no foreign pad{waived}', fig)
 
 
 # ----------------------------------------------------------------------------------------------------- fill quality
@@ -1157,6 +1158,9 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_LENGTH_FACTOR', 2.0, 'x half the width', 'a narrow part is a finger or a tooth only when it is longer than this times half the width limit (a shorter one is the rounding of a corner)'),
     tunable('FILL_RASTER', 40.0, 'pixels per mm', 'the resolution the pour is measured at'),
     tunable('FILL_MIN_AREA', 0.02, 'mm2', 'narrow parts smaller than this are ignored'),
+    tunable('FILL_ROUGH_LAYERS', ('F',), 'layer letters', 'the layers whose pour edge must not be a row of clearance arcs (two or more pads or vias in a row, of any net, that the edge hugs); one alone may show its arc'),
+    tunable('FILL_ROUGH_TOL', 0.15, 'mm', 'an item hugs the pour edge when pour lies within the zone clearance plus this of it'),
+    tunable('FILL_ROUGH_LINK', 2.0, 'mm', 'hugging items closer than this (copper to copper) are a row'),
     tunable('FILL_THERMAL_LAYERS', ('F',), 'layer letters', 'the layers whose zone must connect SMD GND pads through thermal reliefs'),
     tunable('FILL_SOLID_LAYERS', ('B',), 'layer letters', 'the layers whose zone must connect pads solid (a plane)'),
 )
@@ -1165,10 +1169,11 @@ THERMAL, SOLID = 1, 2            # pcbnew's ZONE_CONNECTION_THERMAL and ZONE_CON
 
 def fill_quality_parts(b, cfg, report=None):
     """[(kind, text, x, y)] findings: 'narrow' (a part of the pour narrower than FILL_MIN_WIDTH, and longer than the rounding of a corner), 'dead_end' (a finger narrower than
-    FILL_DEAD_END_WIDTH touching other copper at one end only), 'thermal' (a zone on a FILL_THERMAL_LAYERS layer does not use thermal reliefs on its SMD GND pads), 'solid'
+    FILL_DEAD_END_WIDTH touching other copper at one end only), 'rough' (a row of clearance arcs on a FILL_ROUGH_LAYERS layer), 'thermal' (a zone on a FILL_THERMAL_LAYERS layer does not use thermal reliefs on its SMD GND pads), 'solid'
     (a zone on a FILL_SOLID_LAYERS layer does not connect pads solid). Also returns, as the last element of the tuple pair, the figures: see fill_quality."""
     from . import fills
     require(b, 'z_conn')
+    require(b, 'z_clear')
     c = resolve(cfg, FILL_QUALITY_NAMES, 'fill_quality', report)
     gnd = nid(b, c.GND)
     out = []
@@ -1187,6 +1192,15 @@ def fill_quality_parts(b, cfg, report=None):
         de = [p for p in fills.thin_report(r_all, 0.0, c.FILL_DEAD_END_WIDTH, c.FILL_MIN_AREA, length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]
         for p in de:
             out.append(('dead_end', '%s pour finger %.2f mm wide, %.1f mm long, touching other copper at one end' % (lay, p.width, p.length), p.x, p.y))
+        if lay in c.FILL_ROUGH_LAYERS:
+            from scipy import ndimage as _ndi
+            rough = fills.rough_edges(b, r_fill, code, gnd, clearance=float(b.z_clear[zs[0]]), tol=c.FILL_ROUGH_TOL, link=c.FILL_ROUGH_LINK)
+            rl, rn = _ndi.label(rough, structure=np.ones((3, 3)))
+            for i in range(1, rn + 1):
+                rr, cc = np.nonzero(rl == i)
+                x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
+                out.append(('rough', '%s pour edge is a row of clearance arcs round pads and vias (%.1f mm2 of it)' % (lay, (rl == i).sum() / r_fill.ppmm ** 2), x, y))
+            figs[f'{lay}_rough'] = rn
         figs[f'{lay}_narrow'] = len(nar)
         figs[f'{lay}_dead_end'] = len(de)
         figs[f'{lay}_outline_mm'] = float(sum(
@@ -1204,12 +1218,12 @@ def fill_quality_parts(b, cfg, report=None):
 
 def fill_quality(b, cfg, report=None):
     parts, figs = fill_quality_parts(b, cfg, report)
-    kinds = ('narrow', 'dead_end', 'thermal', 'solid')
+    kinds = ('narrow', 'dead_end', 'rough', 'thermal', 'solid')
     fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig.update({k: float(v) for k, v in figs.items()})
     fig['violations'] = float(len(parts))
     bad = [f'{p[0]}: {p[1]} at ({p[2]:.2f}, {p[3]:.2f})' for p in parts]
-    return Result(not parts, '; '.join(bad[:6]) or 'no narrow or dead-end pour, thermal reliefs and solid planes as configured', fig)
+    return Result(not parts, '; '.join(bad[:6]) or 'no narrow piece, dead end or row of arcs in the pour, thermal reliefs and solid planes as configured', fig)
 
 
 # ----------------------------------------------------------------------------------------------------- the effective configuration

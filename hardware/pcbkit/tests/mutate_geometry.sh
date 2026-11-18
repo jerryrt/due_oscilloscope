@@ -46,6 +46,10 @@ declare -A M=(
   [reach_any_net]="rules.py|for h in np.flatnonzero((pa['net'] == b.s_net[s]) \& (np.array(|for h in np.flatnonzero((pa['net'] >= 0) \& (np.array("
   [reach_any_pitch]="rules.py|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= c.TRACK_FINE_PITCH + 1e-9)):|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= 9e9)):"
   [reach_infinite]="rules.py|if (np.hypot(E[:, 0] - pa['cx'][h], E[:, 1] - pa['cy'][h]) <= c.TRACK_BREAKOUT_REACH).any():|if True:"
+  [rough_layers_ignored]="rules.py|        if lay in c.FILL_ROUGH_LAYERS:|        if False:"
+  [rough_link_ignored_rule]="rules.py|link=c.FILL_ROUGH_LINK)|link=2.0)"
+  [rough_tol_ignored_rule]="rules.py|tol=c.FILL_ROUGH_TOL, link|tol=0.15, link"
+  [rough_not_counted_in_ok]="rules.py|    kinds = ('narrow', 'dead_end', 'rough', 'thermal', 'solid')|    kinds = ('narrow', 'dead_end', 'thermal', 'solid')"
 )
 fail=0
 for name in "${!M[@]}"; do
