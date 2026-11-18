@@ -13,7 +13,8 @@ import tokenize
 import pytest
 
 PKG = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'pcbtools')
-MODULES = ['rules.py', 'check.py', 'drc.py', 'fence.py', 'cap.py', 'geom.py', 'mutate.py', 'boardio.py', 'shapes.py',
+KIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'pcbkit', 'pcbkit')      # the general modules the AFE's geom, shapes and boardio became
+MODULES = ['rules.py', 'check.py', 'drc.py', 'fence.py', 'cap.py', 'mutate.py', os.path.join(KIT, 'geom.py'), os.path.join(KIT, 'board.py'),
            'gate3/__init__.py', 'gate3/__main__.py', 'gate3/engine.py', 'gate3/connectivity.py', 'gate3/table.py']      # the gate-3 tool; its table (boards/gate3_*.py) is a config
 REF = re.compile(r'(?<![A-Za-z0-9_])(?:R|C|U|J|D|Q|L|TP|BR|MH|SW|F)\d+(?![A-Za-z0-9_])')
 NET = re.compile(r"(?:^|[\s'\"(\[,])/[A-Za-z0-9_+{]")

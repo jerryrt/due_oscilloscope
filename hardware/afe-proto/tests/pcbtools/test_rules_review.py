@@ -7,7 +7,9 @@ import os
 import numpy as np
 import pytest
 
-from pcbtools import boardio, check as CK, drc, mutate as M, rules as R, shapes
+from pcbkit import geom
+from pcbtools import check as CK, drc, mutate as M, rules as R
+from pcbkit import board as KB
 from pcbtools.boards import v2, v2_arms
 from synth import Synth, cfg
 
@@ -105,7 +107,7 @@ def test_lr8_a_board_without_the_source_part_has_nothing_to_reach():
 
 
 def test_the_real_integrated_board_resolves_the_scope_group():
-    b = boardio.load_npz(os.path.join(ARR, 'v2-integrated-990d4b03.npz'))
+    b = KB.load_npz(os.path.join(ARR, 'v2-integrated-990d4b03.npz'))
     assert {'/+3V3A', '/+3V3A_K', '/+3V3A_S', '/+3V3A_U', '/+3V3A_R'} == R.family(v2, '/+3V3A')
     pt = R.pads(b)
     assert not [k for j, k in enumerate(pt.keys) if k[0] == 'U101' and b.nets[pt.net[j]] == '/+3V3A']    # no scope pad on /+3V3A itself
@@ -162,7 +164,7 @@ def test_a_zone_fill_joins_what_lies_in_it_on_its_layer_hole_aware():
 
 def test_the_integrated_boards_bottom_hop_is_one_piece_with_its_vias():
     """the bottom hop (45.7, 27) - (48.2, 27) of /+3V3A: the top-only graph counts it as 8 pieces, there are 7"""
-    b = boardio.load_npz(os.path.join(ARR, 'v2-integrated-990d4b03.npz'))
+    b = KB.load_npz(os.path.join(ARR, 'v2-integrated-990d4b03.npz'))
     assert len(R.pieces(b, v2, '/+3V3A', v2.STAR['/+3V3A'])) == 7
     on = (b.s_net == b.net_id('/+3V3A')) & (b.s_layer == 1)
     assert on.sum() >= 1
@@ -220,14 +222,14 @@ def test_pad_shapes_have_the_size_and_rotation_the_arrays_hold():
     s.p('R1', '2', 5, 8, '/X', size=1.0, shape=0)                           # a circle of diameter 1
     s.p('R1', '3', 5, 12, '/X', size=3.0, sy=1.0, shape=2, rot=0.0)         # an oval 3 x 1: the capsule of its long axis
     b = s.build()
-    cu = shapes.pad_copper(b, [0])
+    cu = geom.pad_copper(b, [0])
     box = lambda x0, y0, x1, y1: [x0, y0, x1, y1]
     assert cu.gap_to_box(box(6.0, 0, 7.0, 10))[0] == pytest.approx(0.7)       # x edge at 5.3
     assert cu.gap_to_box(box(0, 6.5, 10, 7.0))[0] == pytest.approx(0.5)       # y edge at 6.0
     assert cu.gap_to_box(box(5.2, 5, 9, 9))[0] == 0.0                         # overlapping
-    cc = shapes.pad_copper(b, [1])
+    cc = geom.pad_copper(b, [1])
     assert cc.gap_to_box(box(6.0, 0, 7.0, 20))[0] == pytest.approx(0.5)       # radius 0.5
-    co = shapes.pad_copper(b, [2])
+    co = geom.pad_copper(b, [2])
     assert co.gap_to_box(box(7.5, 0, 9, 20))[0] == pytest.approx(1.0)         # reaches x = 6.5: its round end
     assert co.gap_to_box(box(0, 13.0, 20, 14))[0] == pytest.approx(0.5)       # 0.5 half height
 
@@ -293,7 +295,7 @@ def board_npz():
 
 
 def test_an_arm_on_a_rule_that_already_fails_is_not_testable_and_the_run_is_not_clean(capsys):
-    b = boardio.load_npz(board_npz())
+    b = KB.load_npz(board_npz())
     always_fails = lambda b, c: R.Result(False, 'broken before the arm', {})
     out = []
     miss = CK.run_arms(b, v2, [('on a failing rule', always_fails, lambda b, c: b), ('flips', R.lr5, v2_arms.mut5)], out=out.append,
@@ -330,7 +332,7 @@ def test_lr10_not_run_is_not_all_pass(capsys):
 
 def test_lr10_is_not_all_pass_when_drc_was_asked_for_and_cannot_run(capsys):
     """--drc on a board whose file is not there (a cache of a moved board): the row says NOT RUN, the run is not a pass"""
-    b = boardio.load_npz(board_npz()).replace(path='/nonexistent/board.kicad_pcb')
+    b = KB.load_npz(board_npz()).replace(path='/nonexistent/board.kicad_pcb')
     out = []
     fails = CK.run_rows(b, v2, ['LR-1', 'LR-10'], want_drc=True, out=out.append)
     assert fails == [] and CK.run_rows.not_run and out[-1] == 'LR-10 NOT RUN' and out[-2].startswith('[NOT RUN] LR-10')
@@ -344,7 +346,7 @@ def test_the_lr10_arm_is_made_in_the_same_work_copy_as_the_base_run(tmp_path):
     name = 'v2-refcal-326f141b'
     for f in (name + '.kicad_pcb', name + '.kicad_pro', 'fp-lib-table'):
         (src / f).write_bytes(open(os.path.join(FX, f), 'rb').read())
-    b = boardio.load_npz(os.path.join(ARR, name + '.npz')).replace(path=str(src / (name + '.kicad_pcb')))
+    b = KB.load_npz(os.path.join(ARR, name + '.npz')).replace(path=str(src / (name + '.kicad_pcb')))
     base = drc._work_copy(b.path, str(tmp_path / 'base'))
     arm = drc.lr10_arm(b, str(tmp_path / 'arm'), v2)
     names = lambda p: sorted(os.listdir(os.path.dirname(p)))
@@ -378,7 +380,7 @@ def test_lr4_a_ground_track_is_measured_against_the_nodes_track_edge_too():
 
 def test_an_oval_pad_follows_its_rotation():
     s = Synth('/X').part('R1', 0, 0).p('R1', '1', 5, 12, '/X', size=3.0, sy=1.0, shape=2, rot=90.0)         # long axis vertical
-    cu = shapes.pad_copper(s.build(), [0])
+    cu = geom.pad_copper(s.build(), [0])
     assert cu.gap_to_box([0, 14.0, 20, 15])[0] == pytest.approx(0.5)             # its end at y = 13.5
     assert cu.gap_to_box([6.0, 0, 7.0, 20])[0] == pytest.approx(0.5)             # its side at x = 5.5
 

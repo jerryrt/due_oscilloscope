@@ -516,7 +516,7 @@ def _copper_components(b, refs, R, gnd):
     is segments that touch each other, and the pads they touch (same net); the crossing of a segment with the region boundary is
     an edge point of its piece. Bottom copper is not followed: a bottom hop leaves a net in two pieces, which is what a bridge
     does."""
-    from . import geom
+    from pcbkit import geom
     inside = lambda x, y: any(r[0] <= x <= r[2] and r[1] <= y <= r[3] for r in R)
     seg = np.flatnonzero((b.s_layer == 0) & (b.s_net > 0))
     seg = np.array([i for i in seg if b.nets[b.s_net[i]] != gnd and (inside(b.s_x0[i], b.s_y0[i]) or inside(b.s_x1[i], b.s_y1[i])

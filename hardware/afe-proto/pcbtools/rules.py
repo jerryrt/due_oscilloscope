@@ -13,7 +13,7 @@ What the old tool did and this port keeps, on purpose, because the goldens depen
   * connectivity (LR-6, LR-8) is by geometry, see `pieces`.
 What differs, and why (the old tool sampled points, this one is exact): every segment test (inside a box, near a segment,
 distance to a box) was `any(sample point ...)` with samples 0.05-0.5 mm apart; here it is the exact segment test of
-pcbtools.geom. Figures that came from the closest sample (LR-5's distances) can therefore be smaller by up to the
+pcbkit.geom. Figures that came from the closest sample (LR-5's distances) can therefore be smaller by up to the
 sample step; verdicts agree on every fixture. tests/pcbtools/test_rules_equivalence.py lists each difference.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ import os
 import numpy as np
 from scipy.spatial import cKDTree
 
-from . import geom, shapes
+from pcbkit import geom
 
 
 # the helpers every rule shares, and the Result type, live in pcbkit (hardware/pcbkit); the names are re-exported here unchanged

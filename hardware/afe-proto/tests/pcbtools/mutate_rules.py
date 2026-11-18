@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))              # hardware/afe-proto
 SCR = os.path.join(ROOT, 'pcbtools', '.scratch', 'mutr')
 TESTS = ['test_rules_keepout.py', 'test_rules_synthetic.py', 'test_rules_review.py', 'test_rules_equivalence.py', 'test_fence.py']
 
-R, F, M, S, K, D = 'rules.py', 'fence.py', 'mutate.py', 'shapes.py', 'check.py', 'drc.py'
+R, F, M, S, K, D = 'rules.py', 'fence.py', 'mutate.py', 'K:geom.py', 'check.py', 'drc.py'        # S: the copper shapes, in pcbkit.geom
 RESULT = os.path.join(HERE, 'rules_mutation_result_stage4.txt')
 MUTANTS = [
     # LR-1
@@ -155,8 +155,7 @@ def run(tag, edit):
     shutil.copytree(os.path.join(os.path.dirname(ROOT), 'pcbkit'), kit, ignore=shutil.ignore_patterns('.scratch', '__pycache__', 'tests'))
     if edit:
         f, old, new = edit
-        p = (os.path.join(kit, 'pcbkit', f[2:]) if f.startswith('K:') else os.path.join(kit, 'pcbkit', 'geom.py') if f == 'shapes.py'      # the copper shapes live in pcbkit.geom now
-             else os.path.join(d, 'pcbtools', f))
+        p = (os.path.join(kit, 'pcbkit', f[2:]) if f.startswith('K:') else os.path.join(d, 'pcbtools', f))
         s = open(p).read()
         if s.count(old) != 1:
             return 'BAD-MUTANT (pattern found %d times)' % s.count(old)
