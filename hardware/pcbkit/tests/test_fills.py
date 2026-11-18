@@ -368,3 +368,31 @@ def test_a_connectors_ground_pins_exemption_does_not_cover_another_nets_pins():
     b = a.build()
     r = fills.net_copper(b, 0, 1, ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
     assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()
+
+
+def test_own_pads_with_pour_only_in_their_near_ring_do_not_stand_at_a_pour_edge():
+    xs, ys = [10, 10, 10], [5, 7.2, 9.4]
+    rings = []
+    for x, y in zip(xs, ys):                                                                 # a pour ring 0.2 mm thick round each pad's thermal gap: pour near, none beyond
+        rings += [(False, rect(x - 0.9, y - 0.9, x + 0.9, y + 0.9)), (True, rect(x - 0.7, y - 0.7, x + 0.7, y + 0.7))]
+    a = Arr('GND', 'SIG').z('GND', 0, rings)
+    a.part('U1', 30, 30)
+    for n, (x, y) in enumerate(zip(xs, ys)):
+        a.p('U1', str(n + 1), x, y, 'GND', size=1.0)
+    b = a.build()
+    r = fills.net_copper(b, 0, b.nets.index('GND'), ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+    assert not fills.rough_edges(b, r, 0, 1, clearance=0.3).any()
+
+
+def test_keepout_polygons_are_clipped_to_the_bounds_and_extra_cells_make_a_keep_out_of_their_own():
+    import numpy as np
+    _, r = raster(rect(0, 0, 40, 40), ppmm=20)
+    box = np.zeros_like(r.mask)
+    box[300:400, 200:300] = True                                                                 # x 9..14, y 21..26 (rows count down from the top)
+    free = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=box)
+    assert len(free) == 1
+    none = fills.keepout_polygons(r, 1.0, 0.5, 0.0)
+    assert none == []                                                                            # no extra cells, nothing to carve in a plain pour
+    clipped = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=box, bounds=(0, 0, 12, 40))
+    xs = {round(x, 3) for x, _ in clipped[0]}
+    assert max(xs) <= 12.0 + 1e-9 and max({round(x, 3) for x, _ in free[0]}) > 12.0

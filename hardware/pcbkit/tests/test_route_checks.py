@@ -230,3 +230,15 @@ def test_a_stair_needs_opposite_90_degree_bends_and_counts_a_leg_in_pieces_as_on
     assert not got(chain([(0, 0), (3, 0), (3.8, 0.8), (4.6, 0)]), 'stair')                            # 45 then 90 back: not two 90 degree bends
     assert got(chain([(0, 0), (0.2, 0), (0.4, 0), (0.4, 0.8), (3, 0.8)]), 'stair')                    # the leg before is 0.4 mm in two pieces: exactly half the step
     assert got(chain([(0, 0), (3, 0), (3, 0.4), (3, 0.8), (6, 0.8)]), 'stair')                        # the middle leg in two pieces is one leg
+
+
+def test_an_end_that_is_already_a_joint_is_not_snapped_onto_a_third_track_that_passes_close():
+    import numpy as np
+    a = base().s('SIG', 0, 0, 0, 5, 0, 0.25).s('SIG', 0, 5, 0, 5, 3, 0.25).s('SIG', 0, 4, -0.1, 6, -0.1, 0.25)       # A and C meet at (5, 0); B passes 0.1 below it, inside both caps
+    b = a.build()
+    S0 = rules.segs(b)
+    L0 = np.hypot(S0[:, 2] - S0[:, 0], S0[:, 3] - S0[:, 1])
+    S2, _, _, _, orig = rules._split_at_taps(b, S0, L0)
+    for k in (0, 1):
+        pieces = [row for row, o in zip(S2, orig) if o == k]
+        assert any(abs(r[0] - 5) < 1e-9 and abs(r[1] - 0) < 1e-9 or abs(r[2] - 5) < 1e-9 and abs(r[3] - 0) < 1e-9 for r in pieces)       # the joint stays where it was
