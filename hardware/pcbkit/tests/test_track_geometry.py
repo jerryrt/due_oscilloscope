@@ -96,6 +96,17 @@ def test_a_track_over_the_pads_of_a_part_it_does_not_end_on_is_found_even_on_its
     assert kinds(bottom) == []                                                 # a pad on the top is not under a bottom track
 
 
+def test_a_run_that_starts_on_a_pad_and_turns_is_still_on_its_part_and_a_run_that_does_not_is_not():
+    def board(start_on_pad):
+        a = base().part('U1', 0, 0).p('U1', '2', 1.0, 1.5, 'SIG', size=0.4)
+        if start_on_pad:
+            a = a.p('U1', '1', 0, 0, 'SIG', size=0.3)
+        return a.s('SIG', 0, 0, 0, 0, 1.5).s('SIG', 0, 0, 1.5, 3, 1.5)           # up from pad 1, then along y = 1.5 over pad 2
+    assert 'over_pad' not in kinds(board(True)) and 'over_pad' in kinds(board(False))
+    other = base().part('U1', 0, 0).p('U1', '2', 1.0, 1.5, 'SIG', size=0.4).part('U2', 0, 0).p('U2', '1', 0, 0, 'SIG', size=0.3).s('SIG', 0, 0, 0, 0, 1.5).s('SIG', 0, 0, 1.5, 3, 1.5)
+    assert 'over_pad' in kinds(other)                                            # starting on another part's pad does not excuse it
+
+
 def test_the_configuration_names_and_defaults_are_declared():
     text = rules.effective_config({}, 'track_geometry')
     for n in ('TRACK_ANGLE_STEP', 'TRACK_ANGLE_TOL', 'TRACK_MIN_LEG', 'TRACK_FINE_PITCH', 'TRACK_ENTRY_EDGE_TOL', 'TRACK_OVERLAP_TOL'):

@@ -23,6 +23,7 @@ declare -A M=(
   [entry_round_pad_judged]="rules.py|if pa['shape'][h] == 0:|if False:"
   [entry_other_nets_judged]="rules.py|in_end[e_i] \& (pa['net'] == b.s_net[i]) \&|in_end[e_i] \&"
   [over_pad_own_part_judged]="rules.py|if int(pa['fp'][h]) in mine:|if False:"
+  [over_pad_own_segment_ends_only]="rules.py|mine = run_fps[cfind(i)]|mine = {int(pa['fp'][q]) for q in np.flatnonzero(in_end[i])}"
   [over_pad_touching_counts]="rules.py|(M < -c.TRACK_OVERLAP_TOL)|(M <= c.TRACK_OVERLAP_TOL)"
   [over_pad_any_layer]="rules.py| \& ((pa['mask'][:, None] \& (1 << b.s_layer[blk][None, :].astype(int))) > 0)|"
   [thermal_inverted]="rules.py|and smd and conn != THERMAL:|and smd and conn == THERMAL:"
