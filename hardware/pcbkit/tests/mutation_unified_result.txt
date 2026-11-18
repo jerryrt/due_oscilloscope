@@ -1,10 +1,9 @@
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-178 passed, 1 warning in 4.93s
 killed    two_way_eps_sign
+killed    skip_both_still_reported
 killed    step1_not_nearest
 killed    step2_not_nearest
 killed    two_way_margin_zero
+killed    step1_truncated_to_nearest
 killed    search_read_margin_zero
 killed    two_way_never_too_near
 killed    kind_first_prefix

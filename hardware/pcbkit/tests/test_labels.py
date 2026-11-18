@@ -221,3 +221,17 @@ def test_a_skipped_label_is_not_judged_from_the_label_either():
     plan = {'R1': (0.0, 2.1, 0)}                                                    # hangs on R2
     assert any('from the label' in t for t in validate(lb, plan, {}).get('R1', []))
     assert 'R1' not in validate(lb, plan, {}, skip=('R1',))
+
+
+def test_nothing_is_reported_when_both_the_measured_part_and_the_crowding_label_are_skipped():
+    lb = board(part('TP1', 0, 0, 0.6, 0.6), part('R1', 2.2, 0))
+    plan = {'TP1': (0.0, 1.5, 0), 'R1': (2.2, -1.6, 0)}
+    assert any('two-way' in t for t in validate(lb, plan, {}, skip=('R1',)).get('TP1', []))
+    assert not any('two-way' in t for ts in validate(lb, plan, {}, skip=('R1', 'TP1')).values() for t in ts)
+
+
+def test_validate_lists_every_step_1_offender_not_only_the_nearest():
+    lb = board(part('R1', 0, 0), part('R2', 6, 0), part('R3', 6, 3))
+    plan = {'R1': (5.0, 1.5, 0), 'R2': (6.0, -3.0, 0), 'R3': (6.0, 6.0, 0)}          # R1's label sits between R2 and R3, both nearer it than R1
+    got = [t for t in validate(lb, plan, {}).get('R1', []) if t.startswith('two-way, from the label')]
+    assert len(got) == 2, got

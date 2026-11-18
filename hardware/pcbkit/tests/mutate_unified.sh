@@ -19,6 +19,8 @@ declare -A M=(
   [outline_break_clearance]="outlines.py|g0 > lo_min - bc + tol|False"
   [bnc_text_own_label]="labels/placer.py|labels.setdefault(key[3:], []).append(box)|labels.setdefault(key, []).append(box)"
   [skip_part_not_attributed]="labels/placer.py|who = p_ if p_ not in skip else x[1]|who = p_"
+  [skip_both_still_reported]="labels/placer.py|            if who in skip:|            if False:"
+  [step1_truncated_to_nearest]="labels/placer.py|            for x in f1:|            for x in f1[:1]:"
   [skip_part_step1_judged]="labels/placer.py|        if p_ not in skip:|        if True:"
   [search_read_margin_zero]="labels/placer.py|rules.too_near(d_own, min(G.gap(L, b) for b in s.solid[o]), c.READ_MARGIN, c.EPS)|rules.too_near(d_own, min(G.gap(L, b) for b in s.solid[o]), 0.0, c.EPS)"
 )

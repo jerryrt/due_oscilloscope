@@ -163,7 +163,7 @@ class _P:
             o = owner_of(q)
             if o == ref:
                 continue
-            if s.comparable(ref, o) and s.dsolid(ref, B) <= d_r + m:
+            if s.comparable(ref, o) and s.dsolid(ref, B) <= d_r + m:       # step 2 from `ref`, deliberately stricter than rules.too_near: no EPS allowance and equality rejects (a search preference; validate allows EPS)
                 return False
             if o in s.parts and s.comparable(o, ref):
                 ds = s.own_label_dist(o)
