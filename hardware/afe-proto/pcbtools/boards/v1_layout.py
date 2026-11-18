@@ -44,6 +44,7 @@ GEOMETRY_EXCEPTIONS = [            # (rule, net, pad_or_ref, reason): each waive
     ('over_pad', 'A0', 'TP201.1', 'the same, A0 through TP201 (montreal5)'),
     ('over_pad', 'A1', 'D101.3', 'the same, A1 through D101 (montreal5)'),
     ('over_pad', 'A1', 'TP101.1', 'the same, A1 through TP101 (montreal5)'),
+    ('jog', 'VREF', (57.4, 14.375), 'VREF into U502.4: between the R520/R514 pads (track y 14.32-14.58) and the channel under U502 above R502.2 (y 14.18-14.32) the step is 0.39 mm, a 45 degree leg of 0.55 mm; no leg of 0.6 fits without moving a part'),
 ]
 
 

@@ -262,3 +262,20 @@ def test_a_row_of_the_nets_own_vias_standing_at_the_pour_edge_is_rough_and_one_o
     assert not g([(20.0, 7)]).any()                                         # one alone may show its arc
     assert not g([(10.0, 5), (10.0, 7), (10.0, 9)]).any()                   # buried in the pour: the edge is not theirs
     assert not g([(26.0, 5), (26.0, 7), (26.0, 9)]).any()                   # away from the pour altogether
+
+
+def _thermal_pads(xs, ys):
+    """a 20 mm pour with a hole round each own-net pad (its thermal gap: no pour within 0.45 mm of the pad), the pads at the given places"""
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 20, 20))] + [(True, rect(x - 0.7, y - 0.7, x + 0.7, y + 0.7)) for x, y in zip(xs, ys)])
+    a.part('U1', 30, 30)
+    for n, (x, y) in enumerate(zip(xs, ys)):
+        a.p('U1', str(n + 1), x, y, 'GND', size=1.0)
+    b = a.build()
+    return b, fills.net_copper(b, 0, b.nets.index('GND'), ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+
+
+def test_own_pads_with_a_thermal_gap_at_the_pour_edge_are_rough_and_buried_ones_are_not():
+    run = lambda xs, ys: fills.rough_edges(*_thermal_pads(xs, ys)[:1], _thermal_pads(xs, ys)[1], 0, 1, clearance=0.3)
+    assert run([19.5, 19.5, 19.5], [5, 7.2, 9.4]).any()                    # three pads whose gaps open to the edge
+    assert not run([19.5], [5]).any()                                       # one alone
+    assert not run([10, 10, 10], [5, 7.2, 9.4]).any()                       # buried: pour all round their gaps

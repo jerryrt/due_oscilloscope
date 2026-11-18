@@ -187,7 +187,12 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     for comp, area, (cx, cy), connected in sorted(comps, key=lambda c: -c[1]):
         if connected or area < 0.5:
             continue
-        pts = stitch_points(b, r, lab, comp, area) if area >= big else []
+        pts = []
+        if area >= big:                                    # a via well inside the pour (1.5 mm of pour to every side: the pour edge then never hugs it), else as far in as there is room
+            for rad in (1.5, 1.2, 0.9):
+                pts = stitch_points(b, r, lab, comp, area, min_radius=rad)
+                if pts:
+                    break
         report.append((area, (cx, cy), len(pts)))
         vias += pts
     with edit(path, out) as e:
