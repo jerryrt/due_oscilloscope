@@ -90,8 +90,8 @@ Exact copper-edge to copper-edge distance from each node's top copper (tracks as
 ### rules.track_geometry
 
 How a track is drawn: every segment on the angle step (a curved track is a finding), no jog (a straight run between bends shorter than `TRACK_MIN_LEG`; a run of collinear segments is one run, a joint where three segments
-meet or that lies on a pad or via of the net is not a bend, and a short leg that ends on a pad of a part whose pad pitch is `TRACK_FINE_PITCH` or finer is a breakout and exempt), the segment into a pad runs along
-the pad's long axis (a pad squarer than `TRACK_ELONGATED_RATIO`, a chip's, takes either axis; a round pad has none), and no track runs over the pads of a part it does not end on, even of its own net.
+meet or that lies on a pad or via of the net is not a bend, and a short leg that ends on a pad of a part whose pad pitch is `TRACK_FINE_PITCH` or finer is a breakout and exempt), the segment into a pad is perpendicular to the pad edge it enters (along either pad axis: a chip's long pad is entered from its outer end, along the part, which is the pad's short axis) and enters through that edge,
+not across a corner (the track's whole width within the edge's span, `TRACK_ENTRY_EDGE_TOL`; a round pad has no edge), and no track runs over the pads of a part it does not end on, even of its own net.
 `track_geometry_parts` returns `(kind, text, x, y)` with kind `arc`, `angle`, `jog`, `entry` or `over_pad`.
 
 | name | kind | type, unit | default | meaning |
@@ -100,7 +100,7 @@ the pad's long axis (a pad squarer than `TRACK_ELONGATED_RATIO`, a chip's, takes
 | `TRACK_ANGLE_TOL` | tunable | degrees | `0.5` | how far a segment, or an entry into a pad, may be from its angle |
 | `TRACK_MIN_LEG` | tunable | mm | `0.6` | the shortest run between bends |
 | `TRACK_FINE_PITCH` | tunable | mm | `0.65` | a short leg out of a pad of a part at this pitch or finer is a breakout |
-| `TRACK_ELONGATED_RATIO` | tunable | long side / short side | `1.5` | a pad at least this elongated is entered along its long axis |
+| `TRACK_ENTRY_EDGE_TOL` | tunable | mm | `0.001` | how far a track entering a pad may overhang the span of the edge it enters |
 | `TRACK_OVERLAP_TOL` | tunable | mm | `0.001` | a track overlaps a pad when its copper is further than this over the pad edge |
 
 ### rules.fill_quality
@@ -114,7 +114,7 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 |---|---|---|---|---|
 | `GND` | project | net name | required | the net of the pours |
 | `FILL_LAYERS` | tunable | layer letters | `('F', 'B')` | layers measured |
-| `FILL_MIN_WIDTH` | tunable | mm | `0.8` | no part of the pour is narrower |
+| `FILL_MIN_WIDTH` | tunable | mm per layer, or one mm | `{'F': 0.8, 'B': 0.5}` | no part of the pour is narrower: the top for its looks, the plane for slivers only |
 | `FILL_DEAD_END_WIDTH` | tunable | mm | `1.6` | a finger narrower than this joined at one end is a dead end |
 | `FILL_LENGTH_FACTOR` | tunable | x half the width | `1.5` | shorter parts are corner rounding |
 | `FILL_RASTER` | tunable | pixels per mm | `40.0` | measuring resolution (width figures are good to a pixel or two) |

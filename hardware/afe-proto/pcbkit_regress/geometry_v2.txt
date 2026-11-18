@@ -3,11 +3,11 @@ TRACK_ANGLE_STEP             default   45.0
 TRACK_ANGLE_TOL              default   0.5
 TRACK_MIN_LEG                default   0.6
 TRACK_FINE_PITCH             default   0.65
-TRACK_ELONGATED_RATIO        default   1.5
+TRACK_ENTRY_EDGE_TOL         default   0.001
 TRACK_OVERLAP_TOL            default   0.001
 GND                          project   '/GND'
 FILL_LAYERS                  default   ('F', 'B')
-FILL_MIN_WIDTH               default   0.8
+FILL_MIN_WIDTH               default   {'F': 0.8, 'B': 0.5}
 FILL_DEAD_END_WIDTH          default   1.6
 FILL_LENGTH_FACTOR           default   1.5
 FILL_RASTER                  default   40.0
@@ -15,7 +15,7 @@ FILL_MIN_AREA                default   0.02
 FILL_THERMAL_LAYERS          default   ('F',)
 FILL_SOLID_LAYERS            default   ('B',)
 segments 370  arcs 0
-track_geometry {'angle': 41, 'entry': 54, 'jog': 32, 'over_pad': 19}
+track_geometry {'angle': 41, 'entry': 53, 'jog': 32, 'over_pad': 19}
 fill_quality   {'dead_end': 101, 'narrow': 224, 'thermal': 1}  {'B_dead_end': 45, 'B_narrow': 91, 'B_outline_mm': 3708.5, 'F_dead_end': 56, 'F_narrow': 133, 'F_outline_mm': 2563.0}
 angle    21.95   23.40   F /+3V3A segment 1.34 mm at 42.1 degrees
 angle    25.78   10.71   F /VNEG_G segment 0.64 mm at 47.2 degrees
@@ -90,60 +90,59 @@ jog      66.05   38.95   F /A1 leg 0.01 mm between bends (needs 0.60)
 jog      77.00   12.05   F /AWG_OA leg 0.45 mm between bends (needs 0.60)
 jog      83.60   28.14   F /CH2_NP leg 0.52 mm between bends (needs 0.60)
 jog      91.36   23.87   F /CH2_IN leg 0.26 mm between bends (needs 0.60)
-entry    25.56   10.48   F /VNEG_G enters C408.1 at 47.2 degrees, the pad runs at 90.0
-entry    25.57   12.83   F /LM_CP enters C404.1 at 47.4 degrees, the pad runs at 90.0
-entry    28.49   12.83   F /LM_CP enters C403.1 at 133.0 degrees, the pad runs at 90.0
-entry    28.79   10.43   F /VNEG_G enters C407.1 at 133.0 degrees, the pad runs at 90.0
-entry    28.90   16.94   F /LM_FBP enters R402.1 at 79.9 degrees, the pad runs at 90.0
-entry    28.91   16.22   F /LM_FBP enters R402.1 at 140.8 degrees, the pad runs at 90.0
-entry    29.31   12.83   F /LM_CP enters C403.1 at 47.5 degrees, the pad runs at 90.0
-entry    29.61   10.43   F /VNEG_G enters C407.1 at 79.5 degrees, the pad runs at 90.0
-entry    29.62   9.22    F /VNEG_G enters C407.1 at 99.0 degrees, the pad runs at 90.0
-entry    30.30   15.35   F /GND enters U401.1 at 90.0 degrees, the pad runs at 0.0
-entry    30.69   7.68    F /VNEG_G enters R403.1 at 134.3 degrees, the pad runs at 90.0
-entry    30.96   20.15   F /+3V3A enters R401.1 at 166.4 degrees, the pad runs at 0.0
-entry    30.99   18.06   F /LM_FBP enters R401.2 at 2.3 degrees, the pad runs at 0.0
-entry    31.31   6.92    F /VNEG_G enters R403.1 at 133.5 degrees, the pad runs at 90.0
-entry    31.40   8.60    F /LM_FB3M enters R404.1 at 135.0 degrees, the pad runs at 90.0
-entry    31.40   10.30   F /LM_FBN enters R405.1 at 135.0 degrees, the pad runs at 90.0
-entry    31.67   19.67   F /+3V3A enters R401.1 at 178.5 degrees, the pad runs at 0.0
-entry    32.25   7.75    F /LM_FB3M enters R403.2 at 135.0 degrees, the pad runs at 90.0
-entry    32.25   9.45    F /LM_FBN enters R404.2 at 135.0 degrees, the pad runs at 90.0
-entry    32.35   15.35   F /+5V_F enters U401.12 at 90.0 degrees, the pad runs at 0.0
-entry    32.70   12.65   F /LM_FBN enters U401.7 at 90.0 degrees, the pad runs at 0.0
-entry    33.05   9.45    F /LM_FBN enters R404.2 at 45.0 degrees, the pad runs at 90.0
-entry    33.13   16.53   F /+3V3A enters C405.1 at 87.3 degrees, the pad runs at 0.0
-entry    33.57   16.53   F /+3V3A enters C405.1 at 101.5 degrees, the pad runs at 0.0
-entry    33.98   16.48   F /+3V3A enters C405.1 at 172.6 degrees, the pad runs at 0.0
-entry    33.98   17.32   F /+3V3A enters C405.1 at 42.1 degrees, the pad runs at 0.0
-entry    34.00   7.56    F /VNEG_G enters BR401.1 at 77.4 degrees, the pad runs at 90.0
-entry    35.04   16.34   F /+3V3A enters C406.1 at 172.6 degrees, the pad runs at 0.0
-entry    35.35   13.80   F /LM_C1N enters C409.2 at 45.0 degrees, the pad runs at 90.0
-entry    35.43   16.47   F /+3V3A enters C406.1 at 103.2 degrees, the pad runs at 0.0
-entry    36.15   6.34    F /+5V_F enters R406.2 at 150.7 degrees, the pad runs at 90.0
-entry    36.27   15.73   F /+3V3A enters C406.1 at 179.4 degrees, the pad runs at 0.0
-entry    40.70   22.66   F /+3V3A enters R407.1 at 2.0 degrees, the pad runs at 90.0
-entry    50.73   12.25   F /GND enters U501.3 at 89.7 degrees, the pad runs at 0.0
-entry    51.50   14.80   F /VREF enters C501.1 at 111.8 degrees, the pad runs at 0.0
-entry    52.60   11.30   F /+3V3A_R enters U501.1 at 90.0 degrees, the pad runs at 0.0
-entry    55.88   21.40   F /ADS_TAP enters U502.6 at 180.0 degrees, the pad runs at 90.0
-entry    64.00   6.60    F /TAP1 enters R501.2 at 73.3 degrees, the pad runs at 0.0
-entry    67.92   33.95   F /+3V3A_U enters D101.2 at 90.0 degrees, the pad runs at 0.0
-entry    71.92   32.35   F /A0 enters D201.3 at 90.0 degrees, the pad runs at 0.0
-entry    73.80   33.55   F /+3V3A_U enters D201.2 at 84.7 degrees, the pad runs at 0.0
-entry    73.80   31.40   F /GND enters D201.1 at 90.0 degrees, the pad runs at 0.0
-entry    80.64   45.03   F /VREF enters R106.2 at 162.0 degrees, the pad runs at 90.0
-entry    80.69   29.74   F /CH2_OUT enters U101.1 at 0.0 degrees, the pad runs at 90.0
-entry    80.69   35.70   F /+3V3A_U enters U101.8 at 0.0 degrees, the pad runs at 90.0
-entry    81.10   13.68   F /+3V3A enters U301.8 at 0.0 degrees, the pad runs at 90.0
-entry    81.96   29.74   F /CH2_OUT enters U101.2 at 0.0 degrees, the pad runs at 90.0
-entry    81.96   36.30   F /CH1_OUT enters U101.7 at 0.0 degrees, the pad runs at 90.0
-entry    82.82   9.69    F /AWG_FB enters U301.2 at 76.4 degrees, the pad runs at 90.0
-entry    83.23   36.30   F /CH1_OUT enters U101.6 at 0.0 degrees, the pad runs at 90.0
-entry    83.55   12.71   F /AWG_FB enters U301.6 at 76.4 degrees, the pad runs at 90.0
-entry    83.95   9.66    F /AWG_BIN enters U301.3 at 72.0 degrees, the pad runs at 90.0
-entry    84.95   12.74   F /AWG_BIN enters U301.5 at 72.0 degrees, the pad runs at 90.0
-entry    85.20   13.68   F /AWG_BIN enters U301.5 at 0.0 degrees, the pad runs at 90.0
+entry    25.56   10.48   F /VNEG_G enters C408.1 at 47.2 degrees, not along a pad axis (0.0 or 90.0)
+entry    25.57   12.83   F /LM_CP enters C404.1 at 47.4 degrees, not along a pad axis (0.0 or 90.0)
+entry    28.49   12.83   F /LM_CP enters C403.1 at 133.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    28.79   10.43   F /VNEG_G enters C407.1 at 133.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    28.90   16.94   F /LM_FBP enters R402.1 at 79.9 degrees, not along a pad axis (0.0 or 90.0)
+entry    28.91   16.22   F /LM_FBP enters R402.1 at 140.8 degrees, not along a pad axis (0.0 or 90.0)
+entry    29.31   12.83   F /LM_CP enters C403.1 at 47.5 degrees, not along a pad axis (0.0 or 90.0)
+entry    29.61   10.43   F /VNEG_G enters C407.1 at 79.5 degrees, not along a pad axis (0.0 or 90.0)
+entry    29.62   9.22    F /VNEG_G enters C407.1 at 99.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    29.85   17.05   F /GND enters R402.2 across the corner, not through the edge
+entry    30.30   13.25   F /LM_CP enters U401.5 across the corner, not through the edge
+entry    30.30   14.25   F /+5V_F enters U401.3 across the corner, not through the edge
+entry    30.30   14.80   F /LM_FBP enters U401.2 across the corner, not through the edge
+entry    30.30   15.35   F /GND enters U401.1 across the corner, not through the edge
+entry    30.69   7.68    F /VNEG_G enters R403.1 at 134.3 degrees, not along a pad axis (0.0 or 90.0)
+entry    30.80   13.70   F /GND enters U401.4 across the corner, not through the edge
+entry    30.96   20.15   F /+3V3A enters R401.1 at 166.4 degrees, not along a pad axis (90.0 or 0.0)
+entry    30.99   18.06   F /LM_FBP enters R401.2 at 2.3 degrees, not along a pad axis (90.0 or 0.0)
+entry    31.31   6.92    F /VNEG_G enters R403.1 at 133.5 degrees, not along a pad axis (0.0 or 90.0)
+entry    31.40   8.60    F /LM_FB3M enters R404.1 at 135.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    31.40   10.30   F /LM_FBN enters R405.1 at 135.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    31.67   19.67   F /+3V3A enters R401.1 at 178.5 degrees, not along a pad axis (90.0 or 0.0)
+entry    32.25   7.75    F /LM_FB3M enters R403.2 at 135.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    32.25   9.45    F /LM_FBN enters R404.2 at 135.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    32.25   11.15   F /GND enters R405.2 across the corner, not through the edge
+entry    32.70   12.65   F /LM_FBN enters U401.7 across the corner, not through the edge
+entry    32.70   13.25   F /+5V_F enters U401.8 across the corner, not through the edge
+entry    32.70   13.75   F /LM_C1N enters U401.9 across the corner, not through the edge
+entry    32.70   14.25   F /LM_C1P enters U401.10 across the corner, not through the edge
+entry    32.70   14.75   F /+3V3A enters U401.11 across the corner, not through the edge
+entry    33.05   9.45    F /LM_FBN enters R404.2 at 45.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    33.13   16.53   F /+3V3A enters C405.1 at 87.3 degrees, not along a pad axis (90.0 or 0.0)
+entry    33.57   16.53   F /+3V3A enters C405.1 at 101.5 degrees, not along a pad axis (90.0 or 0.0)
+entry    33.98   16.48   F /+3V3A enters C405.1 at 172.6 degrees, not along a pad axis (90.0 or 0.0)
+entry    33.98   17.32   F /+3V3A enters C405.1 at 42.1 degrees, not along a pad axis (90.0 or 0.0)
+entry    34.00   7.56    F /VNEG_G enters BR401.1 at 77.4 degrees, not along a pad axis (0.0 or 90.0)
+entry    35.04   16.34   F /+3V3A enters C406.1 at 172.6 degrees, not along a pad axis (90.0 or 0.0)
+entry    35.35   13.80   F /LM_C1N enters C409.2 at 45.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    35.43   16.47   F /+3V3A enters C406.1 at 103.2 degrees, not along a pad axis (90.0 or 0.0)
+entry    36.15   6.34    F /+5V_F enters R406.2 at 150.7 degrees, not along a pad axis (0.0 or 90.0)
+entry    36.27   15.73   F /+3V3A enters C406.1 at 179.4 degrees, not along a pad axis (90.0 or 0.0)
+entry    40.70   22.66   F /+3V3A enters R407.1 at 2.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    45.10   22.60   F /SCL enters R513.2 across the corner, not through the edge
+entry    51.50   14.80   F /VREF enters C501.1 at 111.8 degrees, not along a pad axis (90.0 or 0.0)
+entry    64.00   6.60    F /TAP1 enters R501.2 at 73.3 degrees, not along a pad axis (90.0 or 0.0)
+entry    69.80   21.10   F /AWG_BNC enters BR501.2 across the corner, not through the edge
+entry    73.80   33.55   F /+3V3A_U enters D201.2 at 84.7 degrees, not along a pad axis (0.0 or 90.0)
+entry    80.64   45.03   F /VREF enters R106.2 at 162.0 degrees, not along a pad axis (0.0 or 90.0)
+entry    80.65   6.30    F /AWG_VREF enters R304.2 across the corner, not through the edge
+entry    82.82   9.69    F /AWG_FB enters U301.2 at 76.4 degrees, not along a pad axis (90.0 or 0.0)
+entry    83.55   12.71   F /AWG_FB enters U301.6 at 76.4 degrees, not along a pad axis (90.0 or 0.0)
+entry    83.95   9.66    F /AWG_BIN enters U301.3 at 72.0 degrees, not along a pad axis (90.0 or 0.0)
+entry    84.95   12.74   F /AWG_BIN enters U301.5 at 72.0 degrees, not along a pad axis (90.0 or 0.0)
 over_pad 25.30   14.60   F /+5V_F runs over C401.1
 over_pad 29.27   14.93   F /+5V_F runs over C402.1
 over_pad 29.48   15.68   F /LM_FBP runs over R402.1
@@ -163,97 +162,97 @@ over_pad 86.75   23.87   F /CH2_N runs over C201.2
 over_pad 86.75   43.47   F /CH1_N runs over C101.2
 over_pad 88.41   9.43    F /AWG_BNC runs over R301.2
 over_pad 91.33   13.62   F /AWG_VO runs over R302.1
-narrow   17.75   50.79   B pour 0.50 mm wide, 2.0 mm long
+narrow   17.65   50.80   B pour 0.36 mm wide, 1.3 mm long
 narrow   17.75   50.79   F pour 0.50 mm wide, 2.0 mm long
-narrow   20.06   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   20.06   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   20.06   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   22.61   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   22.61   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   22.61   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   29.33   2.54    B pour 0.54 mm wide, 1.8 mm long
+narrow   29.25   2.54    B pour 0.40 mm wide, 0.9 mm long
 narrow   29.33   2.54    F pour 0.54 mm wide, 1.8 mm long
 narrow   29.71   7.84    F pour 0.40 mm wide, 1.3 mm long
+narrow   30.21   50.80   B pour 0.36 mm wide, 0.7 mm long
 narrow   30.23   50.54   F pour 0.72 mm wide, 1.6 mm long
-narrow   30.23   50.80   B pour 0.45 mm wide, 1.1 mm long
 narrow   30.25   13.75   F pour 0.30 mm wide, 1.4 mm long
-narrow   31.75   2.54    B pour 0.45 mm wide, 1.1 mm long
 narrow   31.75   2.54    F pour 0.45 mm wide, 1.1 mm long
+narrow   31.76   2.54    B pour 0.36 mm wide, 0.7 mm long
 narrow   32.76   50.54   F pour 0.72 mm wide, 1.6 mm long
-narrow   32.76   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   32.76   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   34.00   36.09   F pour 0.49 mm wide, 26.4 mm long
-narrow   34.29   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   34.29   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   34.29   2.54    F pour 0.47 mm wide, 1.0 mm long
 narrow   34.79   17.22   F pour 0.63 mm wide, 1.0 mm long
 narrow   35.30   50.54   F pour 0.72 mm wide, 1.6 mm long
-narrow   35.31   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   35.31   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   35.86   40.04   F pour 0.50 mm wide, 25.1 mm long
 narrow   36.31   7.02    F pour 0.51 mm wide, 0.8 mm long
-narrow   36.84   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   36.84   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   36.84   2.54    F pour 0.47 mm wide, 1.0 mm long
 narrow   37.29   6.02    F pour 0.40 mm wide, 1.0 mm long
-narrow   37.84   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   37.84   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   37.85   50.54   F pour 0.72 mm wide, 1.6 mm long
 narrow   40.16   50.73   F pour 0.60 mm wide, 2.0 mm long
-narrow   40.28   50.80   B pour 0.54 mm wide, 1.8 mm long
+narrow   40.35   50.80   B pour 0.41 mm wide, 0.9 mm long
 narrow   40.70   22.00   F pour 0.49 mm wide, 0.7 mm long
 narrow   45.10   21.43   F pour 0.40 mm wide, 1.0 mm long
 narrow   46.99   50.54   F pour 0.72 mm wide, 1.6 mm long
-narrow   46.99   50.80   B pour 0.49 mm wide, 1.1 mm long
-narrow   49.54   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   46.99   50.80   B pour 0.40 mm wide, 0.5 mm long
+narrow   49.54   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   49.54   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   49.69   23.50   F pour 0.40 mm wide, 0.9 mm long
 narrow   50.56   20.60   F pour 0.45 mm wide, 0.7 mm long
 narrow   50.68   15.35   F pour 0.45 mm wide, 0.6 mm long
 narrow   51.18   13.87   F pour 0.60 mm wide, 0.7 mm long
 narrow   51.88   7.35    F pour 0.56 mm wide, 1.5 mm long
-narrow   52.06   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   52.06   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   52.06   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   52.24   2.55    B pour 0.51 mm wide, 1.7 mm long
-narrow   54.61   2.54    B pour 0.47 mm wide, 1.0 mm long
-narrow   54.61   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   52.11   2.54    B pour 0.40 mm wide, 1.0 mm long
+narrow   54.61   2.54    B pour 0.40 mm wide, 0.5 mm long
+narrow   54.61   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   54.61   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   54.81   7.35    F pour 0.58 mm wide, 1.5 mm long
 narrow   56.40   20.63   F pour 0.46 mm wide, 0.9 mm long
-narrow   57.15   2.54    B pour 0.45 mm wide, 1.1 mm long
-narrow   57.15   50.80   B pour 0.45 mm wide, 1.1 mm long
 narrow   57.15   50.80   F pour 0.45 mm wide, 1.1 mm long
-narrow   57.28   11.00   B pour 0.53 mm wide, 1.7 mm long
+narrow   57.16   2.54    B pour 0.36 mm wide, 0.7 mm long
+narrow   57.16   50.80   B pour 0.36 mm wide, 0.7 mm long
+narrow   57.19   11.00   B pour 0.40 mm wide, 1.0 mm long
 narrow   57.28   11.00   F pour 0.53 mm wide, 1.7 mm long
 narrow   57.85   8.79    F pour 0.40 mm wide, 0.7 mm long
 narrow   58.43   22.47   F pour 0.40 mm wide, 1.1 mm long
 narrow   58.70   9.84    F pour 0.50 mm wide, 1.4 mm long
 narrow   59.15   21.02   F pour 0.55 mm wide, 0.8 mm long
-narrow   59.69   2.54    B pour 0.47 mm wide, 1.0 mm long
-narrow   59.69   11.00   B pour 0.49 mm wide, 1.1 mm long
+narrow   59.69   2.54    B pour 0.40 mm wide, 0.5 mm long
+narrow   59.69   11.00   B pour 0.40 mm wide, 0.5 mm long
 narrow   59.69   11.00   F pour 0.49 mm wide, 1.1 mm long
-narrow   59.69   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   59.69   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   59.69   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   60.93   9.90    F pour 0.50 mm wide, 1.9 mm long
 narrow   62.05   7.35    F pour 0.57 mm wide, 1.5 mm long
-narrow   62.06   50.80   B pour 0.50 mm wide, 1.7 mm long
 narrow   62.06   50.80   F pour 0.50 mm wide, 1.7 mm long
-narrow   62.24   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   62.19   50.80   B pour 0.40 mm wide, 1.0 mm long
+narrow   62.24   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   64.76   0.19    F pour 0.39 mm wide, 41.8 mm long
-narrow   64.76   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   64.76   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   66.75   24.50   F pour 0.75 mm wide, 0.8 mm long
-narrow   67.31   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   67.31   2.54    B pour 0.40 mm wide, 0.5 mm long
 narrow   68.31   41.79   F pour 0.46 mm wide, 0.7 mm long
 narrow   69.34   22.18   F pour 0.75 mm wide, 0.8 mm long
 narrow   69.50   23.57   F pour 0.57 mm wide, 1.1 mm long
 narrow   69.68   41.79   F pour 0.46 mm wide, 0.7 mm long
-narrow   69.98   50.80   B pour 0.53 mm wide, 1.7 mm long
+narrow   69.89   50.80   B pour 0.40 mm wide, 1.0 mm long
 narrow   69.98   50.80   F pour 0.53 mm wide, 1.7 mm long
-narrow   72.39   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   72.39   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   72.39   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   74.94   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   74.94   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   74.94   50.80   F pour 0.49 mm wide, 1.1 mm long
-narrow   75.05   2.55    B pour 0.54 mm wide, 1.7 mm long
-narrow   77.46   2.54    B pour 0.47 mm wide, 1.0 mm long
-narrow   77.46   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   74.98   2.54    B pour 0.40 mm wide, 0.9 mm long
+narrow   77.46   2.54    B pour 0.35 mm wide, 0.5 mm long
+narrow   77.46   50.80   B pour 0.35 mm wide, 0.5 mm long
 narrow   77.46   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   78.00   14.45   F pour 0.60 mm wide, 0.9 mm long
 narrow   79.89   36.54   F pour 0.63 mm wide, 0.9 mm long
-narrow   80.01   2.54    B pour 0.47 mm wide, 1.0 mm long
-narrow   80.01   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   80.01   2.54    B pour 0.40 mm wide, 0.5 mm long
+narrow   80.01   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   80.01   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   80.38   8.22    F pour 0.50 mm wide, 2.2 mm long
 narrow   81.30   36.79   F pour 0.65 mm wide, 0.9 mm long
@@ -262,9 +261,9 @@ narrow   81.46   22.30   F pour 0.41 mm wide, 1.1 mm long
 narrow   81.46   45.03   F pour 0.41 mm wide, 1.1 mm long
 narrow   81.95   38.58   F pour 0.40 mm wide, 1.1 mm long
 narrow   82.21   27.19   F pour 0.65 mm wide, 2.7 mm long
-narrow   82.55   2.54    B pour 0.45 mm wide, 1.1 mm long
-narrow   82.55   50.80   B pour 0.45 mm wide, 1.1 mm long
 narrow   82.55   50.80   F pour 0.45 mm wide, 1.1 mm long
+narrow   82.56   2.54    B pour 0.36 mm wide, 0.7 mm long
+narrow   82.56   50.80   B pour 0.36 mm wide, 0.7 mm long
 narrow   82.63   36.94   F pour 0.55 mm wide, 0.7 mm long
 narrow   82.78   39.75   F pour 0.61 mm wide, 2.0 mm long
 narrow   82.94   37.95   F pour 0.60 mm wide, 0.9 mm long
@@ -273,15 +272,15 @@ narrow   84.50   22.59   F pour 0.57 mm wide, 1.6 mm long
 narrow   84.50   25.13   F pour 0.60 mm wide, 1.6 mm long
 narrow   84.50   42.19   F pour 0.60 mm wide, 1.6 mm long
 narrow   84.50   44.73   F pour 0.60 mm wide, 1.6 mm long
-narrow   85.09   2.54    B pour 0.47 mm wide, 1.0 mm long
-narrow   85.09   50.80   B pour 0.49 mm wide, 1.1 mm long
+narrow   85.09   2.54    B pour 0.40 mm wide, 0.5 mm long
+narrow   85.09   50.80   B pour 0.40 mm wide, 0.5 mm long
 narrow   85.09   50.80   F pour 0.49 mm wide, 1.1 mm long
 narrow   85.99   14.52   F pour 0.75 mm wide, 1.1 mm long
 narrow   87.55   22.67   F pour 0.64 mm wide, 1.8 mm long
 narrow   87.55   25.07   F pour 0.64 mm wide, 1.7 mm long
 narrow   87.55   42.27   F pour 0.64 mm wide, 1.8 mm long
 narrow   87.55   44.67   F pour 0.64 mm wide, 1.8 mm long
-narrow   87.64   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   87.64   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   87.64   2.54    F pour 0.47 mm wide, 1.0 mm long
 narrow   87.98   17.72   F pour 0.50 mm wide, 0.6 mm long
 narrow   89.23   17.72   F pour 0.50 mm wide, 0.6 mm long
@@ -289,7 +288,7 @@ narrow   89.54   23.17   F pour 0.58 mm wide, 1.7 mm long
 narrow   89.54   42.77   F pour 0.58 mm wide, 1.7 mm long
 narrow   89.55   44.19   F pour 0.58 mm wide, 1.8 mm long
 narrow   89.85   25.10   F pour 0.78 mm wide, 2.4 mm long
-narrow   90.16   2.54    B pour 0.47 mm wide, 1.0 mm long
+narrow   90.16   2.54    B pour 0.35 mm wide, 0.5 mm long
 narrow   90.16   2.54    F pour 0.47 mm wide, 1.0 mm long
 narrow   90.54   41.89   F pour 0.41 mm wide, 1.1 mm long
 narrow   90.85   42.84   F pour 0.30 mm wide, 0.6 mm long
@@ -297,95 +296,95 @@ narrow   93.64   19.18   F pour 0.65 mm wide, 1.8 mm long
 narrow   93.79   11.43   F pour 0.65 mm wide, 1.5 mm long
 narrow   93.79   13.98   F pour 0.65 mm wide, 1.5 mm long
 narrow   93.79   16.50   F pour 0.65 mm wide, 1.5 mm long
-narrow   93.99   11.43   B pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   13.98   B pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   16.50   B pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   19.05   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   11.43   B pour 0.40 mm wide, 0.6 mm long
+narrow   93.99   13.98   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   16.50   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   19.05   B pour 0.40 mm wide, 0.6 mm long
 narrow   93.99   21.59   F pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   21.60   B pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   24.13   B pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   26.68   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   21.60   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   24.13   B pour 0.40 mm wide, 0.6 mm long
+narrow   93.99   26.68   B pour 0.35 mm wide, 0.6 mm long
 narrow   93.99   26.68   F pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   29.20   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   29.20   B pour 0.35 mm wide, 0.6 mm long
 narrow   93.99   29.20   F pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   31.75   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   31.75   B pour 0.40 mm wide, 0.6 mm long
 narrow   93.99   31.75   F pour 0.46 mm wide, 1.1 mm long
 narrow   93.99   34.29   F pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   34.30   B pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   36.83   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   34.30   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   36.83   B pour 0.40 mm wide, 0.6 mm long
 narrow   93.99   36.83   F pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   39.38   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   39.38   B pour 0.35 mm wide, 0.6 mm long
 narrow   93.99   39.38   F pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   41.90   B pour 0.46 mm wide, 1.1 mm long
-narrow   93.99   44.45   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   41.90   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   44.45   B pour 0.40 mm wide, 0.6 mm long
 narrow   93.99   44.45   F pour 0.46 mm wide, 1.1 mm long
 narrow   93.99   46.99   F pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   47.00   B pour 0.45 mm wide, 1.1 mm long
-narrow   93.99   49.53   B pour 0.46 mm wide, 1.1 mm long
+narrow   93.99   47.00   B pour 0.35 mm wide, 0.6 mm long
+narrow   93.99   49.53   B pour 0.40 mm wide, 0.6 mm long
 narrow   93.99   49.53   F pour 0.46 mm wide, 1.1 mm long
-narrow   95.13   50.80   B pour 0.54 mm wide, 1.7 mm long
 narrow   95.13   50.80   F pour 0.54 mm wide, 1.7 mm long
+narrow   95.20   50.80   B pour 0.40 mm wide, 0.9 mm long
 narrow   95.25   9.97    F pour 0.63 mm wide, 1.4 mm long
-narrow   95.25   10.15   B pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   12.70   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   12.70   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   15.24   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   15.24   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   17.78   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   17.78   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   20.33   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   20.33   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   22.85   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   23.05   F pour 0.65 mm wide, 1.5 mm long
 narrow   95.25   25.20   F pour 0.65 mm wide, 1.5 mm long
-narrow   95.25   25.40   B pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   27.94   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   27.95   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   30.48   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   30.48   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   33.03   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   33.03   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   35.55   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   35.55   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   38.10   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   38.10   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   40.64   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   40.83   F pour 0.65 mm wide, 1.5 mm long
 narrow   95.25   42.98   F pour 0.65 mm wide, 1.5 mm long
-narrow   95.25   43.18   B pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   45.73   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   45.73   F pour 0.45 mm wide, 1.1 mm long
-narrow   95.25   48.25   B pour 0.45 mm wide, 1.1 mm long
 narrow   95.25   48.25   F pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   11.43   B pour 0.46 mm wide, 1.1 mm long
+narrow   95.26   10.15   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   12.70   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   15.24   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   17.78   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   20.33   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   22.85   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   25.40   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   27.94   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   30.48   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   33.03   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   35.55   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   38.10   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   40.64   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   43.18   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   45.73   B pour 0.36 mm wide, 0.7 mm long
+narrow   95.26   48.25   B pour 0.36 mm wide, 0.7 mm long
+narrow   96.51   11.43   B pour 0.40 mm wide, 0.6 mm long
 narrow   96.51   11.43   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   13.98   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   13.98   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   13.98   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   16.50   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   16.50   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   16.50   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   19.05   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   19.05   B pour 0.40 mm wide, 0.6 mm long
 narrow   96.51   19.05   F pour 0.46 mm wide, 1.1 mm long
 narrow   96.51   21.59   F pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   21.60   B pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   24.13   B pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   26.68   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   21.60   B pour 0.35 mm wide, 0.6 mm long
+narrow   96.51   24.13   B pour 0.40 mm wide, 0.6 mm long
+narrow   96.51   26.68   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   26.68   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   29.20   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   29.20   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   29.20   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   31.75   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   31.75   B pour 0.40 mm wide, 0.6 mm long
 narrow   96.51   31.75   F pour 0.46 mm wide, 1.1 mm long
 narrow   96.51   34.29   F pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   34.30   B pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   36.83   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   34.30   B pour 0.35 mm wide, 0.6 mm long
+narrow   96.51   36.83   B pour 0.40 mm wide, 0.6 mm long
 narrow   96.51   36.83   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   39.38   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   39.38   B pour 0.35 mm wide, 0.6 mm long
 narrow   96.51   39.38   F pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   41.90   B pour 0.46 mm wide, 1.1 mm long
-narrow   96.51   44.45   B pour 0.46 mm wide, 1.1 mm long
+narrow   96.51   41.90   B pour 0.35 mm wide, 0.6 mm long
+narrow   96.51   44.45   B pour 0.40 mm wide, 0.6 mm long
 narrow   96.51   44.45   F pour 0.46 mm wide, 1.1 mm long
 narrow   96.51   46.99   F pour 0.45 mm wide, 1.1 mm long
-narrow   96.51   47.00   B pour 0.45 mm wide, 1.1 mm long
-narrow   96.53   49.41   B pour 0.54 mm wide, 1.8 mm long
+narrow   96.51   47.00   B pour 0.35 mm wide, 0.6 mm long
+narrow   96.51   49.50   B pour 0.40 mm wide, 0.9 mm long
 narrow   96.53   49.42   F pour 0.54 mm wide, 1.8 mm long
 dead_end 17.91   50.80   B pour finger 0.80 mm wide, 3.3 mm long, touching other copper at one end
 dead_end 20.06   50.75   B pour finger 0.63 mm wide, 1.5 mm long, touching other copper at one end
