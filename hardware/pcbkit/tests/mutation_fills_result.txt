@@ -1,0 +1,15 @@
+killed    no_growing_back
+killed    thick_regions_not_counted
+killed    lower_limit_ignored
+killed    opening_radius_doubled
+killed    anchors_not_counted
+killed    min_area_ignored
+killed    holes_not_cleared
+killed    unfilled_zone_counts
+killed    covered_fraction_zero
+killed    opening_radius_halved
+killed    other_nets_pads_anchor
+killed    dead_end_never
+killed    dead_end_always
+killed    layer_ignored
+killed    other_nets_tracks_anchor

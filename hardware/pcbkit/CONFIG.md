@@ -87,6 +87,41 @@ Exact copper-edge to copper-edge distance from each node's top copper (tracks as
 | `POUR_KEEP_BACK` | project | mm | required | the design keep-back distance (no default: it is a design value, not a tolerance) |
 | `POUR_INFO_NODES` | tunable | list of net names | `()` | measured and reported, not judged |
 
+### rules.track_geometry
+
+How a track is drawn: every segment on the angle step (a curved track is a finding), no jog (a straight run between bends shorter than `TRACK_MIN_LEG`; a run of collinear segments is one run, a joint where three segments
+meet or that lies on a pad or via of the net is not a bend, and a short leg that ends on a pad of a part whose pad pitch is `TRACK_FINE_PITCH` or finer is a breakout and exempt), the segment into a pad runs along
+the pad's long axis (a pad squarer than `TRACK_ELONGATED_RATIO`, a chip's, takes either axis; a round pad has none), and no track runs over the pads of a part it does not end on, even of its own net.
+`track_geometry_parts` returns `(kind, text, x, y)` with kind `arc`, `angle`, `jog`, `entry` or `over_pad`.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `TRACK_ANGLE_STEP` | tunable | degrees | `45.0` | segments run along multiples of this angle |
+| `TRACK_ANGLE_TOL` | tunable | degrees | `0.5` | how far a segment, or an entry into a pad, may be from its angle |
+| `TRACK_MIN_LEG` | tunable | mm | `0.6` | the shortest run between bends |
+| `TRACK_FINE_PITCH` | tunable | mm | `0.65` | a short leg out of a pad of a part at this pitch or finer is a breakout |
+| `TRACK_ELONGATED_RATIO` | tunable | long side / short side | `1.5` | a pad at least this elongated is entered along its long axis |
+| `TRACK_OVERLAP_TOL` | tunable | mm | `0.001` | a track overlaps a pad when its copper is further than this over the pad edge |
+
+### rules.fill_quality
+
+The GND pour, measured on a raster of its filled polygons (`pcbkit.fills`): parts narrower than `FILL_MIN_WIDTH` (a strip, finger or tooth; the rounding of a convex corner, which reaches half the width along each side, is not
+one: only parts longer than `FILL_LENGTH_FACTOR` times half the width count), dead-end fingers (narrower than `FILL_DEAD_END_WIDTH`, touching other copper at one end: a thick region, a pad, a via or a track of the net),
+and the zones' pad connection: the zone of each `FILL_THERMAL_LAYERS` layer that has SMD GND pads must use thermal reliefs, the zone of each `FILL_SOLID_LAYERS` layer must connect solid. The figures include each
+layer's outline length. Needs the zone fields (`z_conn`), which a board read before them does not have: `FieldNotRead`.
+
+| name | kind | type, unit | default | meaning |
+|---|---|---|---|---|
+| `GND` | project | net name | required | the net of the pours |
+| `FILL_LAYERS` | tunable | layer letters | `('F', 'B')` | layers measured |
+| `FILL_MIN_WIDTH` | tunable | mm | `0.8` | no part of the pour is narrower |
+| `FILL_DEAD_END_WIDTH` | tunable | mm | `1.6` | a finger narrower than this joined at one end is a dead end |
+| `FILL_LENGTH_FACTOR` | tunable | x half the width | `1.5` | shorter parts are corner rounding |
+| `FILL_RASTER` | tunable | pixels per mm | `40.0` | measuring resolution (width figures are good to a pixel or two) |
+| `FILL_MIN_AREA` | tunable | mm2 | `0.02` | smaller parts are ignored |
+| `FILL_THERMAL_LAYERS` | tunable | layer letters | `('F',)` | zones that must use thermal reliefs on SMD GND pads |
+| `FILL_SOLID_LAYERS` | tunable | layer letters | `('B',)` | zones that must connect pads solid |
+
 ### rules.keepout_ring
 
 Sensitive top copper keeps `KEEPOUT_DIST` from the courtyards of `KEEPOUT_PARTS`, measured from the copper's edge (a track as a capsule, a pad by size and rotation).

@@ -1,0 +1,102 @@
+"""pcbkit.fills on boards built from numbers: the strips and fingers of a pour that are narrower than a width, which are only thin by being too narrow. Every limit is broken on
+purpose by mutate_fills.sh."""
+import pytest
+
+from arrays import Arr, rect
+from pcbkit import fills
+
+BIG = [(0, 0), (10, 0), (10, 4.85), (12, 4.85), (12, 0), (22, 0), (22, 10), (12, 10), (12, 5.15), (10, 5.15), (10, 10), (0, 10)]     # two 10 mm squares joined by a 2 mm long, 0.3 mm wide strip
+FINGER = [(0, 0), (10, 0), (10, 4.85), (12, 4.85), (12, 5.15), (10, 5.15), (10, 10), (0, 10)]                                      # one square with a 2 mm long, 0.3 mm wide finger
+
+
+def raster(ring, extra=None, **kw):
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, ring)])
+    if extra:
+        extra(a)
+    b = a.build()
+    return b, fills.net_copper(b, 0, b.nets.index('GND'), **kw)
+
+
+def test_a_strip_narrower_than_the_width_is_found_with_its_width_and_place():
+    _, r = raster(BIG)
+    ps, _ = fills.narrow_pieces(r, 0.5)
+    assert len(ps) == 1
+    p = ps[0]
+    assert 0.25 < p.width < 0.4 and 1.9 < p.length < 2.2 and abs(p.x - 11) < 0.2 and abs(p.y - 5) < 0.2
+
+
+def test_a_strip_as_wide_as_the_width_is_not_found_and_the_width_is_the_limit():
+    _, r = raster(BIG)
+    assert fills.narrow_pieces(r, 0.28)[0] == []                    # the strip is 0.3 mm: a disc of 0.28 fits
+    assert len(fills.narrow_pieces(r, 0.5)[0]) == 1
+    wide = [(x, y if abs(y - 4.85) > 1e-9 else 4.5) for x, y in BIG]
+    wide = [(x, 5.5 if abs(y - 5.15) < 1e-9 else y) for x, y in wide]
+    _, r2 = raster(wide)                                            # the strip now 1.0 mm wide
+    assert fills.narrow_pieces(r2, 0.5)[0] == []
+
+
+def test_the_corner_of_a_wide_region_is_not_a_sliver():
+    _, r = raster(rect(0, 0, 10, 10))
+    assert fills.narrow_pieces(r, 0.5)[0] == [] and fills.sliver_count(r, 0.5) == (0, 0.0)
+
+
+def test_a_hole_in_the_pour_is_cleared_and_its_ring_does_not_count_as_copper():
+    a = Arr('GND').z('GND', 0, [(False, rect(0, 0, 10, 10)), (True, rect(4, 0.0, 6, 10))])        # a hole cutting the pour in two
+    b = a.build()
+    r = fills.net_copper(b, 0, 1)
+    assert r.mask[int(5 * 40), int(5 * 40)] == False and r.mask[int(5 * 40), int(2 * 40)] == True
+
+
+def test_the_minimum_area_ignores_a_speck():
+    _, r = raster(BIG)
+    assert len(fills.narrow_pieces(r, 0.5, min_area=0.02)[0]) == 1
+    assert fills.narrow_pieces(r, 0.5, min_area=5.0)[0] == []
+
+
+def test_a_strip_between_two_regions_is_not_a_dead_end_and_a_finger_is():
+    _, r = raster(BIG)
+    ps = fills.thin_report(r, 0.2, 0.5)
+    assert len(ps) == 1 and ps[0].touches == 2 and not ps[0].dead_end
+    _, r = raster(FINGER)
+    ps = fills.thin_report(r, 0.2, 0.5)
+    assert len(ps) == 1 and ps[0].touches == 1 and ps[0].dead_end
+
+
+def test_a_finger_that_ends_on_a_pad_or_via_of_the_net_is_not_a_dead_end():
+    for add in (lambda a: a.v('GND', 11.8, 5.0), lambda a: a.v('GND', 11.8, 5.0, dia=0.4, drill=0.2), lambda a: a.part('C1', 11.8, 5.0).p('C1', '1', 11.8, 5.0, 'GND', size=0.4),
+                lambda a: a.part('C1', 11.8, 5.0).p('C1', '1', 11.8, 5.0, 'GND', size=0.6)):       # an item narrower than the band, and one wider: both are a second end
+        _, r = raster(FINGER, add)
+        ps = fills.thin_report(r, 0.2, 0.5)
+        assert len(ps) == 1 and not ps[0].dead_end, ps
+    _, r = raster(FINGER, lambda a: a.v('SIG', 11.8, 5.0))                  # another net's via is no anchor
+    assert fills.thin_report(r, 0.2, 0.5)[0].dead_end
+
+
+def test_the_width_band_is_half_open_at_the_lower_limit():
+    _, r = raster(BIG)
+    assert len(fills.thin_report(r, 0.2, 0.5)) == 1 and fills.thin_report(r, 0.4, 0.5) == []      # the strip's own width is 0.3: below `lo` it is out
+
+
+def test_covered_items_says_which_pads_and_vias_have_the_pour_under_them():
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 10, 10))]).part('C1', 5, 5).p('C1', '1', 5, 5, 'GND').p('C1', '2', 15, 5, 'GND').p('C1', '3', 10.3, 5, 'GND').v('GND', 2, 2).v('GND', 20, 20)
+    b = a.build()
+    g = b.nets.index('GND')
+    r = fills.net_copper(b, 0, g, with_net_items=False)
+    got = fills.covered_items(b, r, 0, g)
+    assert got == {('pad', 0): True, ('pad', 1): False, ('pad', 2): False, ('via', 0): True, ('via', 1): False}      # pad 2 straddles the edge: 0.1 of it is under the pour
+
+
+def test_no_filled_zone_of_the_net_is_an_error():
+    a = Arr('GND').z('GND', 0, [(False, rect(0, 0, 10, 10))], filled=False)
+    with pytest.raises(ValueError):
+        fills.net_copper(a.build(), 0, 1)
+    with pytest.raises(ValueError):
+        fills.net_copper(Arr('GND').z('GND', 0, [(False, rect(0, 0, 10, 10))]).build(), 1, 1)       # the other layer
+
+
+def test_another_nets_track_or_pad_is_not_an_anchor_of_the_pour():
+    _, r = raster(FINGER, lambda a: a.s('SIG', 0, 11.5, 4.0, 11.9, 6.0))
+    assert fills.thin_report(r, 0.2, 0.5)[0].dead_end                                  # the SIG track beside the finger tip is not copper of this net
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, FINGER)]).part('C1', 11.8, 5.0).p('C1', '1', 11.8, 5.0, 'SIG', size=0.6)
+    b = a.build()
+    assert fills.thin_report(fills.net_copper(b, 0, b.nets.index('GND')), 0.2, 0.5)[0].dead_end

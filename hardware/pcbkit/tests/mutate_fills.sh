@@ -1,0 +1,37 @@
+#!/bin/bash
+# Break each part of pcbkit.fills on purpose in a copy of the package and require its tests to fail (PCB image, from hardware/pcbkit/tests).
+set -u
+here=$(cd "$(dirname "$0")" && pwd); kit=$(dirname "$here")
+declare -A M=(
+  [opening_radius_doubled]="fills.py|core = edt >= r_px|core = edt >= 2 * r_px"
+  [opening_radius_halved]="fills.py|core = edt >= r_px|core = edt >= r_px / 2"
+  [no_growing_back]="fills.py|grown = ndi.distance_transform_edt(~core) <= r_px|grown = core"
+  [min_area_ignored]="fills.py|for i in np.flatnonzero(areas >= min_area):|for i in range(n):"
+  [holes_not_cleared]="fills.py|zm = draw(outl, 1).astype(bool) \& ~draw(hol, 1).astype(bool) if hol else draw(outl, 1).astype(bool)|zm = draw(outl, 1).astype(bool)"
+  [lower_limit_ignored]="fills.py|if p.width < lo - 1e-9:|if False:"
+  [dead_end_never]="fills.py|p.dead_end = len(ids) <= 1|p.dead_end = False"
+  [dead_end_always]="fills.py|p.dead_end = len(ids) <= 1|p.dead_end = True"
+  [anchors_not_counted]="fills.py|ids.update(('a', int(i)) for i in a)|pass"
+  [thick_regions_not_counted]="fills.py|ids = {('t', int(i)) for i in ids}|ids = set()"
+  [other_nets_tracks_anchor]="fills.py|(b.s_net == net) \& (b.s_layer == layer)|(b.s_layer == layer)"
+  [other_nets_pads_anchor]="fills.py|rows = np.flatnonzero(b.p_net == net) if len(b.p_net) else np.zeros(0, np.int64)|rows = np.arange(len(b.p_net))"
+  [covered_fraction_zero]="fills.py|out[('pad', int(i))] = bool(sub.size and sub.mean() >= frac)|out[('pad', int(i))] = bool(sub.size and sub.mean() >= 0.0)"
+  [layer_ignored]="fills.py|if b.z_layer[z] == layer and b.z_net[z] == net|if b.z_net[z] == net"
+  [unfilled_zone_counts]="fills.py|and b.z_filled[z] and not b.z_keepout[z]|and not b.z_keepout[z]"
+)
+fail=0
+for name in "${!M[@]}"; do
+  IFS='|' read -r file old new <<< "${M[$name]}"
+  tmp=$(mktemp -d); cp -r "$kit/pcbkit" "$tmp/pcbkit"
+  python3 - "$tmp/pcbkit/$file" "$old" "$new" <<'PY' || { echo "MUTATION NOT APPLIED: $name"; fail=1; rm -rf "$tmp"; continue; }
+import sys
+p, old, new = sys.argv[1:]
+old, new = old.replace('\\&', '\x26'), new.replace('\\&', '\x26')
+s = open(p).read()
+assert s.count(old) == 1, 'mutation site not found exactly once: ' + old
+open(p, 'w').write(s.replace(old, new))
+PY
+  if PCBKIT_ROOT="$tmp" python3 -m pytest -q -p no:cacheprovider -c "$here/pytest.ini" "$here/test_fills.py" >/dev/null 2>&1; then echo "SURVIVED  $name"; fail=1; else echo "killed    $name"; fi
+  rm -rf "$tmp"
+done
+exit $fail

@@ -4,7 +4,7 @@
 defaults, and `report`, a list, receives the effective configuration as (name, value, source) rows). The names each rule reads are in
 its `*_NAMES` table here and in CONFIG.md. A rule never reads a name it does not list.
 
-Rules in this module: ground_plane, bottom_hops, sensitive_nets, pour_gap, keepout_ring, decoupling, blocks, test_points, designators. `*_parts` return the same findings as lists, for a caller that must interleave
+Rules in this module: ground_plane, bottom_hops, sensitive_nets, pour_gap, keepout_ring, decoupling, blocks, test_points, designators, track_geometry, fill_quality. `*_parts` return the same findings as lists, for a caller that must interleave
 them with its own (the AFE's LR-1 keeps its printed order that way).
 """
 from __future__ import annotations
@@ -903,10 +903,247 @@ def designators(b, cfg, report=None):
     return Result(not out, '; '.join(out[:8]) or f'{n} designators, {len(tw)} silk labels pass the two-way test', dict(designators=float(n), labels=float(len(tw)), on_fab=float(noff), violations=float(len(out))))
 
 
+# ----------------------------------------------------------------------------------------------------- track geometry
+TRACK_GEOMETRY_NAMES = (
+    tunable('TRACK_ANGLE_STEP', 45.0, 'degrees', 'every segment runs along a multiple of this angle (45: 0, 45, 90, 135 degrees)'),
+    tunable('TRACK_ANGLE_TOL', 0.5, 'degrees', 'how far a segment, or a segment entering a pad, may be from the angle it should have'),
+    tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
+    tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
+    tunable('TRACK_ELONGATED_RATIO', 1.5, 'long side / short side', 'a pad at least this elongated is entered along its long axis; a squarer pad (a chip capacitor\'s) along either of its axes'),
+    tunable('TRACK_OVERLAP_TOL', 0.001, 'mm', 'a track overlaps a pad when its copper is further than this over the pad edge'),
+)
+
+
+def _pad_arrays(b):
+    pt = pads(b)
+    r = pt.rows
+    return dict(rows=r, cx=b.p_x[r], cy=b.p_y[r], sx=b.p_sx[r], sy=b.p_sy[r], rot=b.p_rot[r], shape=b.p_shape[r], fp=b.p_fp[r], net=b.p_net[r], mask=b.p_layer_mask[r])
+
+
+def _in_pads(P, pa, tol=0.0):
+    """(len(P), npads) bool: the point is in the pad's copper (the rotated rectangle of its size, or the ellipse of a circle or an oval)"""
+    a = np.radians(pa['rot'])
+    dx = P[:, 0:1] - pa['cx'][None, :]
+    dy = P[:, 1:2] - pa['cy'][None, :]
+    u = dx * np.cos(a)[None, :] + dy * np.sin(a)[None, :]
+    v = -dx * np.sin(a)[None, :] + dy * np.cos(a)[None, :]
+    hx, hy = pa['sx'][None, :] / 2 + tol, pa['sy'][None, :] / 2 + tol
+    rect = (np.abs(u) <= hx) & (np.abs(v) <= hy)
+    ell = (u / np.maximum(hx, 1e-9)) ** 2 + (v / np.maximum(hy, 1e-9)) ** 2 <= 1.0
+    return np.where(((pa['shape'] == 0) | (pa['shape'] == 2))[None, :], ell, rect)
+
+
+def _fp_pitch(b):
+    """{footprint index: the smallest distance between two of its pad centres}: its pad pitch (a one-pad part has none)"""
+    out = {}
+    pt = pads(b)
+    for f in np.unique(b.p_fp[pt.rows]) if len(pt.rows) else []:
+        m = b.p_fp[pt.rows] == f
+        P = np.column_stack([b.p_x[pt.rows][m], b.p_y[pt.rows][m]])
+        if len(P) >= 2:
+            d = np.hypot(P[:, None, 0] - P[None, :, 0], P[:, None, 1] - P[None, :, 1])
+            d[d < 1e-6] = np.inf
+            out[int(f)] = float(d.min())
+    return out
+
+
+def _dev(angle, step):
+    m = angle % step
+    return min(m, step - m)
+
+
+def track_geometry_parts(b, cfg, report=None):
+    """[(kind, text, x, y)] findings of the track geometry rule, kinds: 'arc' (a curved track), 'angle' (a segment off the angle step), 'jog' (a straight run shorter than
+    TRACK_MIN_LEG between bends, unless it breaks out of a fine-pitch pad), 'entry' (the segment into a pad does not run along the pad's long axis), 'over_pad' (a track
+    crosses the pads of a part it does not end on). Positions are board-frame mm."""
+    c = resolve(cfg, TRACK_GEOMETRY_NAMES, 'track_geometry', report)
+    S = segs(b)
+    n = len(S)
+    out = []
+    if len(b.a_idx):
+        for i in range(len(b.a_idx)):
+            out.append(('arc', 'a curved track on %s' % b.nets[b.a_net[i]], float(b.a_xm[i]), float(b.a_ym[i])))
+    if not n:
+        return out
+    L = geom.seg_len(S)
+    ang = np.degrees(np.arctan2(S[:, 3] - S[:, 1], S[:, 2] - S[:, 0]))
+    pa = _pad_arrays(b)
+    ends = np.vstack([S[:, :2], S[:, 2:]])
+    in_end = _in_pads(ends, pa) if len(pa['rows']) else np.zeros((2 * n, 0), bool)
+
+    def name(i):
+        return '%s %s' % ('F' if b.s_layer[i] == 0 else 'B', b.nets[b.s_net[i]])
+    for i in range(n):
+        if L[i] > 1e-6 and _dev(ang[i], c.TRACK_ANGLE_STEP) > c.TRACK_ANGLE_TOL:
+            out.append(('angle', '%s segment %.2f mm at %.1f degrees' % (name(i), L[i], ang[i] % 180), float((S[i, 0] + S[i, 2]) / 2), float((S[i, 1] + S[i, 3]) / 2)))
+    # legs: collinear chains of two-segment joints, joined at bends
+    key = lambda i, e: (int(b.s_layer[i]), int(b.s_net[i]), int(round(S[i, 2 * e] * 1000)), int(round(S[i, 2 * e + 1] * 1000)))
+    at = {}
+    for i in range(n):
+        if L[i] > 1e-6:
+            for e in (0, 1):
+                at.setdefault(key(i, e), []).append((i, e))
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    bends = []
+    via_xy = np.column_stack([b.v_x, b.v_y]) if len(b.v_x) else np.zeros((0, 2))
+    for k, lst in at.items():
+        if len(lst) != 2 or lst[0][0] == lst[1][0]:
+            continue
+        i, ei = lst[0]
+        j, ej = lst[1]
+        p = np.array([[S[i, 2 * ei], S[i, 2 * ei + 1]]])
+        if len(pa['rows']) and (_in_pads(p, pa)[0] & (pa['net'] == b.s_net[i])).any():
+            continue                                               # a joint on a pad of the net is a junction, not a bend
+        if len(via_xy) and (np.hypot(via_xy[:, 0] - p[0, 0], via_xy[:, 1] - p[0, 1]) <= b.v_dia / 2 + 1e-3).any():
+            continue
+        if _dev(ang[i] - ang[j], 180.0) <= c.TRACK_ANGLE_TOL:
+            parent[find(i)] = find(j)
+        else:
+            bends.append((i, j, p[0]))
+    glen, gsegs = {}, {}
+    for i in range(n):
+        if L[i] > 1e-6:
+            r = find(i)
+            glen[r] = glen.get(r, 0.0) + float(L[i])
+            gsegs.setdefault(r, []).append(i)
+    pitch = _fp_pitch(b)
+    flagged = set()
+    for i, j, p in bends:
+        for s in (i, j):
+            g = find(s)
+            if g in flagged or glen[g] >= c.TRACK_MIN_LEG - 1e-9:
+                continue
+            cnt = {}
+            for q in gsegs[g]:
+                for e in (0, 1):
+                    kk = key(q, e)
+                    cnt[kk] = cnt.get(kk, 0) + 1
+            far = [kk for kk, v in cnt.items() if v == 1 and not (abs(kk[2] / 1000 - p[0]) < 2e-3 and abs(kk[3] / 1000 - p[1]) < 2e-3)]
+            fine = False
+            if far and len(pa['rows']):
+                q = np.array([[far[0][2] / 1000, far[0][3] / 1000]])
+                hit = np.flatnonzero(_in_pads(q, pa)[0] & (pa['net'] == b.s_net[s]))
+                fine = any(pitch.get(int(pa['fp'][h]), math.inf) <= c.TRACK_FINE_PITCH + 1e-9 for h in hit)
+            if fine:
+                continue
+            flagged.add(g)
+            out.append(('jog', '%s leg %.2f mm between bends (needs %.2f)' % (name(s), glen[g], c.TRACK_MIN_LEG), float(p[0]), float(p[1])))
+    # the segment into a pad runs along the pad's long axis
+    if len(pa['rows']):
+        square = np.maximum(pa['sx'], pa['sy']) < c.TRACK_ELONGATED_RATIO * np.maximum(np.minimum(pa['sx'], pa['sy']), 1e-9)
+        long_axis = np.where(pa['sx'] >= pa['sy'], pa['rot'], pa['rot'] + 90.0)
+        for e_i in range(2 * n):
+            i = e_i % n
+            if L[i] <= 1e-6:
+                continue
+            for h in np.flatnonzero(in_end[e_i] & (pa['net'] == b.s_net[i]) & ((pa['mask'] & (1 << int(b.s_layer[i]))) > 0)):
+                if pa['shape'][h] == 0:
+                    continue                                       # a round pad has no axis
+                ok = _dev(ang[i] - long_axis[h], 180.0) <= c.TRACK_ANGLE_TOL or (square[h] and _dev(ang[i] - long_axis[h], 90.0) <= c.TRACK_ANGLE_TOL)
+                if not ok:
+                    ref = b.fp_ref[pa['fp'][h]]
+                    out.append(('entry', '%s enters %s.%s at %.1f degrees, the pad runs at %.1f' % (name(i), ref, b.p_pin[pa['rows'][h]], ang[i] % 180, long_axis[h] % 180), float(ends[e_i, 0]), float(ends[e_i, 1])))
+        # a track over the pads of a part it does not end on (even of its own net)
+        cu = geom.pad_copper(b, pa['rows'])
+        for a0 in range(0, n, 256):
+            blk = np.arange(a0, min(n, a0 + 256))
+            D = geom.seg_seg_dist(cu.C, S[blk]) - cu.r[:, None] - (b.s_w[blk] / 2)[None, :]
+            M = np.full((len(pa['rows']), len(blk)), np.inf)
+            np.minimum.at(M, cu.owner, D)
+            for h, jj in zip(*np.nonzero((M < -c.TRACK_OVERLAP_TOL) & ((pa['mask'][:, None] & (1 << b.s_layer[blk][None, :].astype(int))) > 0))):
+                i = int(blk[jj])
+                if L[i] <= 1e-6:
+                    continue
+                mine = {int(pa['fp'][q]) for q in np.flatnonzero(in_end[i] | in_end[n + i])}
+                if int(pa['fp'][h]) in mine:
+                    continue
+                out.append(('over_pad', '%s runs over %s.%s' % (name(i), b.fp_ref[pa['fp'][h]], b.p_pin[pa['rows'][h]]), float((S[i, 0] + S[i, 2]) / 2), float((S[i, 1] + S[i, 3]) / 2)))
+    return out
+
+
+def track_geometry(b, cfg, report=None):
+    parts = track_geometry_parts(b, cfg, report)
+    kinds = ('arc', 'angle', 'jog', 'entry', 'over_pad')
+    fig = {f'{k}': float(sum(1 for p in parts if p[0] == k)) for k in kinds}
+    fig['segments'] = float(len(b.s_idx))
+    fig['violations'] = float(len(parts))
+    bad = [f'{p[0]}: {p[1]} at ({p[2]:.2f}, {p[3]:.2f})' for p in parts]
+    return Result(not parts, '; '.join(bad[:6]) or f'{len(b.s_idx)} segments: on the angle step, no jogs, straight into pads, over no foreign pad', fig)
+
+
+# ----------------------------------------------------------------------------------------------------- fill quality
+FILL_QUALITY_NAMES = (
+    project('GND', 'net name', 'the net of the pours measured'),
+    tunable('FILL_LAYERS', ('F', 'B'), 'layer letters', 'the copper layers whose pour of GND is measured'),
+    tunable('FILL_MIN_WIDTH', 0.8, 'mm', 'no strip, finger or tooth of the pour is narrower than this'),
+    tunable('FILL_DEAD_END_WIDTH', 1.6, 'mm', 'a part of the pour narrower than this that touches other copper at one end only is a dead-end finger'),
+    tunable('FILL_LENGTH_FACTOR', 1.5, 'x half the width', 'a narrow part is a finger or a tooth only when it is longer than this times half the width limit (a shorter one is the rounding of a corner)'),
+    tunable('FILL_RASTER', 40.0, 'pixels per mm', 'the resolution the pour is measured at'),
+    tunable('FILL_MIN_AREA', 0.02, 'mm2', 'narrow parts smaller than this are ignored'),
+    tunable('FILL_THERMAL_LAYERS', ('F',), 'layer letters', 'the layers whose zone must connect SMD GND pads through thermal reliefs'),
+    tunable('FILL_SOLID_LAYERS', ('B',), 'layer letters', 'the layers whose zone must connect pads solid (a plane)'),
+)
+THERMAL, SOLID = 1, 2            # pcbnew's ZONE_CONNECTION_THERMAL and ZONE_CONNECTION_FULL
+
+
+def fill_quality_parts(b, cfg, report=None):
+    """[(kind, text, x, y)] findings: 'narrow' (a part of the pour narrower than FILL_MIN_WIDTH, and longer than the rounding of a corner), 'dead_end' (a finger narrower than
+    FILL_DEAD_END_WIDTH touching other copper at one end only), 'thermal' (a zone on a FILL_THERMAL_LAYERS layer does not use thermal reliefs on its SMD GND pads), 'solid'
+    (a zone on a FILL_SOLID_LAYERS layer does not connect pads solid). Also returns, as the last element of the tuple pair, the figures: see fill_quality."""
+    from . import fills
+    require(b, 'z_conn')
+    c = resolve(cfg, FILL_QUALITY_NAMES, 'fill_quality', report)
+    gnd = nid(b, c.GND)
+    out = []
+    figs = {}
+    for lay in c.FILL_LAYERS:
+        code = _layer_code(lay)
+        zs = [z for z in range(len(b.z_layer)) if b.z_layer[z] == code and b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]
+        if not zs:
+            continue
+        r_fill = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=False)
+        r_all = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=True)
+        nar, _ = fills.narrow_pieces(r_fill, c.FILL_MIN_WIDTH, c.FILL_MIN_AREA, c.FILL_LENGTH_FACTOR)
+        for p in nar:
+            out.append(('narrow', '%s pour %.2f mm wide, %.1f mm long' % (lay, p.width, p.length), p.x, p.y))
+        de = [p for p in fills.thin_report(r_all, 0.0, c.FILL_DEAD_END_WIDTH, c.FILL_MIN_AREA, length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]
+        for p in de:
+            out.append(('dead_end', '%s pour finger %.2f mm wide, %.1f mm long, touching other copper at one end' % (lay, p.width, p.length), p.x, p.y))
+        figs[f'{lay}_narrow'] = len(nar)
+        figs[f'{lay}_dead_end'] = len(de)
+        figs[f'{lay}_outline_mm'] = float(sum(
+            np.hypot(*(np.roll(b.z_xy[b.z_vert_off[j]:b.z_vert_off[j + 1]], -1, axis=0) - b.z_xy[b.z_vert_off[j]:b.z_vert_off[j + 1]]).T).sum()
+            for z in zs for j in range(b.z_ring_off[z], b.z_ring_off[z + 1])))
+        smd = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and b.p_smd[h] and (b.p_layer_mask[h] & (1 << code))]
+        for z in zs:
+            conn = int(b.z_conn[z])
+            if lay in c.FILL_THERMAL_LAYERS and smd and conn != THERMAL:
+                out.append(('thermal', '%s zone connects its %d SMD GND pads %s, not by thermal reliefs' % (lay, len(smd), 'solid' if conn == SOLID else 'not at all'), 0.0, 0.0))
+            if lay in c.FILL_SOLID_LAYERS and conn != SOLID:
+                out.append(('solid', '%s zone does not connect pads solid' % lay, 0.0, 0.0))
+    return out, figs
+
+
+def fill_quality(b, cfg, report=None):
+    parts, figs = fill_quality_parts(b, cfg, report)
+    kinds = ('narrow', 'dead_end', 'thermal', 'solid')
+    fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
+    fig.update({k: float(v) for k, v in figs.items()})
+    fig['violations'] = float(len(parts))
+    bad = [f'{p[0]}: {p[1]} at ({p[2]:.2f}, {p[3]:.2f})' for p in parts]
+    return Result(not parts, '; '.join(bad[:6]) or 'no narrow or dead-end pour, thermal reliefs and solid planes as configured', fig)
+
+
 # ----------------------------------------------------------------------------------------------------- the effective configuration
 RULES = {'ground_plane': GROUND_PLANE_NAMES, 'bottom_hops': BOTTOM_HOPS_NAMES, 'sensitive_nets': SENSITIVE_NETS_NAMES, 'pour_gap': POUR_GAP_NAMES,
          'keepout_ring': KEEPOUT_RING_NAMES, 'decoupling': DECOUPLING_NAMES, 'blocks': BLOCK_NAMES, 'test_points': TEST_POINTS_NAMES,
-         'designators': SILK_REQUIRED_NAMES + LEGIBILITY_NAMES[2:] + TWO_WAY_NAMES[1:]}
+         'track_geometry': TRACK_GEOMETRY_NAMES, 'fill_quality': FILL_QUALITY_NAMES, 'designators': SILK_REQUIRED_NAMES + LEGIBILITY_NAMES[2:] + TWO_WAY_NAMES[1:]}
 for _r, _n in RULES.items():
     declare(_r, _n)
 
