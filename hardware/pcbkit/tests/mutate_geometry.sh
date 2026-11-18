@@ -99,6 +99,7 @@ declare -A M=(
   [gndpad_tie_any_part]="rules.py|or b.p_fp[j] != b.p_fp[h] or not (b.p_layer_mask[j] \& 1)|or not (b.p_layer_mask[j] \& 1)"
   [reach_collinear_first_joint_stops]="rules.py|            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):|            if True:"
   [shell_any_net_pin]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
+  [via_in_pad_by_edge_only]="rules.py|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa))):|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa) \\& False)):"
 )
 fail=0
 for name in "${!M[@]}"; do

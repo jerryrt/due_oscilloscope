@@ -185,6 +185,10 @@ def _gnd_components(b, gnd, pad_rows, gv, tht_rows):
         np.minimum.at(M, cu.owner, D)
         for a, c_ in zip(*np.nonzero(M - vr[None, :] <= 1e-6)):
             union(a, nP + c_)
+        pa = _pad_arrays(b)                                                 # and one whose centre lies inside the pad's rectangle, however big the pad (the distance above is to its edge)
+        pa = {k: (v[np.array(P, np.int64)] if isinstance(v, np.ndarray) else v) for k, v in pa.items()}
+        for c_, a in zip(*np.nonzero(_in_pads(gv, pa))):
+            union(a, nP + c_)
     if len(sg):
         SG = S[sg]
         W = b.s_w[sg]

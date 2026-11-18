@@ -48,3 +48,16 @@ def test_one_via_serves_one_pad_and_a_track_of_another_net_is_no_tie():
 def test_the_reach_is_the_configs():
     a = board((0, 0, True)).v('GND', 2.0, 0).s('GND', 0, 0, 0, 2.0, 0)
     assert not missing(a) and missing(a, GND_VIA_REACH=1.0)
+
+
+def test_a_hole_in_the_middle_of_a_big_pad_is_in_that_pad_however_far_the_edge_is():
+    a = Arr('GND', 'SIG', layers=2)
+    a.z('GND', 1, [(False, rect(-20, -20, 40, 40))])
+    a.part('U1', 0, 0).p('U1', '1', 0, 0, 'GND', smd=True, size=1.0, sy=2.65, mask=1)           # an exposed pad 1.0 x 2.65
+    a.v('GND', 0, 0.0)                                                                                     # a via at its centre: 0.5 mm from the edge, more than its 0.3 radius
+    assert not missing(a)
+
+
+def test_a_via_whose_annulus_overlaps_the_pad_edge_is_its_own_though_its_centre_is_outside():
+    assert not missing(board((0, 0, True)).v('GND', 0.7, 0))                                      # pad half-width 0.5, via radius 0.3: overlaps by 0.1
+    assert missing(board((0, 0, True)).v('GND', 0.9, 0))                                          # 0.1 mm short of touching
