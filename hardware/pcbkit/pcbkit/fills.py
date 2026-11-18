@@ -601,13 +601,15 @@ def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.2
         ring = ndi.distance_transform_edt(~m) <= reach * k
         if not mine:
             ok = (ring & zone).any()                          # another net's item with pour within its clearance
-        else:                                                 # the net's own item stands at the edge when the pour 1.2 mm round it (beyond its own thermal gap) is there on some sides and not on others
+        else:                                                 # the net's own item stands at the edge when pour touches its near ring (its thermal spokes, or the pour itself) but the ring from there to 1.2 mm is pour on some sides only
             dist = ndi.distance_transform_edt(~m)
-            around = (dist > reach * k) & (dist <= (reach + 0.75) * k)
-            frac = (around & zone).sum() / max(1, around.sum())
-            ok = 0.1 < frac < 0.9
+            near1 = (dist > 0) & (dist <= reach * k)
+            far = (dist > reach * k) & (dist <= (reach + 0.75) * k)
+            f1 = (near1 & zone).sum() / max(1, near1.sum())
+            f2 = (far & zone).sum() / max(1, far.sum())
+            ok = f1 > 0.02 and 0.1 < f2 < 0.9
             if trace is not None:
-                trace.append(('own', box, float(frac)))
+                trace.append(('own', box, float(f1), float(f2)))
         if ok:
             hug.append((shapes, win, box))
     if trace is not None:
