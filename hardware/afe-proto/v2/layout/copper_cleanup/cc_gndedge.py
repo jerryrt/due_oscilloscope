@@ -26,7 +26,7 @@ for spec, (p0, p1, w) in TIES.items():
     st.new.append((p0[0], p0[1], p1[0], p1[1], w, 0, gnd))
     print('tie   %s straight to the exposed pad, %.2f mm wide' % (spec, w))
 # a pad no via fits at, whose stub is drawn by hand: R405.2 (best straight-out place has a copper gap of -0.02 mm against 0.15 required: the LM_FBN track passes along its west edge and R404.2 sits north-east), one L of two legs of 0.75 and 0.8 mm to a via
-HAND = {}
+HAND = {'U502.3': ([(54.88, 17.2), (54.88, 18.265)], 0.2)}
 for spec, (pl, w) in HAND.items():
     for k in range(len(pl) - 1):
         st.new.append((pl[k][0], pl[k][1], pl[k + 1][0], pl[k + 1][1], w, 0, gnd))
