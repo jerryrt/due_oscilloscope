@@ -40,7 +40,7 @@ def test_the_outline_is_the_configured_size(built):
 def test_the_drills_equal_the_holes_of_the_board_file(built):
     assert fab.check_drills(text(built[0], 'PTH.drl'), text(built[0], 'NPTH.drl'), BOARD.read_text()) == []
     pth, npth = fab.board_holes(BOARD.read_text())
-    assert sum(pth.values()) == 144 and sum(npth.values()) == 2
+    assert sum(pth.values()) == 174 and sum(npth.values()) == 2          # 104 plated pad holes and 70 vias (40 on the board of 8a1f7ac; the copper cleanup's GND vias and the pour stitching make 70)
 
 
 def test_a_fresh_build_equals_the_committed_manifest_and_a_second_build_is_identical(built, tmp_path):
