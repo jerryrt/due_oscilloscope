@@ -50,15 +50,15 @@
   "detail": "A0/A1 top only, no via (46/58 mm); FB node 4.9 mm of track; decoupling near; no pour within 0.5 mm of it",
   "figures": {
    "a0_mm": 46.376395103067914,
-   "a1_mm": 57.87914113562374,
+   "a1_mm": 57.87499900000002,
    "fb_mm": 4.946976021793542,
    "violations": 0.0,
    "gnd_track_gap_AWG_FB_mm": 2.7146935890075143,
    "gnd_track_gap_CH1_OUT_mm": 0.4200010000000006,
    "gnd_track_gap_CH2_OUT_mm": 0.8799989999999994,
-   "pour_gap_AWG_FB_mm": 0.7940634878427453,
-   "pour_gap_CH1_OUT_mm": 0.1708166852133108,
-   "pour_gap_CH2_OUT_mm": 0.1708166852133051
+   "pour_gap_AWG_FB_mm": 1.655498999999999,
+   "pour_gap_CH1_OUT_mm": 2.078470348254726,
+   "pour_gap_CH2_OUT_mm": 0.894999999999996
   }
  },
  {
@@ -103,7 +103,7 @@
   "ok": true,
   "detail": "+3V3A and VNEG: one piece per consumer group after cutting the star pads",
   "figures": {
-   "pieces": 11.0,
+   "pieces": 4.0,
    "groups_reached": 4.0,
    "groups_absent": 0.0,
    "violations": 0.0
@@ -139,7 +139,7 @@
   "ok": true,
   "detail": "SDA / SCL outside every analog courtyard but their own parts",
   "figures": {
-   "digital_segments": 11.0,
+   "digital_segments": 13.0,
    "violations": 0.0
   }
  },
@@ -153,6 +153,44 @@
    "designators": 112.0,
    "violations": 0.0,
    "waived_pairs": 0.0
+  }
+ },
+ {
+  "rule": "LR-13",
+  "checker_row": "LR-13",
+  "ok": true,
+  "detail": "421 segments: on the angle step, no jogs, straight into pads, over no foreign pad, 4 findings waived by named exceptions",
+  "figures": {
+   "arc": 0.0,
+   "angle": 0.0,
+   "jog": 0.0,
+   "entry": 0.0,
+   "over_pad": 0.0,
+   "stale_exception": 0.0,
+   "segments": 421.0,
+   "violations": 0.0,
+   "waived": 4.0
+  }
+ },
+ {
+  "rule": "LR-14",
+  "checker_row": "LR-14",
+  "ok": true,
+  "detail": "no narrow piece, dead end or row of arcs in the pour, thermal reliefs and solid planes as configured",
+  "figures": {
+   "narrow": 0.0,
+   "dead_end": 0.0,
+   "rough": 0.0,
+   "thermal": 0.0,
+   "solid": 0.0,
+   "F_rough": 0.0,
+   "F_narrow": 0.0,
+   "F_dead_end": 0.0,
+   "F_outline_mm": 1079.6017698310723,
+   "B_narrow": 0.0,
+   "B_dead_end": 0.0,
+   "B_outline_mm": 1189.2504119473374,
+   "violations": 0.0
   }
  },
  {

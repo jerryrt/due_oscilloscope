@@ -2,7 +2,7 @@
  "net": "/+5V_F",
  "source": "R406.2",
  "counts": {
-  "tracks": 24,
+  "tracks": 28,
   "vias": 0,
   "pads": 7,
   "zone_fills": 0
@@ -41,7 +41,337 @@
  ],
  "zones": [
   {
-   "name": "far edge band",
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 6,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -63,6 +393,1227 @@
    "on_net": false
   },
   {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "far edge band",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 16,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 16,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 9,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "",
    "net": "/GND",
    "layers": [
@@ -74,7 +1625,84 @@
    "on_net": false
   },
   {
-   "name": "",
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 6,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
    "net": "",
    "layers": [
     "F.Cu"
@@ -94,10 +1722,670 @@
    "priority": 0,
    "vertices": 4,
    "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 13,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 6,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "fillkeep",
+   "net": "",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
   }
  ],
  "zones_on_net": 0,
- "length_mm": 47.76139381445984,
+ "length_mm": 51.45421873753549,
  "path_u401_12": [
   {
    "item": "U401.12",
@@ -112,7 +2400,7 @@
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (32.000,18.950)-(29.500,18.950) w 0.30",
+   "item": "track F.Cu (32.150,18.950)-(29.500,18.950) w 0.30",
    "link": "track end meets track"
   },
   {
@@ -124,11 +2412,23 @@
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (28.600,15.600)-(26.300,15.600) w 0.30",
+   "item": "track F.Cu (26.300,15.600)-(28.900,15.600) w 0.30",
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (26.300,15.600)-(24.300,13.600) w 0.30",
+   "item": "track F.Cu (26.300,15.600)-(25.150,15.600) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (25.150,15.600)-(25.150,14.540) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (25.150,14.540)-(24.300,14.540) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (24.300,14.540)-(24.300,13.600) w 0.30",
    "link": "track end meets track"
   },
   {
@@ -156,7 +2456,11 @@
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (35.950,6.450)-(35.100,7.300) w 0.30",
+   "item": "track F.Cu (35.100,6.000)-(35.100,7.300) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (36.450,6.000)-(35.100,6.000) w 0.30",
    "link": "track end meets track"
   },
   {
@@ -170,19 +2474,35 @@
    "link": "start"
   },
   {
-   "item": "track F.Cu (30.300,14.250)-(29.950,14.250) w 0.30",
+   "item": "track F.Cu (30.550,14.250)-(29.000,14.250) w 0.25",
    "link": "track reaches pad"
   },
   {
-   "item": "track F.Cu (29.950,14.250)-(28.600,15.600) w 0.30",
+   "item": "C402.1",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (28.900,15.600)-(28.900,14.540) w 0.30",
+   "link": "track reaches pad"
+  },
+  {
+   "item": "track F.Cu (26.300,15.600)-(28.900,15.600) w 0.30",
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (28.600,15.600)-(26.300,15.600) w 0.30",
+   "item": "track F.Cu (26.300,15.600)-(25.150,15.600) w 0.30",
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (26.300,15.600)-(24.300,13.600) w 0.30",
+   "item": "track F.Cu (25.150,15.600)-(25.150,14.540) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (25.150,14.540)-(24.300,14.540) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (24.300,14.540)-(24.300,13.600) w 0.30",
    "link": "track end meets track"
   },
   {
@@ -210,7 +2530,11 @@
    "link": "track end meets track"
   },
   {
-   "item": "track F.Cu (35.950,6.450)-(35.100,7.300) w 0.30",
+   "item": "track F.Cu (35.100,6.000)-(35.100,7.300) w 0.30",
+   "link": "track end meets track"
+  },
+  {
+   "item": "track F.Cu (36.450,6.000)-(35.100,6.000) w 0.30",
    "link": "track end meets track"
   },
   {
@@ -269,7 +2593,7 @@
    "label": "stub at U401 pin 12"
   },
   {
-   "track": "F.Cu (30.300,14.250)-(29.950,14.250)",
+   "track": "F.Cu (30.550,14.250)-(29.000,14.250)",
    "removed_from_text": 1,
    "graph_lost_pads": [
     "U401.3"
@@ -284,7 +2608,7 @@
    "label": "stub at U401 pin 3"
   },
   {
-   "track": "F.Cu (24.300,8.950)-(25.550,7.700)",
+   "track": "F.Cu (24.300,13.600)-(24.300,8.950)",
    "removed_from_text": 1,
    "graph_lost_pads": [
     "C401.1",
