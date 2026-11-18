@@ -101,6 +101,7 @@ declare -A M=(
   [shell_any_net_pin]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
   [via_in_pad_by_edge_only]="rules.py|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa))):|        for c_, a in zip(*np.nonzero(_in_pads(gv, pa) \\& False)):"
   [shell_min_ignored_raster]="rules.py#1|                    if frac < c.FILL_SHELL_MIN:|                    if False:"
+  [tap_past_the_end_snaps]="rules.py|                if u <= 0.0 or u >= 1.0:|                u = min(max(u, 0.0), 1.0)\n                if False:"
 )
 fail=0
 for name in "${!M[@]}"; do

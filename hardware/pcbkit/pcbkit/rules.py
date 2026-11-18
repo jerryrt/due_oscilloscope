@@ -1203,7 +1203,8 @@ def _split_at_taps(b, S, L):
                 if min(math.hypot(p[0] - S[j, 0], p[1] - S[j, 1]), math.hypot(p[0] - S[j, 2], p[1] - S[j, 3])) < 0.01:
                     continue                                 # at an end of j: a joint, not a body tap
                 u = ((p[0] - S[j, 0]) * (S[j, 2] - S[j, 0]) + (p[1] - S[j, 1]) * (S[j, 3] - S[j, 1])) / (L[j] ** 2)
-                u = min(max(u, 0.0), 1.0)
+                if u <= 0.0 or u >= 1.0:
+                    continue                                 # past either end of j: near its end cap, not on its body (snapping there would collapse a short stub onto j's end)
                 cuts[j].append(u)
                 if d > 0.005:
                     snaps[(i, e)] = (S[j, 0] + u * (S[j, 2] - S[j, 0]), S[j, 1] + u * (S[j, 3] - S[j, 1]))

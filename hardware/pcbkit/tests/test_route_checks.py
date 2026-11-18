@@ -194,3 +194,10 @@ def test_collinear_pieces_beyond_a_short_one_are_one_track_for_the_distance_to_a
 def test_a_net_turning_90_with_bends_adding_to_180_is_not_a_v_kink():
     pts = [(0, 0), (1, 0), (1.141, 0.141), (1.141, 0.341), (1.0, 0.483), (1.0, 3.0)]                           # +45, +45, +45, -45: 90 net, 180 in all, back within 0.5 mm of the line
     assert got(chain(pts), 'detour') == []
+
+
+def test_a_short_stub_ending_just_beyond_the_end_of_another_track_is_not_a_tap_on_it():
+    a = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=1.0).p('U1', '2', -2.65, 2.2, 'SIG', size=0.5, sy=0.25)
+    a.s('SIG', 0, 0, 0, -2.2, 2.2, 0.3).s('SIG', 0, -2.2, 2.2, -2.4, 2.2, 0.25)                     # a 45 degree track and a 0.2 mm stub into a pad, the stub's far end 0.2 from the diagonal's end, past it along its axis
+    assert got(a, 'tspur') == []
+    assert got(a, 'dangling') == []
