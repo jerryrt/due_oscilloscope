@@ -17,7 +17,14 @@ from pcbkit import board as KB
 from pcbtools import mutate
 from pcbtools.frame import FRAME
 
-CFG = {'GND': '/GND'}
+def _cfg():
+    from pcbtools.boards import v1_layout as mod
+    names = [n.key for n in rules.TRACK_GEOMETRY_NAMES + rules.FILL_QUALITY_NAMES]
+    return {k: getattr(mod, k) for k in names if hasattr(mod, k)}
+
+
+CFG = _cfg()
+FIX = ('angle', 'jog', 'entry', 'over_pad', 'detour')          # the findings a re-route can mend (a T stub, a wide track or a pad out of the pour it cannot)
 
 
 NECKS = []                                           # (net, pad ref.pin, length mm) of every neck-down made
@@ -63,6 +70,8 @@ def bad_chains(b):
             where[s] = k
     bad = {}
     for kind, text, x, y in parts:
+        if kind not in FIX:
+            continue
         i = _nearest(b, None, x, y)
         if i is not None and i in where:
             bad.setdefault(where[i], []).append(kind)

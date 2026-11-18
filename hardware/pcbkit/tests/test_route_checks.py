@@ -169,3 +169,18 @@ def test_an_end_that_already_meets_another_tracks_end_is_a_joint_and_is_never_sn
     a = base().s('SIG', 0, 0, 0, 0, 6, 0.3).s('SIG', 0, 0, 6, -0.3, 6, 0.3).s('SIG', 0, -0.3, 6, -1.5, 6, 0.2)       # a trunk turning west through a 0.3 mm piece: its far end is 0.3 mm from the trunk, caps touching
     assert got(a, 'tspur') == []                                                                                    # it is a joint with the next piece, not a tap on the trunk
     assert len(got(a, 'dangling')) == 2                                                                             # the trunk's start and the neck's end hang, nothing else
+
+
+def test_the_shortest_path_is_octilinear_not_euclidean():
+    one = chain([(0, 0), (3, 0), (4, 1)])                                                       # 3 mm along, then a 45 degree step: exactly its octilinear shortest path (4.414 mm)
+    assert not any('times' in f[1] for f in got(one, 'detour', TRACK_DETOUR_RATIO=1.02, TRACK_DETOUR_MIN_LEN=1.0))
+
+
+def test_a_v_with_a_tap_on_its_first_diagonal_is_still_one_track_through_the_junction():
+    a = chain([(0, 0), (4, 0), (4.5, -0.5), (5.0, 0), (9, 0)]).s('SIG', 0, 4.25, -0.25, 3.25, -1.25)      # a spur at 90 degrees on the middle of the first 45 degree leg
+    assert any('V kink' in f[1] for f in got(a, 'detour'))
+
+
+def test_a_pad_of_another_net_at_the_end_does_not_connect_it():
+    a = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'OTHER', size=1.0).s('SIG', 0, 0, 0, 5, 0)
+    assert any(abs(x) < 1e-6 for _, _, x, y in got(a, 'dangling'))

@@ -333,3 +333,38 @@ def test_a_connectors_own_ground_pins_are_not_a_rough_edge():
     assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()                      # SMD pads of a J part still count
     b, r = pads('U1', False)
     assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()                      # and other parts
+
+
+def test_a_diagonal_that_would_cover_a_protected_cell_is_not_drawn():
+    import numpy as np
+    from arrays import Arr
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 10, 10))])
+    b = a.build()
+    r = fills.net_copper(b, 0, 1, ppmm=20, with_net_items=False, frame=(0, 0, 10, 10))
+    extra = np.zeros_like(r.mask)
+    for i in range(6):                                                                       # a staircase of one-cell steps, down and to the right
+        extra[20 + i * 10:30 + i * 10, 20 + i * 10:30 + i * 10] = True
+        extra[20 + i * 10:30 + i * 10, 30 + i * 10:40 + i * 10] = True
+    def inside(poly, x, y):
+        c = False
+        for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+            if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+                c = not c
+        return c
+    free = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=extra)
+    assert len(free) == 1 and inside(free[0], 2.25, 7.25) and not extra[int((10 - 7.25) * 20), int(2.25 * 20)]      # the chord covers a cell the staircase leaves out
+    prot = np.zeros_like(r.mask)
+    prot[int((10 - 7.25) * 20) - 3:int((10 - 7.25) * 20) + 4, int(2.25 * 20) - 3:int(2.25 * 20) + 4] = True
+    got = fills.keepout_polygons(r, 1.0, 0.5, 0.0, extra=extra, protect=prot)
+    assert len(got) == 1 and not inside(got[0], 2.25, 7.25)                                  # protected: the exact staircase is kept there
+
+
+def test_a_connectors_ground_pins_exemption_does_not_cover_another_nets_pins():
+    xs, ys = [19.5, 19.5, 19.5], [5, 7.2, 9.4]
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 20, 20))] + [(True, rect(x - 0.7, y - 0.7, x + 0.7, y + 0.7)) for x, y in zip(xs, ys)])
+    a.part('J1', 30, 30)
+    for n, (x, y) in enumerate(zip(xs, ys)):
+        a.p('J1', str(n + 1), x, y, 'SIG', smd=False, size=1.0, mask=3)
+    b = a.build()
+    r = fills.net_copper(b, 0, 1, ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+    assert fills.rough_edges(b, r, 0, 1, clearance=0.3, exempt=('J',)).any()

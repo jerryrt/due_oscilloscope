@@ -78,6 +78,13 @@ declare -A M=(
   [kink_offset_ignored]="rules.py|                    if off < c.TRACK_KINK_OFFSET and|                    if True and"
   [kink_any_net]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL:"
   [kink_never]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif False:"
+  [shell_min_ignored]="rules.py|                if frac < c.FILL_SHELL_MIN:|                if False:"
+  [shell_smd_counts]="rules.py|and not b.p_smd[h] and str(b.fp_ref[b.p_fp[h]]).startswith|and str(b.fp_ref[b.p_fp[h]]).startswith"
+  [shell_any_net]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
+  [gndpad_via_ignored]="rules.py|                if len(b.v_x) and ((vd <= 0.05) \& (b.v_net == gnd)).any():|                if False:"
+  [gndpad_any_net_via]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 0.05)).any()"
+  [gndpad_via_far]="rules.py|((vd <= 0.05) \& (b.v_net == gnd)).any()|((vd <= 2.0) \& (b.v_net == gnd)).any()"
+  [gndpad_min_ignored]="rules.py|                if float((ring \& zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:|                if True:"
 )
 fail=0
 for name in "${!M[@]}"; do
