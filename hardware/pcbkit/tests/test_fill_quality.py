@@ -175,3 +175,8 @@ def test_an_smd_gnd_pad_with_a_plated_hole_in_it_or_tied_shortly_to_one_that_has
     assert 'gndpad' not in kinds(ep(True, gap=1.5), FILL_GNDPAD_TIE=2.0)
     near = _pins(rect(0, 0, 5, 20), [('U1', 10, 10, True)]).v('GND', 10, 11.05)               # annulus 0.25 from the pad edge
     assert 'gndpad' in kinds(near) and 'gndpad' not in kinds(near, FILL_GNDPAD_VIA_GAP=0.3)
+
+
+def test_a_through_hole_pin_of_another_net_is_not_a_shell():
+    a = board(rect(0, 0, 5, 20)).part('J1', 30, 30).p('J1', '1', 10, 10, 'SIG', smd=False, size=1.0, mask=3)
+    assert 'shell' not in kinds(a, FILL_SHELL_PREFIXES=('J',))

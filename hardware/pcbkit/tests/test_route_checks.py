@@ -184,3 +184,13 @@ def test_a_v_with_a_tap_on_its_first_diagonal_is_still_one_track_through_the_jun
 def test_a_pad_of_another_net_at_the_end_does_not_connect_it():
     a = base().part('U1', 0, 0).p('U1', '1', 0, 0, 'OTHER', size=1.0).s('SIG', 0, 0, 0, 5, 0)
     assert any(abs(x) < 1e-6 for _, _, x, y in got(a, 'dangling'))
+
+
+def test_collinear_pieces_beyond_a_short_one_are_one_track_for_the_distance_to_a_bend():
+    a = base().s('SIG', 0, 0, 0, 4.6, 0).s('SIG', 0, 4.6, 0, 10, 0).s('SIG', 0, 5.0, 0, 5.0, 2.0)                # 0.4 mm of piece, then a joint, then straight on for 4.6 mm: no bend within 0.6 mm
+    assert not got(a, 'tspur')
+
+
+def test_a_net_turning_90_with_bends_adding_to_180_is_not_a_v_kink():
+    pts = [(0, 0), (1, 0), (1.141, 0.141), (1.141, 0.341), (1.0, 0.483), (1.0, 3.0)]                           # +45, +45, +45, -45: 90 net, 180 in all, back within 0.5 mm of the line
+    assert got(chain(pts), 'detour') == []

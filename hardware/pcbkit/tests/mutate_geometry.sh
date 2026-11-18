@@ -97,6 +97,8 @@ declare -A M=(
   [gndpad_tie_reach_ignored]="rules.py|or box_dist(h, j) > reach:|or False:"
   [gndpad_via_gap_ignored]="rules.py|((vd <= c.FILL_GNDPAD_VIA_GAP) \& (b.v_net == gnd)).any()|((vd <= 0.05) \& (b.v_net == gnd)).any()"
   [gndpad_tie_any_part]="rules.py|or b.p_fp[j] != b.p_fp[h] or not (b.p_layer_mask[j] \& 1)|or not (b.p_layer_mask[j] \& 1)"
+  [reach_collinear_first_joint_stops]="rules.py|            if cosang < math.cos(math.radians(c.TRACK_ANGLE_TOL)):|            if True:"
+  [shell_any_net_pin]="rules.py|shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and|shells = [h for h in range(len(b.p_net)) if True and"
 )
 fail=0
 for name in "${!M[@]}"; do

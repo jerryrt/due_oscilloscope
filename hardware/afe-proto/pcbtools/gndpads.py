@@ -128,8 +128,12 @@ def relocate(src, dst, pads):
         out = VIA_D / 2 - 0.05
         cands = [(b.p_x[h], b.p_by1[h] + out), (b.p_x[h], b.p_by0[h] - out), (b.p_bx1[h] + out, b.p_y[h]), (b.p_bx0[h] - out, b.p_y[h])]
         removed_t = set(int(b.s_idx[k]) for k in run)
-        # the room is judged without the pad's own run and via
-        rooms = [(_room(b, g, cx, cy), cx, cy) for cx, cy in cands]
+        # the room is judged without the pad's own run and via; and a hole needs 0.25 mm of board to any other hole (hole_to_hole)
+        def hole_room(cx, cy):
+            d = [math.hypot(b.v_x[i] - cx, b.v_y[i] - cy) - 0.3 for i in range(len(b.v_x)) if i != vi]
+            d += [math.hypot(b.p_x[i] - cx, b.p_y[i] - cy) - min(b.p_sx[i], b.p_sy[i]) / 2 - 0.15 for i in range(len(b.p_x)) if not b.p_smd[i]]
+            return (min(d) - 0.25) if d else 9.0
+        rooms = [(min(_room(b, g, cx, cy), hole_room(cx, cy) + MIN_CLEAR), cx, cy) for cx, cy in cands]
         room, cx, cy = max(rooms)
         if room < MIN_CLEAR - 1e-9:
             skipped.append((ref, pin, 'no side of the pad has room for a via (best %.2f mm)' % room))
