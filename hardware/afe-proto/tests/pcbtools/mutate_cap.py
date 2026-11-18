@@ -13,6 +13,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))              # hardware/afe-proto
 SCR = os.path.join(ROOT, 'pcbtools', '.scratch', 'mutc')
+KIT = os.path.join(os.path.dirname(ROOT), 'pcbkit')           # the scratch copy of pcbtools sits elsewhere, so it is told where pcbkit is (its child process imports pcbkit through it)
 RESULT = os.path.join(ROOT, 'tests', 'golden', 'cap_mutation_result.txt')
 
 CONVERGE_ONLY = False
@@ -46,7 +47,8 @@ MUTANTS = [
     (C, 'window ignores its pad', "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad", "return kx.min() - pad, ky.min() - pad, kx.max() + pad, ky.max() + pad * 0"),
     # the grid-size guard (review finding 17)
     (C, 'grid guard never refuses', "    if n > lim:\n", "    if n > lim * 10 ** 9:\n"),
-    (C, 'grid guard after the allocation', "    check_grid(nx, ny, nz)\n    eps = _eps((nz, ny, nx), nzb, stack)\n    masks", "    eps = _eps((nz, ny, nx), nzb, stack)\n    check_grid(nx, ny, nz)\n    masks"),
+    (C, 'grid guard after the allocation (pair)', "    check_grid(nx, ny, nz, max_cells)\n    eps = _eps((nz, ny, nx), nzb, stack)\n    masks", "    eps = _eps((nz, ny, nx), nzb, stack)\n    check_grid(nx, ny, nz, max_cells)\n    masks"),
+    (C, 'grid guard after the allocation (self)', "    check_grid(nx, ny, nz, max_cells)\n    eps = _eps((nz, ny, nx), nzb, stack)\n    m = raster", "    eps = _eps((nz, ny, nx), nzb, stack)\n    check_grid(nx, ny, nz, max_cells)\n    m = raster"),
     # pour and the other nets
     (C, 'no pour keep-back radius', "    k = int(round(clear / h))\n", "    k = 0\n"),
     (C, 'pour case without the pour', "            g = g | ~keep_back(m | other, stack.pour_clear, h)", "            g = g"),
@@ -90,7 +92,7 @@ def run(tag, edit):
         resource.setrlimit(resource.RLIMIT_AS, (3 << 30, 3 << 30))
     p = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-x', '-p', 'no:cacheprovider', '-c', os.path.join(ROOT, 'tests', 'pytest.ini'),
                         os.path.join(HERE, 'test_cap.py')] + (['-k', 'extrapolate or plate or fit_pad or converge'] if CONVERGE_ONLY else []), capture_output=True, text=True, cwd=ROOT, timeout=300, preexec_fn=limit,
-                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d))
+                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d, PCBKIT_ROOT=KIT))
     lines = p.stdout.strip().splitlines()
     first = next((ln for ln in lines if ln.startswith('FAILED')), '')
     tail = lines[-1] if lines else p.stderr[-200:]
