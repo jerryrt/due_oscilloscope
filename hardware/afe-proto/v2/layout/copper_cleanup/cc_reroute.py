@@ -1,7 +1,7 @@
 """the automatic pass: re-route only the runs of segments track_geometry flags, from the nearest good vertex on each side, as an octilinear path of at most --max-legs legs that keeps
 every net's pad connectivity (with and without the LR-6 / LR-8 cuts) and the INV_MAX nets' length.
 
-usage: python3 cc_reroute.py IN OUT [--nets A,B] [--max-legs 4] [--iters N] [--narrow] [--gnd-delete] [--collapse] [--why] [--debug]
+usage: python3 cc_reroute.py IN OUT [--kinds detour,dangling,...] [--nets A,B] [--skip-nets A,B] [--grid] [--max-legs 4] [--iters N] [--narrow] [--gnd-delete] [--collapse] [--why] [--debug]
 """
 import sys, os, math, collections, time, itertools
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,9 +21,28 @@ from pcbtools.boards import v2_layout as _L
 PROTECTED = set(_L.INV_LEN_NODES) | set(_L.ADC_NETS) | set(_L.INV_NODES)        # the nets whose track length an LR row reads or limits: AWG_FB, CH1_OUT, CH2_OUT, A0, A1, the divider nodes
 
 
+OLD_KINDS = ('arc', 'angle', 'jog', 'entry', 'over_pad', 'stale_exception')
+
+
 class Runner(State):
+    kinds = OLD_KINDS
+
     def findings(self):
-        return rules.track_geometry_parts(self.board(), CFG)
+        out = [f for f in rules.track_geometry_parts(self.board(), CFG) if f[0] in self.kinds]
+        extra = []
+        for f in out:
+            if f[0] != 'detour':
+                continue
+            P = np.array([[f[2], f[3]]])
+            for net in sorted(set(self.N[self.alive & (self.L == 0)].tolist())):
+                if self.b.nets[net] not in f[1]:
+                    continue
+                for ch in self.chains(net):
+                    pts = self.chain_polyline(ch)
+                    S = np.array([[pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]] for k in range(len(pts) - 1)])
+                    if geom.point_seg_dist(P, S).min() < (0.05 if 'shortest path' in f[1] else 1.2) and len(ch['segs']) >= 2:        # a U-turn's finding sits at the mean of its bends, near the run but not on it
+                        extra += [('detour', f[1], (pts[k][0] + pts[k + 1][0]) / 2, (pts[k][1] + pts[k + 1][1]) / 2) for k in range(len(pts) - 1)]       # a detour is the whole run: every segment of it is bad, so the whole chain is re-routed end to end
+        return out + extra
 
     def runs(self, ch, bad):
         """[(i, j)] maximal runs of consecutive bad segments of the chain (indices into its walk order)"""
@@ -69,6 +88,112 @@ class Runner(State):
                 out.append((t, h))
         return sorted(out)
 
+    grid_first = False
+
+    def grid_path(self, obs, A, B, sa, sb, width, g=0.05, turn_pen=0.45, node_cap=400000):
+        """the least-bent octilinear path from A to B on a 0.05 mm grid: every leg at least MIN_LEG long (the first and last as the terminals say), every bend 45 or 90 degrees, clear of every obstacle by its
+        requirement. Dijkstra-A* on (cell, direction, length of the current leg), so a path never hooks back on itself unless nothing else is clear. None when there is no such path."""
+        import heapq
+        C, R, O, REQ = obs
+        x0 = min(A[0], B[0]) - 2.5; y0 = min(A[1], B[1]) - 2.5
+        x1 = max(A[0], B[0]) + 2.5; y1 = max(A[1], B[1]) + 2.5
+        ia = lambda p: (int(round((p[0] - A[0]) / g)), int(round((p[1] - A[1]) / g)))
+        i0, j0 = int(math.floor((x0 - A[0]) / g)), int(math.floor((y0 - A[1]) / g))
+        i1, j1 = int(math.ceil((x1 - A[0]) / g)), int(math.ceil((y1 - A[1]) / g))
+        nx, ny = i1 - i0 + 1, j1 - j0 + 1
+        if nx * ny > 400000:
+            return None
+        gx = A[0] + (np.arange(nx) + i0) * g; gy = A[1] + (np.arange(ny) + j0) * g
+        P = np.column_stack([np.repeat(gx, ny), np.tile(gy, nx)])
+        bad = np.zeros(len(P), bool)
+        if len(C):
+            for a0 in range(0, len(P), 4000):
+                D = geom.point_seg_dist(P[a0:a0 + 4000], C) - R[None, :] - width / 2
+                bad[a0:a0 + 4000] = (D < REQ[O][None, :] - 1e-9).any(axis=1)
+        bad = bad.reshape(nx, ny)
+        ax0, ay0, ax1, ay1 = self.area
+        edge = (gx[:, None] < ax0 + 0.5) | (gx[:, None] > ax1 - 0.5) | (gy[None, :] < ay0 + 0.5) | (gy[None, :] > ay1 - 0.5)
+        bad |= edge
+        (ai, aj), (bi, bj) = ia(A), ia(B)
+        def pad_ok(sp, X, Y, d):
+            """the track, travelling along d, may end (or start) at (X, Y) on the pad of terminal spec sp: inside its copper, and across its edge within the edge's span"""
+            h = sp['row']; pa = self.pa
+            rot = math.radians(float(pa['rot'][h])); dxp, dyp = X - float(pa['cx'][h]), Y - float(pa['cy'][h])
+            u = dxp * math.cos(rot) + dyp * math.sin(rot); v = -dxp * math.sin(rot) + dyp * math.cos(rot)
+            sx, sy = float(pa['sx'][h]), float(pa['sy'][h])
+            ang = (45 * d - math.degrees(rot)) % 180
+            if min(ang, 180 - ang) < 1e-6:
+                return abs(v) + width / 2 <= sy / 2 + 0.001 and abs(u) <= sx / 2 - 0.05
+            return abs(u) + width / 2 <= sx / 2 + 0.001 and abs(v) <= sy / 2 - 0.05
+        def in_pad(sp, X, Y):
+            h = sp['row']; pa = self.pa
+            rot = math.radians(float(pa['rot'][h])); dxp, dyp = X - float(pa['cx'][h]), Y - float(pa['cy'][h])
+            u = dxp * math.cos(rot) + dyp * math.sin(rot); v = -dxp * math.sin(rot) + dyp * math.cos(rot)
+            return abs(u) <= float(pa['sx'][h]) / 2 + 0.02 and abs(v) <= float(pa['sy'][h]) / 2 + 0.02
+        regA = sa.get('kind') == 'pad' and sa.get('row', -1) >= 0 and self.pa['shape'][sa['row']] != 0
+        regB = sb.get('kind') == 'pad' and sb.get('row', -1) >= 0 and self.pa['shape'][sb['row']] != 0
+        if not regB and (abs((B[0] - A[0]) / g - round((B[0] - A[0]) / g)) > 0.02 or abs((B[1] - A[1]) / g - round((B[1] - A[1]) / g)) > 0.02):
+            return None                                       # B is not on A's grid and is no pad: the enumerated search handles that pair
+        DX = [1, 1, 0, -1, -1, -1, 0, 1]; DY = [0, 1, 1, 1, 0, -1, -1, -1]
+        STEP = [5, 7, 5, 7, 5, 7, 5, 7]                       # hundredths of a mm per step
+        mlA = sa['minleg']; mlB = sb['minleg']
+        mlA = (lambda d: mlA.get(d, MIN_LEG)) if isinstance(mlA, dict) else (lambda d, v=mlA: v)
+        mlB = (lambda d: mlB.get(d, MIN_LEG)) if isinstance(mlB, dict) else (lambda d, v=mlB: v)
+        lastd = sb['lastdirs'] if 'lastdirs' in sb else [(d + 4) % 8 for d in sb['dirs']]
+        CAP = int(round(MIN_LEG * 100))
+        heur = lambda i, j: (max(abs(i - bi), abs(j - bj)) + 0.4142 * min(abs(i - bi), abs(j - bj))) * g
+        pq, best, parent = [], {}, {}
+        for d in sa['dirs']:
+            cells = [(ai, aj)]
+            if regA:
+                h = sa['row']; R_ = max(float(self.pa['sx'][h]), float(self.pa['sy'][h])) / 2
+                cells = [(ci, cj) for ci in range(ai - int(R_ / g) - 1, ai + int(R_ / g) + 2) for cj in range(aj - int(R_ / g) - 1, aj + int(R_ / g) + 2)
+                         if pad_ok(sa, A[0] + ci * g, A[1] + cj * g, d) and not (bad[ci - i0, cj - j0] if (0 <= ci - i0 < nx and 0 <= cj - j0 < ny) else True)]
+            for (ci, cj) in cells:
+                st0 = (ci, cj, d, 0, True)
+                best[st0] = 0.0 if (ci, cj) == (ai, aj) else 0.0
+                heapq.heappush(pq, (heur(ci, cj), 0.0, st0))
+        nodes = 0
+        while pq:
+            f, gc, s = heapq.heappop(pq)
+            if best.get(s, 1e18) < gc - 1e-12:
+                continue
+            i, j, d, run, first = s
+            nodes += 1
+            if nodes > node_cap:
+                return None
+            if ((i == bi and j == bj) if not regB else pad_ok(sb, A[0] + i * g, A[1] + j * g, (d + 4) % 8)) and d in lastd and run >= int(round(mlB(d) * 100)) - 1:
+                path, cur = [], s
+                while cur is not None:
+                    path.append(cur); cur = parent.get(cur)
+                path.reverse()
+                pts = [(A[0] + path[0][0] * g, A[1] + path[0][1] * g)]
+                for k in range(1, len(path)):
+                    if path[k][2] != path[k - 1][2]:
+                        pts.append((A[0] + path[k][0] * g, A[1] + path[k][1] * g))
+                pts.append((A[0] + i * g, A[1] + j * g) if regB else (A[0] + bi * g, A[1] + bj * g))
+                return [(round(p[0], 4), round(p[1], 4)) for p in pts]
+            need = int(round(mlA(d) * 100)) if first else CAP
+            moves = [(d, 0)]
+            inpad = (regA and in_pad(sa, A[0] + i * g, A[1] + j * g)) or (regB and in_pad(sb, A[0] + i * g, A[1] + j * g))
+            if run >= need - 1 and not inpad:                     # a bend is made outside the pads: a track that turns inside a pad enters it across a corner
+                moves += [((d + t) % 8, pen) for t, pen in ((1, 0.0), (-1, 0.0), (2, 0.25), (-2, 0.25))]
+            for nd, pen in moves:
+                if nd == d:
+                    ni, nj = i + DX[d], j + DY[d]
+                    ii, jj = ni - i0, nj - j0
+                    if not (0 <= ii < nx and 0 <= jj < ny) or bad[ii, jj]:
+                        continue
+                    ns = (ni, nj, d, min(run + STEP[d], CAP) if not (first and run + STEP[d] < CAP) else run + STEP[d], first and run + STEP[d] < need)
+                    cost = gc + STEP[d] / 100.0
+                else:
+                    ns = (i, j, nd, 0, False)
+                    cost = gc + turn_pen + pen
+                if cost < best.get(ns, 1e18) - 1e-12:
+                    best[ns] = cost; parent[ns] = s
+                    heapq.heappush(pq, (cost + heur(ns[0], ns[1]), cost, ns))
+        return None
+
     def route_pair(self, net, layer, width, sa, sb, old, max_legs, K=6):
         """a path between two terminal specs (dicts with pos, dirs, minleg, skip), or None"""
         A, B = sa['pos'], sb['pos']
@@ -94,6 +219,12 @@ class Runner(State):
         oldlen = sum(math.hypot(old[k + 1][0] - old[k][0], old[k + 1][1] - old[k][1]) for k in range(len(old) - 1))
         cap = oldlen + (1e-9 if self.b.nets[net] in PROTECTED else max(1.0, 0.3 * oldlen))      # a protected net never gets longer: not by 0.1 mm, not by anything over float noise
         got = []
+        if self.grid_first:
+            gp = self.grid_path(obs, A, B, sa, sb, width)
+            if gp is not None and len(gp) >= 2:
+                plen_ = sum(math.hypot(gp[k + 1][0] - gp[k][0], gp[k + 1][1] - gp[k][1]) for k in range(len(gp) - 1))
+                if plen_ <= cap + 1e-9 and self.valid([(0, gp)], obs, width, wfun=wfun)[0]:
+                    got.append((gp, wfun(gp)))
         for legs in range(1, max_legs + 1):
             cands = [c for c in candidates(A, B, sa['dirs'], last_dirs, sa['minleg'], sb['minleg'], MIN_LEG, max_legs=legs) if len(c[1]) - 1 == legs]
             cands = [c for c in cands if sum(math.hypot(c[1][k + 1][0] - c[1][k][0], c[1][k + 1][1] - c[1][k][1]) for k in range(len(c[1]) - 1)) <= cap + 1e-9]
@@ -150,7 +281,7 @@ class Runner(State):
                 tries += 1
                 if tries > 24:
                     break
-                total, wsall, nl = [specs[0]['pos']], [], 0
+                total, wsall, nl = [combo[0][0][0]], [], 0                  # the first vertex of the first path: the pad centre, or where on the pad the grid search chose to start
                 for p, ws in combo:
                     total += list(p[1:]); nl += len(p) - 1; wsall += ws
                 plen = lambda P: sum(math.hypot(P[k + 1][0] - P[k][0], P[k + 1][1] - P[k][1]) for k in range(len(P) - 1))
@@ -325,6 +456,7 @@ def main():
     maxlegs = int(a[a.index('--max-legs') + 1]) if '--max-legs' in a else 3
     iters = int(a[a.index('--iters') + 1]) if '--iters' in a else 200
     only = set(a[a.index('--nets') + 1].split(',')) if '--nets' in a else None
+    skip = set(a[a.index('--skip-nets') + 1].split(',')) if '--skip-nets' in a else set()
     st = Runner(inp)
     st.last = None
     if '--narrow' in a:
@@ -332,6 +464,9 @@ def main():
     if '--collapse' in a:
         print('collapsed junctions', st.collapse_junctions(only))
     st.debug = '--debug' in a
+    st.grid_first = '--grid' in a
+    if '--kinds' in a:
+        st.kinds = tuple(a[a.index('--kinds') + 1].split(','))
     st.delete_stubs = '--gnd-delete' in a
     failed = set()
     for it in range(iters):
@@ -342,6 +477,8 @@ def main():
         chs = []
         for net in sorted(set(st.N[st.alive & (st.L == 0)].tolist())):
             if only and st.b.nets[net] not in only:
+                continue
+            if st.b.nets[net] in skip:
                 continue
             chs += st.chains(net)
         todo = []

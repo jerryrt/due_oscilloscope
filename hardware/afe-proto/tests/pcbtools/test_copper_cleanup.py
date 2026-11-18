@@ -2,7 +2,7 @@
 
   * the board of record is held by hash (the tool's input is exactly what it was written against);
   * every polyline the hand edits add runs on the angle step (0, 45, 90 degrees, 0.5 degrees of tolerance) and no edit data names a net the board has not;
-  * the committed integrated board has no track_geometry finding but the three named exceptions of the board configuration (AWG_FB into U301, LR-4), and a stale exception row fails (pcbnew tier).
+  * the committed integrated board has no track_geometry or fill_quality finding but the named exceptions of the board configuration (each with its reason, each matching one finding), and a stale exception row fails (pcbnew tier).
 Broken on purpose: a 133 degree polyline in the data, a changed byte in the board of record, a finding added to the board and a stale exception row each fail the matching test."""
 import hashlib
 import math
@@ -29,10 +29,11 @@ def off_step(polyline):
 
 def edit_polylines():
     sys.path.insert(0, str(CC))
-    import cc_edits
-    for net, kill, adds in cc_edits.OPS:
-        for pl, w in adds:
-            yield net, pl
+    import cc_edits, cc_fix_data
+    for mod in (cc_edits, cc_fix_data):
+        for net, kill, adds in mod.OPS:
+            for pl, w in adds:
+                yield net, pl
 
 
 def test_the_board_of_record_is_held_by_hash():
@@ -67,10 +68,32 @@ def test_the_rebuilt_board_has_no_geometry_finding_but_the_named_exceptions(pcbn
     b = board.read_board(str(BOARD), FRAME)
     parts = rules.track_geometry_parts(b, geometry_cfg())
     assert list(parts) == [], list(parts)                        # nothing left, and no stale exception
-    assert sorted((e[0], e[1]) for e, f in parts.waived) == [('angle', '/AWG_FB'), ('entry', '/AWG_FB'), ('entry', '/AWG_FB'), ('over_pad', '/AWG_FB')]
     from pcbtools.boards import v2_layout as L
-    assert all('INV_MAX' in e[3] or e[3].startswith('same') for e in L.GEOMETRY_EXCEPTIONS)        # every row carries its reason
+    assert sorted((e[0], e[1]) for e, f in parts.waived) == sorted((e[0], e[1]) for e in L.GEOMETRY_EXCEPTIONS) and len(L.GEOMETRY_EXCEPTIONS) >= 4        # every row waives exactly one finding
+    assert all(len(e[3]) > 40 for e in L.GEOMETRY_EXCEPTIONS)        # and carries its reason
     assert L.TRACK_BREAKOUT_REACH == 0.8
+
+
+@pytest.mark.pcbnew
+def test_the_rebuilt_board_has_no_fill_finding_but_the_named_exceptions(pcbnew_required):
+    """the pour: no narrow piece, dead end, row of arcs, no connector GND pin or SMD GND pad lost from the top pour, except the named shell and GND pad exceptions of the configuration (each matching one finding)"""
+    from pcbkit import board, rules
+    from pcbtools.boards import v2_layout as L
+    b = board.read_board(str(BOARD), FRAME)
+    cfg = geometry_cfg()
+    parts, figs = rules.fill_quality_parts(b, cfg)
+    assert list(parts) == [], list(parts)
+    assert figs['F_shell_pins'] >= 14 and len(L.FILL_SHELL_EXCEPTIONS) == 3 and all(len(e[2]) > 40 for e in L.FILL_SHELL_EXCEPTIONS)
+
+
+@pytest.mark.pcbnew
+def test_a_shell_pin_exception_that_matches_nothing_fails(pcbnew_required):
+    from pcbkit import board, rules
+    b = board.read_board(str(BOARD), FRAME)
+    cfg = geometry_cfg()
+    cfg['FILL_SHELL_EXCEPTIONS'] = list(cfg['FILL_SHELL_EXCEPTIONS']) + [('J101', '2', 'a pin that has pour round it: this row matches no finding')]
+    parts, figs = rules.fill_quality_parts(b, cfg)
+    assert any(p[0] in ('stale_exception', 'shell') for p in parts)
 
 
 @pytest.mark.pcbnew

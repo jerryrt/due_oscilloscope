@@ -1,5 +1,5 @@
 """the hand edits of the AFE-2 copper cleanup, as data: segments to remove and polylines to add per net, vias to move, delete or add. Applied on top of the automatic pass.
-usage: python3 cc_edits.py IN OUT"""
+usage: python3 cc_edits.py IN OUT [DATA_MODULE]"""
 import sys, os, math, collections
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE]
@@ -28,12 +28,6 @@ OPS = [
     # +5V_F: U401.3 straight west into C402.1; the loop round it goes
     ('/+5V_F', [(28.9, 14.54, 28.9, 15.17), (28.9, 15.17, 28.28, 15.17), (28.28, 15.17, 28.28, 14.25), (28.28, 14.25, 30.55, 14.25)],
      [([(30.55, 14.25), (29.0, 14.25)], 0.25)]),
-    # GND: U401.1 and U401.4 reach the exposed pad (and its vias) straight, 0.15 wide so the track stays within the pad's edge
-    ('/GND', [(54.88, 18.3, 54.3, 18.6), (54.88, 17.2, 54.88, 18.3), (30.95, 13.7, 31.5, 13.15), (30.8, 13.7, 30.95, 13.7), (31.2, 15.3, 31.2, 15.7), (31.5, 13.15, 31.5, 11.95)],
-     [([(54.88, 17.2), (54.88, 18.85)], 0.2),
-      ([(30.55, 15.25), (31.15, 15.25)], 0.15), ([(30.55, 13.75), (31.15, 13.75)], 0.2),
-      ([(31.5, 15.0), (31.5, 16.2)], 0.2), ([(31.1, 12.9), (31.1, 12.15)], 0.2),
-      ([(32.65, 10.7), (32.65, 11.5), (31.9, 11.5), (31.9, 12.15)], 0.2)]),
     # AWG_BNC_L: R507.1 to BR502.1 straight, at the height where both pads span
     ('/AWG_BNC_L', [(64.5, 19.5, 65.215, 19.5), (63.625, 20.0, 64.5, 20.0), (64.5, 20.0, 64.5, 19.5)], [([(63.8, 19.75), (65.0, 19.75)], 0.2)]),
     # VREF at U501.2 / C501.1: the six branches each take their own edge; the C501.1 to U501.2 link is one straight vertical
@@ -49,9 +43,9 @@ OPS = [
     ('/A1', [(66.05, 41.2, 66.05, 38.95), (66.05, 38.95, 66.04, 38.94), (66.04, 38.94, 66.04, 2.54)],
      [([(66.05, 41.2), (66.05, 33.0)], 0.2), ([(66.05, 33.0), (66.05, 2.54)], 0.2)]),
 ]
-NEW_VIAS = [(31.5, 16.2), (31.1, 12.15), (31.9, 12.15), (80.5, 33.25)]          # the last one ties the open end of the two 1.2 mm GND guard tracks beside U101 (the keep-out takes the pour they ended in)          # U401.1 and U401.4 each get a via of their own, on a stub from the exposed pad
-VIAS_DELETE = [(29.85, 17.45), (31.5, 11.95), (32.25, 11.55)]
-VIAS_MOVE_TO = [((54.3, 18.6), (54.88, 18.85))]          # the GND via of U502.3 goes to the end of a straight leg
+NEW_VIAS = []                       # the GND vias are cc_gndedge's: every SMD GND pad gets one at its edge, after the last track edit
+VIAS_DELETE = []
+VIAS_MOVE_TO = []
 VIAS_MOVE = []
 
 
@@ -64,11 +58,13 @@ def match(S, a, tol=1e-3):
 
 def main():
     inp, out = sys.argv[1:3]
+    import importlib
+    D = importlib.import_module(sys.argv[3]) if len(sys.argv) > 3 else sys.modules[__name__]            # the data: this file's, or a later round's module of the same names
     st = Runner(inp)
     st.last = None
     nets = {n: i for i, n in enumerate(st.b.nets)}
     missing = []
-    for net, kill, adds in OPS:
+    for net, kill, adds in D.OPS:
         for a in kill:
             i = match(st, a)
             if i is None:
@@ -82,19 +78,19 @@ def main():
     if missing:
         raise SystemExit('edits that remove a segment that is not on the board (the data and the automatic pass disagree): %s' % missing)
     st.via_dead = set()
-    for (vx, vy) in VIAS_DELETE:
+    for (vx, vy) in D.VIAS_DELETE:
         k = int(np.argmin(np.hypot(st.b.v_x - vx, st.b.v_y - vy)))
         assert abs(st.b.v_x[k] - vx) < 1e-3 and abs(st.b.v_y[k] - vy) < 1e-3, (vx, vy)
         st.via_dead.add(k)
     gnd = nets['/GND']
-    for (vx, vy) in NEW_VIAS:
+    for (vx, vy) in D.NEW_VIAS:
         st.vias = np.vstack([st.vias, [vx, vy, 0.6, gnd]])
-    for (fx, fy), (tx, ty) in VIAS_MOVE_TO:
+    for (fx, fy), (tx, ty) in D.VIAS_MOVE_TO:
         k = int(np.argmin(np.hypot(st.b.v_x - fx, st.b.v_y - fy)))
         assert abs(st.b.v_x[k] - fx) < 1e-3 and abs(st.b.v_y[k] - fy) < 1e-3, (fx, fy)
         st.vias[k, 0], st.vias[k, 1] = tx, ty
     st.vias_moved = {}
-    for (vx, vy), near in VIAS_MOVE:
+    for (vx, vy), near in D.VIAS_MOVE:
         k = int(np.argmin(np.hypot(st.b.v_x - vx, st.b.v_y - vy)))
         # new tracks first: the obstacles must include them
         st.alive_save = None
