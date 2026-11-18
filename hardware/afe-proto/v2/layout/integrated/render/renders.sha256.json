@@ -1,8 +1,13 @@
 {
  "board_sha256": "00a2eb855b53622431c9f387ab6d1fdf7dc77ae676394953b5b90b23033962c7",
+ "models": {
+  "checked": 102,
+  "missing": [],
+  "unresolved": []
+ },
  "files": {
-  "afe-v2-integrated-3d-bottom.png": "2637f460b7a014ba19a5fe960bec791e6d66c516609fc2e8d05a28db6558f41d",
-  "afe-v2-integrated-3d.png": "c04368de3e85ac1bbefd73e57c2da2eba05b76b387fef823f498d1e284db9eba",
+  "afe-v2-integrated-3d-bottom.png": "2d5d475d11c3d9e1d64fe4df7d1bc3b9c5fb0e721212fb8d0c379be2a50cba23",
+  "afe-v2-integrated-3d.png": "59897732c631561043d5520b55b32c8e49b7b88e6acbe31c85bd008aae8e6320",
   "afe-v2-integrated-B.Cu.png": "7f65c1baef410c280aec04e4a26a0e49f69b85126bbbbe37b030caf52c27fb48",
   "afe-v2-integrated-F.Cu-silk.png": "e588e3445397d5bde160a06c6500a11d7fb56ae4cfe31154d3262f4e16a85abd",
   "afe-v2-integrated-band-north.png": "ac6380835c3fb1e0380feaebc2f18346cbe2dc1716c6384a455c19c1abdf70ea",
