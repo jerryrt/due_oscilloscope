@@ -1,16 +1,16 @@
 {
- "board_sha256": "5b10e901fd653d39cc5339d3dd168bb874cd7ca5fbeda18dac1ce84d61080dff",
+ "board_sha256": "6e38f0ee43d876e988211aaaf8801bbf253e6103cb274779aa47135216d5ab97",
  "models": {
   "checked": 102,
   "missing": [],
   "unresolved": []
  },
  "files": {
-  "afe-v2-integrated-3d-bottom.png": "89ad099fb317c191b410182efa41cef9e8e791cdf4ee525d2c0be6d07a30773e",
-  "afe-v2-integrated-3d.png": "a403afb1d268b40fdb964c0671a08b71c2abaf33e104ce3edf48bcd2a12f10f5",
-  "afe-v2-integrated-B.Cu.png": "b4100ba286f5beb7cd90066ebec5f500dc24b450887e73496b381722364f15b5",
-  "afe-v2-integrated-F.Cu-silk.png": "1f2d3ef6d871bd7ece7588e44459c2c070b5ac46f40e3129a90e32fe3afe22c5",
-  "afe-v2-integrated-band-north.png": "65cb489bf26bf1189bc356255667d5c9ed418af7306b12a738850b0c1ce5a748",
-  "afe-v2-integrated-band-south.png": "5881e83367607def71abd2a70831b092cf9e61fdb1c71014e2129a67311e0878"
+  "afe-v2-integrated-3d-bottom.png": "85b4addb23026e3700088c9e6c46a2d1f8ca120d8eb8def65befcfd9b3f2bf4a",
+  "afe-v2-integrated-3d.png": "e6f722fb5039f668d9a6a4c93a350220f06cc4197d78def469b892d5bfa27deb",
+  "afe-v2-integrated-B.Cu.png": "3f7ba6160abde8a23a66b0452af1ea0073f819a6f9b5a0b87f0c815bff045010",
+  "afe-v2-integrated-F.Cu-silk.png": "9b49ef540f1831410bdbf2b57996c183342a443ef5d36a2d95f1cecca8b54ab7",
+  "afe-v2-integrated-band-north.png": "5c4109d8fd903784327415d1c9cd9cd021db1d4688279df281a2f9c05fa4375c",
+  "afe-v2-integrated-band-south.png": "5d008696c9aaca8c532fdb089f6a50543cb460e071754f7b11d83490d966f369"
  }
 }
