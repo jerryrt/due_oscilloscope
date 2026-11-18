@@ -5,6 +5,7 @@ Run in the PCB image from hardware/afe-proto:   python3 pcbkit_regress/labels.py
 This file is the AFE's side: it reads the AFE configurations (boards/v1_layout, boards/v2_layout); pcbkit itself imports nothing from here."""
 import sys, os
 HERE = os.path.dirname(os.path.abspath(__file__))
+AFE = os.path.abspath(os.path.join(HERE, '..'))                  # hardware/afe-proto: the boards' paths below are relative to it, whatever the working directory
 sys.path[:0] = [os.path.join(HERE, '..', '..', 'pcbkit'), os.path.join(HERE, '..')]
 from pcbkit import labels as L
 from pcbkit.labels import from_board as FB
@@ -29,7 +30,7 @@ def load(which):
     """(LabelBoard, configuration mapping, board entry, board configuration module)"""
     B = BOARDS[which]
     C = __import__(B['cfgmod'], fromlist=['x'])
-    lb = FB.read(B['path'], {'FRAME': FRAME}, fixed_text_owner={fn: r for r, fn in B['bnc'].items()}, block_names=set(B['names'].values()))
+    lb = FB.read(os.path.join(AFE, B['path']), {'FRAME': FRAME}, fixed_text_owner={fn: r for r, fn in B['bnc'].items()}, block_names=set(B['names'].values()))
     cfg = dict(SILK_REQUIRED_PREFIXES=C.SILK_REQUIRED_PREFIXES, NO_LABEL_PREFIXES=('MH',), BLOCK=C.BLOCK, OUTLINE=C.OUTLINE, OUTLINE_STRAYS=tuple(C.OUTLINE_STRAYS) if hasattr(C, 'OUTLINE_STRAYS') else (),
                PASSIVE_TEST=B['passive'], PRIORITY=B['priority'], FORCE=B['force'], LABEL_AREA=tuple(C.DUE_RECT) if which == 'v1' else None)
     return lb, cfg, B, C
