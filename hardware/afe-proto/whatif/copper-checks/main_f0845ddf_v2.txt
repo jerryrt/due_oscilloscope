@@ -1,0 +1,131 @@
+effective configuration of track_geometry and fill_quality
+TRACK_ANGLE_STEP             project   45.0
+TRACK_ANGLE_TOL              project   0.5
+TRACK_MIN_LEG                project   0.6
+TRACK_FINE_PITCH             project   0.65
+TRACK_MAX_TURN               project   135.0
+TRACK_TURN_WINDOW            project   3.0
+TRACK_DETOUR_RATIO           project   1.5
+TRACK_DETOUR_MIN_LEN         project   1.0
+TRACK_SPUR_MIN               project   0.6
+TRACK_SPUR_CLEAR             project   0.6
+TRACK_NET_WIDTHS             project   {'*': 0.25, 'GND': 0.25, '+5V_F': 0.3, '+5V_DUE': 0.3, '+3V3A': 0.3, '+3V3A_K': 0.3, '+3V3A_U': 0.3, 'VNEG': 0.3, 'VNEG_G': 0.3, 'VNEG_O': 0.3, 'LM_CP': 0.3, 'LM_C1N': 0.3, 'LM_C1P': 0.3, 'P33_RN': 0.3}
+TRACK_WIDTH_TOL              default   0.001
+TRACK_BREAKOUT_REACH         project   0.8
+TRACK_ENTRY_EDGE_TOL         project   0.001
+TRACK_OVERLAP_TOL            project   0.001
+GEOMETRY_EXCEPTIONS          project   [('angle', '/AWG_FB', (83.19, 11.2), 'LR-4 INV_MAX 5.0 mm: AWG_FB is 4.9 mm of track from U301.2 to U301.6 and a perpendicular entry at both pins makes it 5.3 mm'), ('entry', '/AWG_FB', 'U301.2', 'same: U301.2 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)'), ('over_pad', '/AWG_FB', 'R303.2', 'the cleanup may not lengthen an INV_MAX net: ending the track on R303.2 and restarting it adds 0.03 mm to AWG_FB (4.947 mm), so the track keeps running over the pad'), ('entry', '/AWG_FB', 'U301.6', 'same: U301.6 enters at 76 degrees; perpendicular entries would take AWG_FB past INV_MAX (5.3 against 5.0 mm)')]
+GND                          project   '/GND'
+FILL_LAYERS                  project   ('F', 'B')
+FILL_MIN_WIDTH               project   {'F': 1.0, 'B': 0.5}
+FILL_DEAD_END_WIDTH          project   1.6
+FILL_LENGTH_FACTOR           project   2.0
+FILL_RASTER                  project   40.0
+FILL_MIN_AREA                project   0.02
+FILL_ROUGH_LAYERS            project   ('F',)
+FILL_ROUGH_TOL               project   0.15
+FILL_ROUGH_LINK              project   2.0
+FILL_SHELL_PREFIXES          project   ('J',)
+FILL_GNDPAD_MIN              project   0.2
+FILL_SHELL_MIN               default   0.3
+FILL_THERMAL_LAYERS          project   ('F',)
+FILL_SOLID_LAYERS            project   ('B',)
+segments 421  arcs 0
+track_geometry {'dangling': 3, 'detour': 26, 'tspur': 24, 'wide': 2}
+fill_quality   {'gndpad': 27, 'shell': 14}  {'B_dead_end': 0, 'B_narrow': 0, 'B_outline_mm': 1189.3, 'F_dead_end': 0, 'F_gndpad_lost': 27, 'F_narrow': 0, 'F_outline_mm': 1079.6, 'F_rough': 0, 'F_shell_lost': 14, 'F_shell_pins': 14}
+detour   26.05   13.35   F /LM_CP run of 6.00 mm is 1.6 times its 3.77 mm shortest path
+detour   28.00   12.80   F /LM_CP run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   29.57   15.89   F /LM_FBP run turns 225 degrees within 3.0 mm (a hook or U-turn)
+detour   32.17   8.45    F /LM_FB3M run turns 270 degrees within 3.0 mm (a hook or U-turn)
+detour   32.17   10.15   F /LM_FBN run turns 270 degrees within 3.0 mm (a hook or U-turn)
+detour   32.27   11.50   F /GND run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   32.59   6.66    F /VNEG_G run turns 225 degrees within 3.0 mm (a hook or U-turn)
+detour   34.14   13.52   F /LM_C1N run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   44.17   26.00   F /+3V3A run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   45.92   23.08   F /SCL run of 2.33 mm is 1.6 times its 1.44 mm shortest path
+detour   49.00   13.20   F /VREF run of 9.80 mm is 1.8 times its 5.47 mm shortest path
+detour   51.83   14.00   F /VREF run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   51.92   18.20   F /VREF run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   51.96   10.70   F /+3V3A_R run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   53.58   15.95   F /VREF run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   54.00   13.71   F /VREF run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   57.00   20.70   F /ADS_TAP run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   58.84   21.60   F /SNS_B_N run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   62.20   9.25    F /TAP3 run of 9.42 mm is 1.7 times its 5.45 mm shortest path
+detour   62.20   10.12   F /TAP3 run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   64.77   14.22   F /VREF run of 39.04 mm is 1.7 times its 23.48 mm shortest path
+detour   80.08   36.01   F /+3V3A_U run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   86.33   16.10   F /AWG_VO run turns 270 degrees within 3.0 mm (a hook or U-turn)
+detour   86.57   16.31   F /AWG_VO run of 2.92 mm is 1.8 times its 1.62 mm shortest path
+detour   86.77   17.68   F /AWG_VO run turns 225 degrees within 3.0 mm (a hook or U-turn)
+detour   86.98   17.89   F /AWG_VO run of 3.02 mm is 2.7 times its 1.10 mm shortest path
+dangling 35.15   7.25    F /+5V_F track end touches no pad, via or track of its net
+dangling 85.00   33.00   F /GND track end touches no pad, via or track of its net
+dangling 85.00   33.50   F /GND track end touches no pad, via or track of its net
+tspur    29.20   10.95   F /VNEG_G T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    29.50   18.95   F /+5V_F junction at a bend of the trunk (three tracks meet where it turns)
+tspur    34.40   16.90   F /+3V3A T spur joins at 0 degrees, not 90 or 45
+tspur    34.40   19.50   F /+3V3A junction at a bend of the trunk (three tracks meet where it turns)
+tspur    35.65   16.90   F /+3V3A T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    46.00   15.50   F /+3V3A T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    46.00   19.90   F /+3V3A T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    46.40   22.60   F /SCL junction at a bend of the trunk (three tracks meet where it turns)
+tspur    50.80   8.25    F /VREF T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    52.95   24.40   F /SDA_A T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    53.34   6.60    F /TAP5 T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    54.88   23.20   F /+3V3A T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    55.88   8.25    F /TAP4 T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    58.42   6.60    F /TAP3 T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    58.42   16.80   F /SNS_B_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    58.42   18.40   F /SNS_B_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    60.96   8.25    F /TAP2 T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    62.80   16.80   F /VREF T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    62.80   22.80   F /VREF T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    79.00   13.68   F /+3V3A T spur 0.42 mm long (needs 0.60)
+tspur    85.74   13.68   F /AWG_BIN T spur its junction is 0.54 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    85.74   13.68   F /AWG_BIN T spur 0.54 mm long (needs 0.60); joins at 0 degrees, not 90 or 45; its junction is 0.54 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    91.36   24.13   F /CH2_IN junction at a bend of the trunk (three tracks meet where it turns)
+tspur    92.70   8.89    F /AWG_BNC T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+wide     82.70   33.00   F /GND segment 1.20 mm wide, the net's rule is 0.25 mm (4.60 mm long)
+wide     82.70   33.50   F /GND segment 1.20 mm wide, the net's rule is 0.25 mm (4.60 mm long)
+shell    26.42   50.80   J604 pin 7 (GND) has pour on 0% of its ring, needs 30%
+shell    40.64   2.54    J601 pin 6 (GND) has pour on 0% of its ring, needs 30%
+shell    43.18   2.54    J601 pin 7 (GND) has pour on 0% of its ring, needs 30%
+shell    93.98   7.62    J605 pin 35 (GND) has pour on 4% of its ring, needs 30%
+shell    96.52   7.62    J605 pin 36 (GND) has pour on 4% of its ring, needs 30%
+shell    102.00  11.39   J301 pin 2 (GND) has pour on 3% of its ring, needs 30%
+shell    102.00  30.32   J201 pin 2 (GND) has pour on 0% of its ring, needs 30%
+shell    102.00  48.10   J101 pin 2 (GND) has pour on 29% of its ring, needs 30%
+shell    107.05  3.84    J301 pin 2 (GND) has pour on 13% of its ring, needs 30%
+shell    107.05  13.94   J301 pin 2 (GND) has pour on 7% of its ring, needs 30%
+shell    107.05  22.77   J201 pin 2 (GND) has pour on 3% of its ring, needs 30%
+shell    107.05  32.87   J201 pin 2 (GND) has pour on 8% of its ring, needs 30%
+shell    107.05  40.55   J101 pin 2 (GND) has pour on 7% of its ring, needs 30%
+shell    107.05  50.65   J101 pin 2 (GND) has pour on 21% of its ring, needs 30%
+gndpad   30.00   22.80   TP404 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   30.55   13.75   U401 pin 4 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   30.55   15.25   U401 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   31.50   14.00   U401 pin 13 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   32.65   10.70   R405 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   42.65   23.00   R407 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   51.50   16.35   C501 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   52.88   9.75    C502 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   53.88   17.20   U502 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   54.88   17.20   U502 pin 3 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   56.10   24.75   C503 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   64.00   8.25    R501 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   73.80   31.40   D201 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   77.40   10.30   C303 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   79.00   16.05   C305 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   79.08   34.15   C104 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   79.08   38.85   C105 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   79.50   10.30   C304 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   83.70   23.87   C202 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   83.70   43.47   C102 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   84.50   30.55   U101 pin 4 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   85.15   27.24   C203 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   85.15   40.10   C103 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   86.75   7.85    C306 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   88.35   13.68   R307 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   91.36   22.31   R204 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   91.36   45.03   R104 pin 2 (SMD GND) is outside the top pour and has no via at its edge

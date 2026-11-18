@@ -132,6 +132,15 @@ TRACK_ANGLE_TOL = 0.5
 TRACK_MIN_LEG = 0.6               # no bend with a leg shorter than this, except a breakout from a fine-pitch pad
 TRACK_FINE_PITCH = 0.65
 TRACK_BREAKOUT_REACH = 0.8        # montreal5: the second short leg of a fan-out (a 0.5 mm WSON) is a breakout too
+TRACK_MAX_TURN = 135.0            # a hook or a V kink turns 180 degrees or more within 3 mm
+TRACK_TURN_WINDOW = 3.0
+TRACK_DETOUR_RATIO = 1.5
+TRACK_DETOUR_MIN_LEN = 1.0
+TRACK_SPUR_MIN = 0.6              # a T spur is at least this long, joins at 90 or 45 degrees and is this far from a bend, another junction or a pad on its trunk
+TRACK_SPUR_CLEAR = 0.6
+TRACK_NET_WIDTHS = {'*': 0.25, 'GND': 0.25,                  # the width rule of each net: signals and ground 0.25 mm at most, supply and charge-pump nets 0.3
+                    '+5V_F': 0.3, '+5V_DUE': 0.3, '+3V3A': 0.3, '+3V3A_K': 0.3, '+3V3A_U': 0.3, 'VNEG': 0.3, 'VNEG_G': 0.3, 'VNEG_O': 0.3,
+                    'LM_CP': 0.3, 'LM_C1N': 0.3, 'LM_C1P': 0.3, 'P33_RN': 0.3}
 TRACK_ENTRY_EDGE_TOL = 0.001      # a track enters a pad through an edge, not across a corner, to this tolerance
 TRACK_OVERLAP_TOL = 0.001
 FILL_LAYERS = ('F', 'B')
@@ -140,6 +149,8 @@ FILL_DEAD_END_WIDTH = 1.6
 FILL_LENGTH_FACTOR = 2.0
 FILL_RASTER = 40.0
 FILL_MIN_AREA = 0.02
+FILL_SHELL_PREFIXES = ('J',)                           # every connector's through-hole GND pins (BNC shells, Due headers) stay in the top pour
+FILL_GNDPAD_MIN = 0.2
 FILL_ROUGH_LAYERS = ('F',)                             # no row of clearance arcs along the top pour's edge
 FILL_ROUGH_TOL = 0.15
 FILL_ROUGH_LINK = 2.0

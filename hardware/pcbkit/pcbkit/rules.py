@@ -909,6 +909,14 @@ TRACK_GEOMETRY_NAMES = (
     tunable('TRACK_ANGLE_TOL', 0.5, 'degrees', 'how far a segment, or a segment entering a pad, may be from the angle it should have'),
     tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
     tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
+    tunable('TRACK_MAX_TURN', 135.0, 'degrees', 'a run between its two ends (pads, vias, junctions) turns no more than this within any TRACK_TURN_WINDOW of its length (the sum of the bends there, each counted by its size): a dog-leg is 90, a V kink 180 and a hook or U-turn 180 or more'),
+    tunable('TRACK_TURN_WINDOW', 3.0, 'mm', 'the stretch of a run over which its turning is added up'),
+    tunable('TRACK_DETOUR_RATIO', 1.5, 'x', 'a run is no longer than this times the shortest octilinear (0/45/90) path between its two ends'),
+    tunable('TRACK_DETOUR_MIN_LEN', 1.0, 'mm', 'runs shorter than this are not judged for detour (a 0.3 mm run has no room to be one)'),
+    tunable('TRACK_SPUR_MIN', 0.6, 'mm', 'a spur that ends on the body of another track of its net (a T) is at least this long'),
+    tunable('TRACK_SPUR_CLEAR', 0.6, 'mm', 'and its junction is at least this far from a bend, another junction or a pad on the trunk (those read as blobs and bars)'),
+    tunable('TRACK_NET_WIDTHS', {}, '{net: mm}', 'the width rule of each net (key "*" for the rest): no segment is wider; a net with no entry and no "*" is not judged'),
+    tunable('TRACK_WIDTH_TOL', 0.001, 'mm', 'how far over its width rule a segment may be'),
     tunable('TRACK_BREAKOUT_REACH', 0.0, 'mm', 'a short leg is also a breakout when one of its ends is within this of the centre of a same-net pad of a fine-pitch part (the fan-out out of a 0.5 mm part, where the first leg out of the pad is itself short); 0 limits the exemption to the leg that ends on the pad'),
     tunable('TRACK_ENTRY_EDGE_TOL', 0.001, 'mm', 'how far a track entering a pad may overhang the span of the pad edge it enters (it enters through the edge, not across a corner)'),
     tunable('TRACK_OVERLAP_TOL', 0.001, 'mm', 'a track overlaps a pad when its copper is further than this over the pad edge'),
@@ -1108,12 +1116,199 @@ def _match(finding, entry):
     return any(w == where or (w.startswith(where + '.') and '.' not in where) for w in t)
 
 
+def _octile(dx, dy):
+    dx, dy = abs(dx), abs(dy)
+    return max(dx, dy) + (math.sqrt(2) - 1) * min(dx, dy)
+
+
+def _split_at_taps(b, S, L):
+    """the segments with every body cut at the places another track of the same net and layer ends on it (a T): (S2, net, layer, width, orig) with `orig` the index of the segment each piece came from"""
+    n = len(S)
+    cuts = {i: [] for i in range(n)}
+    for i in range(n):
+        if L[i] <= 1e-6:
+            continue
+        for e in (0, 1):
+            p = S[i, 2 * e:2 * e + 2]
+            for j in range(n):
+                if j == i or b.s_net[j] != b.s_net[i] or b.s_layer[j] != b.s_layer[i] or L[j] <= 1e-6:
+                    continue
+                d = geom.seg_seg_dist(S[j:j + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0]
+                if d > b.s_w[j] / 2 + 0.005:
+                    continue
+                if min(math.hypot(p[0] - S[j, 0], p[1] - S[j, 1]), math.hypot(p[0] - S[j, 2], p[1] - S[j, 3])) < 0.01:
+                    continue                                 # at an end of j: a joint, not a body tap
+                u = ((p[0] - S[j, 0]) * (S[j, 2] - S[j, 0]) + (p[1] - S[j, 1]) * (S[j, 3] - S[j, 1])) / (L[j] ** 2)
+                cuts[j].append(min(max(u, 0.0), 1.0))
+    rows = []
+    for i in range(n):
+        if L[i] <= 1e-6:
+            continue
+        us = sorted({round(u, 6) for u in cuts[i]})
+        us = [0.0] + [u for u in us if 0.0 < u < 1.0] + [1.0]
+        for a, c in zip(us, us[1:]):
+            rows.append((S[i, 0] + a * (S[i, 2] - S[i, 0]), S[i, 1] + a * (S[i, 3] - S[i, 1]), S[i, 0] + c * (S[i, 2] - S[i, 0]), S[i, 1] + c * (S[i, 3] - S[i, 1]), i))
+    A = np.array(rows, float).reshape(-1, 5)
+    o = A[:, 4].astype(int)
+    return A[:, :4], b.s_net[o], b.s_layer[o], b.s_w[o], o
+
+
+def _route_findings(b, c):
+    """[(kind, text, x, y)]: 'detour' (a run between its two ends turns more than TRACK_MAX_TURN in total, or is longer than TRACK_DETOUR_RATIO times its shortest octilinear path),
+    'dangling' (a track end that touches no pad, via or track of its net), 'tspur' (a spur that ends on the body of another track of its net, a T, is shorter than TRACK_SPUR_MIN, joins
+    at other than 90 or 45 degrees, or has its junction within TRACK_SPUR_CLEAR of a bend, another junction or a pad on the trunk), 'wide' (a segment wider than its net's width rule).
+    A run is the pieces of track joined at joints of exactly two that are on no pad or via, the tracks cut at every T; its ends are the two end points that are not such a joint."""
+    S0 = segs(b)
+    out = []
+    if not len(S0):
+        return out
+    L0 = geom.seg_len(S0)
+    r_all = np.arange(len(b.p_x))                            # every pad: a part may have several pads of one number (an exposed pad with via-in-pad squares)
+    pa = dict(rows=r_all, cx=b.p_x, cy=b.p_y, sx=b.p_sx, sy=b.p_sy, rot=b.p_rot, shape=b.p_shape, fp=b.p_fp, net=b.p_net, mask=b.p_layer_mask)
+    rules_w = dict(c.TRACK_NET_WIDTHS)
+    name0 = lambda i: '%s %s' % ('F' if b.s_layer[i] == 0 else 'B', b.nets[b.s_net[i]])
+    if rules_w:
+        for i in range(len(S0)):
+            nm = b.nets[b.s_net[i]]
+            lim = rules_w.get(nm, rules_w.get(nm.lstrip('/'), rules_w.get('*')))
+            if lim is not None and b.s_w[i] > lim + c.TRACK_WIDTH_TOL:
+                out.append(('wide', '%s segment %.2f mm wide, the net\'s rule is %.2f mm (%.2f mm long)' % (name0(i), b.s_w[i], lim, L0[i]), float((S0[i, 0] + S0[i, 2]) / 2), float((S0[i, 1] + S0[i, 3]) / 2)))
+    S, nets, lays, wid, orig = _split_at_taps(b, S0, L0)
+    n = len(S)
+    L = geom.seg_len(S)
+    name = lambda i: '%s %s' % ('F' if lays[i] == 0 else 'B', b.nets[nets[i]])
+    key = lambda i, e: (int(lays[i]), int(nets[i]), int(round(S[i, 2 * e] * 1000)), int(round(S[i, 2 * e + 1] * 1000)))
+    at = {}
+    for i in range(n):
+        for e in (0, 1):
+            at.setdefault(key(i, e), []).append((i, e))
+    via_xy = np.column_stack([b.v_x, b.v_y]) if len(b.v_x) else np.zeros((0, 2))
+
+    def on_pad(p, net, layer, w=0.0):                        # the track's copper (its end is a disc of width w) touches a pad of its net
+        if not len(pa['rows']):
+            return False
+        return bool((_in_pads(np.array([p]), pa, tol=w / 2 + 0.01)[0] & (pa['net'] == net) & ((pa['mask'] & (1 << layer)) > 0)).any())
+
+    def on_via(p, net, w=0.0):
+        return bool(len(via_xy) and (np.hypot(via_xy[:, 0] - p[0], via_xy[:, 1] - p[1]) <= b.v_dia / 2 + w / 2 + 0.01)[b.v_net == net].any())
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for k, lst in at.items():
+        if len(lst) != 2 or lst[0][0] == lst[1][0]:
+            continue
+        p = (k[2] / 1000, k[3] / 1000)
+        if on_pad(p, k[1], k[0], wid[lst[0][0]]) or on_via(p, k[1], wid[lst[0][0]]):
+            continue
+        parent[find(lst[0][0])] = find(lst[1][0])
+    runs = {}
+    for i in range(n):
+        runs.setdefault(find(i), []).append(i)
+    runlen = {}
+    for members in runs.values():
+        cnt = {}
+        for i in members:
+            for e in (0, 1):
+                cnt.setdefault(key(i, e), []).append((i, e))
+        ends = [(k, v[0]) for k, v in cnt.items() if len(v) == 1]
+        if len(ends) != 2:
+            continue                                         # a loop, or a joint of three or more: not a path
+        (k0, (i0, e0)), (k1, (i1, e1)) = ends
+        order, cur, e_in = [], i0, e0                        # walk from the first end, leaving each piece by its other end
+        done = set()
+        while cur is not None and cur not in done:
+            done.add(cur)
+            order.append((cur, 1 - e_in))
+            nxt = [t for t in cnt[key(cur, 1 - e_in)] if t[0] != cur]
+            cur, e_in = (nxt[0] if nxt else (None, None))
+        net, layer = k0[1], k0[0]
+        pts = [(S[i, 2 * (1 - eo)], S[i, 2 * (1 - eo) + 1]) for i, eo in order] + [(S[order[-1][0], 2 * order[-1][1]], S[order[-1][0], 2 * order[-1][1] + 1])]
+        vecs = [(pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]) for j in range(len(pts) - 1)]
+        along = [0.0]
+        for v in vecs:
+            along.append(along[-1] + math.hypot(*v))
+        bends_at = []                                        # (distance along the run, size of the bend)
+        for q, (u, v) in enumerate(zip(vecs, vecs[1:]), 1):
+            cross = u[0] * v[1] - u[1] * v[0]
+            dot = u[0] * v[0] + u[1] * v[1]
+            bends_at.append((along[q], abs(math.degrees(math.atan2(cross, dot))), pts[q]))
+        turn, turn_at = 0.0, None
+        for d0, _, _ in bends_at:
+            w = sum(a for d, a, _ in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9)
+            if w > turn:
+                turn, turn_at = w, [pt for d, _, pt in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9]
+        length = float(sum(L[i] for i in members))
+        short = _octile(pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1])
+        if turn_at and turn > c.TRACK_MAX_TURN + c.TRACK_ANGLE_TOL:
+            out.append(('detour', '%s run turns %.0f degrees within %.1f mm (a hook or U-turn)' % (name(i0), turn, c.TRACK_TURN_WINDOW), float(np.mean([q[0] for q in turn_at])), float(np.mean([q[1] for q in turn_at]))))
+        mid = pts[len(pts) // 2]
+        if length >= c.TRACK_DETOUR_MIN_LEN and length > c.TRACK_DETOUR_RATIO * short + 1e-6:
+            out.append(('detour', '%s run of %.2f mm is %.1f times its %.2f mm shortest path' % (name(i0), length, length / max(short, 1e-9), short), float(mid[0]), float(mid[1])))
+        runlen[find(i0)] = length
+        for k, i, eo in ((k0, i0, e0), (k1, i1, e1)):
+            p = (k[2] / 1000, k[3] / 1000)
+            if on_pad(p, net, layer, wid[i]) or on_via(p, net, wid[i]):
+                continue
+            if len(at[k]) < 2:
+                out.append(('dangling', '%s track end touches no pad, via or track of its net' % name(i), float(p[0]), float(p[1])))
+    # junctions (three or more pieces at a point on no pad or via): the two collinear pieces are the trunk, any other is a spur
+    juncs = {}
+    for k, lst in at.items():
+        p = (k[2] / 1000, k[3] / 1000)
+        if len(lst) >= 3 and not (on_pad(p, k[1], k[0], wid[lst[0][0]]) or on_via(p, k[1], wid[lst[0][0]])):
+            juncs[k] = lst
+    for k, lst in juncs.items():
+        p = (k[2] / 1000, k[3] / 1000)
+        dirs = []
+        for i, e in lst:
+            v = (S[i, 2 * (1 - e)] - S[i, 2 * e], S[i, 2 * (1 - e) + 1] - S[i, 2 * e + 1])
+            dirs.append((v[0] / max(L[i], 1e-9), v[1] / max(L[i], 1e-9)))
+        trunk = None
+        for a in range(len(lst)):
+            for bq in range(a + 1, len(lst)):
+                if dirs[a][0] * dirs[bq][0] + dirs[a][1] * dirs[bq][1] < -math.cos(math.radians(c.TRACK_ANGLE_TOL)):
+                    trunk = (a, bq)
+        nm = name(lst[0][0])
+        if trunk is None:
+            out.append(('tspur', '%s junction at a bend of the trunk (three tracks meet where it turns)' % nm, float(p[0]), float(p[1])))
+            continue
+        o = orig[lst[trunk[0]][0]]
+        near = [(S0[o, 0], S0[o, 1]), (S0[o, 2], S0[o, 3])] + [(q[2] / 1000, q[3] / 1000) for q, l2 in juncs.items() if q != k and any(orig[i2] == o for i2, _ in l2)]
+        nd = min(math.hypot(q[0] - p[0], q[1] - p[1]) for q in near)
+        for idx, (i, e) in enumerate(lst):
+            if idx in trunk:
+                continue
+            why = []
+            ln = runlen.get(find(i), L[i])
+            if ln < c.TRACK_SPUR_MIN - 1e-9:
+                why.append('%.2f mm long (needs %.2f)' % (ln, c.TRACK_SPUR_MIN))
+            td = dirs[trunk[0]]
+            a = abs(math.degrees(math.atan2(dirs[idx][0] * td[1] - dirs[idx][1] * td[0], dirs[idx][0] * td[0] + dirs[idx][1] * td[1]))) % 180.0
+            if min(abs(a - 90.0), abs(a - 45.0), abs(a - 135.0)) > c.TRACK_ANGLE_TOL:
+                why.append('joins at %.0f degrees, not 90 or 45' % a)
+            if nd < c.TRACK_SPUR_CLEAR - 1e-9:
+                why.append('its junction is %.2f mm from a bend, another junction or a pad on the trunk (needs %.2f)' % (nd, c.TRACK_SPUR_CLEAR))
+            if why:
+                out.append(('tspur', '%s T spur %s' % (nm, '; '.join(why)), float(p[0]), float(p[1])))
+    seen, uniq = set(), []
+    for f in out:
+        k = (f[0], f[1], round(f[2], 3), round(f[3], 3))
+        if k not in seen:
+            seen.add(k)
+            uniq.append(f)
+    return uniq
+
+
 def track_geometry_parts(b, cfg, report=None):
     """[(kind, text, x, y)] findings of the track geometry (see _geometry_findings: arc, angle, jog, entry, over_pad), less those waived by GEOMETRY_EXCEPTIONS, plus a 'stale_exception' finding for
     every entry that matches no finding or more than one, so an exception that no longer applies cannot stay in the configuration. `parts.waived` is the list of (entry, finding) waived."""
     from .config import ConfigError
     c = resolve(cfg, TRACK_GEOMETRY_NAMES, 'track_geometry', report)
-    found = _geometry_findings(b, c)
+    found = _geometry_findings(b, c) + _route_findings(b, c)
     ex = list(c.GEOMETRY_EXCEPTIONS)
     for e in ex:
         if len(e) != 4 or not str(e[3]).strip():
@@ -1139,7 +1334,7 @@ class WaivedList(list):
 
 def track_geometry(b, cfg, report=None):
     parts = track_geometry_parts(b, cfg, report)
-    kinds = ('arc', 'angle', 'jog', 'entry', 'over_pad', 'stale_exception')
+    kinds = ('arc', 'angle', 'jog', 'entry', 'over_pad', 'detour', 'dangling', 'tspur', 'wide', 'stale_exception')
     fig = {f'{k}': float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig['segments'] = float(len(b.s_idx))
     fig['violations'] = float(len(parts))
@@ -1161,6 +1356,9 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_ROUGH_LAYERS', ('F',), 'layer letters', 'the layers whose pour edge must not be a row of clearance arcs (two or more pads or vias in a row, of any net, that the edge hugs); one alone may show its arc'),
     tunable('FILL_ROUGH_TOL', 0.15, 'mm', 'an item hugs the pour edge when pour lies within the zone clearance plus this of it'),
     tunable('FILL_ROUGH_LINK', 2.0, 'mm', 'hugging items closer than this (copper to copper) are a row'),
+    tunable('FILL_SHELL_PREFIXES', (), 'designator prefixes', 'the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN)'),
+    tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
+    tunable('FILL_SHELL_MIN', 0.3, 'fraction', 'the part of the ring from the zone clearance out to 0.6 mm further that is pour, at least, round such a pin'),
     tunable('FILL_THERMAL_LAYERS', ('F',), 'layer letters', 'the layers whose zone must connect SMD GND pads through thermal reliefs'),
     tunable('FILL_SOLID_LAYERS', ('B',), 'layer letters', 'the layers whose zone must connect pads solid (a plane)'),
 )
@@ -1201,6 +1399,52 @@ def fill_quality_parts(b, cfg, report=None):
                 x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
                 out.append(('rough', '%s pour edge is a row of clearance arcs round pads and vias (%.1f mm2 of it)' % (lay, (rl == i).sum() / r_fill.ppmm ** 2), x, y))
             figs[f'{lay}_rough'] = rn
+        if lay == 'F' and c.FILL_SHELL_PREFIXES:
+            from scipy import ndimage as _ndi2
+            clr = float(b.z_clear[zs[0]])
+            shells = [h for h in range(len(b.p_net)) if b.p_net[h] == gnd and not b.p_smd[h] and str(b.fp_ref[b.p_fp[h]]).startswith(tuple(c.FILL_SHELL_PREFIXES)) and (b.p_layer_mask[h] & 1)]
+            lost = 0
+            k = r_fill.ppmm
+            for h in shells:
+                x0 = int(np.floor((b.p_bx0[h] - 1.5 - r_fill.x0) * k)); x1 = int(np.ceil((b.p_bx1[h] + 1.5 - r_fill.x0) * k))
+                y0 = int(np.floor((r_fill.y1 - b.p_by1[h] - 1.5) * k)); y1 = int(np.ceil((r_fill.y1 - b.p_by0[h] + 1.5) * k))
+                x0, y0 = max(x0, 0), max(y0, 0)
+                zone = r_fill.mask[y0:y1, x0:x1]
+                yy, xx = np.mgrid[y0:y1, x0:x1]
+                px = r_fill.x0 + (xx + 0.5) / k
+                py = r_fill.y1 - (yy + 0.5) / k
+                d = np.hypot(px - b.p_x[h], py - b.p_y[h]) - max(b.p_sx[h], b.p_sy[h]) / 2          # distance from the pad's outline (a circle or oval pin: its larger radius)
+                ring = (d > clr + 0.05) & (d <= clr + 0.65)
+                frac = float((ring & zone).sum()) / max(1, int(ring.sum()))
+                if frac < c.FILL_SHELL_MIN:
+                    lost += 1
+                    out.append(('shell', '%s pin %s (GND) has pour on %.0f%% of its ring, needs %.0f%%' % (b.fp_ref[b.p_fp[h]], b.p_pin[h], 100 * frac, 100 * c.FILL_SHELL_MIN), float(b.p_x[h]), float(b.p_y[h])))
+            figs['F_shell_pins'] = len(shells)
+            figs['F_shell_lost'] = lost
+        if lay == 'F' and c.FILL_GNDPAD_MIN > 0:
+            clr2 = float(b.z_clear[zs[0]])
+            k2 = r_fill.ppmm
+            bad_pads = 0
+            for h in range(len(b.p_net)):
+                if b.p_net[h] != gnd or not b.p_smd[h] or not (b.p_layer_mask[h] & 1):
+                    continue
+                x0 = int(np.floor((b.p_bx0[h] - 1.2 - r_fill.x0) * k2)); x1 = int(np.ceil((b.p_bx1[h] + 1.2 - r_fill.x0) * k2))
+                y0 = int(np.floor((r_fill.y1 - b.p_by1[h] - 1.2) * k2)); y1 = int(np.ceil((r_fill.y1 - b.p_by0[h] + 1.2) * k2))
+                x0, y0 = max(x0, 0), max(y0, 0)
+                zone = r_fill.mask[y0:y1, x0:x1]
+                yy, xx = np.mgrid[y0:y1, x0:x1]
+                px = r_fill.x0 + (xx + 0.5) / k2
+                py = r_fill.y1 - (yy + 0.5) / k2
+                d = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - px, px - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - py, py - b.p_by1[h]), 0))      # distance from the pad's box
+                ring = (d > clr2 + 0.05) & (d <= clr2 + 0.65)
+                if float((ring & zone).sum()) / max(1, int(ring.sum())) >= c.FILL_GNDPAD_MIN:
+                    continue
+                vd = np.hypot(np.maximum(np.maximum(b.p_bx0[h] - b.v_x, b.v_x - b.p_bx1[h]), 0), np.maximum(np.maximum(b.p_by0[h] - b.v_y, b.v_y - b.p_by1[h]), 0)) - b.v_dia / 2 if len(b.v_x) else np.array([9.0])
+                if len(b.v_x) and ((vd <= 0.05) & (b.v_net == gnd)).any():
+                    continue
+                bad_pads += 1
+                out.append(('gndpad', '%s pin %s (SMD GND) is outside the top pour and has no via at its edge' % (b.fp_ref[b.p_fp[h]], b.p_pin[h]), float(b.p_x[h]), float(b.p_y[h])))
+            figs['F_gndpad_lost'] = bad_pads
         figs[f'{lay}_narrow'] = len(nar)
         figs[f'{lay}_dead_end'] = len(de)
         figs[f'{lay}_outline_mm'] = float(sum(
@@ -1218,7 +1462,7 @@ def fill_quality_parts(b, cfg, report=None):
 
 def fill_quality(b, cfg, report=None):
     parts, figs = fill_quality_parts(b, cfg, report)
-    kinds = ('narrow', 'dead_end', 'rough', 'thermal', 'solid')
+    kinds = ('narrow', 'dead_end', 'rough', 'shell', 'gndpad', 'thermal', 'solid')
     fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig.update({k: float(v) for k, v in figs.items()})
     fig['violations'] = float(len(parts))

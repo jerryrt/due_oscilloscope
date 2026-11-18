@@ -1,0 +1,128 @@
+effective configuration of track_geometry and fill_quality
+TRACK_ANGLE_STEP             project   45.0
+TRACK_ANGLE_TOL              project   0.5
+TRACK_MIN_LEG                project   0.6
+TRACK_FINE_PITCH             project   0.65
+TRACK_MAX_TURN               project   135.0
+TRACK_TURN_WINDOW            project   3.0
+TRACK_DETOUR_RATIO           project   1.5
+TRACK_DETOUR_MIN_LEN         project   1.0
+TRACK_SPUR_MIN               project   0.6
+TRACK_SPUR_CLEAR             project   0.6
+TRACK_NET_WIDTHS             project   {'*': 0.25, 'GND': 0.25, '+5V_F': 0.3, '+5V_DUE': 0.3, '+3V3A': 0.3, '+3V3A_K': 0.3, '+3V3A_U': 0.3, 'VNEG': 0.3, 'VNEG_G': 0.3, 'VNEG_O': 0.3, 'LM_CP': 0.3, 'LM_C1N': 0.3, 'LM_C1P': 0.3, 'P33_RN': 0.3}
+TRACK_WIDTH_TOL              default   0.001
+TRACK_BREAKOUT_REACH         project   0.8
+TRACK_ENTRY_EDGE_TOL         project   0.001
+TRACK_OVERLAP_TOL            project   0.001
+GEOMETRY_EXCEPTIONS          project   [('over_pad', 'AWG_INV', 'R302.1', 'LR-4: the AWG_INV node is limited to 5.0 mm of track; routing round R302.1 makes it 5.7 mm (montreal5, for the owner)'), ('over_pad', 'AWG_INV', 'R303.2', 'LR-4: the AWG_INV node is limited to 5.0 mm of track; routing round R303.2 makes it 5.7 mm (montreal5, for the owner)'), ('over_pad', 'A0', 'D201.3', 'A0 is a length-limited sensitive net: it connects the clamp D201 and test point TP201 of its own net in a daisy chain, which avoids a stub (montreal5)'), ('over_pad', 'A0', 'TP201.1', 'the same, A0 through TP201 (montreal5)'), ('over_pad', 'A1', 'D101.3', 'the same, A1 through D101 (montreal5)'), ('over_pad', 'A1', 'TP101.1', 'the same, A1 through TP101 (montreal5)'), ('jog', 'VREF', (57.4, 14.375), 'VREF into U502.4: between the R520/R514 pads (track y 14.32-14.58) and the channel under U502 above R502.2 (y 14.18-14.32) the step is 0.39 mm, a 45 degree leg of 0.55 mm; no leg of 0.6 fits without moving a part')]
+GND                          project   '/GND'
+FILL_LAYERS                  project   ('F', 'B')
+FILL_MIN_WIDTH               project   {'F': 1.0, 'B': 0.5}
+FILL_DEAD_END_WIDTH          project   1.6
+FILL_LENGTH_FACTOR           project   2.0
+FILL_RASTER                  project   40.0
+FILL_MIN_AREA                project   0.02
+FILL_ROUGH_LAYERS            project   ('F',)
+FILL_ROUGH_TOL               project   0.15
+FILL_ROUGH_LINK              project   2.0
+FILL_SHELL_PREFIXES          project   ('J',)
+FILL_GNDPAD_MIN              project   0.2
+FILL_SHELL_MIN               default   0.3
+FILL_THERMAL_LAYERS          project   ('F',)
+FILL_SOLID_LAYERS            project   ('B',)
+segments 379  arcs 0
+track_geometry {'dangling': 13, 'detour': 8, 'tspur': 14, 'wide': 1}
+fill_quality   {'gndpad': 43, 'shell': 14}  {'B_dead_end': 0, 'B_narrow': 0, 'B_outline_mm': 1248.2, 'F_dead_end': 0, 'F_gndpad_lost': 43, 'F_narrow': 0, 'F_outline_mm': 1057.2, 'F_rough': 0, 'F_shell_lost': 14, 'F_shell_pins': 14}
+detour   35.80   12.07   F /LM_C1N run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   43.20   24.50   F /+3V3A run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   44.00   22.25   F /+3V3A run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   47.70   3.32    F /VNEG_O run turns 270 degrees within 3.0 mm (a hook or U-turn)
+detour   48.50   13.89   F /+3V3A run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   52.07   1.39    F /VREF run of 37.65 mm is 1.7 times its 22.20 mm shortest path
+detour   69.19   33.00   F /A0 run turns 180 degrees within 3.0 mm (a hook or U-turn)
+detour   92.50   25.40   F /CH2_IN run turns 180 degrees within 3.0 mm (a hook or U-turn)
+dangling 53.55   5.65    F /TAP5 track end touches no pad, via or track of its net
+dangling 55.73   7.00    F /TAP4 track end touches no pad, via or track of its net
+dangling 55.77   6.35    F /TAP4 track end touches no pad, via or track of its net
+dangling 59.33   6.35    F /TAP3 track end touches no pad, via or track of its net
+dangling 60.66   5.65    F /TAP2 track end touches no pad, via or track of its net
+dangling 69.75   35.30   F /P33_U track end touches no pad, via or track of its net
+dangling 78.17   36.76   F /SC_VCC track end touches no pad, via or track of its net
+dangling 80.15   8.15    F /AWG_OUT track end touches no pad, via or track of its net
+dangling 80.47   31.82   F /CH2_OUT track end touches no pad, via or track of its net
+dangling 81.74   36.76   F /CH1_OUT track end touches no pad, via or track of its net
+dangling 83.64   39.00   F /CH1_NP track end touches no pad, via or track of its net
+dangling 91.42   24.13   F /CH2_IN track end touches no pad, via or track of its net
+dangling 91.42   44.45   F /CH1_IN track end touches no pad, via or track of its net
+tspur    27.70   11.75   F /VNEG T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    33.95   11.10   F /LM_FBN T spur its junction is 0.25 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    35.30   6.00    F /+5V_F T spur its junction is 0.20 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    38.10   5.10    F /+5V_DUE T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    44.40   12.93   F /+3V3A T spur its junction is 0.40 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    52.45   17.40   F /VREF T spur 0.50 mm long (needs 0.60)
+tspur    56.00   35.40   F /P33_RN T spur joins at 0 degrees, not 90 or 45; its junction is 0.20 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    56.00   36.00   F /P33_RN T spur joins at 0 degrees, not 90 or 45; its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    59.80   22.40   F /P33_R T spur 0.50 mm long (needs 0.60)
+tspur    81.20   23.78   F /CH2_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    81.20   27.18   F /CH2_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    81.20   41.40   F /CH1_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    81.20   44.80   F /CH1_N T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    83.64   29.58   F /CH2_NP T spur its junction is 0.00 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+wide     79.36   16.98   F /GND segment 0.30 mm wide, the net's rule is 0.25 mm (1.00 mm long)
+shell    26.42   50.80   J606 pin 7 (GND) has pour on 0% of its ring, needs 30%
+shell    40.64   2.54    J601 pin 6 (GND) has pour on 0% of its ring, needs 30%
+shell    43.18   2.54    J601 pin 7 (GND) has pour on 0% of its ring, needs 30%
+shell    93.98   7.62    J607 pin 35 (GND) has pour on 0% of its ring, needs 30%
+shell    96.52   7.62    J607 pin 36 (GND) has pour on 0% of its ring, needs 30%
+shell    102.00  9.90    J301 pin 2 (GND) has pour on 3% of its ring, needs 30%
+shell    102.00  29.17   J201 pin 2 (GND) has pour on 1% of its ring, needs 30%
+shell    102.00  46.95   J101 pin 2 (GND) has pour on 0% of its ring, needs 30%
+shell    107.05  2.35    J301 pin 2 (GND) has pour on 4% of its ring, needs 30%
+shell    107.05  12.45   J301 pin 2 (GND) has pour on 4% of its ring, needs 30%
+shell    107.05  21.62   J201 pin 2 (GND) has pour on 9% of its ring, needs 30%
+shell    107.05  31.72   J201 pin 2 (GND) has pour on 6% of its ring, needs 30%
+shell    107.05  39.40   J101 pin 2 (GND) has pour on 6% of its ring, needs 30%
+shell    107.05  49.50   J101 pin 2 (GND) has pour on 4% of its ring, needs 30%
+gndpad   19.60   10.35   C406 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   21.70   10.35   C405 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   23.80   9.50    C410 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   24.20   15.26   C401 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   25.90   9.50    C409 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   26.00   18.20   TP403 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   27.00   15.60   C404 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   29.30   17.43   R401 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   31.00   8.82    R403 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   32.05   12.75   U401 pin 4 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   32.05   14.25   U401 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   32.60   8.82    R404 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   33.00   13.00   U401 pin 13 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   34.20   8.82    R405 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   36.70   16.75   C403 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   39.40   10.00   C408 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   39.40   16.70   C407 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   41.60   16.45   R407 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   45.60   14.47   C505 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   47.60   14.47   C501 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   48.62   10.50   C504 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   50.50   16.74   U501 pin 3 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   53.00   11.62   C503 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   58.80   15.35   U502 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   59.80   15.35   U502 pin 3 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   59.80   23.18   C502 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   63.50   9.62    R503 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   67.85   37.62   D101 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   73.40   10.85   C305 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   74.72   17.90   C303 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   75.05   30.96   D201 pin 1 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   75.50   10.85   C306 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   76.33   14.90   R301 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   76.62   38.00   C103 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   78.84   27.18   C202 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   78.84   41.40   C102 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   83.64   31.82   U101 pin 4 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   85.08   12.80   C302 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   86.17   29.58   C203 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   86.17   39.00   C105 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   86.75   23.78   R201 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   86.75   44.80   R101 pin 2 (SMD GND) is outside the top pour and has no via at its edge
+gndpad   87.85   35.30   C104 pin 2 (SMD GND) is outside the top pour and has no via at its edge
