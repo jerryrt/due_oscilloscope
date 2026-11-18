@@ -60,20 +60,25 @@ def chain(pts, w=0.2):
     return a
 
 
-def test_a_hook_or_u_turn_turns_180_degrees_or_more_within_the_window_and_a_dog_leg_does_not():
-    assert got(chain(HOOK), 'detour')                                                             # 90 + 90 within 1.4 mm of track
-    dog = chain([(0, 0), (4, 0), (5, 1), (9, 1)])                                                 # 45 + 45
-    assert got(dog, 'detour') == []
-    assert [f for f in got(chain(HOOK), 'detour', TRACK_MAX_TURN=200.0) if 'degrees' in f[1]] == []   # the limit is the config's
-    turns = lambda a, **o: [f for f in got(a, 'detour', **o) if 'degrees' in f[1]]
-    assert turns(chain(HOOK), TRACK_TURN_WINDOW=0.1) == []                                         # the window is the config's: the two 90s are 0.6 mm apart
-    assert turns(chain(HOOK), TRACK_TURN_WINDOW=0.7)
+def test_a_hook_or_u_turn_changes_the_heading_by_180_degrees_net_and_a_dog_leg_or_lane_change_does_not():
+    assert got(chain(HOOK), 'detour')                                                             # east, north, west: 180 net
+    assert not got(chain([(0, 0), (4, 0), (5, 1), (9, 1)]), 'detour')                              # a dog-leg, 45 + 45 the same way... 90 net
+    assert [f for f in got(chain(HOOK), 'detour', TRACK_MAX_TURN=200.0) if 'hook' in f[1]] == []    # the limit is the config's
+    assert [f for f in got(chain(HOOK), 'detour', TRACK_TURN_WINDOW=0.1) if 'hook' in f[1]] == []   # the window is the config's: the two 90s are 0.6 mm apart
+    assert [f for f in got(chain(HOOK), 'detour', TRACK_TURN_WINDOW=0.7) if 'hook' in f[1]]
+    lane = chain([(0, 0), (4, 0), (4, -1.5), (9, -1.5)])                                          # a Z: 90 one way, 90 back, 1.5 mm over: a lane change
+    assert not got(lane, 'detour')
+    assert not got(chain([(0, 0), (4, 0), (5, -1), (9, -1)]), 'detour')
 
 
-def test_a_v_kink_is_180_degrees_in_a_short_stretch():
+def test_a_v_kink_or_bump_comes_back_to_its_heading_within_a_small_offset():
     v = chain([(0, 0), (4, 0), (4.5, -0.5), (5.0, 0), (9, 0)])                                    # 45 down, 90 up, 45 level: a V dip on a straight run
     f = got(v, 'detour')
     assert f and 'V kink' in f[0][1]
+    z = chain([(0, 0), (4, 0), (4, -0.4), (8, -0.4)])                                            # a Z with a 0.4 mm lane change: 90 + 90, back to the heading 0.4 mm over
+    assert got(z, 'detour') and 'V kink' in got(z, 'detour')[0][1]
+    assert not got(z, 'detour', TRACK_KINK_OFFSET=0.3)                                            # the offset limit is the config's
+    assert not got(chain([(0, 0), (4, 0), (4, -1.5), (8, -1.5)]), 'detour')                       # 1.5 mm over: a lane change, not a kink
 
 
 def test_a_v_on_a_trunk_is_found_straight_through_a_t_junction():

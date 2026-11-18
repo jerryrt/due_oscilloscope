@@ -56,8 +56,8 @@ declare -A M=(
   [dangling_any_net_pad]="rules.py|for h in np.flatnonzero((pa['net'] == net) \& ((pa['mask'] \& (1 << layer)) > 0)):|for h in np.flatnonzero(((pa['mask'] \& (1 << layer)) > 0)):"
   [dangling_via_ignored]="rules.py|return bool(len(via_xy) and (np.hypot(via_xy[:, 0] - p[0], via_xy[:, 1] - p[1]) <= b.v_dia / 2 + w / 2 + 1e-9)[b.v_net == net].any())|return False"
   [dangling_track_ignored]="rules.py|            if len(at[k]) < 2:|            if True:"
-  [turn_limit_ignored]="rules.py|        if at_ and turn > c.TRACK_MAX_TURN + c.TRACK_ANGLE_TOL:|        if False:"
-  [turn_window_infinite]="rules.py|if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9]|if d0 - 1e-9 <= d]"
+  [turn_limit_ignored]="rules.py|                if abs(net) >= c.TRACK_MAX_TURN - c.TRACK_ANGLE_TOL:|                if False:"
+  [turn_window_infinite]="rules.py|            sel = [t for t in bends[q0:] if t[0] <= bends[q0][0] + c.TRACK_TURN_WINDOW + 1e-9]|            sel = bends[q0:]"
   [turn_not_through_junction]="rules.py|                    parent2[find2(lst[a_][0])] = find2(lst[b_][0])|                    pass"
   [ratio_ignored]="rules.py|if length >= c.TRACK_DETOUR_MIN_LEN and length > c.TRACK_DETOUR_RATIO * short + 1e-6:|if False:"
   [ratio_min_len_ignored]="rules.py|if length >= c.TRACK_DETOUR_MIN_LEN and length > c.TRACK_DETOUR_RATIO * short + 1e-6:|if length > c.TRACK_DETOUR_RATIO * short + 1e-6:"
@@ -75,6 +75,9 @@ declare -A M=(
   [cap_tap_ignored]="rules.py|                    if geom.seg_seg_dist(S0[j0:j0 + 1], np.array([[p[0], p[1], p[0], p[1]]]))[0, 0] <= wid[i] / 2 + b.s_w[j0] / 2 + 1e-9:|                    if False:"
   [cap_tap_body_only]="rules.py|                if d > b.s_w[i] / 2 + b.s_w[j] / 2 + 1e-9:|                if d > b.s_w[j] / 2 + 0.005:"
   [snap_even_at_a_joint]="rules.py|                if joint:|                if False:"
+  [kink_offset_ignored]="rules.py|                    if off < c.TRACK_KINK_OFFSET and|                    if True and"
+  [kink_any_net]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL:"
+  [kink_never]="rules.py|                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:|                elif False:"
 )
 fail=0
 for name in "${!M[@]}"; do

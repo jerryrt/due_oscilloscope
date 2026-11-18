@@ -3,7 +3,8 @@ TRACK_ANGLE_STEP             project   45.0
 TRACK_ANGLE_TOL              project   0.5
 TRACK_MIN_LEG                project   0.6
 TRACK_FINE_PITCH             project   0.65
-TRACK_MAX_TURN               project   135.0
+TRACK_MAX_TURN               project   180.0
+TRACK_KINK_OFFSET            project   0.6
 TRACK_TURN_WINDOW            project   3.0
 TRACK_DETOUR_RATIO           project   1.5
 TRACK_DETOUR_MIN_LEN         project   1.0
@@ -31,43 +32,27 @@ FILL_SHELL_MIN               default   0.3
 FILL_THERMAL_LAYERS          project   ('F',)
 FILL_SOLID_LAYERS            project   ('B',)
 segments 421  arcs 0
-track_geometry {'detour': 26, 'tspur': 10, 'wide': 2}
+track_geometry {'detour': 12, 'tspur': 8, 'wide': 2}
 fill_quality   {'gndpad': 27, 'shell': 14}  {'B_dead_end': 0, 'B_narrow': 0, 'B_outline_mm': 1189.3, 'F_dead_end': 0, 'F_gndpad_lost': 27, 'F_narrow': 0, 'F_outline_mm': 1079.6, 'F_rough': 0, 'F_shell_lost': 14, 'F_shell_pins': 14}
 detour   26.05   13.35   F /LM_CP run of 6.00 mm is 1.6 times its 3.77 mm shortest path
-detour   28.00   12.80   F /LM_CP run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   29.57   15.89   F /LM_FBP run turns 225 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   32.17   8.45    F /LM_FB3M run turns 270 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   32.17   10.15   F /LM_FBN run turns 270 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   32.25   15.90   F /+5V_F run turns 291 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   32.27   11.50   F /GND run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   32.59   6.66    F /VNEG_G run turns 225 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   34.14   13.52   F /LM_C1N run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   26.40   13.35   F /LM_CP run has a hook: it turns 180 degrees within 3.0 mm
+detour   33.23   6.63    F /VNEG_G run has a hook: it turns 180 degrees within 3.0 mm
 detour   45.92   23.08   F /SCL run of 2.33 mm is 1.6 times its 1.44 mm shortest path
 detour   49.00   13.20   F /VREF run of 9.90 mm is 1.8 times its 5.61 mm shortest path
-detour   51.83   14.00   F /VREF run turns 187 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   51.92   18.20   F /VREF run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   51.96   10.70   F /+3V3A_R run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   53.58   15.95   F /VREF run turns 363 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   54.00   13.71   F /VREF run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   57.00   20.70   F /ADS_TAP run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   58.84   21.60   F /SNS_B_N run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   62.20   9.25    F /TAP3 run of 9.42 mm is 1.7 times its 5.45 mm shortest path
-detour   62.20   10.12   F /TAP3 run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   62.20   10.12   F /TAP3 run has a hook: it turns 180 degrees within 3.0 mm
 detour   64.77   14.22   F /VREF run of 39.04 mm is 1.7 times its 23.48 mm shortest path
-detour   80.08   36.01   F /+3V3A_U run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-detour   86.33   16.10   F /AWG_VO run turns 270 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   86.57   16.00   F /AWG_VO run has a hook: it turns 180 degrees within 3.0 mm
 detour   86.57   16.31   F /AWG_VO run of 2.92 mm is 1.8 times its 1.62 mm shortest path
-detour   86.77   17.68   F /AWG_VO run turns 225 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   86.98   17.58   F /AWG_VO run has a hook: it turns 180 degrees within 3.0 mm
 detour   86.98   17.89   F /AWG_VO run of 3.02 mm is 2.7 times its 1.10 mm shortest path
 tspur    29.50   18.95   F /+5V_F junction at a bend of the trunk (three tracks meet where it turns)
 tspur    32.90   13.25   F /+5V_F junction at a bend of the trunk (three tracks meet where it turns)
 tspur    32.90   14.75   F /+3V3A junction at a bend of the trunk (three tracks meet where it turns)
-tspur    34.40   16.90   F /+3V3A T spur joins at 0 degrees, not 90 or 45
 tspur    34.40   19.50   F /+3V3A junction at a bend of the trunk (three tracks meet where it turns)
+tspur    35.10   7.30    F /+5V_F T spur joins at 137 degrees, not 90 or 45
 tspur    46.40   22.60   F /SCL junction at a bend of the trunk (three tracks meet where it turns)
 tspur    79.00   13.68   F /+3V3A T spur 0.42 mm long (needs 0.60)
-tspur    85.74   13.68   F /AWG_BIN T spur its junction is 0.45 mm from a bend, another junction or a pad on the trunk (needs 0.60)
-tspur    85.74   13.68   F /AWG_BIN T spur 0.54 mm long (needs 0.60); joins at 0 degrees, not 90 or 45; its junction is 0.45 mm from a bend, another junction or a pad on the trunk (needs 0.60)
 tspur    91.36   24.13   F /CH2_IN junction at a bend of the trunk (three tracks meet where it turns)
 wide     82.70   33.00   F /GND segment 1.20 mm wide, the net's rule is 0.25 mm (4.60 mm long)
 wide     82.70   33.50   F /GND segment 1.20 mm wide, the net's rule is 0.25 mm (4.60 mm long)

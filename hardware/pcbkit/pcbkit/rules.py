@@ -909,7 +909,8 @@ TRACK_GEOMETRY_NAMES = (
     tunable('TRACK_ANGLE_TOL', 0.5, 'degrees', 'how far a segment, or a segment entering a pad, may be from the angle it should have'),
     tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
     tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
-    tunable('TRACK_MAX_TURN', 135.0, 'degrees', 'a run between its two ends (pads, vias, junctions) turns no more than this within any TRACK_TURN_WINDOW of its length (the sum of the bends there, each counted by its size): a dog-leg is 90, a V kink 180 and a hook or U-turn 180 or more'),
+    tunable('TRACK_MAX_TURN', 180.0, 'degrees', 'a run between its two ends (pads, vias, junctions) changes its heading by this much or more, net, within any TRACK_TURN_WINDOW of its length: a hook or U-turn (a dog-leg is 90, a lane change 0)'),
+    tunable('TRACK_KINK_OFFSET', 0.6, 'mm', 'a V kink or bump: bends adding up to 180 degrees in all (45 down, 90 up, 45 level) that come back to the heading they left within this lateral offset of the line they left'),
     tunable('TRACK_TURN_WINDOW', 3.0, 'mm', 'the stretch of a run over which its turning is added up'),
     tunable('TRACK_DETOUR_RATIO', 1.5, 'x', 'a run is no longer than this times the shortest octilinear (0/45/90) path between its two ends'),
     tunable('TRACK_DETOUR_MIN_LEN', 1.0, 'mm', 'runs shorter than this are not judged for detour (a 0.3 mm run has no room to be one)'),
@@ -1253,18 +1254,34 @@ def _route_findings(b, c):
         return pts, (k0, i0, e0), (k1, i1, e1)
 
     def worst_turn(pts):
-        """(turn, bend points) of the worst stretch of TRACK_TURN_WINDOW: the sum of the bends in it, each by its size"""
+        """the worst stretch of TRACK_TURN_WINDOW, (kind, bend points) or None: a 'hook' when the heading changes by TRACK_MAX_TURN or more net there, a 'V kink' when the bends add up to 180 degrees in all and
+        the track comes back to its heading within TRACK_KINK_OFFSET of the line it left"""
         vecs = [(pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]) for j in range(len(pts) - 1)]
         along = [0.0]
         for v in vecs:
             along.append(along[-1] + math.hypot(*v))
-        bends_at = [(along[q], abs(math.degrees(math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]))), pts[q]) for q, (u, v) in enumerate(zip(vecs, vecs[1:]), 1)]
-        turn, at_ = 0.0, None
-        for d0, _, _ in bends_at:
-            sel = [(a_, pt) for d, a_, pt in bends_at if d0 - 1e-9 <= d <= d0 + c.TRACK_TURN_WINDOW + 1e-9]
-            if sum(a_ for a_, _ in sel) > turn:
-                turn, at_ = sum(a_ for a_, _ in sel), [pt for _, pt in sel]
-        return turn, at_
+        bends = []                                           # (distance along, signed bend, point, heading before)
+        for q, (u, v) in enumerate(zip(vecs, vecs[1:]), 1):
+            ang = math.degrees(math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]))
+            bends.append((along[q], ang, pts[q], u))
+        best = None
+        for q0 in range(len(bends)):
+            sel = [t for t in bends[q0:] if t[0] <= bends[q0][0] + c.TRACK_TURN_WINDOW + 1e-9]
+            for q1 in range(len(sel)):
+                win = sel[:q1 + 1]
+                net = sum(t[1] for t in win)
+                tot = sum(abs(t[1]) for t in win)
+                at_ = [t[2] for t in win]
+                if abs(net) >= c.TRACK_MAX_TURN - c.TRACK_ANGLE_TOL:
+                    if best is None or abs(net) > best[2]:
+                        best = ('hook', at_, abs(net))
+                elif tot >= 180.0 - c.TRACK_ANGLE_TOL and abs(net) < 45.0:
+                    u0 = win[0][3]
+                    d = (win[-1][2][0] - win[0][2][0], win[-1][2][1] - win[0][2][1])
+                    off = abs(u0[0] * d[1] - u0[1] * d[0]) / max(math.hypot(*u0), 1e-9)
+                    if off < c.TRACK_KINK_OFFSET and (best is None or best[0] != 'hook'):
+                        best = ('V kink', at_, tot)
+        return best
 
     runs = {}
     for i in range(n):
@@ -1379,9 +1396,10 @@ def _route_findings(b, c):
         if got is None:
             continue
         pts, (k0, i0, _), _ = got
-        turn, at_ = worst_turn(pts)
-        if at_ and turn > c.TRACK_MAX_TURN + c.TRACK_ANGLE_TOL:
-            out.append(('detour', '%s run turns %.0f degrees within %.1f mm (a hook, a V kink or a U-turn)' % (name(i0), turn, c.TRACK_TURN_WINDOW), float(np.mean([q[0] for q in at_])), float(np.mean([q[1] for q in at_]))))
+        w = worst_turn(pts)
+        if w:
+            kind, at_, amount = w
+            out.append(('detour', '%s run has a %s: it turns %.0f degrees within %.1f mm' % (name(i0), kind, amount, c.TRACK_TURN_WINDOW), float(np.mean([q[0] for q in at_])), float(np.mean([q[1] for q in at_]))))
     seen, uniq = set(), []
     for f in out:
         k = (f[0], f[1], round(f[2], 3), round(f[3], 3))
