@@ -40,7 +40,15 @@ def run_rows(b, cfg, rows=None, want_drc=False, out=print, no_drc=False):
     be read as the whole check. `no_drc` (the command line's --no-drc) is the explicit request to skip it."""
     fails = []
     todo = [(n, f) for n, f in rules.ALL_ROWS if not rows or n in rows]
+    try:
+        KB.require(b, 'z_conn')
+        later = True
+    except KB.FieldNotRead:
+        later = False                                    # an .npz cache holds the first release's arrays, which have no zone fields: the copper rows are for a board read from its file
+    copper = {n for n, _ in rules.COPPER_ROWS}
     for name, fn in todo:
+        if name in copper and not later and not rows:
+            continue
         r = fn(b, cfg)
         out(f'[{"PASS" if r.ok else "FAIL"}] {name}: {r.detail}')
         if not r.ok:

@@ -13,7 +13,9 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [os.path.join(HERE, '..', '..', 'pcbkit'), os.path.join(HERE, '..')]
 from pcbkit import reroute, rules
-from pcbtools import boardio, mutate
+from pcbkit import board as KB
+from pcbtools import mutate
+from pcbtools.frame import FRAME
 
 CFG = {'GND': '/GND'}
 
@@ -182,7 +184,7 @@ def run(b, limit=200, verbose=True):
 def write(path, out, b_new, orig):
     from pcbtools.editor import edit
     keep = set(b_new.s_idx.tolist())
-    b0 = boardio.read_board(path)
+    b0 = KB.read_board(path, FRAME)
     gone = np.array([i in set(b0.s_idx.tolist()) - keep for i in b0.s_idx.tolist()], bool)
     new = [i for i in range(len(b_new.s_idx)) if int(b_new.s_idx[i]) not in orig]
     with edit(path, out) as e:
@@ -196,7 +198,7 @@ if __name__ == '__main__':
     lim = int(sys.argv[sys.argv.index('--max') + 1]) if '--max' in sys.argv else 200
     args = [a for k, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and not (k > 1 and sys.argv[k - 1] == '--max')]
     path = args[0]
-    b = boardio.read_board(path)
+    b = KB.read_board(path, FRAME)
     b2, done, failed, orig = run(b, lim)
     parts = rules.track_geometry_parts(b2, CFG)
     import collections
