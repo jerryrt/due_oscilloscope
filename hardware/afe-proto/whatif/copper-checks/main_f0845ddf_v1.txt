@@ -31,36 +31,31 @@ FILL_SHELL_MIN               default   0.3
 FILL_THERMAL_LAYERS          project   ('F',)
 FILL_SOLID_LAYERS            project   ('B',)
 segments 379  arcs 0
-track_geometry {'dangling': 13, 'detour': 8, 'tspur': 7, 'wide': 1}
+track_geometry {'detour': 9, 'tspur': 14, 'wide': 1}
 fill_quality   {'gndpad': 43, 'shell': 14}  {'B_dead_end': 0, 'B_narrow': 0, 'B_outline_mm': 1248.2, 'F_dead_end': 0, 'F_gndpad_lost': 43, 'F_narrow': 0, 'F_outline_mm': 1057.2, 'F_rough': 0, 'F_shell_lost': 14, 'F_shell_pins': 14}
 detour   35.80   12.07   F /LM_C1N run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   43.20   24.50   F /+3V3A run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   44.00   22.25   F /+3V3A run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   47.70   3.32    F /VNEG_O run turns 270 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   48.50   13.89   F /+3V3A run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   50.97   4.90    F /VREF run turns 360 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   52.07   1.39    F /VREF run of 37.65 mm is 1.7 times its 22.20 mm shortest path
-detour   69.19   33.00   F /A0 run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
+detour   69.19   33.00   F /A0 run turns 363 degrees within 3.0 mm (a hook, a V kink or a U-turn)
 detour   92.50   25.40   F /CH2_IN run turns 180 degrees within 3.0 mm (a hook, a V kink or a U-turn)
-dangling 53.55   5.65    F /TAP5 track end touches no pad, via or track of its net
-dangling 55.73   7.00    F /TAP4 track end touches no pad, via or track of its net
-dangling 55.77   6.35    F /TAP4 track end touches no pad, via or track of its net
-dangling 59.33   6.35    F /TAP3 track end touches no pad, via or track of its net
-dangling 60.66   5.65    F /TAP2 track end touches no pad, via or track of its net
-dangling 69.75   35.30   F /P33_U track end touches no pad, via or track of its net
-dangling 78.17   36.76   F /SC_VCC track end touches no pad, via or track of its net
-dangling 80.15   8.15    F /AWG_OUT track end touches no pad, via or track of its net
-dangling 80.47   31.82   F /CH2_OUT track end touches no pad, via or track of its net
-dangling 81.74   36.76   F /CH1_OUT track end touches no pad, via or track of its net
-dangling 83.64   39.00   F /CH1_NP track end touches no pad, via or track of its net
-dangling 91.42   24.13   F /CH2_IN track end touches no pad, via or track of its net
-dangling 91.42   44.45   F /CH1_IN track end touches no pad, via or track of its net
 tspur    33.95   11.10   F /LM_FBN T spur its junction is 0.25 mm from a bend, another junction or a pad on the trunk (needs 0.60)
-tspur    35.30   6.00    F /+5V_F T spur its junction is 0.20 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    35.30   12.25   F /+5V_F junction at a bend of the trunk (three tracks meet where it turns)
+tspur    35.30   14.25   F /+5V_F junction at a bend of the trunk (three tracks meet where it turns)
 tspur    44.40   12.93   F /+3V3A T spur its junction is 0.40 mm from a bend, another junction or a pad on the trunk (needs 0.60)
 tspur    52.45   17.40   F /VREF T spur 0.50 mm long (needs 0.60)
-tspur    56.00   35.40   F /P33_RN T spur joins at 0 degrees, not 90 or 45; its junction is 0.20 mm from a bend, another junction or a pad on the trunk (needs 0.60)
+tspur    53.69   5.65    F /TAP5 T spur 0.49 mm long (needs 0.60)
+tspur    55.68   6.35    F /TAP4 T spur 0.34 mm long (needs 0.60); its junction is 0.40 mm from a bend, another junction or a pad on the trunk (needs 0.60)
 tspur    56.00   36.00   F /P33_RN T spur joins at 0 degrees, not 90 or 45
+tspur    59.42   7.85    F /TAP3 T spur 0.26 mm long (needs 0.60)
 tspur    59.80   22.40   F /P33_R T spur 0.50 mm long (needs 0.60)
+tspur    60.62   5.65    F /TAP2 T spur 0.49 mm long (needs 0.60)
+tspur    63.65   5.65    F /TAP1 T spur 0.30 mm long (needs 0.60)
+tspur    80.08   8.15    F /AWG_OUT T spur 0.37 mm long (needs 0.60)
+tspur    84.37   4.85    F /DAC0 T spur 0.25 mm long (needs 0.60)
 wide     79.36   16.98   F /GND segment 0.30 mm wide, the net's rule is 0.25 mm (1.00 mm long)
 shell    26.42   50.80   J606 pin 7 (GND) has pour on 0% of its ring, needs 30%
 shell    40.64   2.54    J601 pin 6 (GND) has pour on 0% of its ring, needs 30%
