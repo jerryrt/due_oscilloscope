@@ -144,6 +144,8 @@ def test_a_named_exception_waives_exactly_one_finding_and_a_stale_or_ambiguous_o
     assert sorted(k for k, *_ in res) == ['over_pad', 'over_pad', 'over_pad', 'stale_exception'] and not res.waived        # C1 has two pins hit: ambiguous, so it waives nothing and fails
     res = run(two, GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C2.1', 'x'), ('over_pad', 'SIG', 'C1.1', 'x')])
     assert sorted(k for k, *_ in res) == ['over_pad'] and len(res.waived) == 2
+    ten = base().part('C10', 5, 0).p('C10', '1', 5, 0, 'SIG', size=1.0).s('SIG', 0, 0, 0, 10, 0)
+    assert kinds(ten, GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1', 'x')]) == ['over_pad', 'stale_exception']      # C1 is not C10
     assert kinds(board(pad_net='OTHER'), GEOMETRY_EXCEPTIONS=ok) == []
     with pytest.raises(ConfigError):
         kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1.1', '')])
