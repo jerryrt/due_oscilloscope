@@ -31,6 +31,15 @@ def test_a_strip_narrower_than_the_minimum_is_found_and_a_wide_one_is_not():
     assert '0.3' in [p for p in parts if p[0] == 'narrow'][0][1] or '0.4' in [p for p in parts if p[0] == 'narrow'][0][1]
 
 
+def test_the_minimum_width_is_per_layer_and_a_single_number_applies_to_all():
+    both = dict(FILL_LAYERS=('F', 'B'), FILL_THERMAL_LAYERS=(), FILL_SOLID_LAYERS=())
+    two = lambda: board(DUMBBELL, 0).z('GND', 1, [(False, DUMBBELL)])
+    parts = lambda **o: sorted(p[1][0] for p in rules.fill_quality_parts(two().build(), {**dict(GND='GND'), **both, **o})[0] if p[0] == 'narrow')
+    assert parts() == ['B', 'F']                                       # the strip is 0.3: under the top's 0.8, and under the plane's 0.5 as well
+    assert parts(FILL_MIN_WIDTH={'F': 0.2, 'B': 0.5}) == ['B'] and parts(FILL_MIN_WIDTH={'F': 0.5, 'B': 0.2}) == ['F']
+    assert parts(FILL_MIN_WIDTH=0.2) == [] and parts(FILL_MIN_WIDTH=0.5) == ['B', 'F']
+
+
 def test_the_pour_itself_is_measured_not_the_pour_with_a_pad_laid_over_it():
     covered = board(DUMBBELL).part('C1', 11, 5).p('C1', '1', 11, 5, 'GND', size=1.0, sy=1.0)          # a GND pad over the whole strip widens the copper, not the pour
     assert 'narrow' in kinds(covered)

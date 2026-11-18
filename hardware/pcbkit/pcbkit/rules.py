@@ -909,7 +909,7 @@ TRACK_GEOMETRY_NAMES = (
     tunable('TRACK_ANGLE_TOL', 0.5, 'degrees', 'how far a segment, or a segment entering a pad, may be from the angle it should have'),
     tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
     tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
-    tunable('TRACK_ELONGATED_RATIO', 1.5, 'long side / short side', 'a pad at least this elongated is entered along its long axis; a squarer pad (a chip capacitor\'s) along either of its axes'),
+    tunable('TRACK_ENTRY_EDGE_TOL', 0.001, 'mm', 'how far a track entering a pad may overhang the span of the pad edge it enters (it enters through the edge, not across a corner)'),
     tunable('TRACK_OVERLAP_TOL', 0.001, 'mm', 'a track overlaps a pad when its copper is further than this over the pad edge'),
 )
 
@@ -954,7 +954,7 @@ def _dev(angle, step):
 
 def track_geometry_parts(b, cfg, report=None):
     """[(kind, text, x, y)] findings of the track geometry rule, kinds: 'arc' (a curved track), 'angle' (a segment off the angle step), 'jog' (a straight run shorter than
-    TRACK_MIN_LEG between bends, unless it breaks out of a fine-pitch pad), 'entry' (the segment into a pad does not run along the pad's long axis), 'over_pad' (a track
+    TRACK_MIN_LEG between bends, unless it breaks out of a fine-pitch pad), 'entry' (the segment into a pad is not perpendicular to the edge it enters, or enters across a corner), 'over_pad' (a track
     crosses the pads of a part it does not end on). Positions are board-frame mm."""
     c = resolve(cfg, TRACK_GEOMETRY_NAMES, 'track_geometry', report)
     S = segs(b)
@@ -1034,21 +1034,33 @@ def track_geometry_parts(b, cfg, report=None):
                 continue
             flagged.add(g)
             out.append(('jog', '%s leg %.2f mm between bends (needs %.2f)' % (name(s), glen[g], c.TRACK_MIN_LEG), float(p[0]), float(p[1])))
-    # the segment into a pad runs along the pad's long axis
+    # the segment into a pad is perpendicular to the pad edge it enters (along either pad axis) and enters through that edge, not across a corner
     if len(pa['rows']):
-        square = np.maximum(pa['sx'], pa['sy']) < c.TRACK_ELONGATED_RATIO * np.maximum(np.minimum(pa['sx'], pa['sy']), 1e-9)
-        long_axis = np.where(pa['sx'] >= pa['sy'], pa['rot'], pa['rot'] + 90.0)
         for e_i in range(2 * n):
             i = e_i % n
             if L[i] <= 1e-6:
                 continue
             for h in np.flatnonzero(in_end[e_i] & (pa['net'] == b.s_net[i]) & ((pa['mask'] & (1 << int(b.s_layer[i]))) > 0)):
                 if pa['shape'][h] == 0:
-                    continue                                       # a round pad has no axis
-                ok = _dev(ang[i] - long_axis[h], 180.0) <= c.TRACK_ANGLE_TOL or (square[h] and _dev(ang[i] - long_axis[h], 90.0) <= c.TRACK_ANGLE_TOL)
-                if not ok:
+                    continue                                       # a round pad has no edge to enter perpendicular to
+                a_pad = math.radians(pa['rot'][h])
+                dx, dy = ends[e_i, 0] - pa['cx'][h], ends[e_i, 1] - pa['cy'][h]
+                u = dx * math.cos(a_pad) + dy * math.sin(a_pad)         # the end in the pad's own frame
+                v = -dx * math.sin(a_pad) + dy * math.cos(a_pad)
+                along_x = _dev(ang[i] - pa['rot'][h], 180.0) <= c.TRACK_ANGLE_TOL
+                along_y = _dev(ang[i] - pa['rot'][h] - 90.0, 180.0) <= c.TRACK_ANGLE_TOL
+                half = b.s_w[i] / 2
+                if along_x:
+                    through = abs(v) + half <= pa['sy'][h] / 2 + c.TRACK_ENTRY_EDGE_TOL          # moving along x: it meets the edge x = +-sx/2 across its span in y
+                elif along_y:
+                    through = abs(u) + half <= pa['sx'][h] / 2 + c.TRACK_ENTRY_EDGE_TOL
+                else:
+                    through = False
+                if not through:
                     ref = b.fp_ref[pa['fp'][h]]
-                    out.append(('entry', '%s enters %s.%s at %.1f degrees, the pad runs at %.1f' % (name(i), ref, b.p_pin[pa['rows'][h]], ang[i] % 180, long_axis[h] % 180), float(ends[e_i, 0]), float(ends[e_i, 1])))
+                    out.append(('entry', '%s enters %s.%s %s' % (name(i), ref, b.p_pin[pa['rows'][h]],
+                                'at %.1f degrees, not along a pad axis (%.1f or %.1f)' % (ang[i] % 180, pa['rot'][h] % 180, (pa['rot'][h] + 90) % 180) if not (along_x or along_y)
+                                else 'across the corner, not through the edge'), float(ends[e_i, 0]), float(ends[e_i, 1])))
         # a track over the pads of a part it does not end on (even of its own net)
         cu = geom.pad_copper(b, pa['rows'])
         for a0 in range(0, n, 256):
@@ -1081,7 +1093,7 @@ def track_geometry(b, cfg, report=None):
 FILL_QUALITY_NAMES = (
     project('GND', 'net name', 'the net of the pours measured'),
     tunable('FILL_LAYERS', ('F', 'B'), 'layer letters', 'the copper layers whose pour of GND is measured'),
-    tunable('FILL_MIN_WIDTH', 0.8, 'mm', 'no strip, finger or tooth of the pour is narrower than this'),
+    tunable('FILL_MIN_WIDTH', {'F': 0.8, 'B': 0.5}, 'mm per layer, or one mm for all', 'no strip, finger or tooth of the pour is narrower than this (the top for its looks, the plane for slivers only)'),
     tunable('FILL_DEAD_END_WIDTH', 1.6, 'mm', 'a part of the pour narrower than this that touches other copper at one end only is a dead-end finger'),
     tunable('FILL_LENGTH_FACTOR', 1.5, 'x half the width', 'a narrow part is a finger or a tooth only when it is longer than this times half the width limit (a shorter one is the rounding of a corner)'),
     tunable('FILL_RASTER', 40.0, 'pixels per mm', 'the resolution the pour is measured at'),
@@ -1104,12 +1116,13 @@ def fill_quality_parts(b, cfg, report=None):
     figs = {}
     for lay in c.FILL_LAYERS:
         code = _layer_code(lay)
+        minw = float(c.FILL_MIN_WIDTH[lay]) if isinstance(c.FILL_MIN_WIDTH, dict) else float(c.FILL_MIN_WIDTH)
         zs = [z for z in range(len(b.z_layer)) if b.z_layer[z] == code and b.z_net[z] == gnd and b.z_filled[z] and not b.z_keepout[z]]
         if not zs:
             continue
         r_fill = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=False)
         r_all = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=True)
-        nar, _ = fills.narrow_pieces(r_fill, c.FILL_MIN_WIDTH, c.FILL_MIN_AREA, c.FILL_LENGTH_FACTOR)
+        nar, _ = fills.narrow_pieces(r_fill, minw, c.FILL_MIN_AREA, c.FILL_LENGTH_FACTOR)
         for p in nar:
             out.append(('narrow', '%s pour %.2f mm wide, %.1f mm long' % (lay, p.width, p.length), p.x, p.y))
         de = [p for p in fills.thin_report(r_all, 0.0, c.FILL_DEAD_END_WIDTH, c.FILL_MIN_AREA, length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]

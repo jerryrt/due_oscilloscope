@@ -57,17 +57,27 @@ def test_a_short_leg_out_of_a_fine_pitch_pad_is_a_breakout_and_out_of_a_coarse_p
     assert 'jog' in kinds(board(0.5), TRACK_FINE_PITCH=0.4)
 
 
-def test_the_segment_into_an_elongated_pad_runs_along_its_long_axis_and_a_squarer_pad_takes_either():
-    long_pad = lambda angle_end, rot=0.0: base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3, sy=1.2, rot=rot).s('SIG', 0, 0, 0, *angle_end)     # 0.3 x 1.2: long axis is y
-    assert 'entry' not in kinds(long_pad((0, 3))) and 'entry' in kinds(long_pad((3, 0)))
-    assert 'entry' not in kinds(long_pad((3, 0), rot=90.0)) and 'entry' in kinds(long_pad((0, 3), rot=90.0))           # the pad turned
-    sq = lambda e: base().part('C1', 0, 0).p('C1', '1', 0, 0, 'SIG', size=0.8, sy=0.95).s('SIG', 0, 0, 0, *e)
-    assert 'entry' not in kinds(sq((3, 0))) and 'entry' not in kinds(sq((0, 3))) and 'entry' in kinds(sq((3, 3)))     # either axis, but not 45 degrees
-    assert 'entry' in kinds(long_pad((0, 3)), TRACK_ELONGATED_RATIO=10.0) is False or 'entry' not in kinds(long_pad((3, 0)), TRACK_ELONGATED_RATIO=10.0)
-    rnd = base().part('C1', 0, 0).p('C1', '1', 0, 0, 'SIG', size=0.8, shape=0).s('SIG', 0, 0, 0, 3, 3)
-    assert 'entry' not in kinds(rnd)                                            # a round pad has no axis
-    other = base().part('C1', 0, 0).p('C1', '1', 0, 0, 'OTHER', size=0.3, sy=1.2).s('SIG', 0, 0, 0, 3, 0)
-    assert 'entry' not in kinds(other)                                          # another net's pad is not entered by this track
+def test_the_segment_into_a_pad_is_perpendicular_to_the_edge_it_enters_along_either_pad_axis():
+    pad = lambda end, rot=0.0: base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3, sy=1.2, rot=rot).s('SIG', 0, end[0], end[1], 0, 0)       # a 0.3 x 1.2 pad, the track from `end` to its centre
+    assert 'entry' not in kinds(pad((0, 3))) and 'entry' not in kinds(pad((3, 0)))        # along the long axis, and along the short one (the part's axis, from the outer end)
+    assert 'entry' in kinds(pad((3, 3)))                                                   # 45 degrees to the pad
+    assert 'entry' not in kinds(pad((3, 0), rot=90.0)) and 'entry' not in kinds(pad((0, 3), rot=90.0)) and 'entry' in kinds(pad((3, 3), rot=90.0))      # the pad turned
+    assert 'entry' in kinds(base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3, sy=1.2, rot=30.0).s('SIG', 0, 3, 0, 0, 0))                    # a pad at 30 degrees is not entered along the world axes
+    assert 'entry' not in kinds(pad((3, 0)), TRACK_ANGLE_TOL=0.5) and 'entry' not in kinds(base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3, sy=1.2, rot=30.0).s('SIG', 0, 3 * 0.866025, 3 * 0.5, 0, 0))
+    rnd = base().part('C1', 0, 0).p('C1', '1', 0, 0, 'SIG', size=0.8, shape=0).s('SIG', 0, 3, 3, 0, 0)
+    assert 'entry' not in kinds(rnd)                                                       # a round pad has no edge
+    other = base().part('C1', 0, 0).p('C1', '1', 0, 0, 'OTHER', size=0.3, sy=1.2).s('SIG', 0, 3, 3, 0, 0)
+    assert 'entry' not in kinds(other)                                                     # another net's pad is not entered by this track
+
+
+def test_a_track_enters_through_the_edge_not_across_a_corner():
+    def pad(y, w=0.2, **over):
+        return kinds(base().part('C1', 0, 0).p('C1', '1', 0, 0, 'SIG', size=1.0).s('SIG', 0, 3, y, 0, y, w=w), **over)       # a 1 x 1 pad, the track along x at height y
+    assert 'entry' not in pad(0.0) and 'entry' not in pad(0.4)                              # its whole width on the edge (0.4 + 0.1 = 0.5)
+    assert 'entry' in pad(0.45) and 'entry' in pad(0.4, w=0.4)                              # its side over the corner
+    assert 'entry' not in pad(0.45, TRACK_ENTRY_EDGE_TOL=0.1)
+    side = lambda x: kinds(base().part('C1', 0, 0).p('C1', '1', 0, 0, 'SIG', size=1.0).s('SIG', 0, x, 3, x, 0))       # the same along y, at offset x
+    assert 'entry' not in side(0.4) and 'entry' in side(0.45)
 
 
 def test_a_track_over_the_pads_of_a_part_it_does_not_end_on_is_found_even_on_its_own_net():
@@ -88,7 +98,7 @@ def test_a_track_over_the_pads_of_a_part_it_does_not_end_on_is_found_even_on_its
 
 def test_the_configuration_names_and_defaults_are_declared():
     text = rules.effective_config({}, 'track_geometry')
-    for n in ('TRACK_ANGLE_STEP', 'TRACK_ANGLE_TOL', 'TRACK_MIN_LEG', 'TRACK_FINE_PITCH', 'TRACK_ELONGATED_RATIO', 'TRACK_OVERLAP_TOL'):
+    for n in ('TRACK_ANGLE_STEP', 'TRACK_ANGLE_TOL', 'TRACK_MIN_LEG', 'TRACK_FINE_PITCH', 'TRACK_ENTRY_EDGE_TOL', 'TRACK_OVERLAP_TOL'):
         assert n in text and 'default' in text
     with pytest.raises(ConfigError):
         rules.track_geometry(base().build(), dict(TRACK_MIN_LEGG=0.5))
