@@ -35,6 +35,17 @@ declare -A M=(
   [dead_end_every_finger]="rules.py|length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]|length_factor=c.FILL_LENGTH_FACTOR) if True]"
   [narrow_measured_with_net_items]="rules.py|r_fill = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=False)|r_fill = fills.net_copper(b, code, gnd, c.FILL_RASTER, with_net_items=True)"
   [fill_layer_ignored]="rules.py|zs = [z for z in range(len(b.z_layer)) if b.z_layer[z] == code and b.z_net[z] == gnd|zs = [z for z in range(len(b.z_layer)) if b.z_net[z] == gnd"
+  [exc_stale_allowed]="rules.py|        if len(hit) != 1:|        if len(hit) == 0:"
+  [exc_net_ignored]="rules.py|if kind != rule or len(t) < 2 or t[1].lstrip('/') != str(net).lstrip('/'):|if kind != rule:"
+  [exc_rule_ignored]="rules.py|if kind != rule or len(t) < 2 or|if len(t) < 2 or"
+  [exc_place_radius_huge]="rules.py|return math.hypot(x - where[0], y - where[1]) <= 0.5|return True"
+  [exc_ref_prefix_any]="rules.py|(w.startswith(where + '.') and '.' not in where)|w.startswith(where)"
+  [exc_reason_not_needed]="rules.py|if len(e) != 4 or not str(e[3]).strip():|if len(e) != 4:"
+  [exc_not_applied]="rules.py|    out = [f for f in out if id(f) not in gone]|    pass"
+  [reach_ignored]="rules.py|if not fine and c.TRACK_BREAKOUT_REACH > 0 and len(pa['rows']):|if False:"
+  [reach_any_net]="rules.py|for h in np.flatnonzero((pa['net'] == b.s_net[s]) \& (np.array(|for h in np.flatnonzero((pa['net'] >= 0) \& (np.array("
+  [reach_any_pitch]="rules.py|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= c.TRACK_FINE_PITCH + 1e-9)):|(np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= 9e9)):"
+  [reach_infinite]="rules.py|if (np.hypot(E[:, 0] - pa['cx'][h], E[:, 1] - pa['cy'][h]) <= c.TRACK_BREAKOUT_REACH).any():|if True:"
 )
 fail=0
 for name in "${!M[@]}"; do

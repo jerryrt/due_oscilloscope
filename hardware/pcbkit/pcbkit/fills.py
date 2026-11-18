@@ -542,3 +542,94 @@ def _snap_poly(poly, xs, ys, snap):
                 p[axis] = t
                 poly[i] = tuple(p)
     return poly
+
+
+def rough_edges(b, rp, layer, net, clearance=0.3, tol=0.15, link=2.0, margin=0.25):
+    """The places where the pour edge is a run of clearance arcs, as a mask on the raster `rp` of the pour (built WITHOUT the net's own items). An item (a pad or a via of another net on
+    `layer`) hugs the pour when pour copper lies within `clearance` + `tol` of it. Hugging items whose copper is within `link` mm of each other are one cluster; a cluster of two or more
+    is rough (one alone may show its round clearance), and its mask is every item grown by clearance + tol + `margin` and closed over `link` mm, so a keep-out over it leaves a straight edge
+    instead of the arcs. Feed it to keepout_polygons(extra=...)."""
+    k = rp.ppmm
+    reach = clearance + tol
+    items = []                                              # (mask window, (r0, c0)) per item, in raster pixels
+    rows = np.flatnonzero((b.p_net != net) & ((b.p_layer_mask & (1 << layer)) != 0)) if len(b.p_net) else np.zeros(0, np.int64)
+    cu = geom.pad_copper(b, rows) if len(rows) else None
+    wpx = int(np.ceil((reach + link + margin + 0.2) * k))
+    def window(x0, y0, x1, y1):
+        c0 = int(np.floor((x0 - rp.x0) * k)) - wpx
+        c1 = int(np.ceil((x1 - rp.x0) * k)) + wpx
+        r0 = int(np.floor((rp.y1 - y1) * k)) - wpx
+        r1 = int(np.ceil((rp.y1 - y0) * k)) + wpx
+        return max(r0, 0), max(c0, 0), min(r1, rp.mask.shape[0]), min(c1, rp.mask.shape[1])
+    def draw(shapes, win):
+        r0, c0, r1, c1 = win
+        im = Image.new('L', (c1 - c0, r1 - r0), 0)
+        d = ImageDraw.Draw(im)
+        for kind, v in shapes:
+            if kind == 'poly':
+                d.polygon([(px - c0, py - r0) for px, py in v], fill=1)
+            elif kind == 'line':
+                (ax, ay, bx, by), w = v
+                d.line((ax - c0, ay - r0, bx - c0, by - r0), fill=1, width=max(1, int(round(w))))
+            else:
+                (cx, cy), rr = v
+                d.ellipse([cx - c0 - rr, cy - r0 - rr, cx - c0 + rr, cy - r0 + rr], fill=1)
+        return np.asarray(im).astype(bool)
+    def px(x, y):
+        return ((x - rp.x0) * k, (rp.y1 - y) * k)
+    for n_, i in enumerate(rows):
+        m = cu.owner == n_
+        C, R = cu.C[m], cu.r[m]
+        shapes = []
+        if len(C) == 4 and np.all(R == 0):
+            shapes.append(('poly', [px(*C[q][:2]) for q in range(4)]))
+        else:
+            for (ax, ay, bx, by), rr in zip(C, R):
+                shapes.append(('line', ((*px(ax, ay), *px(bx, by)), 2 * rr * k)))
+                shapes.append(('disc', (px(ax, ay), rr * k)))
+                shapes.append(('disc', (px(bx, by), rr * k)))
+        items.append((shapes, window(b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i]), (b.p_bx0[i], b.p_by0[i], b.p_bx1[i], b.p_by1[i])))
+    for i in np.flatnonzero(b.v_net != net) if len(b.v_net) else []:
+        r_ = b.v_dia[i] / 2
+        items.append(([('disc', (px(b.v_x[i], b.v_y[i]), r_ * k))], window(b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_), (b.v_x[i] - r_, b.v_y[i] - r_, b.v_x[i] + r_, b.v_y[i] + r_)))
+    hug = []
+    for shapes, win, box in items:
+        m = draw(shapes, win)
+        if not m.any():
+            continue
+        near = ndi.distance_transform_edt(~m) <= reach * k
+        if (near & rp.mask[win[0]:win[2], win[1]:win[3]]).any():
+            hug.append((shapes, win, box))
+    parent = list(range(len(hug)))
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for a in range(len(hug)):
+        for c in range(a + 1, len(hug)):
+            A, B = hug[a][2], hug[c][2]
+            if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= link:
+                parent[find(a)] = find(c)
+    groups = {}
+    for a in range(len(hug)):
+        groups.setdefault(find(a), []).append(a)
+    out = np.zeros_like(rp.mask)
+    grow = (reach + margin) * k
+    for g in groups.values():
+        if len(g) < 2:
+            continue
+        r0 = min(hug[a][1][0] for a in g); c0 = min(hug[a][1][1] for a in g)
+        r1 = max(hug[a][1][2] for a in g); c1 = max(hug[a][1][3] for a in g)
+        win = (r0, c0, r1, c1)
+        m = np.zeros((r1 - r0, c1 - c0), bool)
+        for a in g:
+            m |= draw(hug[a][0], win)
+        grown = ndi.distance_transform_edt(~m) <= grow
+        pad_ = int(np.ceil(link * k / 2)) + 2
+        G = np.pad(grown, pad_)
+        d1 = ndi.distance_transform_edt(~G) <= link * k / 2
+        closed = ndi.distance_transform_edt(d1) > link * k / 2
+        closed = (closed | G)[pad_:-pad_, pad_:-pad_]
+        out[r0:r1, c0:c1] |= closed
+    return out

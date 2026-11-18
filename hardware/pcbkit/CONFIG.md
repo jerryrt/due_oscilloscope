@@ -100,8 +100,10 @@ not across a corner (the track's whole width within the edge's span, `TRACK_ENTR
 | `TRACK_ANGLE_TOL` | tunable | degrees | `0.5` | how far a segment, or an entry into a pad, may be from its angle |
 | `TRACK_MIN_LEG` | tunable | mm | `0.6` | the shortest run between bends |
 | `TRACK_FINE_PITCH` | tunable | mm | `0.65` | a short leg out of a pad of a part at this pitch or finer is a breakout |
+| `TRACK_BREAKOUT_REACH` | tunable | mm | `0.0` | a short leg is also a breakout when one of its ends is within this of the centre of a same-net pad of a fine-pitch part (the fan-out out of a 0.5 mm part, whose first leg out of the pad is itself short); 0 limits the exemption to the leg that ends on the pad |
 | `TRACK_ENTRY_EDGE_TOL` | tunable | mm | `0.001` | how far a track entering a pad may overhang the span of the edge it enters |
 | `TRACK_OVERLAP_TOL` | tunable | mm | `0.001` | a track overlaps a pad when its copper is further than this over the pad edge |
+| `GEOMETRY_EXCEPTIONS` | tunable | `[(rule, net, pad_or_ref, reason)]` | `[]` | named exceptions, each waiving exactly one finding of `rule` (`angle`, `jog`, `entry`, `over_pad`) on `net` at that pad (`'R302.1'`, `'R302'` for any pin of it, or `(x, y)` within 0.5 mm of the finding when it is at no pad); the reason is required. An entry that matches no finding, or more than one, is itself a finding (`stale_exception`) so the check fails and a stale exception cannot stay |
 
 ### rules.fill_quality
 

@@ -909,8 +909,10 @@ TRACK_GEOMETRY_NAMES = (
     tunable('TRACK_ANGLE_TOL', 0.5, 'degrees', 'how far a segment, or a segment entering a pad, may be from the angle it should have'),
     tunable('TRACK_MIN_LEG', 0.6, 'mm', 'the shortest straight run between two bends of a track (a collinear chain is one run); shorter is a jog'),
     tunable('TRACK_FINE_PITCH', 0.65, 'mm', 'a leg that ends on a pad of a part whose pads are at this pitch or finer is a breakout and may be short'),
+    tunable('TRACK_BREAKOUT_REACH', 0.0, 'mm', 'a short leg is also a breakout when one of its ends is within this of the centre of a same-net pad of a fine-pitch part (the fan-out out of a 0.5 mm part, where the first leg out of the pad is itself short); 0 limits the exemption to the leg that ends on the pad'),
     tunable('TRACK_ENTRY_EDGE_TOL', 0.001, 'mm', 'how far a track entering a pad may overhang the span of the pad edge it enters (it enters through the edge, not across a corner)'),
     tunable('TRACK_OVERLAP_TOL', 0.001, 'mm', 'a track overlaps a pad when its copper is further than this over the pad edge'),
+    tunable('GEOMETRY_EXCEPTIONS', [], '[(rule, net, pad_or_ref, reason)]', 'named exceptions: each waives exactly one finding of that rule on that net at that pad (REF.PIN, REF for any pin of it, or (x, y) within 0.5 mm of the finding for a finding at no pad); an entry that matches no finding, or more than one, fails the check'),
 )
 
 
@@ -952,11 +954,10 @@ def _dev(angle, step):
     return min(m, step - m)
 
 
-def track_geometry_parts(b, cfg, report=None):
+def _geometry_findings(b, c):
     """[(kind, text, x, y)] findings of the track geometry rule, kinds: 'arc' (a curved track), 'angle' (a segment off the angle step), 'jog' (a straight run shorter than
     TRACK_MIN_LEG between bends, unless it breaks out of a fine-pitch pad), 'entry' (the segment into a pad is not perpendicular to the edge it enters, or enters across a corner), 'over_pad' (a track
     crosses the pads of a part it does not end on). Positions are board-frame mm."""
-    c = resolve(cfg, TRACK_GEOMETRY_NAMES, 'track_geometry', report)
     S = segs(b)
     n = len(S)
     out = []
@@ -1038,6 +1039,12 @@ def track_geometry_parts(b, cfg, report=None):
                 q = np.array([[far[0][2] / 1000, far[0][3] / 1000]])
                 hit = np.flatnonzero(_in_pads(q, pa)[0] & (pa['net'] == b.s_net[s]))
                 fine = any(pitch.get(int(pa['fp'][h]), math.inf) <= c.TRACK_FINE_PITCH + 1e-9 for h in hit)
+            if not fine and c.TRACK_BREAKOUT_REACH > 0 and len(pa['rows']):
+                E = np.array([[S[q, 2 * e], S[q, 2 * e + 1]] for q in gsegs[g] for e in (0, 1)])
+                for h in np.flatnonzero((pa['net'] == b.s_net[s]) & (np.array([pitch.get(int(f), math.inf) for f in pa['fp']]) <= c.TRACK_FINE_PITCH + 1e-9)):
+                    if (np.hypot(E[:, 0] - pa['cx'][h], E[:, 1] - pa['cy'][h]) <= c.TRACK_BREAKOUT_REACH).any():
+                        fine = True
+                        break
             if fine:
                 continue
             flagged.add(g)
@@ -1090,12 +1097,53 @@ def track_geometry_parts(b, cfg, report=None):
     return out
 
 
+def _match(finding, entry):
+    kind, text, x, y = finding
+    rule, net, where, _ = entry
+    t = text.split()
+    if kind != rule or len(t) < 2 or t[1].lstrip('/') != str(net).lstrip('/'):
+        return False
+    if isinstance(where, (tuple, list)):
+        return math.hypot(x - where[0], y - where[1]) <= 0.5
+    return any(w == where or (w.startswith(where + '.') and '.' not in where) for w in t)
+
+
+def track_geometry_parts(b, cfg, report=None):
+    """[(kind, text, x, y)] findings of the track geometry (see _geometry_findings: arc, angle, jog, entry, over_pad), less those waived by GEOMETRY_EXCEPTIONS, plus a 'stale_exception' finding for
+    every entry that matches no finding or more than one, so an exception that no longer applies cannot stay in the configuration. `parts.waived` is the list of (entry, finding) waived."""
+    from .config import ConfigError
+    c = resolve(cfg, TRACK_GEOMETRY_NAMES, 'track_geometry', report)
+    found = _geometry_findings(b, c)
+    ex = list(c.GEOMETRY_EXCEPTIONS)
+    for e in ex:
+        if len(e) != 4 or not str(e[3]).strip():
+            raise ConfigError('GEOMETRY_EXCEPTIONS entries are (rule, net, pad_or_ref, reason) with a reason; got %r' % (e,))
+    waived, gone = [], set()
+    out = list(found)
+    for e in ex:
+        hit = [f for f in found if _match(f, e)]
+        if len(hit) != 1:
+            out.append(('stale_exception', '%s %s %s matches %d findings, not exactly one (%s)' % (e[0], e[1], e[2], len(hit), e[3]), 0.0, 0.0))
+            continue
+        gone.add(id(hit[0]))
+        waived.append((e, hit[0]))
+    out = [f for f in out if id(f) not in gone]
+    return WaivedList(out, waived)
+
+
+class WaivedList(list):
+    def __init__(self, items, waived):
+        super().__init__(items)
+        self.waived = waived
+
+
 def track_geometry(b, cfg, report=None):
     parts = track_geometry_parts(b, cfg, report)
-    kinds = ('arc', 'angle', 'jog', 'entry', 'over_pad')
+    kinds = ('arc', 'angle', 'jog', 'entry', 'over_pad', 'stale_exception')
     fig = {f'{k}': float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig['segments'] = float(len(b.s_idx))
     fig['violations'] = float(len(parts))
+    fig['waived'] = float(len(parts.waived))
     bad = [f'{p[0]}: {p[1]} at ({p[2]:.2f}, {p[3]:.2f})' for p in parts]
     return Result(not parts, '; '.join(bad[:6]) or f'{len(b.s_idx)} segments: on the angle step, no jogs, straight into pads, over no foreign pad', fig)
 

@@ -27,6 +27,9 @@ declare -A M=(
   [poly_hole_ignored]="fills.py|if len(loops) == 1 and len(outer) == 1:|if True:"
   [poly_snap_bends_diagonals]="fills.py|if any(diag(i) or diag((i - 1) % n) for i in idx):|if False:"
   [poly_grid_offset_dropped]="fills.py|    ox, oy = int(round((r.x0 - xo) * k)), int(round((yo - r.y1) * k))|    ox, oy = 0, 0"
+  [rough_single_counts]="fills.py|        if len(g) < 2:|        if len(g) < 1:"
+  [rough_reach_ignored]="fills.py|if (near \& rp.mask[win[0]:win[2], win[1]:win[3]]).any():|if True:"
+  [rough_link_ignored]="fills.py|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= link:|if np.hypot(max(A[0] - B[2], B[0] - A[2], 0), max(A[1] - B[3], B[1] - A[3], 0)) <= 1e9:"
 )
 fail=0
 for name in "${!M[@]}"; do

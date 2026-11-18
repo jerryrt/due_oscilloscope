@@ -90,6 +90,13 @@ def drop_keeps(b):
             b.Remove(z)
 
 
+def _rm(tmp):
+    """remove a temporary board and the project file the editor wrote beside it"""
+    for f in (tmp, os.path.splitext(tmp)[0] + '.kicad_pro'):
+        if os.path.exists(f):
+            os.remove(f)
+
+
 def _fill_to(path, tmp, keeps, loose_w, clearance, spoke, gap, bot_w=None):
     from pcbtools.editor import edit
     with edit(path, tmp) as e:
@@ -99,9 +106,10 @@ def _fill_to(path, tmp, keeps, loose_w, clearance, spoke, gap, bot_w=None):
         set_zones(e.b, loose_w, loose_w if bot_w is None else bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_NEVER)
         e.fill_zones()
     b = kb.read_board(tmp, {'FRAME': FRAME})
-    os.remove(tmp)
+    _rm(tmp)
     g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
-    return fills.net_copper(b, 0, g, 40.0, with_net_items=True, frame=(17.0, -4.5, 117.0, 57.84))
+    fr = (17.0, -4.5, 117.0, 57.84)
+    return fills.net_copper(b, 0, g, 40.0, with_net_items=True, frame=fr), b, g, fills.net_copper(b, 0, g, 40.0, with_net_items=False, frame=fr)
 
 
 def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, join, rounds=6):
@@ -109,16 +117,19 @@ def derive_keeps(path, loose_w, clearance, spoke, gap, width, grid, outlines, jo
     them, and add what that fill still leaves that is not worth keeping (blobs on necks, dead-end fingers)"""
     tmp = path + '.keeps.tmp.kicad_pcb'
     bounds = (17.0, -4.5, 117.0, 57.84)
-    r0 = _fill_to(path, tmp, [], loose_w, clearance, spoke, gap)
+    r0 = _fill_to(path, tmp, [], loose_w, clearance, spoke, gap)[0]
     extra = None
     keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds)
     for _ in range(rounds):
-        r = _fill_to(path, tmp, keeps, width, clearance, spoke, gap)
-        lo = fills.leftovers(r)
+        r, bb, g, rp = _fill_to(path, tmp, keeps, width, clearance, spoke, gap)
+        lo = fills.leftovers(r) | fills.rough_edges(bb, rp, 0, g, clearance)
         extra = lo if extra is None else (extra | lo)
         if not lo.any():
             break
-        keeps = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra)
+        new = fills.keepout_polygons(r0, width, grid, join, outlines=outlines, bounds=bounds, extra=extra)
+        if new == keeps:
+            break
+        keeps = new
     return keeps
 
 
@@ -171,7 +182,7 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     try:
         b, r, lab, comps = islands(tmp, big)
     finally:
-        os.remove(tmp)
+        _rm(tmp)
     vias, report = [], []
     for comp, area, (cx, cy), connected in sorted(comps, key=lambda c: -c[1]):
         if connected or area < 0.5:

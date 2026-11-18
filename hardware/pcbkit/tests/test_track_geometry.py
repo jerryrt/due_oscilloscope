@@ -57,6 +57,17 @@ def test_a_short_leg_out_of_a_fine_pitch_pad_is_a_breakout_and_out_of_a_coarse_p
     assert 'jog' in kinds(board(0.5), TRACK_FINE_PITCH=0.4)
 
 
+def test_the_second_short_leg_of_a_fan_out_is_a_breakout_only_within_the_breakout_reach():
+    def board(pitch=0.5, net='SIG'):
+        a = base().part('U1', 0, 0).p('U1', '1', 0, 0, net, size=0.3, sy=0.6).p('U1', '2', pitch, 0, 'OTHER', size=0.3, sy=0.6)
+        return a.s('SIG', 0, 0, 0, 0, 0.45).s('SIG', 0, 0, 0.45, -0.2, 0.65).s('SIG', 0, -0.2, 0.65, -0.2, 4)          # out of the pad 0.45, a 0.28 mm diagonal, then on
+    assert 'jog' in kinds(board())                                                         # the diagonal is not the leg that ends on the pad: flagged by default
+    assert 'jog' not in kinds(board(), TRACK_BREAKOUT_REACH=0.8)
+    assert 'jog' in kinds(board(), TRACK_BREAKOUT_REACH=0.3)                               # its ends are further than that from the pad centre
+    assert 'jog' in kinds(board(pitch=0.7), TRACK_BREAKOUT_REACH=0.8)                      # a coarse part has no breakout
+    assert 'jog' in kinds(board(net='OTHER'), TRACK_BREAKOUT_REACH=0.8)                    # the pad is of another net
+
+
 def test_the_segment_into_a_pad_is_perpendicular_to_the_edge_it_enters_along_either_pad_axis():
     pad = lambda end, rot=0.0: base().part('U1', 0, 0).p('U1', '1', 0, 0, 'SIG', size=0.3, sy=1.2, rot=rot).s('SIG', 0, end[0], end[1], 0, 0)       # a 0.3 x 1.2 pad, the track from `end` to its centre
     assert 'entry' not in kinds(pad((0, 3))) and 'entry' not in kinds(pad((3, 0)))        # along the long axis, and along the short one (the part's axis, from the outer end)
@@ -113,3 +124,28 @@ def test_the_configuration_names_and_defaults_are_declared():
         assert n in text and 'default' in text
     with pytest.raises(ConfigError):
         rules.track_geometry(base().build(), dict(TRACK_MIN_LEGG=0.5))
+
+
+def test_a_named_exception_waives_exactly_one_finding_and_a_stale_or_ambiguous_one_fails():
+    import pytest
+    from pcbkit.config import ConfigError
+
+    def board(pad_net='SIG'):
+        return base().part('C1', 5, 0).p('C1', '1', 5, 0, pad_net, size=1.0).s('SIG', 0, 0, 0, 10, 0)
+    ok = [('over_pad', 'SIG', 'C1.1', 'daisy chain through the clamp')]
+    assert kinds(board()) == ['over_pad'] and kinds(board(), GEOMETRY_EXCEPTIONS=ok) == []
+    assert kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1', 'r')]) == []                     # a ref covers any of its pins
+    assert kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', (5.0, 0.0), 'r')]) == []                # a place within 0.5 mm
+    for bad in ([('over_pad', 'OTHER', 'C1.1', 'x')], [('over_pad', 'SIG', 'C1.2', 'x')], [('jog', 'SIG', 'C1.1', 'x')], [('over_pad', 'SIG', (9.0, 9.0), 'x')]):
+        assert kinds(board(), GEOMETRY_EXCEPTIONS=bad) == ['over_pad', 'stale_exception'], bad          # it matches nothing: the finding stays and the entry fails
+    assert kinds(board(), GEOMETRY_EXCEPTIONS=ok + ok) == []                                           # two entries on one finding are each exactly one match
+    two = base().part('C1', 5, 0).p('C1', '1', 5, 0, 'SIG', size=1.0).p('C1', '2', 6.5, 0, 'SIG', size=1.0).part('C2', 12, 0).p('C2', '1', 12, 0, 'SIG', size=1.0).s('SIG', 0, 0, 0, 20, 0)
+    res = run(two, GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1', 'x')])
+    assert sorted(k for k, *_ in res) == ['over_pad', 'over_pad', 'over_pad', 'stale_exception'] and not res.waived        # C1 has two pins hit: ambiguous, so it waives nothing and fails
+    res = run(two, GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C2.1', 'x'), ('over_pad', 'SIG', 'C1.1', 'x')])
+    assert sorted(k for k, *_ in res) == ['over_pad'] and len(res.waived) == 2
+    assert kinds(board(pad_net='OTHER'), GEOMETRY_EXCEPTIONS=ok) == []
+    with pytest.raises(ConfigError):
+        kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1.1', '')])
+    with pytest.raises(ConfigError):
+        kinds(board(), GEOMETRY_EXCEPTIONS=[('over_pad', 'SIG', 'C1.1')])

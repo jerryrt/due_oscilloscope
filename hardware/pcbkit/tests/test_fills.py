@@ -217,3 +217,32 @@ def test_polygon_covers_its_pieces_when_the_raster_is_off_the_grid():
     x0, x1 = r.x0 + 10.0, r.x0 + 15.0
     y1, y0 = r.y1 - 15.0, r.y1 - 20.0
     assert min(x for x, _ in p) <= x0 + 1e-6 and max(x for x, _ in p) >= x1 - 1e-6 and min(y for _, y in p) <= y0 + 1e-6 and max(y for _, y in p) >= y1 - 1e-6
+
+
+# ---- rough_edges: a pour edge that is a run of clearance arcs
+
+def _hugged(ys, x=20.9):
+    a = Arr('GND', 'SIG').z('GND', 0, [(False, rect(0, 0, 20, 20))])
+    a.part('U1', 30, 30)
+    for n, y in enumerate(ys):
+        a.p('U1', str(n + 1), x, y, 'SIG', size=1.0)
+    b = a.build()
+    return b, fills.net_copper(b, 0, b.nets.index("GND"), ppmm=20, with_net_items=False, frame=(-2, -2, 30, 30))
+
+
+def test_a_run_of_pads_along_the_pour_edge_is_rough_and_a_single_pad_is_not():
+    b, rp = _hugged([5, 7, 9])
+    m = fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3)
+    r, c = int((rp.y1 - 7) * 20), int((20 - rp.x0) * 20)
+    assert m[r, c] and not m[int((rp.y1 - 16) * 20), c]
+    b1, rp1 = _hugged([7])
+    assert not fills.rough_edges(b1, rp1, 0, b1.nets.index('GND'), clearance=0.3).any()
+
+
+def test_pads_that_do_not_touch_the_pour_or_are_far_apart_are_not_a_run():
+    b, rp = _hugged([5, 7, 9], x=24.0)
+    assert not fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3).any()        # 3 mm from the pour: not hugging
+    b, rp = _hugged([3, 9, 15])
+    assert not fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3).any()        # 5 mm apart: three single pads
+    b, rp = _hugged([3, 9, 15])
+    assert fills.rough_edges(b, rp, 0, b.nets.index('GND'), clearance=0.3, link=6.0).any()  # the link distance is the limit
