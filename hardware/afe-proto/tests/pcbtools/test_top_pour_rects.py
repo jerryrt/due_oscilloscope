@@ -1,7 +1,7 @@
 """The top GND pour of both boards is plain rectangles (TOP_POUR_RECTS in each layout settings file) and pcbtools.fill_clean makes it so.
 
   - the committed AFE-1 board has one top GND zone per rectangle, outline = the rectangle, no carved keep-out left, and LR-14's pourrect check passes on it;
-  - fill_clean on the committed AFE-2 board (main's, carved) gives the rectangles: the check passes, the stored fill is what KiCad refills (fillcheck), every GND pad that had a via of its
+  - fill_clean on main f4270636's AFE-2 board (the carved pour, kept gzipped in carved_afe2/ because the committed AFE-2 board is rectangles now) gives the rectangles: the check passes, the stored fill is what KiCad refills (fillcheck), every GND pad that had a via of its
     own still has one, every GND via it removes is outside the rectangles with nothing of its own on the top copper, and a second run changes nothing.
 Broken on purpose (by hand, recorded in the commit): the old top zone not dropped, the keep-outs not dropped, orphan vias kept, orphan test taking a via inside a rectangle, a rectangle zone
 not added, a pad's via moved or lost."""
@@ -56,6 +56,21 @@ def _pourrect(b, cfg):
     return [p for p in parts if p[0] in ('pourrect', 'shell', 'stale_exception', 'gndpad', 'narrow', 'dead_end', 'rough')]
 
 
+CARVED = pathlib.Path(__file__).resolve().parent / 'carved_afe2'                     # main f4270636's AFE-2 board, the carved pour: the input fill_clean is run on
+
+
+def _carved(tmp_path):
+    """the carved AFE-2 board (gunzipped) with its project and the libraries beside it, in tmp_path"""
+    import gzip
+    src = AFE / 'v2' / 'layout' / 'integrated'
+    (tmp_path / 'afe-v2-integrated.kicad_pcb').write_bytes(gzip.decompress((CARVED / 'afe-v2-integrated.kicad_pcb.gz').read_bytes()))
+    shutil.copyfile(CARVED / 'afe-v2-integrated.kicad_pro', tmp_path / 'afe-v2-integrated.kicad_pro')
+    for f in ('fp-lib-table', 'sym-lib-table'):
+        shutil.copyfile(src / f, tmp_path / f)
+    (tmp_path / 'lib').symlink_to(src / 'lib')
+    return tmp_path / 'afe-v2-integrated.kicad_pcb'
+
+
 def test_the_afe1_board_is_the_rectangles_and_nothing_else(pcbnew_required):
     m, cfg = _cfg('v1_layout')
     b = _read(AFE / 'kicad' / 'afe-proto.kicad_pcb')
@@ -81,11 +96,8 @@ def test_the_rectangles_are_what_the_rule_asks_of_them():
 
 def test_fill_clean_makes_the_rectangle_pour_on_the_carved_afe2_board_and_a_second_run_changes_nothing(pcbnew_required, tmp_path):
     from pcbtools import fillcheck
-    src = AFE / 'v2' / 'layout' / 'integrated'
-    for f in ('afe-v2-integrated.kicad_pcb', 'afe-v2-integrated.kicad_pro', 'fp-lib-table', 'sym-lib-table'):
-        shutil.copyfile(src / f, tmp_path / f)
-    (tmp_path / 'lib').symlink_to(src / 'lib')
-    board, out, out2 = tmp_path / 'afe-v2-integrated.kicad_pcb', tmp_path / 'out.kicad_pcb', tmp_path / 'out2.kicad_pcb'
+    board = _carved(tmp_path)
+    out, out2 = tmp_path / 'out.kicad_pcb', tmp_path / 'out2.kicad_pcb'
     m, cfg = _cfg('v2_layout')
     before = _read(board)
     assert any(p[0] == 'pourrect' and 'cut from the edge inwards' in p[1] for p in _pourrect(before, cfg))              # main's carved pour fails the rule
@@ -112,11 +124,8 @@ def test_fill_clean_makes_the_rectangle_pour_on_the_carved_afe2_board_and_a_seco
 
 def test_a_gnd_pad_that_had_a_via_of_its_own_keeps_it(pcbnew_required, tmp_path):
     """every top SMD GND pad of main's AFE-2 board has a GND via within 0.4 mm of its edge; after the rectangle pour each still has one, unless the pad is now in a rectangle"""
-    src = AFE / 'v2' / 'layout' / 'integrated'
-    for f in ('afe-v2-integrated.kicad_pcb', 'afe-v2-integrated.kicad_pro', 'fp-lib-table', 'sym-lib-table'):
-        shutil.copyfile(src / f, tmp_path / f)
-    (tmp_path / 'lib').symlink_to(src / 'lib')
-    board, out = tmp_path / 'afe-v2-integrated.kicad_pcb', tmp_path / 'out.kicad_pcb'
+    board = _carved(tmp_path)
+    out = tmp_path / 'out.kicad_pcb'
     r = subprocess.run([sys.executable, '-m', 'pcbtools.fill_clean', str(board), str(out), '--config', 'v2_layout', '--reference', str(board)], cwd=AFE, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout[-800:] + r.stderr[-800:]
     a, b = _read(board), _read(out)
@@ -132,12 +141,8 @@ def test_a_gnd_pad_that_had_a_via_of_its_own_keeps_it(pcbnew_required, tmp_path)
 
 
 def _afe2_copy(tmp_path, drop=None):
-    """main's AFE-2 board with its project in tmp_path; `drop(b, gnd)` -> the via enumeration indices to remove from it first"""
-    src = AFE / 'v2' / 'layout' / 'integrated'
-    for f in ('afe-v2-integrated.kicad_pcb', 'afe-v2-integrated.kicad_pro', 'fp-lib-table', 'sym-lib-table'):
-        shutil.copyfile(src / f, tmp_path / f)
-    (tmp_path / 'lib').symlink_to(src / 'lib')
-    board = tmp_path / 'afe-v2-integrated.kicad_pcb'
+    """the carved AFE-2 board with its project in tmp_path; `drop(b, gnd)` -> the via enumeration indices to remove from it first"""
+    board = _carved(tmp_path)
     if drop is not None:
         sys.path[:0] = [str(KIT), str(AFE)]
         from pcbtools.editor import edit
