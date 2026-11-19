@@ -190,15 +190,15 @@
    "stale_exception": 0.0,
    "F_rough": 0.0,
    "F_shell_pins": 14.0,
-   "F_shell_lost": 8.0,
+   "F_shell_lost": 9.0,
    "F_gndpad_lost": 1.0,
    "F_narrow": 0.0,
    "F_dead_end": 0.0,
-   "F_outline_mm": 266.30181244003114,
+   "F_outline_mm": 256.13588753227435,
    "B_narrow": 0.0,
    "B_dead_end": 0.0,
    "B_outline_mm": 1249.4061314111514,
-   "F_shell_waived": 8.0,
+   "F_shell_waived": 9.0,
    "F_gndpad_waived": 1.0,
    "violations": 0.0
   }

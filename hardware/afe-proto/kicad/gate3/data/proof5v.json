@@ -77,6 +77,17 @@
    "on_net": false
   },
   {
+   "name": "toppour",
+   "net": "/GND",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": false,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
    "name": "keepaway AWG_INV",
    "net": "",
    "layers": [
@@ -407,17 +418,6 @@
    "on_net": false
   },
   {
-   "name": "toppour",
-   "net": "/GND",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": false,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
    "name": "keepaway AWG_INV",
    "net": "",
    "layers": [
@@ -457,6 +457,17 @@
     "F.Cu"
    ],
    "keepout": true,
+   "priority": 0,
+   "vertices": 4,
+   "on_net": false
+  },
+  {
+   "name": "toppour",
+   "net": "/GND",
+   "layers": [
+    "F.Cu"
+   ],
+   "keepout": false,
    "priority": 0,
    "vertices": 4,
    "on_net": false
@@ -512,17 +523,6 @@
     "F.Cu"
    ],
    "keepout": true,
-   "priority": 0,
-   "vertices": 4,
-   "on_net": false
-  },
-  {
-   "name": "toppour",
-   "net": "/GND",
-   "layers": [
-    "F.Cu"
-   ],
-   "keepout": false,
    "priority": 0,
    "vertices": 4,
    "on_net": false
