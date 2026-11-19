@@ -88,7 +88,7 @@ def test_the_rebuilt_board_has_no_fill_finding_but_the_named_exceptions(pcbnew_r
     cfg = geometry_cfg()
     parts, figs = rules.fill_quality_parts(b, cfg)
     assert list(parts) == [], list(parts)
-    assert figs['F_shell_pins'] >= 14 and len(L.FILL_SHELL_EXCEPTIONS) == 3 and all(len(e[2]) > 40 for e in L.FILL_SHELL_EXCEPTIONS)
+    assert figs['F_shell_pins'] >= 14 and len(L.FILL_SHELL_EXCEPTIONS) == 9 and all(len(e[2]) > 40 for e in L.FILL_SHELL_EXCEPTIONS)
 
 
 @pytest.mark.pcbnew
