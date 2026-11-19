@@ -2,6 +2,8 @@
 
   - the build refuses (exit 2, nothing written) when the fill moved ground copper toward any POUR_NODES / POUR_INFO_NODES node, against the pour gaps of the reference board: name the board of record with
     --reference (the input may carry a stale fill that is no reference at all); without either flag it stops before doing anything;
+  - when the board's layout settings carry TOP_POUR_RECTS (KiCad mm), the top pour is those plain rectangles, one zone each, and nothing is derived or carved (run_rects): the old top zone and the fillkeep
+    rule areas go, an SMD GND pad outside them with no via of its own gets one at its edge, GND vias that served only the old pour go, and a rectangle with no GND via gets stitching inside itself;
   - the top GND zone connects SMD GND pads by thermal reliefs (gap G, spoke S), the bottom plane stays solid;
   - the minimum fill width is W on the top and W on the bottom (KiCad then drops what is narrower), the zones' clearance C;
   - a pour of A mm2 or more that the minimum width would leave hanging (cut off from every pad, via and track of the net) is kept: GND stitching vias go into it, one per 100 mm2 at least 8 mm
@@ -313,6 +315,159 @@ def run(path, out, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, big=
     return keeps, kept, dropped, vias
 
 
+RECT_NAME = 'toppour'
+
+
+def rects_due(rects):
+    """TOP_POUR_RECTS (KiCad mm: x0, y0, x1, y1) in the kit's frame (Due mm)"""
+    return [(x0 - FRAME[0], FRAME[1] - y1, x1 - FRAME[0], FRAME[1] - y0) for x0, y0, x1, y1 in rects]
+
+
+def drop_top_pour(b):
+    """the old top pour: its GND zone(s) on F.Cu and the no-pour rectangles that carved it"""
+    gone = []
+    for z in list(b.Zones()):
+        if z.GetIsRuleArea():
+            if z.GetZoneName() in (KEEP_NAME, RECT_NAME):
+                gone.append(z)
+        elif z.GetLayer() == pcbnew.F_Cu and z.GetNetname().lstrip('/') == 'GND':
+            gone.append(z)
+    for z in gone:
+        b.RemoveNative(z)
+        _DROPPED.append(z)
+
+
+def add_rect_zones(e, rects, clearance, spoke, gap, min_w):
+    """one top GND zone for each rectangle (KiCad mm): the outline is the rectangle; thermal reliefs on SMD GND pads"""
+    for (x0, y0, x1, y1) in rects_due(rects):
+        z = pcbnew.ZONE(e.b)
+        z.SetLayer(pcbnew.F_Cu)
+        z.SetNet(e._net('GND'))
+        z.SetZoneName(RECT_NAME)
+        for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+            z.AppendCorner(e._pt(px, py), -1)
+        z.SetMinThickness(pcbnew.FromMM(min_w))
+        z.SetLocalClearance(pcbnew.FromMM(clearance))
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+        z.SetThermalReliefGap(pcbnew.FromMM(gap))
+        z.SetThermalReliefSpokeWidth(pcbnew.FromMM(spoke))
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+        e.b.Add(z)
+        e._give(z)
+
+
+def _in_rect(x, y, rects, inset=0.0):
+    return any(x0 + inset <= x <= x1 - inset and y0 + inset <= y <= y1 - inset for x0, y0, x1, y1 in rects)
+
+
+def orphan_vias(path, rects):
+    """positions in the track enumeration of the GND vias the rectangle pour leaves with no use: not inside a rectangle (the whole annulus), and nothing of theirs on the top copper
+    (no track end, no pad), so they only served the old pour. A pad's own via (touching a pad of its own) and a via on a ground track stay."""
+    b = kb.read_board(path, {'FRAME': FRAME})
+    g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
+    out = []
+    for i in range(len(b.v_x)):
+        if b.v_net[i] != g:
+            continue
+        x, y, r = float(b.v_x[i]), float(b.v_y[i]), b.v_dia[i] / 2
+        if _in_rect(x, y, rects, r):
+            continue
+        tr = np.any((np.hypot(b.s_x0 - x, b.s_y0 - y) <= r + b.s_w / 2 + 0.01) | (np.hypot(b.s_x1 - x, b.s_y1 - y) <= r + b.s_w / 2 + 0.01))
+        pd = np.any((b.p_bx0 - r <= x) & (x <= b.p_bx1 + r) & (b.p_by0 - r <= y) & (y <= b.p_by1 + r))
+        if not tr and not pd:
+            out.append((int(b.v_idx[i]), x, y))
+    return out
+
+
+def rect_stitch(path, rects, per_area=100.0, spacing=8.0, min_radius=0.9, court_margin=0.3):
+    """stitching vias for each rectangle of a filled board: its GND vias and pads count towards one per `per_area` mm2 (at least one via); more go where the pour is widest, `spacing` apart
+    and clear of courtyards. [(x, y)] in Due mm"""
+    b = kb.read_board(path, {'FRAME': FRAME})
+    g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
+    r = fills.net_copper(b, 0, g, 40.0, with_net_items=False, frame=(17.0, -4.5, 117.0, 57.84))
+    court = [(b.fp_cx0[i], b.fp_cy0[i], b.fp_cx1[i], b.fp_cy1[i]) for i in range(len(b.fp_ref)) if not np.isnan(b.fp_cx0[i])]
+    vias = [(float(b.v_x[i]), float(b.v_y[i])) for i in range(len(b.v_x)) if b.v_net[i] == g]
+    out = []
+    rad = int(spacing * r.ppmm)
+    for (x0, y0, x1, y1) in rects:
+        a0, a1 = max(0, int((r.y1 - y1) * r.ppmm)), int((r.y1 - y0) * r.ppmm) + 1
+        c0, c1 = max(0, int((x0 - r.x0) * r.ppmm)), int((x1 - r.x0) * r.ppmm) + 1
+        m = np.zeros_like(r.mask)
+        m[a0:a1, c0:c1] = r.mask[a0:a1, c0:c1]
+        edt = ndi.distance_transform_edt(m) / r.ppmm
+        have = [v for v in vias if _in_rect(v[0], v[1], [(x0, y0, x1, y1)], 0.3)]
+        want = max(1, int(math.ceil((x1 - x0) * (y1 - y0) / per_area)))
+        work = edt.copy()
+        for (vx, vy) in have + out:
+            rr, cc = int((r.y1 - vy) * r.ppmm - 0.5), int((vx - r.x0) * r.ppmm - 0.5)
+            work[max(0, rr - rad):rr + rad + 1, max(0, cc - rad):cc + rad + 1] = 0.0
+        n = len(have)
+        while n < want:
+            i = int(np.argmax(work))
+            rr, cc = divmod(i, work.shape[1])
+            if work[rr, cc] < min_radius:
+                break
+            x, y = r.to_mm((rr, cc))
+            if any(c[0] - court_margin <= x <= c[2] + court_margin and c[1] - court_margin <= y <= c[3] + court_margin for c in court):
+                work[max(0, rr - 20):rr + 21, max(0, cc - 20):cc + 21] = 0.0
+                continue
+            out.append((x, y))
+            n += 1
+            work[max(0, rr - rad):rr + rad + 1, max(0, cc - rad):cc + rad + 1] = 0.0
+    return out
+
+
+def run_rects(path, out, rects, top_w=1.0, bot_w=0.5, clearance=0.3, spoke=0.3, gap=0.3, shells=(), gndpad_min=0.2, verbose=True):
+    """the top GND pour as the plain rectangles `rects` (KiCad mm), one zone each, no carved keep-outs: the old top zone and fillkeep rule areas go; each SMD GND pad outside a rectangle
+    that has no via of its own gets one at its edge; GND vias that only served the old pour go; each rectangle gets stitching to one via per 100 mm2 at least. Returns (added, removed, edge)"""
+    from pcbtools.editor import edit
+    from pcbtools import gndpads                                 # imported late: pcbnew's zone objects break when this module's imports come first
+    rd = rects_due(rects)
+    src, work, tmp = path, path + '.work.tmp.kicad_pcb', path + '.rects.tmp.kicad_pcb'
+    edge, edge_vias = set(), []
+
+    def build(a, o, final, extra=(), drop=()):
+        with edit(a, o) as e:
+            drop_top_pour(e.b)
+            e.remove_vias([d for d in drop])
+            add_rect_zones(e, rects, clearance, spoke, gap, top_w)
+            set_zones(e.b, top_w, bot_w, clearance, spoke, gap, pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+            if extra:
+                e.add_vias('GND', [p[0] for p in extra], [p[1] for p in extra], 0.6, 0.3)
+            e.fill_zones()
+
+    for attempt in range(4):                                     # the SMD GND pads that neither the rectangles nor a via of their own hold
+        build(src, tmp, False)
+        try:
+            lost, _ = gndpads.failing(tmp, gndpad_min, shells=shells)
+            bad = [p for p in lost if (p[0], p[1]) not in edge]
+        finally:
+            _rm(tmp)
+        if not bad:
+            break
+        done, skipped = gndpads.relocate(src, work, bad, add_missing=True)
+        edge_vias += done
+        edge |= {(r, pn) for r, pn, *_ in bad}
+        src = work
+        if not done:
+            break
+    orphans = orphan_vias(src, rd)
+    build(src, tmp, False, drop=[o[0] for o in orphans])
+    try:
+        stitch = rect_stitch(tmp, rd)
+    finally:
+        _rm(tmp)
+    build(src, out, True, extra=stitch, drop=[o[0] for o in orphans])
+    if src == work:
+        _rm(work)
+    if verbose:
+        print('%d top GND rectangles (KiCad mm): %s' % (len(rects), '; '.join('(%.1f, %.1f, %.1f, %.1f)' % tuple(r) for r in rects)))
+        print('%d SMD GND pads got a via at their edge: %s' % (len(edge_vias), ', '.join('%s.%s' % (m[0], m[1]) for m in edge_vias)))
+        print('%d GND vias that served only the old pour removed: %s' % (len(orphans), ', '.join('(%.2f, %.2f)' % (o[1], o[2]) for o in orphans)))
+        print('%d stitching vias added inside the rectangles: %s' % (len(stitch), ', '.join('(%.2f, %.2f)' % p for p in stitch)))
+    return edge_vias, orphans, stitch
+
+
 if __name__ == '__main__':
     def opt(name, default):
         return float(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
@@ -336,7 +491,11 @@ if __name__ == '__main__':
     if not os.path.exists(_pro):                                      # the fill depends on the project's rules (min_copper_edge_clearance is 0.45 mm in the project, 0.5 mm in KiCad without it): a board filled without them is not the fill KiCad makes when the project is open
         sys.exit('fill_clean: the project file %s is missing. The pour is filled at the rules in it (min_copper_edge_clearance 0.45 mm; KiCad uses 0.5 without a project), so a refill in KiCad would change it. Put the board\'s .kicad_pro beside it under that name.' % _pro)
     _before = _kb.read_board(_ref, {'FRAME': FRAME})          # the board as it came in: its pour gaps are the figures the fill may not make worse
-    run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
+    _rects = getattr(cfg, 'TOP_POUR_RECTS', None)
+    if _rects:                                                         # the owner's top pour: plain rectangles, no keep-out derivation
+        run_rects(args[0], args[1] if len(args) > 1 else args[0], [tuple(r) for r in _rects], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
+    else:
+        run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
     _worse = _rules.pour_gap_regressions(_before, _kb.read_board(_dst, {'FRAME': FRAME}), _afe_rules._pour_cfg(cfg))
     if _worse:
         for n, kind, g0, g1 in _worse:

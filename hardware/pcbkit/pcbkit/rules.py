@@ -1567,6 +1567,11 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_GNDPAD_STUB', 0.05, 'mm', 'a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour)'),
     tunable('FILL_GNDPAD_TIE', 0.6, 'mm', 'or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad)'),
     tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
+    tunable('FILL_RECT_LAYERS', (), 'layer letters', 'the layers whose GND pour must be plain rectangles: every filled GND zone is one axis-aligned rectangle (its fill is that rectangle, less the thermal reliefs and holes of its own GND pads and vias), at least FILL_RECT_SIDE on a side, FILL_RECT_AREA in area, FILL_RECT_GAP from every other, with no copper of another net within the zone clearance of it and at least one GND via or pad inside; () = not checked'),
+    tunable('FILL_RECT_SIDE', 3.0, 'mm', 'the shortest side of a pour rectangle'),
+    tunable('FILL_RECT_AREA', 100.0, 'mm2', 'the smallest pour rectangle'),
+    tunable('FILL_RECT_GAP', 1.0, 'mm', 'the smallest distance between two pour rectangles'),
+    tunable('FILL_RECT_TOL', 0.15, 'mm', 'a bare part of a pour rectangle within the zone clearance plus this of a GND item or of other copper is a relief or a clearance ring, not a dent; a dent smaller than FILL_NOTCH_AREA is a raster corner'),
     tunable('FILL_SHELL_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this connector GND pin stays on the bottom plane (a reason is required); each must match exactly one shell finding, or it is a stale_exception finding and the check fails'),
     tunable('FILL_GNDPAD_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this SMD GND pad is neither in the pour nor given a via at its edge (a reason is required); each must match exactly one gndpad finding or it is a stale_exception'),
     tunable('FILL_SHELL_MIN', 0.3, 'fraction', 'the part of the ring from the zone clearance out to 0.6 mm further that is pour, at least, round such a pin'),
@@ -1656,6 +1661,63 @@ def _tied_to_holed_pad(b, gnd, h, reach):
     return False
 
 
+def _pour_rects(b, r_fill, r_all, code, gnd, zs, c, lay):
+    """[(kind, text, x, y)] findings 'pourrect' of the GND zones `zs` on layer `lay`: each zone is one plain rectangle (the box of its outline), big enough, apart from the others, clear of
+    other nets' copper so that its fill is the rectangle, and holds a GND via or pad"""
+    from scipy import ndimage as ndi
+    from . import fills
+    out = []
+    boxes = []
+    for z in zs:
+        rings = [b.z_xy[b.z_vert_off[j]:b.z_vert_off[j + 1]] for j in range(b.z_ring_off[z], b.z_ring_off[z + 1]) if not b.z_ring_hole[j]]
+        if rings:
+            p = np.vstack(rings)
+            boxes.append((float(p[:, 0].min()), float(p[:, 1].min()), float(p[:, 0].max()), float(p[:, 1].max())))
+    k = r_fill.ppmm
+    clr = float(b.z_clear[zs[0]])
+    tol = float(c.FILL_RECT_TOL)
+    foreign = fills.foreign_copper(b, r_fill, code, gnd)
+    d_foreign = ndi.distance_transform_edt(~foreign) / k
+    items = r_all.anchors > 0
+    d_item = ndi.distance_transform_edt(~items) / k
+    H, W = r_fill.mask.shape
+    for i, (x0, y0, x1, y1) in enumerate(boxes):
+        w, h = x1 - x0, y1 - y0
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        tag = '%s pour rectangle (%.2f, %.2f)-(%.2f, %.2f)' % (lay, x0, y0, x1, y1)
+        if min(w, h) < c.FILL_RECT_SIDE - 1e-6:
+            out.append(('pourrect', '%s is %.2f mm on its short side, needs %.2f' % (tag, min(w, h), c.FILL_RECT_SIDE), cx, cy))
+        if w * h < c.FILL_RECT_AREA - 1e-6:
+            out.append(('pourrect', '%s is %.1f mm2, needs %.1f' % (tag, w * h, c.FILL_RECT_AREA), cx, cy))
+        for j, (a0, b0, a1, b1) in enumerate(boxes):
+            if j > i:
+                d = math.hypot(max(a0 - x1, x0 - a1, 0.0), max(b0 - y1, y0 - b1, 0.0))
+                if d < c.FILL_RECT_GAP - 1e-6:
+                    out.append(('pourrect', '%s is %.2f mm from the rectangle (%.2f, %.2f)-(%.2f, %.2f), needs %.2f' % (tag, d, a0, b0, a1, b1, c.FILL_RECT_GAP), cx, cy))
+        rows = slice(max(0, int((r_fill.y1 - y1) * k)), min(H, int((r_fill.y1 - y0) * k) + 1))
+        cols = slice(max(0, int((x0 - r_fill.x0) * k)), min(W, int((x1 - r_fill.x0) * k) + 1))
+        inside = np.zeros((H, W), bool)
+        inside[rows, cols] = True
+        near = inside & (d_foreign < clr - 1.0 / k)
+        if near.any():
+            rr, cc = np.nonzero(near)
+            x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
+            out.append(('pourrect', '%s has copper of another net within the %.2f mm clearance (%.1f mm2 of the rectangle is cut away)' % (tag, clr, near.sum() / k ** 2), x, y))
+        dent = inside & ~r_fill.mask & (d_foreign >= clr + tol) & (d_item > clr + tol)
+        lab, n = ndi.label(dent, structure=np.ones((3, 3)))
+        for q in range(1, n + 1):
+            m = lab == q
+            if m.sum() / k ** 2 >= c.FILL_NOTCH_AREA:
+                rr, cc = np.nonzero(m)
+                x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
+                out.append(('pourrect', '%s is missing %.1f mm2 that no clearance ring, relief or GND item explains' % (tag, m.sum() / k ** 2), x, y))
+        n_via = int(sum(1 for q in range(len(b.v_x)) if b.v_net[q] == gnd and x0 <= b.v_x[q] <= x1 and y0 <= b.v_y[q] <= y1))
+        n_pad = int(sum(1 for q in range(len(b.p_x)) if b.p_net[q] == gnd and (b.p_layer_mask[q] & (1 << code)) and x0 <= b.p_x[q] <= x1 and y0 <= b.p_y[q] <= y1))
+        if n_via + n_pad == 0:
+            out.append(('pourrect', '%s holds no GND via or pad' % tag, cx, cy))
+    return out
+
+
 def fill_quality_parts(b, cfg, report=None):
     """[(kind, text, x, y)] findings: 'narrow' (a part of the pour narrower than FILL_MIN_WIDTH, and longer than the rounding of a corner), 'dead_end' (a finger narrower than
     FILL_DEAD_END_WIDTH touching other copper at one end only), 'rough' (a row of clearance arcs on a FILL_ROUGH_LAYERS layer), 'thermal' (a zone on a FILL_THERMAL_LAYERS layer does not use thermal reliefs on its SMD GND pads), 'solid'
@@ -1681,7 +1743,7 @@ def fill_quality_parts(b, cfg, report=None):
         de = [p for p in fills.thin_report(r_all, 0.0, c.FILL_DEAD_END_WIDTH, c.FILL_MIN_AREA, length_factor=c.FILL_LENGTH_FACTOR) if p.dead_end]
         for p in de:
             out.append(('dead_end', '%s pour finger %.2f mm wide, %.1f mm long, touching other copper at one end' % (lay, p.width, p.length), p.x, p.y))
-        if c.FILL_NOTCH_WIDTH > 0 and lay in c.FILL_ROUGH_LAYERS:
+        if c.FILL_NOTCH_WIDTH > 0 and lay in c.FILL_ROUGH_LAYERS and lay not in c.FILL_RECT_LAYERS:                # a rectangle pour has no inlets: pourrect is its check
             nl, nn = fills.notches(b, r_fill, code, gnd, c.FILL_NOTCH_WIDTH, float(b.z_clear[zs[0]]), c.FILL_ROUGH_TOL, c.FILL_NOTCH_AREA)
             from scipy import ndimage as _ndn
             for i in range(1, nn + 1):
@@ -1689,6 +1751,8 @@ def fill_quality_parts(b, cfg, report=None):
                 x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
                 out.append(('notch', '%s pour has a bare inlet no wider than %.2f mm (%.1f mm2 of it) that no clearance ring or keep-out accounts for' % (lay, c.FILL_NOTCH_WIDTH, (nl == i).sum() / r_fill.ppmm ** 2), x, y))
             figs[f'{lay}_notch'] = nn
+        if lay in c.FILL_RECT_LAYERS:
+            out += _pour_rects(b, r_fill, r_all, code, gnd, zs, c, lay)
         if lay in c.FILL_ROUGH_LAYERS:
             from scipy import ndimage as _ndi
             rough = fills.rough_edges(b, r_fill, code, gnd, clearance=float(b.z_clear[zs[0]]), tol=c.FILL_ROUGH_TOL, link=c.FILL_ROUGH_LINK, exempt=c.FILL_SHELL_PREFIXES)
@@ -1803,7 +1867,7 @@ def fill_quality_parts(b, cfg, report=None):
 
 def fill_quality(b, cfg, report=None):
     parts, figs = fill_quality_parts(b, cfg, report)
-    kinds = ('narrow', 'dead_end', 'notch', 'rough', 'shell', 'gndpad', 'thermal', 'solid', 'stale_exception')
+    kinds = ('narrow', 'dead_end', 'notch', 'pourrect', 'rough', 'shell', 'gndpad', 'thermal', 'solid', 'stale_exception')
     fig = {k: float(sum(1 for p in parts if p[0] == k)) for k in kinds}
     fig.update({k: float(v) for k, v in figs.items()})
     fig['violations'] = float(len(parts))

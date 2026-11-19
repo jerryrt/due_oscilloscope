@@ -234,3 +234,110 @@ def test_a_bare_inlet_no_wider_than_the_minimum_is_a_notch_unless_a_clearance_ri
 def test_the_notch_count_is_a_figure_and_a_verdict():
     r = rules.fill_quality(board(BITE).build(), dict(GND='GND', FILL_LAYERS=('F',), FILL_NOTCH_WIDTH=1.05))
     assert not r.ok and r.figures['notch'] == 1.0 and 'inlet' in r.detail
+
+
+# ----------------------------------------------------------------------------------------------------- the top pour as plain rectangles (FILL_RECT_LAYERS)
+def rects_board(*rings, via=True, layer=0):
+    a = Arr('GND', 'SIG')
+    for r in rings:
+        a.z('GND', layer, [(False, r)], conn=1)
+        if via:
+            xs, ys = [p[0] for p in r], [p[1] for p in r]
+            a.v('GND', (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+    return a
+
+
+RECT_A = rect(0, 0, 12, 12)
+RECT_B = rect(20, 0, 32, 12)
+
+
+def rect_findings(a, **over):
+    parts, _ = rules.fill_quality_parts(a.build(), {**dict(GND='GND', FILL_LAYERS=('F',), FILL_RECT_LAYERS=('F',)), **over})
+    return [p[1] for p in parts if p[0] == 'pourrect'], sorted({p[0] for p in parts})
+
+
+def test_two_plain_rectangles_each_with_a_ground_via_pass_and_the_figure_is_zero():
+    assert rect_findings(rects_board(RECT_A, RECT_B)) == ([], [])
+    r = rules.fill_quality(rects_board(RECT_A, RECT_B).build(), dict(GND='GND', FILL_LAYERS=('F',), FILL_RECT_LAYERS=('F',)))
+    assert r.ok and r.figures['pourrect'] == 0.0
+
+
+def test_a_layer_not_named_is_not_judged_as_rectangles():
+    assert rect_findings(rects_board(rect(0, 0, 2, 50)), FILL_RECT_LAYERS=()) == ([], [])
+
+
+def test_a_rectangle_under_the_side_or_the_area_is_found():
+    short, kinds_ = rect_findings(rects_board(rect(0, 0, 2.5, 60)))
+    assert kinds_ == ['pourrect'] and len(short) == 1 and 'short side' in short[0] and '2.50' in short[0]
+    small, _ = rect_findings(rects_board(rect(0, 0, 9, 9)))                    # 3 mm sides are met, 81 mm2 is under 100
+    assert len(small) == 1 and 'mm2' in small[0] and '81.0' in small[0]
+    assert rect_findings(rects_board(rect(0, 0, 9, 9)), FILL_RECT_AREA=80.0)[0] == []
+    assert rect_findings(rects_board(rect(0, 0, 2.5, 60)), FILL_RECT_SIDE=2.0)[0] == []
+
+
+def test_two_rectangles_nearer_than_the_gap_are_found_once():
+    near, _ = rect_findings(rects_board(RECT_A, rect(12.5, 0, 24.5, 12)))
+    assert len(near) == 1 and '0.50 mm from the rectangle' in near[0]
+    assert rect_findings(rects_board(RECT_A, rect(13.0, 0, 25.0, 12)))[0] == []             # exactly the gap is allowed
+    assert rect_findings(rects_board(RECT_A, rect(12.5, 0, 24.5, 12)), FILL_RECT_GAP=0.5)[0] == []
+
+
+def test_copper_of_another_net_inside_the_rectangle_is_found_and_outside_it_is_not():
+    bad = rects_board(RECT_A).s('SIG', 0, 2, 6, 10, 6)
+    f, _ = rect_findings(bad)
+    assert len(f) == 1 and 'another net' in f[0]
+    assert rect_findings(rects_board(RECT_A).s('SIG', 0, 13, 6, 18, 6))[0] == []            # 1 mm clear of the rectangle's edge
+    assert rect_findings(rects_board(RECT_A).s('SIG', 0, 12.2, 2, 12.2, 10))[0] != []       # 0.2 mm from the edge: inside the 0.3 mm clearance
+    assert rect_findings(rects_board(RECT_A).s('SIG', 1, 2, 6, 10, 6))[0] == []             # on the other layer
+
+
+def test_a_notch_cut_into_the_outline_is_a_dent_that_nothing_explains_and_a_gnd_pad_relief_is_explained():
+    notched = [(0, 0), (12, 0), (12, 5), (7, 5), (7, 7), (12, 7), (12, 12), (0, 12)]       # a 5 x 2 mm slot from the right edge
+    f, _ = rect_findings(rects_board(notched))
+    assert len(f) == 1 and 'missing' in f[0] and 'no clearance ring' in f[0]
+    two = rects_board(RECT_A)
+    two.zone = []
+    two.z('GND', 0, [(False, RECT_A), (True, rect(5.2, 2.2, 6.8, 3.8))], conn=1)       # the relief: 0.3 mm round a 1 mm pad
+    two.part('C1', 6, 3).p('C1', '1', 6, 3, 'GND', size=1.0)
+    assert rect_findings(two)[0] == []
+
+
+def test_a_rectangle_with_no_ground_via_or_pad_is_found_and_a_pad_is_enough():
+    f, _ = rect_findings(rects_board(RECT_A, via=False))
+    assert len(f) == 1 and 'no GND via or pad' in f[0]
+    pad = rects_board(RECT_A, via=False).part('C1', 6, 6).p('C1', '1', 6, 6, 'GND', size=1.0)
+    assert rect_findings(pad)[0] == []
+    other = rects_board(RECT_A, via=False).v('SIG', 6, 6).part('C1', 6, 9).p('C1', '1', 6, 9, 'SIG', size=1.0)
+    assert any('no GND via or pad' in t for t in rect_findings(other)[0])
+
+
+def test_the_whole_board_zone_with_keepouts_cut_from_it_is_not_a_rectangle_pour():
+    carved = [(0, 0), (100, 0), (100, 50), (60, 50), (60, 20), (40, 20), (40, 50), (0, 50)]     # main's pour: one big zone with its keep-outs cut away
+    f, _ = rect_findings(rects_board(carved))
+    assert f and any('missing' in t for t in f)
+
+
+def test_a_notch_is_not_judged_on_a_rectangle_layer_and_is_on_one_that_is_not():
+    notched = [(0, 0), (12, 0), (12, 5.6), (7, 5.6), (7, 6.4), (12, 6.4), (12, 12), (0, 12)]
+    assert 'notch' not in rect_findings(rects_board(notched), FILL_NOTCH_WIDTH=1.05)[1]
+    assert 'notch' in rect_findings(rects_board(notched), FILL_NOTCH_WIDTH=1.05, FILL_ROUGH_LAYERS=('F',), FILL_RECT_LAYERS=())[1]
+
+
+def test_a_dent_beside_other_copper_is_that_copper_and_not_a_second_finding():
+    slot = rects_board(RECT_A).s('SIG', 0, 2, 6, 10, 6)
+    slot.zone = []
+    slot.z('GND', 0, [(False, RECT_A), (True, rect(1.7, 5.6, 10.3, 6.4))], conn=1)         # the pour cleared 0.3 mm round the track
+    slot.v('GND', 6, 9)
+    f, _ = rect_findings(slot)
+    assert len(f) == 1 and 'another net' in f[0]
+
+
+def test_a_nick_smaller_than_the_notch_area_is_a_raster_corner():
+    nick = [(0, 0), (12, 0), (12, 12), (0.3, 12), (0.3, 11.7), (0, 11.7)]                      # 0.09 mm2
+    assert rect_findings(rects_board(nick))[0] == []
+    assert len(rect_findings(rects_board(nick), FILL_NOTCH_AREA=0.05)[0]) == 1
+
+
+def test_a_pad_on_the_other_layer_does_not_hold_the_rectangle():
+    bottom = rects_board(RECT_A, via=False).part('C1', 6, 6).p('C1', '1', 6, 6, 'GND', size=1.0, mask=2)
+    assert any('no GND via or pad' in t for t in rect_findings(bottom)[0])

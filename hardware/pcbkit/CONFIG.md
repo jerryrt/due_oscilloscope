@@ -137,6 +137,11 @@ layer's outline length. Needs the zone fields (`z_conn`), which a board read bef
 | `FILL_SHELL_PREFIXES` | tunable | designator prefixes | `()` | the connectors (J: the BNC shells and the Due headers) whose through-hole GND pins are never carved out of the top pour: each has pour round it (FILL_SHELL_MIN) |
 | `FILL_GNDPAD_VIA_GAP` | tunable | mm | `0.05` | a GND via whose annulus is within this of the pad edge is at the edge (no visible stub) |
 | `FILL_NOTCH_WIDTH` | tunable | mm | `0.0` | a bare inlet of the top pour no wider than this (the pour minimum width and the raster tolerance; 0 = not checked), that is neither a clearance ring of another net nor explained, is a notch |
+| `FILL_RECT_LAYERS` | tunable | layer letters | `()` | the layers whose GND pour must be plain rectangles: every filled GND zone is one axis-aligned rectangle (its fill is that rectangle, less the thermal reliefs and holes of its own GND pads and vias), at least `FILL_RECT_SIDE` on a side, `FILL_RECT_AREA` in area, `FILL_RECT_GAP` from every other, with no copper of another net within the zone clearance of it and at least one GND via or pad inside; `()` = not checked. On such a layer `FILL_NOTCH_WIDTH` is not applied |
+| `FILL_RECT_SIDE` | tunable | mm | `3.0` | the shortest side of a pour rectangle |
+| `FILL_RECT_AREA` | tunable | mm2 | `100.0` | the smallest pour rectangle |
+| `FILL_RECT_GAP` | tunable | mm | `1.0` | the smallest distance between two pour rectangles |
+| `FILL_RECT_TOL` | tunable | mm | `0.15` | a bare part of a pour rectangle within the zone clearance plus this of a GND item or of other copper is a relief or a clearance ring, not a dent; a dent smaller than `FILL_NOTCH_AREA` is a raster corner |
 | `FILL_NOTCH_AREA` | tunable | mm2 | `0.1` | a notch piece smaller than this is a raster corner, not an inlet |
 | `FILL_GNDPAD_STUB` | tunable | mm | `0.05` | a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour) |
 | `FILL_GNDPAD_TIE` | tunable | mm | `0.6` | or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad) |

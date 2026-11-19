@@ -574,7 +574,7 @@ def lr13(b, cfg, report=None):
 
 
 def lr14(b, cfg, report=None):
-    """LR-14 = pcbkit.rules.fill_quality: no narrow piece, dead end or row of arcs in the top pour, thermal reliefs on its SMD GND pads, the bottom plane solid"""
+    """LR-14 = pcbkit.rules.fill_quality: no narrow piece, dead end or row of arcs in the top pour, thermal reliefs on its SMD GND pads, the bottom plane solid; where FILL_RECT_LAYERS names the top, the top pour is plain rectangles (pourrect)"""
     return _kit.fill_quality(b, _copper_cfg(cfg), report)
 
 

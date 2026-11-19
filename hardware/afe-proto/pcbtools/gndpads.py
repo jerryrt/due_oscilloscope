@@ -104,7 +104,7 @@ def _room(b, g, x, y):
     return best
 
 
-def relocate(src, dst, pads):
+def relocate(src, dst, pads, add_missing=False):
     from pcbtools.editor import edit
     b = kb.read_board(src, {'FRAME': FRAME})
     g = [i for i, n in enumerate(b.nets) if n.lstrip('/') == 'GND'][0]
@@ -119,12 +119,12 @@ def relocate(src, dst, pads):
         if len(b.v_x) and any(b.v_net[i] == g and math.hypot(max(b.p_bx0[h] - b.v_x[i], b.v_x[i] - b.p_bx1[h], 0), max(b.p_by0[h] - b.v_y[i], b.v_y[i] - b.p_by1[h], 0)) - b.v_dia[i] / 2 <= EDGE_GAP for i in range(len(b.v_x))):
             continue                                                       # a via is at its edge already: nothing to move
         ch = _chain(b, g, h, None)
-        if ch is None:
+        if ch is None and not add_missing:
             skipped.append((ref, pin, 'no track run to a via of its own'))
             continue
-        run, vi = ch
-        users = [k for k in range(len(b.s_x0)) if b.s_net[k] == g and k not in run and b.s_layer[k] == 0 and min(math.hypot(b.s_x0[k] - b.v_x[vi], b.s_y0[k] - b.v_y[vi]), math.hypot(b.s_x1[k] - b.v_x[vi], b.s_y1[k] - b.v_y[vi])) <= b.v_dia[vi] / 2 + 0.01]
-        users += [i for i in range(len(b.p_x)) if i != h and b.p_net[i] == g and (b.p_layer_mask[i] & 1) and math.hypot(max(b.p_bx0[i] - b.v_x[vi], b.v_x[vi] - b.p_bx1[i], 0), max(b.p_by0[i] - b.v_y[vi], b.v_y[vi] - b.p_by1[i], 0)) <= b.v_dia[vi] / 2 + 0.01]
+        run, vi = ch if ch is not None else ([], None)                 # add_missing: a pad with neither pour nor via of its own gets a via at its edge
+        users = [] if vi is None else [k for k in range(len(b.s_x0)) if b.s_net[k] == g and k not in run and b.s_layer[k] == 0 and min(math.hypot(b.s_x0[k] - b.v_x[vi], b.s_y0[k] - b.v_y[vi]), math.hypot(b.s_x1[k] - b.v_x[vi], b.s_y1[k] - b.v_y[vi])) <= b.v_dia[vi] / 2 + 0.01]
+        users += [] if vi is None else [i for i in range(len(b.p_x)) if i != h and b.p_net[i] == g and (b.p_layer_mask[i] & 1) and math.hypot(max(b.p_bx0[i] - b.v_x[vi], b.v_x[vi] - b.p_bx1[i], 0), max(b.p_by0[i] - b.v_y[vi], b.v_y[vi] - b.p_by1[i], 0)) <= b.v_dia[vi] / 2 + 0.01]
         if users:
             skipped.append((ref, pin, 'its via serves other copper'))
             continue
@@ -143,7 +143,8 @@ def relocate(src, dst, pads):
             skipped.append((ref, pin, 'no side of the pad has room for a via (best %.2f mm)' % room))
             continue
         remove_t += sorted(removed_t)
-        remove_v.append(int(b.v_idx[vi]))
+        if vi is not None:
+            remove_v.append(int(b.v_idx[vi]))
         new.append((cx, cy))
         done.append((ref, pin, round(float(cx), 3), round(float(cy), 3), len(run)))
     with edit(src, dst) as e:
