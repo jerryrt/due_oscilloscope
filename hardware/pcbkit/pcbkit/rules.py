@@ -1567,12 +1567,13 @@ FILL_QUALITY_NAMES = (
     tunable('FILL_GNDPAD_STUB', 0.05, 'mm', 'a pad in the pour whose track to a via of its own lies bare for more than this is a stub (the via belongs at the pad edge, or the track under the pour)'),
     tunable('FILL_GNDPAD_TIE', 0.6, 'mm', 'or the pad is tied by a track whose visible part is at most this long to another pad of its part that has a plated hole or a via in it (an exposed pad)'),
     tunable('FILL_GNDPAD_MIN', 0.2, 'fraction', 'every SMD GND pad of the top layer touches the pour (this part of its ring, from the zone clearance out 0.6 mm further, is pour: a thermal relief) or has its own via touching its edge with no track between them'),
-    tunable('FILL_RECT_LAYERS', (), 'layer letters', 'the layers whose GND pour must be plain rectangles: every filled GND zone is one axis-aligned rectangle (its fill is that rectangle, less the thermal reliefs and holes of its own GND pads and vias), at least FILL_RECT_SIDE on a side, FILL_RECT_AREA in area, FILL_RECT_GAP from every other, with no copper of another net within the zone clearance of it and at least one GND via or pad inside; () = not checked'),
+    tunable('FILL_RECT_LAYERS', (), 'layer letters', 'the layers whose GND pour must be plain rectangles: every filled GND zone is one axis-aligned rectangle (its fill is that rectangle, less the thermal reliefs and holes of its own GND pads and vias), at least FILL_RECT_SIDE on a side, FILL_RECT_AREA in area, FILL_RECT_GAP from every other, with no copper of another net within the zone clearance of it, no pad straddling its edge, holes only round GND items, and at least one GND via or pad inside; () = not checked'),
     tunable('FILL_RECT_SIDE', 3.0, 'mm', 'the shortest side of a pour rectangle'),
     tunable('FILL_RECT_AREA', 100.0, 'mm2', 'the smallest pour rectangle'),
     tunable('FILL_RECT_GAP', 1.0, 'mm', 'the smallest distance between two pour rectangles'),
-    tunable('FILL_RECT_TOL', 0.15, 'mm', 'a bare part of a pour rectangle within the zone clearance plus this of a GND item or of other copper is a relief or a clearance ring, not a dent; a dent smaller than FILL_NOTCH_AREA is a raster corner'),
-    tunable('FILL_SHELL_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this connector GND pin stays on the bottom plane (a reason is required); each must match exactly one shell finding, or it is a stale_exception finding and the check fails'),
+    tunable('FILL_RECT_TOL', 0.15, 'mm', 'a hole in a pour rectangle is the drill hole or thermal relief of a GND item when every vertex of it is within the zone clearance plus this of the item'),
+    tunable('FILL_RECT_EXACT', 0.05, 'mm', 'how far from the edge of a pour rectangle its fill may be cut (at least one raster pixel; the corners are rounded by half the minimum width and allowed)'),
+    tunable('FILL_SHELL_EXCEPTIONS', [], '[(ref, pin, reason) or (ref, pin, reason, x, y)]', 'named exceptions: this connector GND pin stays on the bottom plane (a reason is required); with x, y (board frame mm) only the pad there, to 0.01 mm, for a footprint whose GND pins share one number; each must match exactly one shell finding, or it is a stale_exception finding and the check fails'),
     tunable('FILL_GNDPAD_EXCEPTIONS', [], '[(ref, pin, reason)]', 'named exceptions: this SMD GND pad is neither in the pour nor given a via at its edge (a reason is required); each must match exactly one gndpad finding or it is a stale_exception'),
     tunable('FILL_SHELL_MIN', 0.3, 'fraction', 'the part of the ring from the zone clearance out to 0.6 mm further that is pour, at least, round such a pin'),
     tunable('FILL_THERMAL_LAYERS', ('F',), 'layer letters', 'the layers whose zone must connect SMD GND pads through thermal reliefs'),
@@ -1703,14 +1704,31 @@ def _pour_rects(b, r_fill, r_all, code, gnd, zs, c, lay):
             rr, cc = np.nonzero(near)
             x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
             out.append(('pourrect', '%s has copper of another net within the %.2f mm clearance (%.1f mm2 of the rectangle is cut away)' % (tag, clr, near.sum() / k ** 2), x, y))
-        dent = inside & ~r_fill.mask & (d_foreign >= clr + tol) & (d_item > clr + tol)
-        lab, n = ndi.label(dent, structure=np.ones((3, 3)))
+        ex = max(float(c.FILL_RECT_EXACT), 1.0 / k)                                       # (a) no part of the rectangle is cut from its edge inwards; (b) what is cut inside it is round a GND item
+        rc = float(b.z_minw[zs[0]]) / 2.0                                                   # KiCad rounds a convex corner of the fill to half the minimum width: that is allowed
+        miss = inside & ~r_fill.mask
+        rr_i, cc_i = np.arange(H)[:, None], np.arange(W)[None, :]
+        xs, ys = r_fill.x0 + (cc_i + 0.5) / k, r_fill.y1 - (rr_i + 0.5) / k
+        corner = ((np.abs(xs - x0) <= rc + ex) | (np.abs(xs - x1) <= rc + ex)) & ((np.abs(ys - y0) <= rc + ex) | (np.abs(ys - y1) <= rc + ex))
+        band = inside & ~ndi.binary_erosion(inside, iterations=max(1, int(round(ex * k))))
+        lab, n = ndi.label(miss & ~corner)
         for q in range(1, n + 1):
             m = lab == q
-            if m.sum() / k ** 2 >= c.FILL_NOTCH_AREA:
-                rr, cc = np.nonzero(m)
-                x, y = r_fill.to_mm((int(rr.mean()), int(cc.mean())))
-                out.append(('pourrect', '%s is missing %.1f mm2 that no clearance ring, relief or GND item explains' % (tag, m.sum() / k ** 2), x, y))
+            if m.sum() / k ** 2 < 0.001:
+                continue
+            ry, cx_ = np.nonzero(m)
+            px, py = r_fill.to_mm((int(ry.mean()), int(cx_.mean())))
+            if (m & band).any():
+                out.append(('pourrect', '%s: its fill is cut from the edge inwards (%.2f mm2 of the rectangle missing round (%.2f, %.2f)), not the rectangle' % (tag, m.sum() / k ** 2, px, py), px, py))
+            elif float(d_item[m].max()) > clr + tol:
+                out.append(('pourrect', '%s has a hole of %.2f mm2 at (%.2f, %.2f) that is not the drill hole or relief of a GND item' % (tag, m.sum() / k ** 2, px, py), px, py))
+        for q in range(len(b.p_x)):                                                       # (c) no pad of any net straddles the edge
+            if not (b.p_layer_mask[q] & (1 << code)):
+                continue
+            ox, oy = min(b.p_bx1[q], x1) - max(b.p_bx0[q], x0), min(b.p_by1[q], y1) - max(b.p_by0[q], y0)
+            inside_all = b.p_bx0[q] >= x0 - 1e-6 and b.p_bx1[q] <= x1 + 1e-6 and b.p_by0[q] >= y0 - 1e-6 and b.p_by1[q] <= y1 + 1e-6
+            if ox > 1e-6 and oy > 1e-6 and not inside_all:
+                out.append(('pourrect', '%s: pad %s.%s straddles its edge' % (tag, b.fp_ref[b.p_fp[q]], b.p_pin[q]), float(b.p_x[q]), float(b.p_y[q])))
         n_via = int(sum(1 for q in range(len(b.v_x)) if b.v_net[q] == gnd and x0 <= b.v_x[q] <= x1 and y0 <= b.v_y[q] <= y1))
         n_pad = int(sum(1 for q in range(len(b.p_x)) if b.p_net[q] == gnd and (b.p_layer_mask[q] & (1 << code)) and x0 <= b.p_x[q] <= x1 and y0 <= b.p_y[q] <= y1))
         if n_via + n_pad == 0:
@@ -1842,14 +1860,18 @@ def fill_quality_parts(b, cfg, report=None):
     from .config import ConfigError
     waived_shell = 0
     for e in list(c.FILL_SHELL_EXCEPTIONS):
-        if len(e) != 3 or not str(e[2]).strip():
-            raise ConfigError('FILL_SHELL_EXCEPTIONS entries are (ref, pin, reason) with a reason; got %r' % (e,))
+        if len(e) not in (3, 5) or not str(e[2]).strip():
+            raise ConfigError('FILL_SHELL_EXCEPTIONS entries are (ref, pin, reason) or (ref, pin, reason, x, y) with a reason; got %r' % (e,))
         hit = [f for f in out if f[0] == 'shell' and f[1].startswith('%s pin %s ' % (e[0], e[1]))]
+        where = ''
+        if len(e) == 5:                                                                    # a footprint whose GND pins share one number: only the pad at x, y (to 0.01 mm)
+            hit = [f for f in hit if abs(f[2] - float(e[3])) <= 0.01 and abs(f[3] - float(e[4])) <= 0.01]
+            where = ' at (%.2f, %.2f)' % (float(e[3]), float(e[4]))
         if len(hit) == 1:
             out.remove(hit[0])
             waived_shell += 1
         else:
-            out.append(('stale_exception', '%s.%s matches %d shell findings, not exactly one (%s)' % (e[0], e[1], len(hit), e[2]), 0.0, 0.0))
+            out.append(('stale_exception', '%s.%s%s matches %d shell findings, not exactly one (%s)' % (e[0], e[1], where, len(hit), e[2]), 0.0, 0.0))
     waived_pad = 0
     for e in list(c.FILL_GNDPAD_EXCEPTIONS):
         if len(e) != 3 or not str(e[2]).strip():

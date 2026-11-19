@@ -36,7 +36,7 @@ TRACK_NET_WIDTHS = {'*': 0.25, 'GND': 0.25,                  # the width rule of
                     'LM_CP': 0.3, 'LM_C1N': 0.3, 'LM_C1P': 0.3, 'P33_RN': 0.3}
 TRACK_ENTRY_EDGE_TOL = 0.001      # a track enters a pad through an edge, not across a corner, to this tolerance
 TRACK_OVERLAP_TOL = 0.001
-TOP_POUR_RECTS = [(154.0, 97.5, 166.5, 148.5), (68.0, 112.0, 87.5, 129.0)]   # KiCad mm (x0, y0, x1, y1): the top GND pour is these plain rectangles and nothing else (BNC column; logo area); one zone each, no carved keep-outs
+TOP_POUR_RECTS = [(154.0, 97.5, 166.5, 145.0), (68.0, 112.0, 87.5, 129.0)]   # KiCad mm (x0, y0, x1, y1): the top GND pour is these plain rectangles and nothing else (BNC column; logo area); one zone each, no carved keep-outs
 FILL_LAYERS = ('F', 'B')
 FILL_MIN_WIDTH = {'F': 1.0, 'B': 0.5}                  # the owner's fill standard: top 1.0 mm, bottom plane 0.5 mm
 FILL_DEAD_END_WIDTH = 1.6
@@ -49,7 +49,8 @@ FILL_SHELL_EXCEPTIONS = [('J606', '7', "the Due header row: a 2.54 mm pitch leav
     ('J607', '36', "the Due header row, outside the top pour's rectangles (TOP_POUR_RECTS): the pin is on the bottom plane through its hole"),
     ('J101', '2', "the BNC shell leg beside the signal pin (x = 102 mm, the signal pin 2.5 mm from it on the same line): no plain rectangle reaches it without carrying the signal pin's clearance inside it, so it is outside the top pour and on the bottom plane through its hole; the two legs on the far side of the BNC are in the rectangle"),
     ('J201', '2', "the BNC shell leg beside the signal pin: as J101 pin 2"),
-    ('J301', '2', "the BNC shell leg beside the signal pin: as J101 pin 2")]
+    ('J301', '2', "the BNC shell leg beside the signal pin (x = 102 mm, the signal pin 2.5 mm from it on the same line): no plain rectangle reaches it without carrying the signal pin's clearance inside it, so it is outside the top pour and on the bottom plane through its hole; the two legs on the far side of the BNC are in the rectangle", 102.0, 9.9),
+    ('J301', '2', "the shell leg past the rectangle's end: an edge between it and the board edge leaves less than 1.0 mm of pour once the thermal gap comes off (measured 0.75), so KiCad prunes it; on the bottom plane through its hole.", 107.05, 2.35)]
 FILL_GNDPAD_EXCEPTIONS = [
     ('U502', '3', 'VSSOP pin 3: a via whose annulus touches the pad edge needs 0.16 mm to the corners of the pads either side (U502.2, U502.4), not the 0.2 mm; the 0.225 mm track to the via at (59.8, 16.6) is the copper that fits (measured by hand, 2x crop sent to montreal5)'),
 ]

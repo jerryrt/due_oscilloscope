@@ -291,15 +291,53 @@ def test_copper_of_another_net_inside_the_rectangle_is_found_and_outside_it_is_n
     assert rect_findings(rects_board(RECT_A).s('SIG', 1, 2, 6, 10, 6))[0] == []             # on the other layer
 
 
-def test_a_notch_cut_into_the_outline_is_a_dent_that_nothing_explains_and_a_gnd_pad_relief_is_explained():
+def test_a_cut_from_the_edge_inwards_is_not_a_rectangle_and_a_gnd_pad_relief_inside_is():
     notched = [(0, 0), (12, 0), (12, 5), (7, 5), (7, 7), (12, 7), (12, 12), (0, 12)]       # a 5 x 2 mm slot from the right edge
     f, _ = rect_findings(rects_board(notched))
-    assert len(f) == 1 and 'missing' in f[0] and 'no clearance ring' in f[0]
+    assert len(f) == 1 and 'cut from the edge inwards' in f[0] and 'not the rectangle' in f[0]
     two = rects_board(RECT_A)
     two.zone = []
-    two.z('GND', 0, [(False, RECT_A), (True, rect(5.2, 2.2, 6.8, 3.8))], conn=1)       # the relief: 0.3 mm round a 1 mm pad
+    two.z('GND', 0, [(False, RECT_A), (True, rect(5.2, 2.2, 6.8, 3.8))], conn=1)             # the relief: 0.3 mm round a 1 mm pad
     two.part('C1', 6, 3).p('C1', '1', 6, 3, 'GND', size=1.0)
     assert rect_findings(two)[0] == []
+
+
+def test_a_hole_that_is_not_round_a_gnd_item_is_found_and_one_touching_the_edge_is_a_cut():
+    far = rects_board(RECT_A)
+    far.zone = []
+    far.z('GND', 0, [(False, RECT_A), (True, rect(5.2, 2.2, 6.8, 3.8))], conn=1)             # a hole with no pad in it
+    far.v('GND', 6, 9)
+    f, _ = rect_findings(far)
+    assert len(f) == 1 and 'not the drill hole or relief of a GND item' in f[0]
+    long = rects_board(RECT_A)
+    long.zone = []
+    long.z('GND', 0, [(False, RECT_A), (True, rect(5.2, 2.2, 6.8, 9.0))], conn=1)             # a relief at its foot, and a slot running away from the pad
+    long.part('C1', 6, 3).p('C1', '1', 6, 3, 'GND', size=1.0)
+    f, _ = rect_findings(long)
+    assert len(f) == 1 and 'not the drill hole or relief of a GND item' in f[0]
+    touching = rects_board(RECT_A)
+    touching.zone = []
+    touching.z('GND', 0, [(False, RECT_A), (True, rect(0, 5, 2, 7))], conn=1)
+    f, _ = rect_findings(touching)
+    assert len(f) == 1 and 'cut from the edge inwards' in f[0]
+
+
+def test_the_rounding_of_a_corner_to_half_the_minimum_width_is_allowed_and_a_bigger_bite_is_not():
+    round_ = [(0.1, 0), (12, 0), (12, 12), (0, 12), (0, 0.1)]                                 # the zone minimum width is 0.2 in these boards: 0.1 round
+    assert rect_findings(rects_board(round_))[0] == []
+    bite = [(0.6, 0), (12, 0), (12, 12), (0, 12), (0, 0.6)]
+    assert len(rect_findings(rects_board(bite))[0]) == 1
+
+
+def test_a_pad_straddling_the_edge_is_found_and_one_inside_or_beside_it_or_on_the_other_layer_is_not():
+    on = lambda x, y, **k: rects_board(RECT_A).part('C1', x, y).p('C1', '1', x, y, 'GND', size=1.0, **k)
+    f, _ = rect_findings(on(12, 6))
+    assert any('pad C1.1 straddles its edge' in t for t in f)
+    assert not any('straddles' in t for t in rect_findings(on(6, 6))[0])                     # inside
+    assert not any('straddles' in t for t in rect_findings(on(12.5, 6))[0])                  # a GND pad touching the outside of the edge
+    assert not any('straddles' in t for t in rect_findings(on(12, 6, mask=2))[0])            # on the other layer
+    sig = rects_board(RECT_A).part('C1', 12, 6).p('C1', '1', 12, 6, 'SIG', size=1.0)
+    assert any('straddles' in t for t in rect_findings(sig)[0])                              # of any net
 
 
 def test_a_rectangle_with_no_ground_via_or_pad_is_found_and_a_pad_is_enough():
@@ -314,7 +352,7 @@ def test_a_rectangle_with_no_ground_via_or_pad_is_found_and_a_pad_is_enough():
 def test_the_whole_board_zone_with_keepouts_cut_from_it_is_not_a_rectangle_pour():
     carved = [(0, 0), (100, 0), (100, 50), (60, 50), (60, 20), (40, 20), (40, 50), (0, 50)]     # main's pour: one big zone with its keep-outs cut away
     f, _ = rect_findings(rects_board(carved))
-    assert f and any('missing' in t for t in f)
+    assert f and any('cut from the edge inwards' in t for t in f)
 
 
 def test_a_notch_is_not_judged_on_a_rectangle_layer_and_is_on_one_that_is_not():
@@ -323,21 +361,23 @@ def test_a_notch_is_not_judged_on_a_rectangle_layer_and_is_on_one_that_is_not():
     assert 'notch' in rect_findings(rects_board(notched), FILL_NOTCH_WIDTH=1.05, FILL_ROUGH_LAYERS=('F',), FILL_RECT_LAYERS=())[1]
 
 
-def test_a_dent_beside_other_copper_is_that_copper_and_not_a_second_finding():
-    slot = rects_board(RECT_A).s('SIG', 0, 2, 6, 10, 6)
-    slot.zone = []
-    slot.z('GND', 0, [(False, RECT_A), (True, rect(1.7, 5.6, 10.3, 6.4))], conn=1)         # the pour cleared 0.3 mm round the track
-    slot.v('GND', 6, 9)
-    f, _ = rect_findings(slot)
-    assert len(f) == 1 and 'another net' in f[0]
-
-
-def test_a_nick_smaller_than_the_notch_area_is_a_raster_corner():
-    nick = [(0, 0), (12, 0), (12, 12), (0.3, 12), (0.3, 11.7), (0, 11.7)]                      # 0.09 mm2
-    assert rect_findings(rects_board(nick))[0] == []
-    assert len(rect_findings(rects_board(nick), FILL_NOTCH_AREA=0.05)[0]) == 1
-
-
 def test_a_pad_on_the_other_layer_does_not_hold_the_rectangle():
     bottom = rects_board(RECT_A, via=False).part('C1', 6, 6).p('C1', '1', 6, 6, 'GND', size=1.0, mask=2)
     assert any('no GND via or pad' in t for t in rect_findings(bottom)[0])
+
+
+def test_a_shell_exception_with_a_position_waives_only_the_pad_there_and_a_misplaced_one_is_stale():
+    a = board(rect(0, 0, 5, 20)).part('J1', 30, 30)
+    a.p('J1', '1', 10, 10, 'GND', smd=False, size=1.0, mask=3).p('J1', '1', 10, 14, 'GND', smd=False, size=1.0, mask=3)       # two GND legs, one number
+    over = dict(FILL_SHELL_PREFIXES=('J',))
+    assert kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'both')]) == ['shell', 'stale_exception']                 # without a position it matches two findings
+    one = kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'the lower leg', 10, 10)])
+    assert one == ['shell']                                                                                               # the other leg is still a finding
+    assert kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'lower', 10, 10), ('J1', '1', 'upper', 10, 14)]) == []
+    assert kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'lower', 10.1, 10), ('J1', '1', 'upper', 10, 14)]) == ['shell', 'stale_exception']
+    assert kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'lower', 10.009, 10.009), ('J1', '1', 'upper', 10, 14)]) == []        # to 0.01 mm
+    assert kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '2', 'wrong pin', 10, 10)]) == ['shell', 'stale_exception']
+    import pytest
+    from pcbkit.config import ConfigError
+    with pytest.raises(ConfigError):
+        kinds(a, **over, FILL_SHELL_EXCEPTIONS=[('J1', '1', 'x', 10)])                                                    # x without y

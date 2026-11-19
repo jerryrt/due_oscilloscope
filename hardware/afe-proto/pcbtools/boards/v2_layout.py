@@ -144,7 +144,7 @@ TRACK_NET_WIDTHS = {'*': 0.25, 'GND': 0.25,                  # the width rule of
                     'LM_CP': 0.3, 'LM_C1N': 0.3, 'LM_C1P': 0.3, 'P33_RN': 0.3}
 TRACK_ENTRY_EDGE_TOL = 0.001      # a track enters a pad through an edge, not across a corner, to this tolerance
 TRACK_OVERLAP_TOL = 0.001
-TOP_POUR_RECTS = [(154.0, 98.5, 166.5, 149.5), (67.5, 103.5, 93.5, 123.5), (99.5, 101.5, 110.5, 118.5)]   # KiCad mm (x0, y0, x1, y1): the top GND pour is these plain rectangles and nothing else (BNC column; two plain areas); one zone each, no carved keep-outs
+TOP_POUR_RECTS = [(154.0, 102.0, 166.5, 149.5), (67.5, 103.5, 93.5, 123.5), (99.5, 101.5, 110.5, 118.5)]   # KiCad mm (x0, y0, x1, y1): the top GND pour is these plain rectangles and nothing else (BNC column; two plain areas); one zone each, no carved keep-outs
 FILL_LAYERS = ('F', 'B')
 FILL_MIN_WIDTH = {'F': 1.0, 'B': 0.5}                  # the owner's fill standard: top 1.0 mm, bottom plane 0.5 mm
 FILL_DEAD_END_WIDTH = 1.6
@@ -159,7 +159,8 @@ FILL_SHELL_EXCEPTIONS = [                              # (ref, pin, reason): a c
     ('J601', '7', 'Due header GND pin: through-hole on the solid bottom plane; the 2.54 mm header pitch leaves a 0.24 mm web of top copper between it and the signal pins beside it, under the 1.0 mm standard of the top pour'),
     ('J605', '35', "Due header GND pin, outside the top pour's rectangles (TOP_POUR_RECTS): through-hole on the solid bottom plane"),
     ('J605', '36', "Due header GND pin, outside the top pour's rectangles (TOP_POUR_RECTS): through-hole on the solid bottom plane"),
-    ('J101', '2', "the BNC shell leg beside the signal pin (x = 102 mm, the signal pin 2.5 mm from it on the same line): no plain rectangle reaches it without carrying the signal pin's clearance inside it, so it is outside the top pour and on the bottom plane through its hole; the two legs on the far side of the BNC are in the rectangle"),
+    ('J101', '2', "the BNC shell leg beside the signal pin (x = 102 mm, the signal pin 2.5 mm from it on the same line): no plain rectangle reaches it without carrying the signal pin's clearance inside it, so it is outside the top pour and on the bottom plane through its hole; the two legs on the far side of the BNC are in the rectangle", 102.0, 48.1),
+    ('J101', '2', "the shell leg past the rectangle's end: an edge between it and the board edge leaves less than 1.0 mm of pour once the thermal gap comes off (measured 0.75), so KiCad prunes it; on the bottom plane through its hole.", 107.05, 50.65),
     ('J201', '2', "the BNC shell leg beside the signal pin: as J101 pin 2"),
     ('J301', '2', "the BNC shell leg beside the signal pin: as J101 pin 2"),
 ]

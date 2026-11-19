@@ -88,7 +88,7 @@ def test_fill_clean_makes_the_rectangle_pour_on_the_carved_afe2_board_and_a_seco
     board, out, out2 = tmp_path / 'afe-v2-integrated.kicad_pcb', tmp_path / 'out.kicad_pcb', tmp_path / 'out2.kicad_pcb'
     m, cfg = _cfg('v2_layout')
     before = _read(board)
-    assert len(_pourrect(before, cfg)) > 100                                                  # main's carved pour fails the rule
+    assert any(p[0] == 'pourrect' and 'cut from the edge inwards' in p[1] for p in _pourrect(before, cfg))              # main's carved pour fails the rule
     for a, b in ((board, out), (out, out2)):
         r = subprocess.run([sys.executable, '-m', 'pcbtools.fill_clean', str(a), str(b), '--config', 'v2_layout', '--reference', str(board)], cwd=AFE, capture_output=True, text=True)
         assert r.returncode == 0, r.stdout[-800:] + r.stderr[-800:]
