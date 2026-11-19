@@ -58,7 +58,7 @@
    "fb_mm": 4.3999999999999995,
    "violations": 0.0,
    "gnd_track_gap_AWG_INV_mm": 3.8699999999999988,
-   "pour_gap_AWG_INV_mm": 4.028713073905222
+   "pour_gap_AWG_INV_mm": 24.335000000000008
   }
  },
  {
@@ -181,24 +181,24 @@
    "narrow": 0.0,
    "dead_end": 0.0,
    "notch": 0.0,
+   "pourrect": 0.0,
    "rough": 0.0,
    "shell": 0.0,
    "gndpad": 0.0,
    "thermal": 0.0,
    "solid": 0.0,
    "stale_exception": 0.0,
-   "F_notch": 0.0,
    "F_rough": 0.0,
    "F_shell_pins": 14.0,
-   "F_shell_lost": 4.0,
+   "F_shell_lost": 8.0,
    "F_gndpad_lost": 1.0,
    "F_narrow": 0.0,
    "F_dead_end": 0.0,
-   "F_outline_mm": 1088.9555110998522,
+   "F_outline_mm": 266.30181244003114,
    "B_narrow": 0.0,
    "B_dead_end": 0.0,
-   "B_outline_mm": 1248.2264441696886,
-   "F_shell_waived": 4.0,
+   "B_outline_mm": 1249.4061314111514,
+   "F_shell_waived": 8.0,
    "F_gndpad_waived": 1.0,
    "violations": 0.0
   }

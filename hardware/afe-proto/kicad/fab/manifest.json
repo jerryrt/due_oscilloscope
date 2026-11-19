@@ -1,10 +1,10 @@
 {
- "zip_sha256": "7fe9c71285737eca51bdcc4cc01f09cf7cdf58b0663387ed1a9a819731dcb42c",
+ "zip_sha256": "1a6490ef537db5cd4daf0223ea5c85bd0d0cb839482c5237d0aacc66a5d6c490",
  "members": [
   {
    "name": "COPPIA-AFE-1-REVA-B_Cu.gbl",
-   "size": 132268,
-   "sha256": "5af78cd23c3e706b6bff4751dc3e1bb93e7d67360b0663a89c883f3cd185cd1e"
+   "size": 131700,
+   "sha256": "0f6c4d7c6906a39de438d09beb10e73f0053d64bf4d5f41e782c2532aa92531e"
   },
   {
    "name": "COPPIA-AFE-1-REVA-B_Mask.gbs",
@@ -23,8 +23,8 @@
   },
   {
    "name": "COPPIA-AFE-1-REVA-F_Cu.gtl",
-   "size": 102150,
-   "sha256": "faebd007f8ce212ad9d42a06e7f051a9e9c72132c479a8df3748adeab2f47a27"
+   "size": 55493,
+   "sha256": "900e113047a233e534f7bf745d4e22cd9fa80548ee64d92c7d598f3ee8ef534b"
   },
   {
    "name": "COPPIA-AFE-1-REVA-F_Mask.gts",
@@ -48,8 +48,8 @@
   },
   {
    "name": "COPPIA-AFE-1-REVA-PTH.drl",
-   "size": 3535,
-   "sha256": "c97c84a8d522bc7db765a2819bb32119d216a0e635afde956830a7f1ad9244ed"
+   "size": 3119,
+   "sha256": "a4d18887b44cdc22875a230619ddbd32710113cc2f479bed5e128ec0a1ad6503"
   },
   {
    "name": "COPPIA-AFE-1-REVA-bom.csv",
