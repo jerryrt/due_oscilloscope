@@ -6,7 +6,7 @@
   - the minimum fill width is W on the top and W on the bottom (KiCad then drops what is narrower), the zones' clearance C;
   - a pour of A mm2 or more that the minimum width would leave hanging (cut off from every pad, via and track of the net) is kept: GND stitching vias go into it, one per 100 mm2 at least 8 mm
     apart, clear of courtyards; the rest of such pours are dropped with the island removal as before.
-Run in the PCB image from hardware/afe-proto. Prints each stitched pour with its area and via count, and the pours dropped (count and area). With OUT the board is written (zones refilled)."""
+The board's own project file (<board>.kicad_pro) must sit beside it: the pour is filled at its rules, so that a refill in KiCad with the project open changes nothing (see pcbtools.fillcheck); without it the run stops, naming the file. Run in the PCB image from hardware/afe-proto. Prints each stitched pour with its area and via count, and the pours dropped (count and area). With OUT the board is written (zones refilled)."""
 from __future__ import annotations
 
 import math
@@ -332,6 +332,9 @@ if __name__ == '__main__':
         _ref = _src                                                    # explicit: the input board's own fill is the reference
     else:
         sys.exit('fill_clean: name the board whose pour gaps this fill must not make worse (--reference BOARD, the board of record), or --reference-input to hold the input board\'s own; a guard that silently reads a stale fill cannot fire')
+    _pro = os.path.splitext(os.path.abspath(_src))[0] + '.kicad_pro'
+    if not os.path.exists(_pro):                                      # the fill depends on the project's rules (min_copper_edge_clearance is 0.45 mm in the project, 0.5 mm in KiCad without it): a board filled without them is not the fill KiCad makes when the project is open
+        sys.exit('fill_clean: the project file %s is missing. The pour is filled at the rules in it (min_copper_edge_clearance 0.45 mm; KiCad uses 0.5 without a project), so a refill in KiCad would change it. Put the board\'s .kicad_pro beside it under that name.' % _pro)
     _before = _kb.read_board(_ref, {'FRAME': FRAME})          # the board as it came in: its pour gaps are the figures the fill may not make worse
     run(args[0], args[1] if len(args) > 1 else args[0], opt('--top-width', 1.0), opt('--bottom-width', 0.5), opt('--clearance', 0.3), opt('--spoke', 0.3), opt('--gap', 0.3), opt('--big', 10.0), opt('--grid', 0.5), opt("--join", 1.0), outl, shells=tuple(getattr(cfg, 'FILL_SHELL_PREFIXES', ())), gndpad_min=float(getattr(cfg, 'FILL_GNDPAD_MIN', 0.2)))
     _worse = _rules.pour_gap_regressions(_before, _kb.read_board(_dst, {'FRAME': FRAME}), _afe_rules._pour_cfg(cfg))
